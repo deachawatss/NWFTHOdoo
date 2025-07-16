@@ -12,8 +12,8 @@ services:
       - PGDATA=/var/lib/postgresql/data/pgdata
     volumes:
       - odoo-db-data:/var/lib/postgresql/data/pgdata
-      - ./pg_config/postgresql.conf:/etc/postgresql/postgresql.conf
-    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+      # - ./pg_config/postgresql.conf:/etc/postgresql/postgresql.conf
+    # command: postgres -c config_file=/etc/postgresql/postgresql.conf
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
@@ -50,8 +50,8 @@ services:
       - odoo-log-data:/var/log/odoo
       - ./backup:/opt/odoo/backup:rw
     ports:
-      - "${SERVER_IP}:${ODOO_HTTP_PORT}:8069"
-      - "${SERVER_IP}:${ODOO_LONGPOLLING_PORT}:8072"
+      - "${SERVER_IP}:80:8069"
+      - "${SERVER_IP}:8072:8072"
     restart: unless-stopped
     command: ["odoo", "-c", "/opt/odoo/odoo.conf"]
     networks:
@@ -83,21 +83,6 @@ services:
           memory: 512M
           cpus: '0.5'
 
-  nginx:
-    image: nginx:alpine
-    container_name: odoo17_nginx
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-      - odoo-log-data:/var/log/odoo:ro
-    ports:
-      - "${SERVER_IP}:80:80"
-      - "${SERVER_IP}:443:443"
-    depends_on:
-      - odoo
-    restart: unless-stopped
-    networks:
-      - odoo-network
 
   # Backup service
   backup:
