@@ -66,6 +66,10 @@ COPY --chown=odoo:odoo . .
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh && chown root:root /docker-entrypoint.sh
 
+# Copy scripts directory
+COPY --chown=root:root scripts/ /scripts/
+RUN chmod +x /scripts/*.sh
+
 # Create directories for addons and filestore
 RUN mkdir -p /var/lib/odoo/addons /var/lib/odoo/filestore \
     && chown -R odoo:odoo /var/lib/odoo

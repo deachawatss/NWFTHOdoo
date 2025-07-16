@@ -40,6 +40,7 @@ services:
       - ./custom_addons:/opt/odoo/custom_addons:rw
       - ./addons:/opt/odoo/addons:ro
       - ./odoo.conf:/opt/odoo/odoo.conf:ro
+      - ./scripts:/scripts:ro
       - odoo-web-data:/var/lib/odoo
       - odoo-log-data:/var/log/odoo
       - ./backup:/opt/odoo/backup:rw
@@ -87,6 +88,29 @@ services:
     restart: unless-stopped
     networks:
       - odoo-network
+
+  # Backup service (manual execution)
+  backup:
+    build:
+      context: .
+      dockerfile: Dockerfile.backup
+    container_name: odoo17_backup
+    depends_on:
+      - db
+    environment:
+      - POSTGRES_DB=odoo
+      - POSTGRES_USER=odoo
+      - POSTGRES_PASSWORD=odoo123
+      - BACKUP_DIR=/backup
+      - BACKUP_RETENTION_DAYS=7
+      - ODOO_DATA_DIR=/var/lib/odoo
+    volumes:
+      - ./backup:/backup:rw
+      - odoo-web-data:/var/lib/odoo:ro
+    networks:
+      - odoo-network
+    profiles:
+      - backup
 
 volumes:
   odoo-db-data:
