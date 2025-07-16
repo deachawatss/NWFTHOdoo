@@ -93,7 +93,7 @@ curl -s -o nul -w "Odoo HTTP Status: %%{http_code}\n" http://localhost:8069/web/
 echo.
 echo Access URLs:
 echo - Odoo Web Interface: http://localhost:8069
-echo - With SSL (if configured): https://your-domain.com
+echo - With SSL (if configured): https://NWFTH.com
 echo.
 echo Next Steps:
 echo 1. Open your browser and go to http://localhost:8069
