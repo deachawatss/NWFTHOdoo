@@ -1,12 +1,12 @@
 #!/bin/bash
 set -e
 
-# Default database settings
+# Default database settings (production values)
 : ${HOST:=${DB_PORT_5432_TCP_ADDR:='db'}}
 : ${PORT:=${DB_PORT_5432_TCP_PORT:=5432}}
-: ${USER:=${DB_ENV_POSTGRES_USER:=${POSTGRES_USER:='odoo'}}}
-: ${PASSWORD:=${DB_ENV_POSTGRES_PASSWORD:=${POSTGRES_PASSWORD:='odoo123'}}}
-: ${POSTGRES_DB:=${DB_ENV_POSTGRES_DB:=${POSTGRES_DB:='odoo'}}}
+: ${USER:=${DB_ENV_POSTGRES_USER:=${POSTGRES_USER:='odoo_prod'}}}
+: ${PASSWORD:=${DB_ENV_POSTGRES_PASSWORD:=${POSTGRES_PASSWORD:='OdooSecure2024!'}}}
+: ${POSTGRES_DB:=${DB_ENV_POSTGRES_DB:=${POSTGRES_DB:='odoo_prod'}}}
 
 # Color codes for output
 RED='\033[0;31m'
@@ -56,12 +56,37 @@ create_db_if_not_exists() {
 update_config() {
     log "Updating Odoo configuration..."
     
-    # Create odoo.conf if it doesn't exist
-    if [ ! -f /opt/odoo/odoo.conf ]; then
-        log "Creating odoo.conf file..."
+    # Always update database connection settings with environment variables
+    if [ -f /opt/odoo/odoo.conf ]; then
+        log "Updating existing odoo.conf with production credentials..."
+        
+        # Update database connection settings
+        sed -i "s/^db_host = .*/db_host = $HOST/" /opt/odoo/odoo.conf
+        sed -i "s/^db_port = .*/db_port = $PORT/" /opt/odoo/odoo.conf
+        sed -i "s/^db_user = .*/db_user = $USER/" /opt/odoo/odoo.conf
+        sed -i "s/^db_password = .*/db_password = $PASSWORD/" /opt/odoo/odoo.conf
+        
+        # Update deprecated port settings to Odoo 17 format
+        sed -i "s/^xmlrpc_port = .*/http_port = 8069/" /opt/odoo/odoo.conf
+        sed -i "s/^longpolling_port = .*/gevent_port = 8072/" /opt/odoo/odoo.conf
+        
+        # Ensure required paths are set
+        if ! grep -q "^addons_path" /opt/odoo/odoo.conf; then
+            echo "addons_path = /opt/odoo/addons,/opt/odoo/custom_addons" >> /opt/odoo/odoo.conf
+        fi
+        if ! grep -q "^data_dir" /opt/odoo/odoo.conf; then
+            echo "data_dir = /var/lib/odoo" >> /opt/odoo/odoo.conf
+        fi
+        if ! grep -q "^logfile" /opt/odoo/odoo.conf; then
+            echo "logfile = /var/log/odoo/odoo.log" >> /opt/odoo/odoo.conf
+        fi
+        
+        log "Configuration file updated with production settings"
+    else
+        log "Creating new odoo.conf file..."
         cat > /opt/odoo/odoo.conf << EOF
 [options]
-admin_passwd = admin
+admin_passwd = AdminSecure2024!
 db_host = $HOST
 db_port = $PORT
 db_user = $USER
@@ -76,6 +101,13 @@ logrotate = True
 EOF
         log "Configuration file created"
     fi
+    
+    # Display current database configuration (without password)
+    log "Database connection settings:"
+    log "  Host: $HOST"
+    log "  Port: $PORT"
+    log "  User: $USER"
+    log "  Database: $POSTGRES_DB"
 }
 
 # Function to set permissions

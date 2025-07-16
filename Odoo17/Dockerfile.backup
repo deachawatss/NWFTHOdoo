@@ -11,7 +11,8 @@ RUN apk add --no-cache \
     aws-cli \
     python3 \
     py3-pip \
-    tzdata
+    tzdata \
+    dos2unix
 
 # Set timezone
 ENV TZ=Asia/Bangkok
@@ -27,11 +28,21 @@ RUN mkdir -p /backup /scripts /var/log/backup
 COPY scripts/backup.sh /scripts/backup.sh
 COPY scripts/restore.sh /scripts/restore.sh
 
-# Verify scripts exist and make them executable
-RUN ls -la /scripts/ && \
-    chmod +x /scripts/*.sh && \
+# Verify scripts exist, fix line endings, and make them executable
+RUN echo "=== Checking copied scripts ===" && \
     ls -la /scripts/ && \
-    chown -R backup:backup /backup /scripts /var/log/backup
+    echo "=== Converting line endings ===" && \
+    dos2unix /scripts/*.sh 2>/dev/null || true && \
+    echo "=== Making scripts executable ===" && \
+    chmod +x /scripts/*.sh && \
+    echo "=== Validating scripts ===" && \
+    ls -la /scripts/ && \
+    head -1 /scripts/backup.sh && \
+    echo "=== Setting ownership ===" && \
+    chown -R backup:backup /backup /scripts /var/log/backup && \
+    echo "=== Final validation ===" && \
+    ls -la /scripts/ && \
+    echo "=== Backup script setup completed ==="
 
 # Switch to backup user
 USER backup
