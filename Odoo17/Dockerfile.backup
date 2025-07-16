@@ -21,15 +21,15 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN addgroup -g 1000 backup && \
     adduser -D -u 1000 -G backup backup
 
-RUN mkdir -p /backup /scripts /var/log/backup && \
-    chown -R backup:backup /backup /scripts /var/log/backup
+RUN mkdir -p /backup /scripts /var/log/backup
 
-# Copy backup scripts
+# Copy backup scripts (as root first)
 COPY scripts/backup.sh /scripts/backup.sh
 COPY scripts/restore.sh /scripts/restore.sh
 
-# Make scripts executable
-RUN chmod +x /scripts/*.sh
+# Make scripts executable and set ownership
+RUN chmod +x /scripts/*.sh && \
+    chown -R backup:backup /backup /scripts /var/log/backup
 
 # Switch to backup user
 USER backup

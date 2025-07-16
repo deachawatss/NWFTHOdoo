@@ -59,16 +59,16 @@ WORKDIR /opt/odoo
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy custom entrypoint first (as root)
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+# Copy scripts directory (as root)
+COPY scripts/ /scripts/
+RUN chmod +x /scripts/*.sh
+
 # Copy Odoo source code
 COPY --chown=odoo:odoo . .
-
-# Copy custom entrypoint
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh && chown root:root /docker-entrypoint.sh
-
-# Copy scripts directory
-COPY --chown=root:root scripts/ /scripts/
-RUN chmod +x /scripts/*.sh
 
 # Create directories for addons and filestore
 RUN mkdir -p /var/lib/odoo/addons /var/lib/odoo/filestore \
