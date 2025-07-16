@@ -1,27 +1,33 @@
+# Odoo 17 Production Configuration for Windows Server 192.168.0.21
 version: '3.8'
 
 services:
+  # PostgreSQL Database
   db:
     image: postgres:13
     container_name: odoo17_db
     environment:
-      - POSTGRES_DB=odoo
-      - POSTGRES_USER=odoo
-      - POSTGRES_PASSWORD=odoo123
+      - POSTGRES_DB=odoo_prod
+      - POSTGRES_USER=odoo_prod
+      - POSTGRES_PASSWORD=OdooSecure2024!
       - PGDATA=/var/lib/postgresql/data/pgdata
     volumes:
       - odoo-db-data:/var/lib/postgresql/data/pgdata
-    ports:
-      - "5432:5432"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U odoo"]
+      test: ["CMD-SHELL", "pg_isready -U odoo_prod"]
       interval: 30s
       timeout: 10s
       retries: 3
     networks:
       - odoo-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
 
+  # Odoo Application
   odoo:
     build: .
     container_name: odoo17_app
@@ -30,25 +36,24 @@ services:
         condition: service_healthy
     environment:
       - HOST=db
-      - USER=odoo
-      - PASSWORD=odoo123
-      - POSTGRES_DB=odoo
-      - POSTGRES_USER=odoo
-      - POSTGRES_PASSWORD=odoo123
+      - USER=odoo_prod
+      - PASSWORD=OdooSecure2024!
+      - POSTGRES_DB=odoo_prod
+      - POSTGRES_USER=odoo_prod
+      - POSTGRES_PASSWORD=OdooSecure2024!
       - ODOO_RC=/opt/odoo/odoo.conf
     volumes:
-      - ./custom_addons:/opt/odoo/custom_addons:rw
+      - ./custom_addons:/opt/odoo/custom_addons:ro
       - ./addons:/opt/odoo/addons:ro
       - ./odoo.conf:/opt/odoo/odoo.conf:ro
-      - ./scripts:/scripts:ro
       - odoo-web-data:/var/lib/odoo
       - odoo-log-data:/var/log/odoo
       - ./backup:/opt/odoo/backup:rw
     ports:
-      - "192.168.0.21:8069:8069"
-      - "192.168.0.21:8072:8072"
+      - "192.168.0.21:80:8069"      # Main Odoo web interface
+      - "192.168.0.21:8072:8072"    # Long polling for chat/notifications
     restart: unless-stopped
-    command: ["odoo", "-c", "/opt/odoo/odoo.conf", "--dev=reload,qweb,werkzeug,xml"]
+    command: ["odoo", "-c", "/opt/odoo/odoo.conf"]
     networks:
       - odoo-network
     healthcheck:
@@ -57,39 +62,29 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
 
-  # Optional: pgAdmin for database management
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: odoo17_pgadmin
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@odoo.local
-      - PGADMIN_DEFAULT_PASSWORD=admin
-      - PGADMIN_CONFIG_SERVER_MODE=False
-    volumes:
-      - pgadmin-data:/var/lib/pgadmin
-    ports:
-      - "192.168.0.21:5050:80"
-    depends_on:
-      - db
-    restart: unless-stopped
-    networks:
-      - odoo-network
-
-  # Optional: Redis for session storage and caching
+  # Redis for session storage and caching
   redis:
     image: redis:7-alpine
     container_name: odoo17_redis
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
     volumes:
       - redis-data:/data
-    ports:
-      - "192.168.0.21:6379:6379"
     restart: unless-stopped
     networks:
       - odoo-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
 
-  # Backup service (manual execution)
+  # Automatic backup service
   backup:
     build:
       context: .
@@ -98,20 +93,21 @@ services:
     depends_on:
       - db
     environment:
-      - POSTGRES_DB=odoo
-      - POSTGRES_USER=odoo
-      - POSTGRES_PASSWORD=odoo123
+      - POSTGRES_DB=odoo_prod
+      - POSTGRES_USER=odoo_prod
+      - POSTGRES_PASSWORD=OdooSecure2024!
       - BACKUP_DIR=/backup
       - BACKUP_RETENTION_DAYS=7
       - ODOO_DATA_DIR=/var/lib/odoo
+      - BACKUP_INTERVAL=86400  # Daily backup (24 hours in seconds)
     volumes:
       - ./backup:/backup:rw
       - odoo-web-data:/var/lib/odoo:ro
+    restart: unless-stopped
     networks:
       - odoo-network
-    profiles:
-      - backup
 
+# Persistent volumes
 volumes:
   odoo-db-data:
     driver: local
@@ -119,11 +115,10 @@ volumes:
     driver: local
   odoo-log-data:
     driver: local
-  pgadmin-data:
-    driver: local
   redis-data:
     driver: local
 
+# Network
 networks:
   odoo-network:
     driver: bridge
