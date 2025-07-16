@@ -5,6 +5,7 @@ FROM python:3.11-slim-bullseye as base
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
+    gosu \
     libxml2-dev \
     libxslt-dev \
     libldap2-dev \
@@ -62,8 +63,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY --chown=odoo:odoo . .
 
 # Copy custom entrypoint
-COPY --chown=odoo:odoo docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh && chown root:root /docker-entrypoint.sh
 
 # Create directories for addons and filestore
 RUN mkdir -p /var/lib/odoo/addons /var/lib/odoo/filestore \
