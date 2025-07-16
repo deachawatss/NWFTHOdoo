@@ -3,7 +3,7 @@
 ## Quick Start
 
 1. **Double-click `start-production.bat`** to start Odoo
-2. **Access Odoo at: http://192.168.0.21**
+2. **Access Odoo at: http://192.168.0.21:8069**
 3. **To stop: Double-click `stop-production.bat`**
 
 ## What's Included
@@ -30,7 +30,7 @@ This simplified production setup includes only essential files:
 
 | Service | Container | Purpose | Port |
 |---------|-----------|---------|------|
-| Odoo | `odoo17_app` | Main application | 80 |
+| Odoo | `odoo17_app` | Main application | 8069 |
 | PostgreSQL | `odoo17_db` | Database | Internal |
 | Redis | `odoo17_redis` | Cache/Sessions | Internal |
 | Backup | `odoo17_backup` | Auto backup | Internal |
@@ -74,7 +74,7 @@ docker-compose exec backup /scripts/backup.sh
 
 1. Start services: `start-production.bat`
 2. Wait 2-3 minutes for initial setup
-3. Open browser: http://192.168.0.21
+3. Open browser: http://192.168.0.21:8069
 4. Create master password
 5. Create your first database
 
@@ -84,8 +84,8 @@ docker-compose exec backup /scripts/backup.sh
 - Check Docker Desktop is running
 - Run `docker-compose logs` to see errors
 
-**Can't access http://192.168.0.21?**
-- Check Windows Firewall port 80
+**Can't access http://192.168.0.21:8069?**
+- Check Windows Firewall port 8069
 - Verify server IP is 192.168.0.21
 
 **Need to change password?**

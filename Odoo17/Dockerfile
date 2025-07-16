@@ -61,14 +61,23 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy custom entrypoint first (as root)
 COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh && ls -la /docker-entrypoint.sh
 
 # Copy scripts directory (as root)
 COPY scripts/ /scripts/
-RUN chmod +x /scripts/*.sh
+RUN chmod +x /scripts/*.sh && ls -la /scripts/
 
-# Copy Odoo source code
-COPY --chown=odoo:odoo . .
+# Copy Odoo source code (excluding Docker files to avoid conflicts)
+COPY --chown=odoo:odoo addons/ /opt/odoo/addons/
+COPY --chown=odoo:odoo custom_addons/ /opt/odoo/custom_addons/
+COPY --chown=odoo:odoo odoo/ /opt/odoo/odoo/
+COPY --chown=odoo:odoo odoo-bin /opt/odoo/odoo-bin
+COPY --chown=odoo:odoo odoo.conf /opt/odoo/odoo.conf
+COPY --chown=odoo:odoo setup.py /opt/odoo/setup.py
+COPY --chown=odoo:odoo setup.cfg /opt/odoo/setup.cfg
+
+# Make odoo-bin executable
+RUN chmod +x /opt/odoo/odoo-bin
 
 # Create directories for addons and filestore
 RUN mkdir -p /var/lib/odoo/addons /var/lib/odoo/filestore \

@@ -27,8 +27,10 @@ RUN mkdir -p /backup /scripts /var/log/backup
 COPY scripts/backup.sh /scripts/backup.sh
 COPY scripts/restore.sh /scripts/restore.sh
 
-# Make scripts executable and set ownership
-RUN chmod +x /scripts/*.sh && \
+# Verify scripts exist and make them executable
+RUN ls -la /scripts/ && \
+    chmod +x /scripts/*.sh && \
+    ls -la /scripts/ && \
     chown -R backup:backup /backup /scripts /var/log/backup
 
 # Switch to backup user
