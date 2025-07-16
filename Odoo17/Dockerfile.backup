@@ -1,0 +1,41 @@
+# Backup service Dockerfile for Odoo 17 Production
+
+FROM postgres:13-alpine
+
+# Install required packages
+RUN apk add --no-cache \
+    bash \
+    curl \
+    gzip \
+    tar \
+    aws-cli \
+    python3 \
+    py3-pip \
+    tzdata
+
+# Set timezone
+ENV TZ=Asia/Bangkok
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# Create backup user and directories
+RUN addgroup -g 1000 backup && \
+    adduser -D -u 1000 -G backup backup
+
+RUN mkdir -p /backup /scripts /var/log/backup && \
+    chown -R backup:backup /backup /scripts /var/log/backup
+
+# Copy backup scripts
+COPY scripts/backup.sh /scripts/backup.sh
+COPY scripts/restore.sh /scripts/restore.sh
+
+# Make scripts executable
+RUN chmod +x /scripts/*.sh
+
+# Switch to backup user
+USER backup
+
+# Set working directory
+WORKDIR /backup
+
+# Default command
+CMD ["/scripts/backup.sh"]
