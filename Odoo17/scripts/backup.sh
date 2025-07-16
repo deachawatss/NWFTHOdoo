@@ -188,11 +188,22 @@ if [ -n "${BACKUP_INTERVAL}" ]; then
     log "Starting continuous backup mode with interval: ${BACKUP_INTERVAL}"
     
     while true; do
-        main
+        # Check if database is available before backup
+        if pg_isready -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" 2>/dev/null; then
+            main
+        else
+            warn "Database not ready, waiting..."
+        fi
         log "Waiting ${BACKUP_INTERVAL} before next backup..."
         sleep "${BACKUP_INTERVAL}"
     done
 else
     # Run once
-    main
+    # Check if database is available before backup
+    if pg_isready -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" 2>/dev/null; then
+        main
+    else
+        warn "Database not ready, exiting..."
+        exit 1
+    fi
 fi

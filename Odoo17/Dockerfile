@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     gosu \
+    dos2unix \
     libxml2-dev \
     libxslt-dev \
     libldap2-dev \
@@ -61,11 +62,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy custom entrypoint first (as root)
 COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh && ls -la /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh && \
+    dos2unix /docker-entrypoint.sh 2>/dev/null || true && \
+    ls -la /docker-entrypoint.sh
 
 # Copy scripts directory (as root)
 COPY scripts/ /scripts/
-RUN chmod +x /scripts/*.sh && ls -la /scripts/
+RUN chmod +x /scripts/*.sh && \
+    dos2unix /scripts/*.sh 2>/dev/null || true && \
+    ls -la /scripts/
 
 # Copy Odoo source code (excluding Docker files to avoid conflicts)
 COPY --chown=odoo:odoo addons/ /opt/odoo/addons/

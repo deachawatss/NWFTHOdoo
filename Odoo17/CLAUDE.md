@@ -212,22 +212,145 @@ dev_mode = reload,qweb,werkzeug,xml
 - Follow Odoo web framework patterns
 - Minimize custom CSS, use Bootstrap classes
 
+## Production Deployment
+
+**Docker Production Setup:**
+This project includes a complete Docker-based production environment optimized for Windows Server 192.168.0.21.
+
+**Production Scripts:**
+```bash
+# Start production environment
+start-production.bat
+
+# Stop production environment
+stop-production.bat
+```
+
+**Production Architecture:**
+- **Odoo Application Container**: Main ERP application on port 8069
+- **PostgreSQL Database**: Production database with automatic health checks
+- **Redis Cache**: Session storage and caching on port 6379
+- **Automatic Backup Service**: Daily backups with 7-day retention
+- **Nginx Reverse Proxy**: Load balancing and SSL termination (optional)
+
+**Docker Commands:**
+```bash
+# View service status
+docker-compose ps
+
+# View logs
+docker-compose logs -f
+
+# Restart specific service
+docker-compose restart odoo
+
+# Scale services
+docker-compose up -d --scale odoo=2
+
+# Execute commands in container
+docker-compose exec odoo python odoo-bin shell -c odoo.conf
+
+# Database operations
+docker-compose exec db pg_dump -U odoo_prod odoo_prod > backup.sql
+```
+
+**Production Configuration:**
+- Database: `odoo_prod` on dedicated PostgreSQL container
+- Data persistence: Docker volumes for database and filestore
+- Backup: Automated daily backups to `/backup` directory
+- Monitoring: Health checks and container restart policies
+- Security: Isolated network and environment variables
+
+**Environment Variables:**
+```bash
+# Database Configuration
+POSTGRES_DB=odoo_prod
+POSTGRES_USER=odoo_prod
+POSTGRES_PASSWORD=OdooSecure2024!
+
+# Backup Configuration
+BACKUP_RETENTION_DAYS=7
+BACKUP_INTERVAL=86400  # 24 hours
+```
+
 ## Troubleshooting
 
-**Common Issues:**
+**Development Issues:**
 - Module not found: Check `addons_path` configuration
 - Database access errors: Verify PostgreSQL connection settings
 - Import errors: Check module dependencies in `__manifest__.py`
 - Translation issues: Update .po files and restart server
+
+**Production Issues:**
+- **Container startup failures**: Check Docker logs with `docker-compose logs`
+- **Database connection errors**: Verify database health with `docker-compose exec db pg_isready`
+- **Port conflicts**: Ensure ports 8069, 8072, 5432 are available
+- **Memory issues**: Monitor container resources with `docker stats`
+- **Backup failures**: Check backup service logs and disk space
+
+**Docker Troubleshooting:**
+```bash
+# Check container health
+docker-compose ps
+docker-compose logs [service_name]
+
+# Restart failed services
+docker-compose restart [service_name]
+
+# Rebuild containers
+docker-compose build --no-cache
+
+# Clean up Docker resources
+docker system prune -a
+docker volume prune
+
+# Check disk usage
+docker system df
+```
+
+**Performance Monitoring:**
+```bash
+# Monitor container resources
+docker stats
+
+# Check database performance
+docker-compose exec db psql -U odoo_prod -c "SELECT * FROM pg_stat_activity;"
+
+# Monitor Odoo logs
+docker-compose logs -f odoo | grep -E "(ERROR|WARNING)"
+```
+
+**Database Maintenance:**
+```bash
+# Create database backup
+docker-compose exec db pg_dump -U odoo_prod odoo_prod > backup_$(date +%Y%m%d).sql
+
+# Restore database
+docker-compose exec -T db psql -U odoo_prod -d odoo_prod < backup.sql
+
+# Check database size
+docker-compose exec db psql -U odoo_prod -c "SELECT pg_size_pretty(pg_database_size('odoo_prod'));"
+```
 
 **Debugging:**
 - Use `--dev=reload` for auto-restart on code changes
 - Enable developer mode in Odoo interface
 - Use Python debugger (`pdb`) in model methods
 - Check server logs for detailed error information
+- Monitor Docker container logs for system-level issues
 
 **Performance:**
 - Monitor database query performance
 - Use `--dev=qweb` for template debugging
 - Profile slow operations with Odoo profiler
 - Consider database indexing for custom fields
+- Monitor container resource usage
+- Implement Redis caching for session management
+
+**Security Best Practices:**
+- Use environment variables for sensitive data
+- Implement SSL/TLS with nginx reverse proxy
+- Regular security updates for base images
+- Monitor access logs and failed authentication attempts
+- Implement database backup encryption
+- Use Docker secrets for production passwords

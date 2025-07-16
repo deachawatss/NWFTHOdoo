@@ -1,5 +1,4 @@
 # Odoo 17 Production Configuration for Windows Server 192.168.0.21
-version: '3.8'
 
 services:
   # PostgreSQL Database

@@ -30,7 +30,7 @@ error() {
 # Function to wait for database
 wait_for_db() {
     log "Waiting for database to be ready..."
-    while ! pg_isready -h "$HOST" -p "$PORT" -U "$USER"; do
+    while ! pg_isready -h "$HOST" -p "$PORT" -U "$USER" 2>/dev/null; do
         sleep 1
     done
     log "Database is ready!"
@@ -38,26 +38,17 @@ wait_for_db() {
 
 # Function to check if database exists
 db_exists() {
-    psql -h "$HOST" -p "$PORT" -U "$USER" -lqt | cut -d \| -f 1 | grep -qw "$POSTGRES_DB"
+    psql -h "$HOST" -p "$PORT" -U "$USER" -lqt 2>/dev/null | cut -d \| -f 1 | grep -qw "$POSTGRES_DB"
 }
 
 # Function to create database if it doesn't exist
 create_db_if_not_exists() {
     if ! db_exists; then
         log "Database '$POSTGRES_DB' does not exist. Creating..."
-        createdb -h "$HOST" -p "$PORT" -U "$USER" "$POSTGRES_DB"
+        createdb -h "$HOST" -p "$PORT" -U "$USER" "$POSTGRES_DB" 2>/dev/null || true
         log "Database '$POSTGRES_DB' created successfully!"
     else
         log "Database '$POSTGRES_DB' already exists."
-    fi
-}
-
-# Function to initialize Odoo database
-init_db() {
-    if [ "$1" = "odoo" ]; then
-        log "Initializing Odoo database..."
-        set -- "$@" --init=base --database="$POSTGRES_DB" --without-demo=False
-        log "Database initialization parameters added"
     fi
 }
 
@@ -75,8 +66,8 @@ db_host = $HOST
 db_port = $PORT
 db_user = $USER
 db_password = $PASSWORD
-xmlrpc_port = 8069
-longpolling_port = 8072
+http_port = 8069
+gevent_port = 8072
 addons_path = /opt/odoo/addons,/opt/odoo/custom_addons
 data_dir = /var/lib/odoo
 logfile = /var/log/odoo/odoo.log
@@ -90,25 +81,9 @@ EOF
 # Function to set permissions
 set_permissions() {
     log "Setting up permissions..."
-    chown -R odoo:odoo /var/lib/odoo /var/log/odoo
-    chmod -R 755 /var/lib/odoo /var/log/odoo
-}
-
-# Function to run database migrations
-run_migrations() {
-    if [ "$1" = "odoo" ] && [ -n "$ODOO_MIGRATE" ]; then
-        log "Running database migrations..."
-        set -- "$@" --update=all --database="$POSTGRES_DB"
-        log "Migration parameters added"
-    fi
-}
-
-# Function to install demo data
-install_demo_data() {
-    if [ "$1" = "odoo" ] && [ "$ODOO_DEMO" = "True" ]; then
-        log "Installing demo data..."
-        set -- "$@" --without-demo=False
-        log "Demo data installation enabled"
+    if [ "$(id -u)" = "0" ]; then
+        chown -R odoo:odoo /var/lib/odoo /var/log/odoo 2>/dev/null || true
+        chmod -R 755 /var/lib/odoo /var/log/odoo 2>/dev/null || true
     fi
 }
 
@@ -134,19 +109,8 @@ main() {
     # Handle special cases
     case "$1" in
         odoo)
-            # Initialize database if needed
-            if [ "$ODOO_INIT_DB" = "True" ]; then
-                init_db "$@"
-            fi
-            
-            # Run migrations if needed
-            run_migrations "$@"
-            
-            # Install demo data if needed
-            install_demo_data "$@"
-            
             log "Starting Odoo server..."
-            exec python3 /opt/odoo/odoo-bin "$@"
+            exec python3 /opt/odoo/odoo-bin -c /opt/odoo/odoo.conf
             ;;
         shell)
             log "Starting interactive shell..."

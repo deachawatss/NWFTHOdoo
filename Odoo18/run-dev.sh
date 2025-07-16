@@ -37,13 +37,13 @@ show_usage() {
     echo -e "${CYAN}Odoo 18 Development Server${NC}"
     echo ""
     echo -e "${YELLOW}Usage:${NC}"
-    echo "  ./run-dev.sh [database_name] [options]"
+    echo "  ./run-dev.sh <database_name> [options]"
     echo ""
     echo -e "${YELLOW}Examples:${NC}"
-    echo "  ./run-dev.sh                    # Auto-detect or use 'odoo18_dev' database"
     echo "  ./run-dev.sh mydb               # Use 'mydb' database"
     echo "  ./run-dev.sh mydb --update-all  # Update all modules on startup"
     echo "  ./run-dev.sh mydb -i base       # Install base module"
+    echo "  ./run-dev.sh test_db            # Use 'test_db' database"
     echo ""
     echo -e "${YELLOW}Features:${NC}"
     echo "  - Auto-reload on file changes"
@@ -109,17 +109,17 @@ check_database() {
 
 # Function to suggest database name
 suggest_database() {
-    local suggested_db="odoo18_dev"
-    
     # Try to find existing databases that might be Odoo databases
     if command -v psql >/dev/null 2>&1; then
         local existing_dbs=$(psql -lqt 2>/dev/null | cut -d \| -f 1 | grep -E "(odoo|dev)" | head -1 | xargs)
         if [ -n "$existing_dbs" ]; then
-            suggested_db="$existing_dbs"
+            echo "$existing_dbs"
+            return 0
         fi
     fi
     
-    echo "$suggested_db"
+    # No suitable database found
+    return 1
 }
 
 # Main function
@@ -151,9 +151,18 @@ main() {
     
     # Parse arguments
     if [ $# -eq 0 ]; then
-        # No arguments, suggest database
-        database_name=$(suggest_database)
-        warn "No database specified, using: $database_name"
+        # No arguments, try to suggest database or show help
+        if database_name=$(suggest_database); then
+            warn "No database specified, using existing database: $database_name"
+            info "Next time, specify database explicitly: ./run-dev.sh $database_name"
+        else
+            error "No database specified and no existing Odoo databases found.
+Please specify a database name:
+  ./run-dev.sh <database_name>
+
+Or use --help for more information:
+  ./run-dev.sh --help"
+        fi
     else
         # First argument should be database name
         database_name="$1"
@@ -179,8 +188,8 @@ main() {
         --addons-path="$addon_paths"
         --dev=reload,qweb,werkzeug,xml
         --log-level=info
-        --xmlrpc-port=8069
-        --longpolling-port=8072
+        --http-port=8069
+        --gevent-port=8072
     )
     
     # Add extra arguments
