@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="web.DateTimePickerPopover">
+        <DateTimePicker t-props="props.pickerProps">
+            <t t-set-slot="buttons">
+                <button
+                    class="btn btn-sm btn-secondary"
+                    tabindex="-1"
+                    t-on-click="() => props.pickerProps.range || props.pickerProps.focusedDateIndex ? props.pickerProps.onSelect([false, false]) : props.pickerProps.onSelect(false)"
+                >
+                    <i class="fa fa-eraser" />
+                </button>
+                <button
+                    class="btn btn-sm btn-primary"
+                    tabindex="-1"
+                    t-on-click="props.close"
+                >
+                    <span>Apply</span>
+                </button>
+            </t>
+        </DateTimePicker>
+    </t>
+</templates>

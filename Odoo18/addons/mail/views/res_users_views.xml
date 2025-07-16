@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<odoo>
+    <data>
+
+        <!-- Update Preferences form !-->
+        <record id="view_users_form_simple_modif_mail" model="ir.ui.view">
+            <field name="name">res.users.preferences.form.mail</field>
+            <field name="model">res.users</field>
+            <field name="inherit_id" ref="base.view_users_form_simple_modif"/>
+            <field name="arch" type="xml">
+                <data>
+                    <xpath expr="//group[@name='signature']|//field[@name='signature']" position="before">
+                        <group string="Discuss" name="discuss">
+                            <field name="notification_type" widget="radio" readonly="0"/>
+                            <field name="role_ids" widget="many2many_tags" readonly="not can_edit_role"/>
+                        </group>
+                    </xpath>
+                    <field name="signature" position="attributes">
+                        <attribute name="widget">html_mail</attribute>
+                    </field>
+                </data>
+            </field>
+        </record>
+
+        <!-- Update user form !-->
+        <record id="view_users_form_mail" model="ir.ui.view">
+            <field name="name">res.users.form.mail</field>
+            <field name="model">res.users</field>
+            <field name="inherit_id" ref="base.view_users_form"/>
+            <field name="arch" type="xml">
+                <data>
+                    <xpath expr="//group[@name='messaging']|//field[@name='signature']" position="before">
+                        <group string="Discuss" name="discuss">
+                            <field name="notification_type" widget="radio" invisible="share"/>
+                            <field name="role_ids" widget="many2many_tags" readonly="not can_edit_role"/>
+                        </group>
+                    </xpath>
+                    <field name="signature" position="attributes">
+                        <attribute name="widget">html_mail</attribute>
+                    </field>
+                </data>
+            </field>
+        </record>
+    </data>
+</odoo>

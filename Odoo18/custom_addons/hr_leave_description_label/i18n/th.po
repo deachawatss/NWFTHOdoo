@@ -1,0 +1,32 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* hr_leave_description_label
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 17.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-04-04 10:00+0000\n"
+"PO-Revision-Date: 2024-04-04 10:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: hr_leave_description_label
+#: model:ir.model.fields,field_description:hr_leave_description_label.field_hr_leave__name
+msgid "Description (If Compensatory, Please explain your work day)"
+msgstr "รายละเอียด (ในกรณี Compensatory กรุณาระบุรายละเอียดวันที่มาทำงาน)"
+
+#. module: hr_leave_description_label
+#: model_terms:ir.ui.view,arch_db:hr_leave_description_label.hr_leave_view_form_inherit_description_label
+msgid "If Compensatory, Please explain your work day"
+msgstr "ในกรณี Compensatory กรุณาระบุรายละเอียดวันที่มาทำงาน"
+
+#. module: hr_leave_description_label
+#: code:addons/hr_leave_description_label/models/hr_leave.py:0
+#, python-format
+msgid "Please explain your work day for Compensatory Time Off."
+msgstr "กรุณาระบุรายละเอียดวันที่มาทำงานสำหรับการลาชดเชย" 

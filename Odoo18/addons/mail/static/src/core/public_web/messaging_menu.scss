@@ -1,0 +1,33 @@
+.o-mail-MessagingMenu {
+    width: 475px;
+    min-height: 50px;
+    max-height: Min(calc(#{ $o-dropdown-max-height } - 5px), 630px); // -5px for borders
+    background-color: var(--mail-MessagingMenu-bg, $o-view-background-color);
+}
+
+.o-mail-MessagingMenu-list {
+    background-color: var(--mail-MessagingMenu-bg, $o-view-background-color);
+}
+
+.o-mail-MessagingMenu-navbar button {
+    border-top: 2px solid !important;
+    border-color: transparent !important;
+
+    &.o-active {
+        border-top-color: var(--mail-MessagingMenu-activeBorderTopColor, rgba($primary, .75)) !important;
+    }
+}
+
+.o-mail-MessagingMenu-tabCounter, .o-mail-MessagingMenu-tabUnread {
+    transform: translate(80%, 50%) !important;
+}
+
+.o-discuss-badge.o-mail-MessagingMenu-tabUnread {
+    --o-discuss-badge-bg: #{transparent};
+    opacity: 50%;
+    color: unset !important;
+}
+
+.o_popover:has(.o-mail-MessagingMenu) {
+    --popover-border-color: #{$secondary};
+}

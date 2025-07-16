@@ -1,0 +1,34 @@
+.oe_website_sale {
+    .td-wish-btn {
+        width: 140px;
+    }
+
+    div.css_not_available .o_add_wishlist_dyn {
+        display: none;
+    }
+
+    .o_add_wishlist_dyn {
+        &.disabled i::before {
+            content: "\f004";
+        }
+
+        &.btn-lg {
+            aspect-ratio: 1/1;
+            height: calc(#{$btn-padding-y-lg} * 2 + #{$btn-font-size-lg} * #{$btn-line-height} + #{$btn-border-width} * 2);
+        }
+    }
+}
+
+// XS size
+@include media-breakpoint-down(md) {
+    .oe_website_sale {
+        .td-wish-btn {
+            width: 100px;
+        }
+    }
+}
+
+table.table-comparator .td-img img {
+    // allows sizing the placeholder image to the "image" size of 100px
+    max-height: 100px;
+}

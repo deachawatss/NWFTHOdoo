@@ -1,0 +1,49 @@
+.pos-logo {
+    height: $navbar-height / 1.5;
+    min-width: $navbar-height * 2; 
+    background-image: var(--navbar-logo, url("/web/static/img/odoo_logo.svg"));
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.status-buttons {
+    .avatar {
+        height: 24px;
+    }
+}
+
+.menu {
+    z-index: $zindex-dropdown;
+}
+
+.sub-menu {
+    top: $navbar-height * 2/3;
+    right: $navbar-height * -1/3 ;
+}
+
+.dropdown-menu {
+    padding: 0;
+}
+
+.o-dropdown-item {
+    padding: map-get($spacers, 2);
+    border-radius: $border-radius;
+
+    &:hover {
+        background-color: $o-gray-200;
+    }
+}
+
+.o-dropdown--menu .dropdown-item.focus {
+    background-color: $o-gray-200;
+}
+
+@include media-breakpoint-up(lg) {
+    .pos-leftheader, .pos-rightheader {
+        max-width: 40%;
+    }
+    .navbar-menu > button {
+        min-width: 96px;
+    }
+}

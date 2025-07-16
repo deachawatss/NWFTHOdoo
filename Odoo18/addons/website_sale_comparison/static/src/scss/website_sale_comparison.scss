@@ -1,0 +1,33 @@
+.oe_website_sale {
+    .o_add_compare_dyn.btn-lg {
+        aspect-ratio: 1/1;
+        height: calc(#{$btn-padding-y-lg} * 2 + #{$btn-font-size-lg} * #{$btn-line-height} + #{$btn-border-width} * 2);
+    }
+
+    .product_summary > *{
+        display: block;
+        margin: 15px 0 15px 0;
+    }
+    .table-comparator {
+        .o_product_comparison_collpase {
+            margin-right: 8px;
+        }
+    }
+
+    .o_comparelist_remove {
+        @include o-position-absolute($top: 0, $right: 0.5rem);
+    }
+
+    .o_ws_compare_image {
+        vertical-align: middle;
+    }
+}
+
+// Specifications
+#product_full_spec {
+    border-top: 1px solid map-get($grays, '400');
+
+    .o_add_compare_dyn {
+        @include font-size(1.1rem);
+    }
+}

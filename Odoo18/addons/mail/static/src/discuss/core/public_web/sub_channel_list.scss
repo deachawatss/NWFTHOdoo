@@ -1,0 +1,14 @@
+.o-mail-SubChannelList-thread {
+    background-color: mix($gray-100, $gray-200);
+    --border-opacity: .75;
+
+    &:hover {
+        background-color: $gray-100 !important;
+    }
+}
+
+.o-mail-SubChannelList-threadLastMessage {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}

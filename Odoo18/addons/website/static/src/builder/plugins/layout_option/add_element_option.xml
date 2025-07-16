@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="website.AddElementOption">
+    <BuilderRow label.translate="Add Elements" level="props.level" preview="false" applyTo="props.applyTo">
+        <BuilderButton action="'addElText'" type="'success'">
+            Text
+        </BuilderButton>
+        <BuilderButton action="'addElImage'" type="'success'">
+            Image
+        </BuilderButton>
+        <BuilderButton action="'addElButton'" type="'success'">
+            Button
+        </BuilderButton>
+    </BuilderRow>
+</t>
+</templates>
