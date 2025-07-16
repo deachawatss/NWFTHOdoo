@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13
+    container_name: odoo17_db
+    environment:
+      - POSTGRES_DB=odoo
+      - POSTGRES_USER=odoo
+      - POSTGRES_PASSWORD=odoo123
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - odoo-db-data:/var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - odoo-network
+
+  odoo:
+    build: .
+    container_name: odoo17_app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - HOST=db
+      - USER=odoo
+      - PASSWORD=odoo123
+      - POSTGRES_DB=odoo
+      - POSTGRES_USER=odoo
+      - POSTGRES_PASSWORD=odoo123
+      - ODOO_RC=/opt/odoo/odoo.conf
+    volumes:
+      - ./custom_addons:/opt/odoo/custom_addons:rw
+      - ./addons:/opt/odoo/addons:ro
+      - ./odoo.conf:/opt/odoo/odoo.conf:ro
+      - odoo-web-data:/var/lib/odoo
+      - odoo-log-data:/var/log/odoo
+      - ./backup:/opt/odoo/backup:rw
+    ports:
+      - "192.168.0.21:8069:8069"
+      - "192.168.0.21:8072:8072"
+    restart: unless-stopped
+    command: ["odoo", "-c", "/opt/odoo/odoo.conf", "--dev=reload,qweb,werkzeug,xml"]
+    networks:
+      - odoo-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8069/web/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Optional: pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: odoo17_pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@odoo.local
+      - PGADMIN_DEFAULT_PASSWORD=admin
+      - PGADMIN_CONFIG_SERVER_MODE=False
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    ports:
+      - "192.168.0.21:5050:80"
+    depends_on:
+      - db
+    restart: unless-stopped
+    networks:
+      - odoo-network
+
+  # Optional: Redis for session storage and caching
+  redis:
+    image: redis:7-alpine
+    container_name: odoo17_redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    ports:
+      - "192.168.0.21:6379:6379"
+    restart: unless-stopped
+    networks:
+      - odoo-network
+
+volumes:
+  odoo-db-data:
+    driver: local
+  odoo-web-data:
+    driver: local
+  odoo-log-data:
+    driver: local
+  pgadmin-data:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  odoo-network:
+    driver: bridge

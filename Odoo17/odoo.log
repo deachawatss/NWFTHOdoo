@@ -1,0 +1,174 @@
+/home/deachawat/dev/projects/Odoo/Odoo17/odoo/modules/module.py:11: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+2025-07-15 08:18:38,824 100882 INFO ? odoo: Odoo version 17.0 
+2025-07-15 08:18:38,824 100882 INFO ? odoo: Using configuration file at /home/deachawat/dev/projects/Odoo/Odoo17/odoo.conf 
+2025-07-15 08:18:38,825 100882 INFO ? odoo: addons paths: ['/home/deachawat/dev/projects/Odoo/Odoo17/odoo/addons', '/home/deachawat/.local/share/Odoo/addons/17.0', '/home/deachawat/dev/projects/Odoo/Odoo17/addons', '/home/deachawat/dev/projects/Odoo/Odoo17/custom_addons'] 
+2025-07-15 08:18:38,825 100882 INFO ? odoo: database: odoo@localhost:5432 
+2025-07-15 08:18:39,015 100882 INFO ? odoo.addons.base.models.ir_actions_report: You need Wkhtmltopdf to print a pdf version of the reports. 
+2025-07-15 08:18:39,133 100882 WARNING ? odoo.service.server: 'inotify' module not installed. Code autoreload feature is disabled 
+2025-07-15 08:18:39,135 100882 INFO ? odoo.service.server: HTTP service (werkzeug) running on NB-DEACHAWAT.NWFTH.COM:8069 
+2025-07-15 08:18:50,739 100882 INFO ? werkzeug: 127.0.0.1 - - [15/Jul/2025 08:18:50] "GET / HTTP/1.1" 303 - 1 0.002 0.020
+2025-07-15 08:18:50,997 100882 INFO ? werkzeug: 127.0.0.1 - - [15/Jul/2025 08:18:50] "GET /web HTTP/1.1" 303 - 2 0.003 0.020
+2025-07-15 08:18:51,537 100882 INFO ? werkzeug: 127.0.0.1 - - [15/Jul/2025 08:18:51] "GET /web/database/selector HTTP/1.1" 200 - 6 0.008 0.470
+2025-07-15 08:18:53,429 100882 INFO ? werkzeug: 127.0.0.1 - - [15/Jul/2025 08:18:53] "GET /web/service-worker.js HTTP/1.1" 404 - 1 0.001 0.010
+2025-07-15 08:18:55,523 100882 INFO ? werkzeug: 127.0.0.1 - - [15/Jul/2025 08:18:55] "GET /web/database/manager HTTP/1.1" 200 - 6 0.004 0.357
+2025-07-15 08:18:57,153 100882 INFO ? werkzeug: 127.0.0.1 - - [15/Jul/2025 08:18:57] "GET /web/service-worker.js HTTP/1.1" 404 - 1 0.001 0.009
+2025-07-15 08:19:56,550 100882 INFO ? odoo.service.db: RESTORING DB: NWFTH-ERP-V.0.1.1 
+2025-07-15 08:20:01,844 100882 INFO ? odoo.modules.loading: loading 1 modules... 
+2025-07-15 08:20:01,849 100882 INFO ? odoo.modules.loading: 1 modules loaded in 0.00s, 0 queries (+0 extra) 
+2025-07-15 08:20:01,852 100882 INFO ? odoo.modules.loading: loading 41 modules... 
+2025-07-15 08:20:02,202 100882 INFO ? odoo.modules.loading: 41 modules loaded in 0.35s, 0 queries (+0 extra) 
+2025-07-15 08:20:02,252 100882 INFO ? odoo.modules.loading: Modules loaded. 
+2025-07-15 08:20:02,254 100882 INFO ? odoo.modules.registry: Registry loaded in 0.415s 
+2025-07-15 08:20:02,332 100882 INFO ? odoo.service.db: RESTORE DB: NWFTH-ERP-V.0.1.1 
+2025-07-15 08:20:02,333 100882 INFO ? werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:02] "POST /web/database/restore HTTP/1.1" 303 - 42 0.077 6.347
+2025-07-15 08:20:02,698 100882 INFO ? werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:02] "GET /web/database/manager HTTP/1.1" 200 - 8 0.006 0.353
+2025-07-15 08:20:04,297 100882 INFO ? werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:04] "GET /web/service-worker.js HTTP/1.1" 404 - 1 0.001 0.010
+2025-07-15 08:20:07,986 100882 INFO ? werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:07] "GET /web?db=NWFTH-ERP-V.0.1.1 HTTP/1.1" 302 - 1 0.001 0.011
+2025-07-15 08:20:08,074 100882 INFO NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_http: Generating routing map for key None 
+2025-07-15 08:20:08,085 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:08] "GET /web?db=NWFTH-ERP-V.0.1.1 HTTP/1.1" 303 - 5 0.002 0.011
+2025-07-15 08:20:08,267 100882 WARNING NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_qweb: Found deprecated directive @t-esc='error' in template 185. Replace by @t-out 
+2025-07-15 08:20:08,267 100882 WARNING NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_qweb: Found deprecated directive @t-esc='message' in template 185. Replace by @t-out 
+2025-07-15 08:20:08,289 100882 WARNING NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_qweb: Found deprecated directive @t-esc="title or 'Odoo'" in template 181. Replace by @t-out 
+2025-07-15 08:20:08,290 100882 WARNING NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_qweb: Found deprecated directive @t-esc='request.csrf_token(None)' in template 181. Replace by @t-out 
+2025-07-15 08:20:08,290 100882 WARNING NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_qweb: Found deprecated directive @t-esc='debug' in template 181. Replace by @t-out 
+2025-07-15 08:20:08,402 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:08] "GET /web/login?db=NWFTH-ERP-V.0.1.1 HTTP/1.1" 200 - 65 0.023 0.140
+2025-07-15 08:20:08,443 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:08] "GET /web/binary/company_logo?dbname=NWFTH-ERP-V.0.1.1 HTTP/1.1" 200 - 2 0.004 0.016
+2025-07-15 08:20:08,862 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:08] "GET /web/webclient/translations/1752567608548 HTTP/1.1" 200 - 5 0.002 0.007
+2025-07-15 08:20:10,040 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:10] "GET /web/service-worker.js HTTP/1.1" 200 - 2 0.000 0.004
+2025-07-15 08:20:10,381 100882 WARNING NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_qweb: Found deprecated directive @t-esc="title or 'Odoo'" in template 180. Replace by @t-out 
+2025-07-15 08:20:10,382 100882 WARNING NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_qweb: Found deprecated directive @t-esc='request.csrf_token(None)' in template 180. Replace by @t-out 
+2025-07-15 08:20:10,382 100882 WARNING NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_qweb: Found deprecated directive @t-esc='debug' in template 180. Replace by @t-out 
+2025-07-15 08:20:10,384 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:10] "GET /web/offline HTTP/1.1" 200 - 14 0.004 0.014
+2025-07-15 08:20:12,817 100882 INFO NWFTH-ERP-V.0.1.1 odoo.addons.base.models.res_users: Login successful for db:NWFTH-ERP-V.0.1.1 login:admin from 127.0.0.1 
+2025-07-15 08:20:12,829 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:12] "POST /web/login HTTP/1.1" 303 - 47 0.021 0.338
+2025-07-15 08:20:12,988 100882 WARNING NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_qweb: Found deprecated directive @t-esc="title or 'Odoo'" in template 180. Replace by @t-out 
+2025-07-15 08:20:12,989 100882 WARNING NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_qweb: Found deprecated directive @t-esc='request.csrf_token(None)' in template 180. Replace by @t-out 
+2025-07-15 08:20:12,989 100882 WARNING NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_qweb: Found deprecated directive @t-esc='debug' in template 180. Replace by @t-out 
+2025-07-15 08:20:12,992 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:12] "GET /web HTTP/1.1" 200 - 94 0.040 0.117
+2025-07-15 08:20:13,327 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:13] "GET /web/webclient/translations/79167f59cfef1c211a64698612a278bf24ae0659?lang=en_US HTTP/1.1" 200 - 4 0.002 0.003
+2025-07-15 08:20:13,544 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:13] "POST /mail/init_messaging HTTP/1.1" 200 - 72 0.019 0.018
+2025-07-15 08:20:13,609 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:13] "POST /web/dataset/call_kw/res.users/systray_get_activities HTTP/1.1" 200 - 28 0.010 0.012
+2025-07-15 08:20:13,647 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:13] "POST /web/action/load HTTP/1.1" 200 - 6 0.002 0.005
+2025-07-15 08:20:13,657 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:13] "POST /mail/load_message_failures HTTP/1.1" 200 - 3 0.002 0.004
+2025-07-15 08:20:13,694 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:13] "GET /web/manifest.webmanifest HTTP/1.1" 200 - 14 0.007 0.007
+2025-07-15 08:20:13,710 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:13] "POST /mail/inbox/messages HTTP/1.1" 200 - 11 0.008 0.006
+2025-07-15 08:20:13,872 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:13] "GET /web/image/res.partner/2/avatar_128?unique=2025-04-04%2001:32:08 HTTP/1.1" 200 - 20 0.006 0.009
+2025-07-15 08:20:13,936 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:13] "GET /web/image?model=res.users&field=avatar_128&id=2 HTTP/1.1" 200 - 22 0.005 0.008
+2025-07-15 08:20:13,993 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:13] "GET /web/image?model=res.company&field=appbar_image&id=1 HTTP/1.1" 304 - 12 0.005 0.006
+2025-07-15 08:20:14,026 100882 INFO NWFTH-ERP-V.0.1.1 odoo.addons.base.models.assetsbundle: Generating a new asset bundle attachment /web/assets/b2aecb0/bus.websocket_worker_assets.min.js (id:169) 
+2025-07-15 08:20:14,027 100882 INFO NWFTH-ERP-V.0.1.1 odoo.addons.base.models.assetsbundle: Deleting attachments [160] (matching /web/assets/_______/bus.websocket_worker_assets.min.js) because it was replaced with /web/assets/b2aecb0/bus.websocket_worker_assets.min.js 
+2025-07-15 08:20:14,032 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:14] "GET /bus/websocket_worker_bundle?v=17.0-1 HTTP/1.1" 304 - 13 0.009 0.018
+2025-07-15 08:20:14,347 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:14] "GET /websocket?version=17.0-1 HTTP/1.1" 101 - 1 0.000 0.002
+2025-07-15 08:20:14,363 100882 INFO ? odoo.addons.bus.models.bus: Bus.loop listen imbus on db postgres 
+2025-07-15 08:20:15,667 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:15] "POST /web/action/load HTTP/1.1" 200 - 9 0.002 0.005
+2025-07-15 08:20:15,811 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:15] "POST /web/dataset/call_kw/hr.employee/get_views HTTP/1.1" 200 - 92 0.031 0.072
+2025-07-15 08:20:15,924 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:15] "POST /web/dataset/call_kw/hr.employee/search_panel_select_range HTTP/1.1" 200 - 14 0.004 0.005
+2025-07-15 08:20:16,029 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:16] "POST /web/dataset/call_kw/hr.employee/web_search_read HTTP/1.1" 200 - 65 0.020 0.022
+2025-07-15 08:20:16,136 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:16] "POST /web/action/load HTTP/1.1" 200 - 10 0.005 0.007
+2025-07-15 08:20:16,148 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:16] "GET /web/image/res.users/2/avatar_128 HTTP/1.1" 304 - 22 0.012 0.010
+2025-07-15 08:20:16,183 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:16] "GET /web/image?model=hr.employee&id=3&field=image_1024&unique=1752567616067 HTTP/1.1" 200 - 10 0.003 0.006
+2025-07-15 08:20:16,417 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:16] "GET /web/image?model=hr.employee&id=4&field=image_1024&unique=1752567616066 HTTP/1.1" 200 - 10 0.007 0.020
+2025-07-15 08:20:16,440 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:16] "GET /web/image/res.users/6/avatar_128 HTTP/1.1" 304 - 23 0.026 0.023
+2025-07-15 08:20:16,481 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:16] "GET /web/image?model=hr.employee&id=1&field=image_1024&unique=1752567616062 HTTP/1.1" 200 - 10 0.010 0.012
+2025-07-15 08:20:16,482 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:16] "GET /web/image/res.users/8/avatar_128 HTTP/1.1" 200 - 23 0.023 0.016
+2025-07-15 08:20:16,519 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:16] "GET /web/image/res.users/7/avatar_128 HTTP/1.1" 304 - 23 0.015 0.012
+2025-07-15 08:20:16,521 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:16] "POST /web/dataset/call_kw/hr.leave/get_views HTTP/1.1" 200 - 58 0.038 0.094
+2025-07-15 08:20:16,726 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:16] "POST /web/dataset/call_kw/hr.leave/check_access_rights HTTP/1.1" 200 - 1 0.000 0.002
+2025-07-15 08:20:16,786 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:16] "POST /web/dataset/call_kw/hr.leave/get_unusual_days HTTP/1.1" 200 - 21 0.007 0.023
+2025-07-15 08:20:16,800 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:16] "GET /web/image?model=hr.employee&id=2&field=image_1024&unique=1752567616065 HTTP/1.1" 200 - 10 0.004 0.008
+2025-07-15 08:20:16,853 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:16] "POST /web/dataset/call_kw/hr.leave/search_read HTTP/1.1" 200 - 17 0.007 0.007
+2025-07-15 08:20:17,047 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:17] "POST /web/dataset/call_kw/hr.employee/get_mandatory_days HTTP/1.1" 200 - 6 0.002 0.005
+2025-07-15 08:20:17,120 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:17] "POST /web/dataset/call_kw/hr.leave.type/get_allocation_data_request HTTP/1.1" 200 - 19 0.005 0.007
+2025-07-15 08:20:17,178 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:17] "POST /web/dataset/call_kw/hr.employee/get_special_days_data HTTP/1.1" 200 - 9 0.004 0.006
+2025-07-15 08:20:17,389 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:17] "POST /web/dataset/call_kw/hr.leave.type/has_accrual_allocation HTTP/1.1" 200 - 9 0.006 0.009
+2025-07-15 08:20:17,390 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:17] "GET /web/image?model=hr.employee&id=5&field=image_1024&unique=1752567616066 HTTP/1.1" 200 - 10 0.008 0.006
+2025-07-15 08:20:17,443 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:17] "GET /web/service-worker.js HTTP/1.1" 200 - 1 0.001 0.003
+2025-07-15 08:20:17,880 100882 INFO ? werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:17] "GET /hr_holidays/static/src/img/icons/Sick_Time_Off_2.svg HTTP/1.1" 200 - 0 0.000 0.004
+2025-07-15 08:20:17,882 100882 INFO ? werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:17] "GET /hr_holidays/static/src/img/icons/Training_Time_Off_2.svg HTTP/1.1" 200 - 0 0.000 0.003
+2025-07-15 08:20:17,909 100882 WARNING NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_qweb: Found deprecated directive @t-esc="title or 'Odoo'" in template 180. Replace by @t-out 
+2025-07-15 08:20:17,911 100882 WARNING NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_qweb: Found deprecated directive @t-esc='request.csrf_token(None)' in template 180. Replace by @t-out 
+2025-07-15 08:20:17,911 100882 WARNING NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_qweb: Found deprecated directive @t-esc='debug' in template 180. Replace by @t-out 
+2025-07-15 08:20:17,916 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:17] "GET /web?debug=1 HTTP/1.1" 200 - 79 0.042 0.113
+2025-07-15 08:20:17,921 100882 WARNING NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_qweb: Found deprecated directive @t-esc="title or 'Odoo'" in template 180. Replace by @t-out 
+2025-07-15 08:20:17,922 100882 WARNING NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_qweb: Found deprecated directive @t-esc='request.csrf_token(None)' in template 180. Replace by @t-out 
+2025-07-15 08:20:17,922 100882 WARNING NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_qweb: Found deprecated directive @t-esc='debug' in template 180. Replace by @t-out 
+2025-07-15 08:20:17,926 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:17] "GET /web/offline HTTP/1.1" 200 - 13 0.016 0.034
+2025-07-15 08:20:18,018 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:18] "GET /web/webclient/load_menus/fa78cff20c1c6c71ac7bcc1a91795323340af184a3ddff818f2969004ef133dd HTTP/1.1" 200 - 1 0.001 0.005
+2025-07-15 08:20:18,040 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:18] "POST /web/action/load HTTP/1.1" 200 - 9 0.007 0.014
+2025-07-15 08:20:18,311 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:18] "POST /mail/init_messaging HTTP/1.1" 200 - 65 0.018 0.020
+2025-07-15 08:20:18,358 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:18] "GET /web/manifest.webmanifest HTTP/1.1" 200 - 13 0.021 0.018
+2025-07-15 08:20:18,360 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:18] "POST /web/dataset/call_kw/res.users/systray_get_activities HTTP/1.1" 200 - 26 0.026 0.017
+2025-07-15 08:20:18,367 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:18] "POST /mail/load_message_failures HTTP/1.1" 200 - 3 0.003 0.018
+2025-07-15 08:20:18,406 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:18] "GET /web/image?model=res.users&field=avatar_128&id=2 HTTP/1.1" 304 - 22 0.015 0.020
+2025-07-15 08:20:18,448 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:18] "POST /web/dataset/call_kw/hr.employee/get_views HTTP/1.1" 200 - 42 0.028 0.102
+2025-07-15 08:20:18,633 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:18] "POST /web/dataset/call_kw/hr.employee/search_panel_select_range HTTP/1.1" 200 - 14 0.004 0.006
+2025-07-15 08:20:18,713 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:18] "POST /web/dataset/call_kw/hr.employee/web_search_read HTTP/1.1" 200 - 56 0.018 0.021
+2025-07-15 08:20:18,791 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:18] "GET /web/image?model=res.company&field=appbar_image&id=1 HTTP/1.1" 304 - 12 0.016 0.014
+2025-07-15 08:20:18,801 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:18] "GET /web/image/res.users/2/avatar_128 HTTP/1.1" 304 - 22 0.021 0.018
+2025-07-15 08:20:19,098 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:19] "GET /web/image?model=hr.employee&id=5&field=image_1024&unique=1752567618750 HTTP/1.1" 200 - 10 0.011 0.011
+2025-07-15 08:20:19,106 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:19] "GET /web/image?model=hr.employee&id=2&field=image_1024&unique=1752567618749 HTTP/1.1" 200 - 10 0.011 0.021
+2025-07-15 08:20:19,122 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:19] "GET /web/image?model=hr.employee&id=3&field=image_1024&unique=1752567618751 HTTP/1.1" 200 - 10 0.018 0.027
+2025-07-15 08:20:19,133 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:19] "GET /web/image?model=hr.employee&id=4&field=image_1024&unique=1752567618750 HTTP/1.1" 200 - 10 0.034 0.019
+2025-07-15 08:20:19,165 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:19] "GET /web/image/res.users/6/avatar_128 HTTP/1.1" 304 - 23 0.029 0.028
+2025-07-15 08:20:19,168 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:19] "GET /web/image/res.users/8/avatar_128 HTTP/1.1" 304 - 23 0.029 0.026
+2025-07-15 08:20:19,417 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:19] "POST /web/action/load HTTP/1.1" 200 - 10 0.003 0.006
+2025-07-15 08:20:19,460 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:19] "GET /web/image/res.users/7/avatar_128 HTTP/1.1" 304 - 23 0.016 0.013
+2025-07-15 08:20:19,491 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:19] "POST /web/dataset/call_kw/hr.leave/get_views HTTP/1.1" 200 - 26 0.016 0.045
+2025-07-15 08:20:19,665 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:19] "POST /web/dataset/call_kw/hr.leave/check_access_rights HTTP/1.1" 200 - 1 0.001 0.003
+2025-07-15 08:20:19,771 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:19] "POST /web/dataset/call_kw/hr.leave/get_unusual_days HTTP/1.1" 200 - 21 0.007 0.026
+2025-07-15 08:20:19,818 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:19] "POST /web/dataset/call_kw/hr.leave/search_read HTTP/1.1" 200 - 17 0.006 0.007
+2025-07-15 08:20:19,987 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:19] "POST /web/dataset/call_kw/hr.employee/get_mandatory_days HTTP/1.1" 200 - 6 0.002 0.004
+2025-07-15 08:20:20,118 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:20] "POST /web/dataset/call_kw/hr.leave.type/get_allocation_data_request HTTP/1.1" 200 - 19 0.016 0.018
+2025-07-15 08:20:20,144 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:20] "POST /web/dataset/call_kw/hr.employee/get_special_days_data HTTP/1.1" 200 - 9 0.006 0.009
+2025-07-15 08:20:20,322 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:20] "POST /web/dataset/call_kw/hr.leave.type/has_accrual_allocation HTTP/1.1" 200 - 9 0.006 0.008
+2025-07-15 08:20:20,323 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:20] "GET /web/image?model=hr.employee&id=1&field=image_1024&unique=1752567618746 HTTP/1.1" 200 - 10 0.007 0.007
+2025-07-15 08:20:20,447 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:20] "GET /bus/websocket_worker_bundle?v=17.0-1 HTTP/1.1" 304 - 4 0.002 0.005
+2025-07-15 08:20:20,777 100882 INFO ? werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:20] "GET /hr_holidays/static/src/img/icons/Small_Unemployement_3.svg HTTP/1.1" 200 - 0 0.000 0.003
+2025-07-15 08:20:20,819 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:20] "GET /websocket?version=17.0-1 HTTP/1.1" 101 - 1 0.000 0.002
+2025-07-15 08:20:21,213 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:21] "POST /web/action/load HTTP/1.1" 200 - 10 0.002 0.005
+2025-07-15 08:20:21,602 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:21] "POST /web/dataset/call_kw/hr.leave/get_views HTTP/1.1" 200 - 31 0.012 0.033
+2025-07-15 08:20:21,825 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:21] "POST /web/dataset/call_kw/hr.leave/search_panel_select_range HTTP/1.1" 200 - 22 0.008 0.009
+2025-07-15 08:20:21,935 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:21] "POST /web/dataset/call_kw/res.users/has_group HTTP/1.1" 200 - 2 0.002 0.007
+2025-07-15 08:20:21,944 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:21] "GET /web/service-worker.js HTTP/1.1" 200 - 1 0.002 0.015
+2025-07-15 08:20:21,967 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:21] "POST /web/dataset/call_kw/hr.leave/search_panel_select_range HTTP/1.1" 200 - 28 0.026 0.016
+2025-07-15 08:20:21,987 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:21] "POST /web/dataset/call_kw/hr.leave/web_search_read HTTP/1.1" 200 - 49 0.037 0.025
+2025-07-15 08:20:22,233 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:22] "GET /web/image/hr.employee/2/avatar_128 HTTP/1.1" 200 - 11 0.003 0.007
+2025-07-15 08:20:22,366 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:22] "GET /web/image/hr.employee/4/avatar_128 HTTP/1.1" 200 - 11 0.003 0.006
+2025-07-15 08:20:25,397 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:25] "POST /web/dataset/call_kw/hr.leave/web_read HTTP/1.1" 200 - 60 0.019 0.021
+2025-07-15 08:20:25,749 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:25] "POST /web/dataset/call_kw/hr.leave/read_group HTTP/1.1" 200 - 11 0.003 0.006
+2025-07-15 08:20:25,993 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:25] "POST /web/dataset/call_kw/hr.leave/search_read HTTP/1.1" 200 - 7 0.002 0.004
+2025-07-15 08:20:26,112 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:26] "POST /mail/thread/data HTTP/1.1" 200 - 90 0.026 0.023
+2025-07-15 08:20:26,369 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:26] "POST /mail/thread/messages HTTP/1.1" 200 - 38 0.013 0.014
+2025-07-15 08:20:26,429 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:26] "GET /web/image?field=avatar_128&id=7&model=res.partner&unique=2025-04-04%2001:17:40 HTTP/1.1" 200 - 25 0.009 0.011
+2025-07-15 08:20:28,216 100882 INFO NWFTH-ERP-V.0.1.1 odoo.models.unlink: User #2 deleted mail.activity records with IDs: [61] 
+2025-07-15 08:20:28,241 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:28] "POST /web/dataset/call_button HTTP/1.1" 200 - 101 0.034 0.050
+2025-07-15 08:20:28,428 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:28] "POST /mail/thread/messages HTTP/1.1" 200 - 30 0.009 0.012
+2025-07-15 08:20:28,581 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:28] "GET /web/image?field=avatar_128&id=3&model=res.partner&unique=2025-03-21%2004:32:38 HTTP/1.1" 200 - 20 0.011 0.009
+2025-07-15 08:20:28,610 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:28] "POST /web/dataset/call_kw/hr.leave/web_read HTTP/1.1" 200 - 60 0.026 0.025
+2025-07-15 08:20:28,795 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:28] "POST /mail/thread/data HTTP/1.1" 200 - 69 0.020 0.018
+2025-07-15 08:20:28,936 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:28] "POST /web/dataset/call_kw/hr.leave/search_read HTTP/1.1" 200 - 7 0.003 0.006
+2025-07-15 08:20:28,939 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:28] "POST /web/dataset/call_kw/hr.leave/read_group HTTP/1.1" 200 - 11 0.006 0.009
+2025-07-15 08:20:32,130 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:32] "POST /web/dataset/call_kw/hr.leave/web_search_read HTTP/1.1" 200 - 49 0.015 0.017
+2025-07-15 08:20:38,875 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:38] "POST /web/dataset/call_kw/hr.leave/web_read HTTP/1.1" 200 - 60 0.016 0.019
+2025-07-15 08:20:39,095 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:39] "POST /web/dataset/call_kw/hr.leave/read_group HTTP/1.1" 200 - 8 0.002 0.004
+2025-07-15 08:20:39,212 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:39] "POST /web/dataset/call_kw/hr.leave/search_read HTTP/1.1" 200 - 7 0.002 0.004
+2025-07-15 08:20:39,429 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:39] "POST /mail/thread/data HTTP/1.1" 200 - 41 0.012 0.011
+2025-07-15 08:20:39,565 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:39] "POST /mail/thread/messages HTTP/1.1" 200 - 38 0.011 0.014
+2025-07-15 08:20:45,138 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:45] "POST /web/dataset/call_kw/hr.leave/web_search_read HTTP/1.1" 200 - 49 0.019 0.020
+2025-07-15 08:20:47,943 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:47] "POST /web/dataset/call_kw/hr.leave/web_read HTTP/1.1" 200 - 60 0.016 0.020
+2025-07-15 08:20:48,166 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:48] "POST /web/dataset/call_kw/hr.leave/read_group HTTP/1.1" 200 - 11 0.004 0.006
+2025-07-15 08:20:48,262 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:48] "POST /web/dataset/call_kw/hr.leave/search_read HTTP/1.1" 200 - 7 0.002 0.004
+2025-07-15 08:20:48,544 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:48] "POST /mail/thread/data HTTP/1.1" 200 - 90 0.035 0.031
+2025-07-15 08:20:48,618 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 08:20:48] "POST /mail/thread/messages HTTP/1.1" 200 - 38 0.012 0.014
+2025-07-15 08:43:04,804 100882 INFO NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_cron: Starting job `Partner Autocomplete: Sync with remote DB`. 
+2025-07-15 08:43:04,820 100882 INFO NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_cron: Job done: `Partner Autocomplete: Sync with remote DB` (0.014s). 
+2025-07-15 08:43:04,828 100882 INFO NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_cron: Starting job `SMS: SMS Queue Manager`. 
+2025-07-15 08:43:04,833 100882 INFO NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_cron: Job done: `SMS: SMS Queue Manager` (0.004s). 
+2025-07-15 08:43:04,839 100882 INFO NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_cron: Starting job `Notification: Send scheduled message notifications`. 
+2025-07-15 08:43:04,842 100882 INFO NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_cron: Job done: `Notification: Send scheduled message notifications` (0.003s). 
+2025-07-15 08:43:04,848 100882 INFO NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_cron: Starting job `Mail: Email Queue Manager`. 
+2025-07-15 08:43:04,854 100882 INFO NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_cron: Job done: `Mail: Email Queue Manager` (0.006s). 
+2025-07-15 08:43:04,860 100882 INFO NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_cron: Starting job `Snailmail: process letters queue`. 
+2025-07-15 08:43:04,863 100882 INFO NWFTH-ERP-V.0.1.1 odoo.addons.base.models.ir_cron: Job done: `Snailmail: process letters queue` (0.003s). 
+2025-07-15 09:26:11,061 100882 INFO NWFTH-ERP-V.0.1.1 werkzeug: 127.0.0.1 - - [15/Jul/2025 09:26:11] "GET /websocket?version=17.0-1 HTTP/1.1" 101 - 1 0.001 0.030
