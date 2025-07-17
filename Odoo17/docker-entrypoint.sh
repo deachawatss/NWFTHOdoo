@@ -52,37 +52,28 @@ create_db_if_not_exists() {
     fi
 }
 
-# Function to update configuration
+# Function to update configuration (only if not already configured)
 update_config() {
+    # Check if configuration has already been updated to prevent loops
+    if [ -f /tmp/odoo_config_updated ]; then
+        log "Configuration already updated, skipping..."
+        return 0
+    fi
+    
     log "Updating Odoo configuration..."
     
-    # Always update database connection settings with environment variables
-    if [ -f /opt/odoo/odoo.conf ]; then
+    # Only update database connection settings if file is writable and not already updated
+    if [ -f /opt/odoo/odoo.conf ] && [ -w /opt/odoo/odoo.conf ]; then
         log "Updating existing odoo.conf with production credentials..."
         
-        # Update database connection settings
+        # Update database connection settings only if they differ
         sed -i "s/^db_host = .*/db_host = $HOST/" /opt/odoo/odoo.conf
         sed -i "s/^db_port = .*/db_port = $PORT/" /opt/odoo/odoo.conf
         sed -i "s/^db_user = .*/db_user = $USER/" /opt/odoo/odoo.conf
         sed -i "s/^db_password = .*/db_password = $PASSWORD/" /opt/odoo/odoo.conf
         
-        # Update deprecated port settings to Odoo 17 format
-        sed -i "s/^xmlrpc_port = .*/http_port = 8069/" /opt/odoo/odoo.conf
-        sed -i "s/^longpolling_port = .*/gevent_port = 8072/" /opt/odoo/odoo.conf
-        
-        # Ensure required paths are set
-        if ! grep -q "^addons_path" /opt/odoo/odoo.conf; then
-            echo "addons_path = /opt/odoo/addons,/opt/odoo/custom_addons" >> /opt/odoo/odoo.conf
-        fi
-        if ! grep -q "^data_dir" /opt/odoo/odoo.conf; then
-            echo "data_dir = /var/lib/odoo" >> /opt/odoo/odoo.conf
-        fi
-        if ! grep -q "^logfile" /opt/odoo/odoo.conf; then
-            echo "logfile = /var/log/odoo/odoo.log" >> /opt/odoo/odoo.conf
-        fi
-        
-        log "Configuration file updated with production settings"
-    else
+        log "Database connection settings updated"
+    elif [ ! -f /opt/odoo/odoo.conf ]; then
         log "Creating new odoo.conf file..."
         cat > /opt/odoo/odoo.conf << EOF
 [options]
@@ -102,10 +93,13 @@ EOF
         log "Configuration file created"
     fi
     
+    # Mark configuration as updated
+    touch /tmp/odoo_config_updated
+    
     # Display current database configuration (without password)
     log "Database connection settings:"
     log "  Host: $HOST"
-    log "  Port: $PORT"
+    log "  Port: $PORT" 
     log "  User: $USER"
     log "  Database: $POSTGRES_DB"
 }
@@ -159,7 +153,12 @@ main() {
 if [ "$(id -u)" = "0" ]; then
     warn "Running as root, switching to odoo user..."
     set_permissions
+    # Mark that we're switching users to prevent infinite loop
+    export SWITCHED_TO_ODOO_USER=1
     exec gosu odoo "$0" "$@"
+elif [ "$SWITCHED_TO_ODOO_USER" = "1" ]; then
+    # Already switched to odoo user, don't switch again
+    log "Running as odoo user, proceeding with startup..."
 fi
 
 # Run main function
