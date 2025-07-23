@@ -4,9 +4,9 @@ set -e
 # Default database settings (production values)
 : ${HOST:=${DB_PORT_5432_TCP_ADDR:='db'}}
 : ${PORT:=${DB_PORT_5432_TCP_PORT:=5432}}
-: ${USER:=${DB_ENV_POSTGRES_USER:=${POSTGRES_USER:='odoo_prod'}}}
-: ${PASSWORD:=${DB_ENV_POSTGRES_PASSWORD:=${POSTGRES_PASSWORD:='OdooSecure2024!'}}}
-: ${POSTGRES_DB:=${DB_ENV_POSTGRES_DB:=${POSTGRES_DB:='odoo_prod'}}}
+: ${USER:=${DB_ENV_POSTGRES_USER:=${POSTGRES_USER:='admin'}}}
+: ${PASSWORD:=${DB_ENV_POSTGRES_PASSWORD:=${POSTGRES_PASSWORD:='1234'}}}
+: ${POSTGRES_DB:=${DB_ENV_POSTGRES_DB:=${POSTGRES_DB:='odoo_admin'}}}
 
 # Color codes for output
 RED='\033[0;31m'
@@ -89,7 +89,7 @@ update_config() {
         log "Creating new odoo.conf file..."
         cat > /opt/odoo/odoo.conf << EOF
 [options]
-admin_passwd = AdminSecure2024!
+admin_passwd = 1234
 db_host = $HOST
 db_port = $PORT
 db_user = $USER

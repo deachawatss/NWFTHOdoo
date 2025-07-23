@@ -1,11 +1,18 @@
 # sphinx build directories
 _build/
 
-# dotfiles
-.*
+# dotfiles (but allow important config files)
+.cache/
+.pytest_cache/
+.mypy_cache/
+.vscode/
+.idea/
 !.gitignore
 !.github
 !.mailmap
+!.env
+!.env.prod
+!.dockerignore
 # compiled python files
 *.py[co]
 __pycache__/
@@ -20,8 +27,8 @@ status
 odoo/filestore
 # maintenance migration scripts
 odoo/addons/base/maintenance
-# window installation config file
-/odoo.conf
+# window installation config file (commented out to allow tracking production config)
+# /odoo.conf
 
 # generated for windows installer?
 install/win32/*.bat

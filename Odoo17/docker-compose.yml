@@ -7,15 +7,15 @@ services:
     image: postgres:13
     container_name: odoo17_db
     environment:
-      - POSTGRES_DB=odoo_prod
-      - POSTGRES_USER=odoo_prod
-      - POSTGRES_PASSWORD=OdooSecure2024!
+      - POSTGRES_DB=odoo_admin
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=1234
       - PGDATA=/var/lib/postgresql/data/pgdata
     volumes:
       - odoo-db-data:/var/lib/postgresql/data/pgdata
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U odoo_prod"]
+      test: ["CMD-SHELL", "pg_isready -U admin"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -38,11 +38,11 @@ services:
         condition: service_started
     environment:
       - HOST=db
-      - USER=odoo_prod
-      - PASSWORD=OdooSecure2024!
-      - POSTGRES_DB=odoo_prod
-      - POSTGRES_USER=odoo_prod
-      - POSTGRES_PASSWORD=OdooSecure2024!
+      - USER=admin
+      - PASSWORD=1234
+      - POSTGRES_DB=odoo_admin
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=1234
       - ODOO_RC=/opt/odoo/odoo.conf
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -109,9 +109,9 @@ services:
       db:
         condition: service_healthy
     environment:
-      - POSTGRES_DB=odoo_prod
-      - POSTGRES_USER=odoo_prod
-      - POSTGRES_PASSWORD=OdooSecure2024!
+      - POSTGRES_DB=odoo_admin
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=1234
       - BACKUP_DIR=/backup
       - BACKUP_RETENTION_DAYS=7
       - ODOO_DATA_DIR=/var/lib/odoo

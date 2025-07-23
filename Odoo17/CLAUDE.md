@@ -1,88 +1,106 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides comprehensive guidance for working with the Odoo 17.0.0 ERP/CRM system.
 
 ## Project Overview
 
-This is an Odoo 17.0.0 ERP/CRM system with extensive customizations for manufacturing, HR, and business process management. The system includes 300+ standard addons plus custom business modules for specialized workflows.
+This is an Odoo 17.0.0 ERP/CRM system with extensive customizations for manufacturing, HR, and business process management. The system includes 300+ standard addons plus custom business modules for specialized workflows, optimized for production deployment on server IP 192.168.0.21.
+
+## Current Configuration Status
+
+**✅ IMPORTANT: Admin Credentials**
+- **Master Password**: `1234` (for database management operations)
+- **PostgreSQL Admin**: Username `admin`, Password `1234`
+- **Database Management**: Full access to create, restore, backup all databases
+- **Odoo Admin Interface**: Access with master password `1234`
+
+**Production Environment:**
+- **Server IP**: 192.168.0.21
+- **Ports**: 8069 (web), 8072 (long polling), 5432 (database)
+- **Database**: PostgreSQL with admin/1234 credentials
+- **Session Storage**: Redis for production, filesystem for development
 
 ## Development Environment Setup
 
 **Prerequisites:**
 - Python 3.10+ (currently using Python 3.11.9)
 - PostgreSQL database
-- Windows environment (primary development platform)
+- Docker & Docker Compose (for production)
 
-**Virtual Environment:**
+**Virtual Environment (Development):**
 ```bash
-# Activate virtual environment
-source venv/bin/activate  # Linux/Mac
-# or
-venv\Scripts\activate     # Windows
+# Linux/WSL
+source odoo_env/bin/activate
+./start-dev.sh
 
-# Install dependencies
+# Install dependencies if needed
 pip install -r requirements.txt
 ```
 
-**Database Setup:**
-```bash
-# Create new database with demo data
-python odoo-bin -d your_db_name -i base --addons-path=addons,custom_addons
+**Development Configuration:**
+- **Config File**: `odoo-dev.conf`
+- **Database**: No specific database restriction (can manage all)
+- **Admin Password**: `1234` (master password)
+- **Database Connection**: `admin`/`1234`
+- **URL**: http://localhost:8069
 
-# Update existing database
-python odoo-bin -d your_db_name -u module_name --addons-path=addons,custom_addons
+## Docker Production Environment
+
+**Current Production Setup:**
+- **PostgreSQL**: Username `admin`, Password `1234`, Database `odoo_admin`
+- **Odoo Master Password**: `1234`
+- **Network Binding**: 192.168.0.21:8069 and 192.168.0.21:8072
+- **Redis**: Session storage and caching
+- **Backup Service**: Automated with retention policies
+
+**Docker Commands:**
+```bash
+# Start production environment
+docker-compose up -d
+
+# View service status
+docker-compose ps
+
+# View logs
+docker-compose logs -f
+
+# Restart specific service
+docker-compose restart odoo
+
+# Database operations
+docker-compose exec db pg_dump -U admin odoo_admin > backup.sql
+
+# Execute commands in container
+docker-compose exec odoo python odoo-bin shell -c /opt/odoo/odoo.conf
 ```
 
-## Common Development Commands
+**Production Configuration Files:**
+- `docker-compose.yml` - Container orchestration
+- `odoo.conf` - Production Odoo configuration
+- `.env.prod` - Environment variables
+- `Dockerfile` - Application container build
+- `docker-entrypoint.sh` - Container startup script
 
-**Start Odoo Server:**
+## Database Management
+
+**Master Password Usage:**
+1. **Database Manager**: Go to `http://192.168.0.21:8069/web/database/manager`
+2. **Enter Master Password**: `1234`
+3. **Available Operations**: Create, backup, restore, duplicate, drop databases
+
+**PostgreSQL Direct Access:**
 ```bash
-# Development mode with auto-reload
-python odoo-bin --dev=reload,qweb,werkzeug,xml -d your_db_name --addons-path=addons,custom_addons
+# Development environment
+PGPASSWORD=1234 psql -h localhost -p 5432 -U admin -d postgres
 
-# Windows startup script
-startodoo17.bat
-
-# Production mode
-python odoo-bin -c odoo.conf
+# Production environment (Docker)
+docker-compose exec db psql -U admin -d postgres
 ```
 
-**Module Development:**
-```bash
-# Install new module
-python odoo-bin -d db_name -i module_name
-
-# Update module after changes
-python odoo-bin -d db_name -u module_name
-
-# Update all modules
-python odoo-bin -d db_name -u all
-```
-
-**Testing:**
-```bash
-# Run tests for specific module
-python odoo-bin -d test_db --test-enable --stop-after-init -i module_name
-
-# Run tests without installing
-python odoo-bin -d test_db --test-enable --stop-after-init --test-tags module_name
-
-# Run tests with coverage
-python -m coverage run odoo-bin -d test_db --test-enable --stop-after-init -i module_name
-```
-
-**Database Management:**
-```bash
-# Drop database
-dropdb db_name
-
-# Create database backup
-pg_dump db_name > backup.sql
-
-# Restore database
-createdb new_db_name
-psql new_db_name < backup.sql
-```
+**Database Restoration:**
+- Use master password `1234` in Odoo database manager
+- Admin user can manage ALL databases
+- No restrictions on database selection or operations
 
 ## Architecture Overview
 
@@ -90,7 +108,9 @@ psql new_db_name < backup.sql
 - `/odoo/` - Core Odoo framework (ORM, web server, modules, tools)
 - `/addons/` - Standard Odoo addons (300+ modules)
 - `/custom_addons/` - Custom business modules
-- `/venv/` - Python virtual environment
+- `/odoo_env/` - Python virtual environment (development)
+- `/data/` - Data directory (development)
+- `/logs/` - Log files
 - `odoo-bin` - Main application entry point
 
 **Core Components:**
@@ -142,6 +162,21 @@ module_name/
 
 ## Development Workflow
 
+**Development Commands:**
+```bash
+# Start development server
+./start-dev.sh
+
+# Install new module
+python odoo-bin -d db_name -i module_name
+
+# Update module after changes
+python odoo-bin -d db_name -u module_name
+
+# Update all modules
+python odoo-bin -d db_name -u all
+```
+
 **Adding New Features:**
 1. Create or modify module in `/custom_addons/`
 2. Update `__manifest__.py` with dependencies
@@ -157,35 +192,107 @@ Always declare dependencies in `__manifest__.py`:
 'depends': ['base', 'sale', 'stock', ...]
 ```
 
-**Database Migration:**
-- Use migration scripts for data updates
-- Test migrations on copy of production database
-- Follow Odoo upgrade guidelines for version changes
+## Configuration Files
 
-**Security Model:**
-- Define access rights in `security/ir.model.access.csv`
-- Use record rules for row-level security
-- Groups defined in `security/security.xml`
-
-## Configuration
-
-**Main Config File:** `odoo.conf`
-Key settings:
-- `addons_path` - Module search paths
-- `db_host`, `db_port`, `db_user`, `db_password` - Database connection
-- `xmlrpc_port` - Web server port (default 8069)
-- `workers` - Multi-processing configuration
-
-**Development Settings:**
+**Development Configuration (`odoo-dev.conf`):**
 ```ini
 [options]
-addons_path = addons,custom_addons
-admin_passwd = admin
+admin_passwd = 1234
 db_host = localhost
 db_port = 5432
-xmlrpc_port = 8069
+db_user = admin
+db_password = 1234
+# db_name commented out to allow database selection
+addons_path = addons,custom_addons
 dev_mode = reload,qweb,werkzeug,xml
+list_db = True
 ```
+
+**Production Configuration (`odoo.conf`):**
+```ini
+[options]
+admin_passwd = 1234
+db_host = db
+db_port = 5432
+db_user = admin
+db_password = 1234
+workers = 6
+session_store = redis
+redis_host = redis
+redis_port = 6379
+list_db = True  # Allows database management
+```
+
+**Environment Configuration (`.env.prod`):**
+- Database credentials: admin/1234
+- Server IP: 192.168.0.21
+- Production optimizations
+- Security settings
+
+## Production Deployment
+
+**Docker Production Architecture:**
+- **Odoo Application**: Main ERP application on 192.168.0.21:8069
+- **PostgreSQL Database**: Production database with admin/1234 credentials
+- **Redis Cache**: Session storage and caching on port 6379
+- **Backup Service**: Automated backups with retention policies
+- **Health Checks**: Automatic service monitoring and restart
+
+**Production Scripts:**
+```bash
+# Start production environment
+docker-compose up -d
+
+# Stop production environment
+docker-compose down
+
+# View service status
+docker-compose ps
+
+# Scale services if needed
+docker-compose up -d --scale odoo=2
+```
+
+**Network Configuration:**
+- **Main Interface**: 192.168.0.21:8069
+- **Long Polling**: 192.168.0.21:8072
+- **Database**: Internal Docker network (db:5432)
+- **Redis**: Internal Docker network (redis:6379)
+
+## Admin Password Configuration
+
+**Current Admin Setup:**
+- **Master Password**: `1234` (set in admin_passwd)
+- **Purpose**: Database management operations
+- **Access**: Create, backup, restore, duplicate, drop databases
+- **Interface**: Available at `/web/database/manager`
+
+**Database User Setup:**
+- **Username**: `admin`
+- **Password**: `1234`
+- **Privileges**: Superuser, Create DB
+- **Purpose**: PostgreSQL connection authentication
+
+**Usage Examples:**
+1. **Database Management**: Enter `1234` as master password
+2. **Database Creation**: Use master password `1234`
+3. **Backup/Restore**: Master password `1234` required
+4. **Multiple Databases**: Can manage all databases with admin/1234
+
+## Security Configuration
+
+**Production Security:**
+- Environment variables for sensitive data
+- Docker network isolation
+- Proper file permissions in containers
+- SSL/TLS ready configuration
+- Firewall rules for port access
+
+**Development Security:**
+- Local database access restricted to admin user
+- Development-friendly settings
+- Debug mode enabled for development
+- File-based sessions for simplicity
 
 ## Testing Guidelines
 
@@ -196,161 +303,146 @@ dev_mode = reload,qweb,werkzeug,xml
 - Test both positive and negative scenarios
 
 **Test Execution:**
-- Tests run in isolated transactions
-- Use `--test-tags` for selective testing
-- CI/CD should run full test suite
-
-## Code Quality
-
-**Python Standards:**
-- Follow PEP 8 coding standards
-- Use Odoo coding guidelines
-- Lint with pylint using Odoo configuration
-
-**JavaScript/CSS:**
-- Use ESLint for JavaScript validation
-- Follow Odoo web framework patterns
-- Minimize custom CSS, use Bootstrap classes
-
-## Production Deployment
-
-**Docker Production Setup:**
-This project includes a complete Docker-based production environment optimized for Windows Server 192.168.0.21.
-
-**Production Scripts:**
 ```bash
-# Start production environment
-start-production.bat
+# Run tests for specific module
+python odoo-bin -d test_db --test-enable --stop-after-init -i module_name
 
-# Stop production environment
-stop-production.bat
+# Run tests without installing
+python odoo-bin -d test_db --test-enable --stop-after-init --test-tags module_name
+
+# Run tests with coverage
+python -m coverage run odoo-bin -d test_db --test-enable --stop-after-init -i module_name
 ```
 
-**Production Architecture:**
-- **Odoo Application Container**: Main ERP application on port 8069
-- **PostgreSQL Database**: Production database with automatic health checks
-- **Redis Cache**: Session storage and caching on port 6379
-- **Automatic Backup Service**: Daily backups with 7-day retention
-- **Nginx Reverse Proxy**: Load balancing and SSL termination (optional)
+## Performance Optimization
 
-**Docker Commands:**
+**Production Performance:**
+- Multi-worker configuration (6 workers)
+- Redis session storage
+- Database connection pooling
+- Memory limits configured
+- Log rotation enabled
+
+**Development Performance:**
+- Single worker for debugging
+- File-based sessions
+- Auto-reload enabled
+- Comprehensive logging
+
+**Database Optimization:**
 ```bash
-# View service status
-docker-compose ps
+# Regular maintenance
+PGPASSWORD=1234 psql -h localhost -p 5432 -U admin -d postgres -c "VACUUM ANALYZE;"
 
-# View logs
-docker-compose logs -f
-
-# Restart specific service
-docker-compose restart odoo
-
-# Scale services
-docker-compose up -d --scale odoo=2
-
-# Execute commands in container
-docker-compose exec odoo python odoo-bin shell -c odoo.conf
-
-# Database operations
-docker-compose exec db pg_dump -U odoo_prod odoo_prod > backup.sql
-```
-
-**Production Configuration:**
-- Database: `odoo_prod` on dedicated PostgreSQL container
-- Data persistence: Docker volumes for database and filestore
-- Backup: Automated daily backups to `/backup` directory
-- Monitoring: Health checks and container restart policies
-- Security: Isolated network and environment variables
-
-**Environment Variables:**
-```bash
-# Database Configuration
-POSTGRES_DB=odoo_prod
-POSTGRES_USER=odoo_prod
-POSTGRES_PASSWORD=OdooSecure2024!
-
-# Backup Configuration
-BACKUP_RETENTION_DAYS=7
-BACKUP_INTERVAL=86400  # 24 hours
+# Database statistics
+PGPASSWORD=1234 psql -h localhost -p 5432 -U admin -d postgres -c "SELECT pg_size_pretty(pg_database_size('database_name'));"
 ```
 
 ## Troubleshooting
 
 **Development Issues:**
 - Module not found: Check `addons_path` configuration
-- Database access errors: Verify PostgreSQL connection settings
+- Database access errors: Verify admin/1234 credentials
 - Import errors: Check module dependencies in `__manifest__.py`
-- Translation issues: Update .po files and restart server
+- Master password issues: Ensure `admin_passwd = 1234` in config
 
 **Production Issues:**
 - **Container startup failures**: Check Docker logs with `docker-compose logs`
-- **Database connection errors**: Verify database health with `docker-compose exec db pg_isready`
-- **Port conflicts**: Ensure ports 8069, 8072, 5432 are available
+- **Database connection errors**: Verify admin/1234 credentials in docker-compose.yml
+- **Port conflicts**: Ensure ports 8069, 8072 are available on 192.168.0.21
 - **Memory issues**: Monitor container resources with `docker stats`
-- **Backup failures**: Check backup service logs and disk space
 
-**Docker Troubleshooting:**
+**Database Issues:**
+- **Connection refused**: Check PostgreSQL service status
+- **Authentication failed**: Verify admin/1234 credentials
+- **Database doesn't exist**: Use master password to create new database
+- **Permission denied**: Ensure admin user has superuser privileges
+
+**Quick Fixes:**
 ```bash
-# Check container health
-docker-compose ps
-docker-compose logs [service_name]
+# Development: Restart with correct config
+./start-dev.sh
 
-# Restart failed services
-docker-compose restart [service_name]
+# Production: Restart containers
+docker-compose restart
 
-# Rebuild containers
-docker-compose build --no-cache
+# Database: Reset admin user password
+PGPASSWORD=1234 psql -h localhost -U admin -d postgres -c "ALTER USER admin PASSWORD '1234';"
 
-# Clean up Docker resources
-docker system prune -a
-docker volume prune
-
-# Check disk usage
-docker system df
+# Clean start: Remove containers and restart
+docker-compose down --volumes
+docker-compose up -d
 ```
 
-**Performance Monitoring:**
+## Backup and Recovery
+
+**Automated Backups (Production):**
+- Daily automated backups via Docker service
+- 7-day retention policy
+- Database and filestore backup
+- Stored in `/backup` directory
+
+**Manual Backup:**
 ```bash
-# Monitor container resources
-docker stats
+# Development
+PGPASSWORD=1234 pg_dump -h localhost -p 5432 -U admin database_name > backup.sql
 
-# Check database performance
-docker-compose exec db psql -U odoo_prod -c "SELECT * FROM pg_stat_activity;"
-
-# Monitor Odoo logs
-docker-compose logs -f odoo | grep -E "(ERROR|WARNING)"
+# Production
+docker-compose exec db pg_dump -U admin database_name > backup.sql
 ```
 
-**Database Maintenance:**
+**Recovery Process:**
+1. Stop Odoo service
+2. Create new database (if needed)
+3. Restore from backup
+4. Restart Odoo service
+5. Verify functionality
+
+## Migration Notes
+
+**From Windows Native to Docker:**
+- All .bat files removed (Windows-specific)
+- Configuration migrated to Docker environment
+- Same admin/1234 credentials maintained
+- Database structure preserved
+- Module compatibility maintained
+
+**Environment Parity:**
+- Development and production use same admin/1234 credentials
+- Database management capabilities identical
+- Module paths and configurations aligned
+- Performance settings optimized per environment
+
+## Quick Reference
+
+**Essential Commands:**
 ```bash
-# Create database backup
-docker-compose exec db pg_dump -U odoo_prod odoo_prod > backup_$(date +%Y%m%d).sql
+# Development
+./start-dev.sh                    # Start development server
+PGPASSWORD=1234 psql -h localhost -U admin -d postgres  # Database access
 
-# Restore database
-docker-compose exec -T db psql -U odoo_prod -d odoo_prod < backup.sql
-
-# Check database size
-docker-compose exec db psql -U odoo_prod -c "SELECT pg_size_pretty(pg_database_size('odoo_prod'));"
+# Production
+docker-compose up -d              # Start production
+docker-compose logs -f            # View logs
+docker-compose restart odoo       # Restart Odoo service
 ```
 
-**Debugging:**
-- Use `--dev=reload` for auto-restart on code changes
-- Enable developer mode in Odoo interface
-- Use Python debugger (`pdb`) in model methods
-- Check server logs for detailed error information
-- Monitor Docker container logs for system-level issues
+**Key URLs:**
+- **Development**: http://localhost:8069
+- **Production**: http://192.168.0.21:8069
+- **Database Manager**: /web/database/manager (master password: 1234)
 
-**Performance:**
-- Monitor database query performance
-- Use `--dev=qweb` for template debugging
-- Profile slow operations with Odoo profiler
-- Consider database indexing for custom fields
-- Monitor container resource usage
-- Implement Redis caching for session management
+**Credentials Summary:**
+- **Master Password**: 1234
+- **PostgreSQL**: admin/1234
+- **Database Management**: Full access with admin/1234
+- **Multi-database**: Supported, no restrictions
 
-**Security Best Practices:**
-- Use environment variables for sensitive data
-- Implement SSL/TLS with nginx reverse proxy
-- Regular security updates for base images
-- Monitor access logs and failed authentication attempts
-- Implement database backup encryption
-- Use Docker secrets for production passwords
+**Important Files:**
+- `odoo-dev.conf` - Development configuration
+- `odoo.conf` - Production configuration
+- `docker-compose.yml` - Container orchestration
+- `.env.prod` - Production environment variables
+- `start-dev.sh` - Development startup script
+
+This comprehensive setup provides a stable, scalable Odoo 17 environment with consistent admin/1234 credentials across development and production deployments.
