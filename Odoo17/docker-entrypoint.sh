@@ -47,35 +47,46 @@ wait_for_db() {
 
 # Function to check if database exists
 db_exists() {
-    psql -h "$HOST" -p "$PORT" -U "$USER" -lqt 2>/dev/null | cut -d \| -f 1 | grep -qw "$POSTGRES_DB"
+    psql -h "$HOST" -p "$PORT" -U "$USER" -d postgres -lqt 2>/dev/null | cut -d \| -f 1 | grep -qw "$POSTGRES_DB"
 }
 
 # Function to create database if it doesn't exist
 create_db_if_not_exists() {
-    # Create default database with same name as user (common PostgreSQL pattern)
+    log "Checking and creating required databases..."
+    
+    # Create database with same name as user (PostgreSQL convention)
     local user_db="$USER"
-    if ! psql -h "$HOST" -p "$PORT" -U "$USER" -lqt 2>/dev/null | cut -d \| -f 1 | grep -qw "$user_db"; then
+    log "Checking if database '$user_db' exists..."
+    if ! psql -h "$HOST" -p "$PORT" -U "$USER" -d postgres -lqt 2>/dev/null | cut -d \| -f 1 | grep -qw "$user_db"; then
         log "Database '$user_db' does not exist. Creating..."
-        if createdb -h "$HOST" -p "$PORT" -U "$USER" "$user_db" 2>/dev/null; then
+        if createdb -h "$HOST" -p "$PORT" -U "$USER" -d postgres "$user_db" 2>/dev/null; then
             log "Database '$user_db' created successfully!"
         else
-            warn "Failed to create database '$user_db', it may already exist or insufficient permissions"
+            # Try alternative method using SQL
+            log "Trying alternative database creation method..."
+            psql -h "$HOST" -p "$PORT" -U "$USER" -d postgres -c "CREATE DATABASE \"$user_db\";" 2>/dev/null || warn "Could not create database '$user_db'"
         fi
     else
         log "Database '$user_db' already exists."
     fi
     
-    # Also ensure main postgres database exists (usually created by default)
+    # Ensure main postgres database exists (should exist by default)
     if ! db_exists; then
         log "Database '$POSTGRES_DB' does not exist. Creating..."
-        if createdb -h "$HOST" -p "$PORT" -U "$USER" "$POSTGRES_DB" 2>/dev/null; then
+        if createdb -h "$HOST" -p "$PORT" -U "$USER" -d postgres "$POSTGRES_DB" 2>/dev/null; then
             log "Database '$POSTGRES_DB' created successfully!"
         else
-            warn "Failed to create database '$POSTGRES_DB', it may already exist or insufficient permissions"
+            # Try alternative method using SQL
+            log "Trying alternative database creation method for '$POSTGRES_DB'..."
+            psql -h "$HOST" -p "$PORT" -U "$USER" -d postgres -c "CREATE DATABASE \"$POSTGRES_DB\";" 2>/dev/null || warn "Could not create database '$POSTGRES_DB'"
         fi
     else
         log "Database '$POSTGRES_DB' already exists."
     fi
+    
+    # List available databases for verification
+    log "Available databases:"
+    psql -h "$HOST" -p "$PORT" -U "$USER" -d postgres -l 2>/dev/null || warn "Could not list databases"
 }
 
 # Function to update configuration (only if not already configured)
@@ -172,14 +183,25 @@ main() {
             log "Preparing Odoo startup environment..."
             
             # Wait a bit to ensure database is fully ready
-            log "Waiting 10 seconds for database optimization..."
-            sleep 10
+            log "Waiting 15 seconds for database stabilization..."
+            sleep 15
             
-            # Verify database connection one more time
-            if ! pg_isready -h "$HOST" -p "$PORT" -U "$USER" -q; then
-                warn "Database connection unstable, waiting additional 15 seconds..."
-                sleep 15
-            fi
+            # Verify database connection and tables access
+            log "Verifying database accessibility..."
+            local retries=0
+            local max_retries=10
+            
+            while ! psql -h "$HOST" -p "$PORT" -U "$USER" -d postgres -c "SELECT version();" >/dev/null 2>&1; do
+                retries=$((retries + 1))
+                if [ $retries -gt $max_retries ]; then
+                    error "Database verification failed after $max_retries attempts"
+                    exit 1
+                fi
+                log "Database not fully ready, verification attempt $retries/$max_retries..."
+                sleep 3
+            done
+            
+            log "Database verification successful!"
             
             log "Configuration file found, starting Odoo..."
             log "Using Python: $(python3 --version)"
@@ -191,7 +213,7 @@ main() {
             export PYTHONWARNINGS="${PYTHONWARNINGS:-ignore::DeprecationWarning:pkg_resources}"
             export SETUPTOOLS_USE_DISTUTILS="${SETUPTOOLS_USE_DISTUTILS:-stdlib}"
             
-            exec python3 /opt/odoo/odoo-bin -c /opt/odoo/odoo.conf
+            exec python3 /opt/odoo/odoo-bin -c /opt/odoo/odoo.conf --log-level=info --without-demo=all
             ;;
         shell)
             log "Starting interactive shell..."
