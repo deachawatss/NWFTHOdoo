@@ -7,7 +7,7 @@ services:
     image: postgres:13
     container_name: odoo17_db
     environment:
-      - POSTGRES_DB=odoo_admin
+      - POSTGRES_DB=postgres
       - POSTGRES_USER=admin
       - POSTGRES_PASSWORD=1234
       - PGDATA=/var/lib/postgresql/data/pgdata
@@ -40,7 +40,7 @@ services:
       - HOST=db
       - USER=admin
       - PASSWORD=1234
-      - POSTGRES_DB=odoo_admin
+      - POSTGRES_DB=postgres
       - POSTGRES_USER=admin
       - POSTGRES_PASSWORD=1234
       - ODOO_RC=/opt/odoo/odoo.conf
@@ -57,8 +57,8 @@ services:
       - odoo-log-data:/var/log/odoo
       - ./backup:/opt/odoo/backup:rw
     ports:
-      - "192.168.0.21:8069:8069"    # Main Odoo web interface
-      - "192.168.0.21:8072:8072"    # Long polling for chat/notifications
+      - "8069:8069"    # Main Odoo web interface
+      - "8072:8072"    # Long polling for chat/notifications
     restart: unless-stopped
     command: ["odoo", "-c", "/opt/odoo/odoo.conf"]
     networks:
@@ -109,7 +109,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      - POSTGRES_DB=odoo_admin
+      - POSTGRES_DB=postgres
       - POSTGRES_USER=admin
       - POSTGRES_PASSWORD=1234
       - BACKUP_DIR=/backup
