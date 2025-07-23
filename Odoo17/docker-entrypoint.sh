@@ -30,8 +30,17 @@ error() {
 # Function to wait for database
 wait_for_db() {
     log "Waiting for database to be ready..."
+    local retries=0
+    local max_retries=60
+    
     while ! pg_isready -h "$HOST" -p "$PORT" -U "$USER" 2>/dev/null; do
-        sleep 1
+        retries=$((retries + 1))
+        if [ $retries -gt $max_retries ]; then
+            error "Database connection timeout after $max_retries attempts"
+            exit 1
+        fi
+        log "Database not ready, attempt $retries/$max_retries..."
+        sleep 2
     done
     log "Database is ready!"
 }
@@ -45,8 +54,11 @@ db_exists() {
 create_db_if_not_exists() {
     if ! db_exists; then
         log "Database '$POSTGRES_DB' does not exist. Creating..."
-        createdb -h "$HOST" -p "$PORT" -U "$USER" "$POSTGRES_DB" 2>/dev/null || true
-        log "Database '$POSTGRES_DB' created successfully!"
+        if createdb -h "$HOST" -p "$PORT" -U "$USER" "$POSTGRES_DB" 2>/dev/null; then
+            log "Database '$POSTGRES_DB' created successfully!"
+        else
+            warn "Failed to create database '$POSTGRES_DB', it may already exist or insufficient permissions"
+        fi
     else
         log "Database '$POSTGRES_DB' already exists."
     fi
@@ -136,6 +148,14 @@ main() {
     case "$1" in
         odoo)
             log "Starting Odoo server..."
+            log "Checking Odoo configuration..."
+            if [ ! -f /opt/odoo/odoo.conf ]; then
+                error "Odoo configuration file not found at /opt/odoo/odoo.conf"
+                exit 1
+            fi
+            log "Configuration file found, starting Odoo..."
+            log "Using Python: $(python3 --version)"
+            log "Using Odoo binary: /opt/odoo/odoo-bin"
             exec python3 /opt/odoo/odoo-bin -c /opt/odoo/odoo.conf
             ;;
         shell)

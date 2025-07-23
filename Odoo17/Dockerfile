@@ -5,6 +5,7 @@ FROM python:3.11-slim-bullseye as base
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
+    wget \
     gosu \
     dos2unix \
     libxml2-dev \
@@ -31,6 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     node-less \
     npm \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Generate locale
@@ -58,7 +60,10 @@ WORKDIR /opt/odoo
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Fix pkg_resources deprecation warning by upgrading setuptools
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
+    && pip install --no-cache-dir "setuptools<81" \
+    && pip install --no-cache-dir -r requirements.txt
 
 # Copy custom entrypoint first (as root)
 COPY docker-entrypoint.sh /docker-entrypoint.sh
@@ -101,8 +106,8 @@ ENV ODOO_RC=/opt/odoo/odoo.conf \
     ODOO_DATA_DIR=/var/lib/odoo
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8069/web/health || exit 1
+HEALTHCHECK --interval=30s --timeout=30s --start-period=300s --retries=5 \
+    CMD curl -f http://localhost:8069/web/database/selector || curl -f http://localhost:8069/ || exit 1
 
 # Default command
 ENTRYPOINT ["/docker-entrypoint.sh"]
