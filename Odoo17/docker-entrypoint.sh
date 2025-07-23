@@ -153,9 +153,30 @@ main() {
                 error "Odoo configuration file not found at /opt/odoo/odoo.conf"
                 exit 1
             fi
+            
+            # Check if this is a fresh start (no existing sessions)
+            log "Preparing Odoo startup environment..."
+            
+            # Wait a bit to ensure database is fully ready
+            log "Waiting 10 seconds for database optimization..."
+            sleep 10
+            
+            # Verify database connection one more time
+            if ! pg_isready -h "$HOST" -p "$PORT" -U "$USER" -q; then
+                warn "Database connection unstable, waiting additional 15 seconds..."
+                sleep 15
+            fi
+            
             log "Configuration file found, starting Odoo..."
             log "Using Python: $(python3 --version)"
             log "Using Odoo binary: /opt/odoo/odoo-bin"
+            log "Server will be available at http://localhost:8069 after initialization"
+            log "This may take 5-10 minutes for full startup..."
+            
+            # Export environment variables for Python warnings suppression
+            export PYTHONWARNINGS="${PYTHONWARNINGS:-ignore::DeprecationWarning:pkg_resources}"
+            export SETUPTOOLS_USE_DISTUTILS="${SETUPTOOLS_USE_DISTUTILS:-stdlib}"
+            
             exec python3 /opt/odoo/odoo-bin -c /opt/odoo/odoo.conf
             ;;
         shell)

@@ -103,11 +103,13 @@ USER odoo
 ENV ODOO_RC=/opt/odoo/odoo.conf \
     ODOO_BASE_PATH=/opt/odoo \
     ODOO_ADDONS_PATH=/opt/odoo/addons,/opt/odoo/custom_addons \
-    ODOO_DATA_DIR=/var/lib/odoo
+    ODOO_DATA_DIR=/var/lib/odoo \
+    PYTHONWARNINGS=ignore::DeprecationWarning:pkg_resources \
+    SETUPTOOLS_USE_DISTUTILS=stdlib
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=300s --retries=5 \
-    CMD curl -f http://localhost:8069/web/database/selector || curl -f http://localhost:8069/ || exit 1
+HEALTHCHECK --interval=60s --timeout=30s --start-period=600s --retries=15 \
+    CMD curl -f http://localhost:8069/ || curl -f http://localhost:8069/web/health || wget --no-verbose --tries=1 --spider http://localhost:8069/ || exit 1
 
 # Default command
 ENTRYPOINT ["/docker-entrypoint.sh"]

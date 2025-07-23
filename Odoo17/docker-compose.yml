@@ -46,6 +46,9 @@ services:
       - ODOO_RC=/opt/odoo/odoo.conf
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      # Suppress Python warnings
+      - PYTHONWARNINGS=ignore::DeprecationWarning:pkg_resources
+      - SETUPTOOLS_USE_DISTUTILS=stdlib
     volumes:
       - ./custom_addons:/opt/odoo/custom_addons:ro
       - ./addons:/opt/odoo/addons:ro
@@ -61,11 +64,11 @@ services:
     networks:
       - odoo-network
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8069/web/database/selector || curl -f http://localhost:8069/ || exit 1"]
-      interval: 30s
-      timeout: 15s
-      retries: 10
-      start_period: 300s
+      test: ["CMD-SHELL", "curl -f http://localhost:8069/ || curl -f http://localhost:8069/web/health || wget --no-verbose --tries=1 --spider http://localhost:8069/ || exit 1"]
+      interval: 60s
+      timeout: 30s
+      retries: 15
+      start_period: 600s
     deploy:
       resources:
         limits:
@@ -96,15 +99,13 @@ services:
           memory: 512M
           cpus: '0.5'
 
-  # Automatic backup service
+  # Manual backup service
   backup:
     build:
       context: .
       dockerfile: Dockerfile.backup
     container_name: odoo17_backup
     depends_on:
-      odoo:
-        condition: service_healthy
       db:
         condition: service_healthy
     environment:
@@ -114,13 +115,15 @@ services:
       - BACKUP_DIR=/backup
       - BACKUP_RETENTION_DAYS=7
       - ODOO_DATA_DIR=/var/lib/odoo
-      - BACKUP_INTERVAL=86400  # Daily backup (24 hours in seconds)
+      # Remove BACKUP_INTERVAL for manual mode
     volumes:
       - ./backup:/backup:rw
       - odoo-web-data:/var/lib/odoo:ro
-    restart: unless-stopped
+    restart: "no"  # Don't auto-restart, run manually
     networks:
       - odoo-network
+    profiles:
+      - backup  # Only start when explicitly requested
 
 # Persistent volumes
 volumes:

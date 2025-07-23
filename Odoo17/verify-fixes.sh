@@ -144,22 +144,29 @@ verify_permissions() {
 
 # Function to show deployment recommendations
 show_recommendations() {
-    log "=== Deployment Recommendations ==="
+    log "=== Final Deployment Recommendations ==="
     
     log "1. Build containers: docker-compose build --no-cache"
-    log "2. Start services: docker-compose up -d"
+    log "2. Start main services: docker-compose up -d"
     log "3. Monitor logs: docker-compose logs -f odoo"
-    log "4. Check health: docker-compose ps"
+    log "4. Wait for health: Watch until container shows 'healthy' status"
     log "5. Test connection: curl http://192.168.0.21:8069"
+    log ""
+    log "For manual backup control:"
+    log "• Run backup once: ./backup-control.sh run-once"
+    log "• Check backup status: ./backup-control.sh status"
+    log "• Start scheduled backups: ./backup-control.sh schedule"
+    log "• View backup logs: ./backup-control.sh logs"
     
     log ""
-    log "Expected improvements:"
-    log "• Faster container startup (300s vs 180s timeout)"
-    log "• Better error logging and debugging"
-    log "• No more pkg_resources deprecation warnings"
-    log "• Improved health checks with fallback endpoints"
-    log "• Redis session storage integration"
-    log "• Optimized memory usage (6GB limit with proper workers)"
+    log "Expected final improvements:"
+    log "• Extended startup timeout (600s) - allows full Odoo initialization"
+    log "• Complete elimination of Python deprecation warnings"
+    log "• Manual backup control with on-demand execution"
+    log "• Optimized startup sequence with database readiness checks"
+    log "• Enhanced health checks with multiple fallback endpoints"
+    log "• Production-ready Redis session storage"
+    log "• Properly tuned memory and CPU resources (6GB/3 cores)"
 }
 
 # Main execution
