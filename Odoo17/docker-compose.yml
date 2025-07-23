@@ -1,5 +1,4 @@
 # Odoo 17 Production Configuration for Windows Server 192.168.0.21
-version: '3.8'
 
 services:
   # PostgreSQL Database
@@ -57,8 +56,8 @@ services:
       - odoo-log-data:/var/log/odoo
       - ./backup:/opt/odoo/backup:rw
     ports:
-      - "8069:8069"    # Main Odoo web interface
-      - "8072:8072"    # Long polling for chat/notifications
+      - "192.168.0.21:8069:8069"    # Main Odoo web interface
+      - "192.168.0.21:8072:8072"    # Long polling for chat/notifications
     restart: unless-stopped
     command: ["odoo", "-c", "/opt/odoo/odoo.conf"]
     networks:

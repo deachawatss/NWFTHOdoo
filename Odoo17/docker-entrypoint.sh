@@ -52,6 +52,20 @@ db_exists() {
 
 # Function to create database if it doesn't exist
 create_db_if_not_exists() {
+    # Create default database with same name as user (common PostgreSQL pattern)
+    local user_db="$USER"
+    if ! psql -h "$HOST" -p "$PORT" -U "$USER" -lqt 2>/dev/null | cut -d \| -f 1 | grep -qw "$user_db"; then
+        log "Database '$user_db' does not exist. Creating..."
+        if createdb -h "$HOST" -p "$PORT" -U "$USER" "$user_db" 2>/dev/null; then
+            log "Database '$user_db' created successfully!"
+        else
+            warn "Failed to create database '$user_db', it may already exist or insufficient permissions"
+        fi
+    else
+        log "Database '$user_db' already exists."
+    fi
+    
+    # Also ensure main postgres database exists (usually created by default)
     if ! db_exists; then
         log "Database '$POSTGRES_DB' does not exist. Creating..."
         if createdb -h "$HOST" -p "$PORT" -U "$USER" "$POSTGRES_DB" 2>/dev/null; then
