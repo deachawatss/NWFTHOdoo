@@ -1,5 +1,9 @@
 # sphinx build directories
 _build/
+
+# Log files - ignore all log files
+*.log
+logs/
 odoo.log
 # dotfiles (but allow important config files)
 .cache/
