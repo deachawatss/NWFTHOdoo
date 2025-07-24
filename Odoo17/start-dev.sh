@@ -77,13 +77,28 @@ else
     error "Database connection failed. Please ensure PostgreSQL is running."
 fi
 
+# Get Windows host IP for network access
+WINDOWS_IP=$(ip route show default | awk '/default/ {print $3}' | head -1)
+if [ -z "$WINDOWS_IP" ]; then
+    WINDOWS_IP="192.168.6.42"  # Fallback to your current IP
+fi
+
 # Display startup information
 info "======================================================"
 info "Configuration:"
 info "- Mode: Development (reload enabled)"
 info "- Config File: odoo-dev.conf"
-info "- URL: http://localhost:8069"
+info "- Network Binding: 0.0.0.0 (all interfaces)"
 info "- Admin Password: 1234"
+info "======================================================"
+info "Access URLs:"
+info "- Local access: http://localhost:8069"
+info "- Network access: http://$WINDOWS_IP:8069"
+info "- Share this with friends: http://$WINDOWS_IP:8069"
+info "======================================================"
+info "⚠️  First time setup:"
+info "1. Run setup-firewall.bat as Administrator on Windows"
+info "2. This enables network access for friends"
 info "======================================================"
 
 log "Starting Odoo server..."

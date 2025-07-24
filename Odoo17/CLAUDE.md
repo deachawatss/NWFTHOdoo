@@ -470,74 +470,239 @@ This comprehensive setup provides a stable, scalable Odoo 17 environment with co
 
 ---
 
-# Windows Deployment & Troubleshooting Guide
+# Windows Production Deployment Guide
 
-## Why Batch Files Close Automatically & How to Fix It
+## Complete Deployment Process: WSL2 Dev → Windows Server 192.168.0.21
 
-### The Issue
-When you double-click any `.bat` file, it executes and immediately closes when finished. This is normal Windows behavior - you can't see the output because the window closes too fast.
+### Overview
+- **Development Environment**: WSL2 (Ubuntu/Linux) using `start-dev.sh`
+- **Production Environment**: Windows Server 192.168.0.21 using batch files
 
-### Solutions
+### Prerequisites for Windows Server 192.168.0.21
 
-#### Solution 1: Run from Command Prompt (RECOMMENDED)
-1. **Open Command Prompt as Administrator**
-   - Press `Windows Key + R`
-   - Type `cmd` and press `Ctrl + Shift + Enter`
-   - Click "Yes" when prompted
+#### Required Software
+1. **Python 3.10+** - Download from https://www.python.org/downloads/
+2. **PostgreSQL 17** - Configured with username: `admin`, password: `1234`
+3. **Git** (for deployment) or file transfer method
 
-2. **Navigate to your Odoo directory**
-   ```cmd
-   cd /d "C:\path\to\your\Odoo17"
-   ```
+#### System Requirements
+- **RAM**: 32GB minimum (64GB recommended for 50+ users)
+- **CPU**: 8+ cores recommended
+- **Storage**: SSD with 500GB+ free space
+- **Network**: Static IP configured as 192.168.0.21
 
-3. **Run the scripts**
-   ```cmd
-   # Install dependencies
-   install-odoo-deps.bat
-   
-   # Start production server
-   start-production.bat
-   
-   # Stop production server
-   stop-production.bat
-   
-   # Restart production server
-   restart-production.bat
-   ```
+### Step-by-Step Windows Production Deployment
 
-#### Solution 2: Right-Click Method
-1. **Right-click** on any `.bat` file
-2. Select **"Edit"** to see the script content
-3. OR select **"Run as administrator"** and the window will stay open longer
-
-### Quick Start Guide
-
-#### Step 1: Install Dependencies
+#### Step 1: Transfer Files to Windows Server
 ```cmd
-# Run as Administrator
-install-odoo-deps.bat
-```
-This will:
-- ✅ Activate virtual environment
-- ✅ Install all Python dependencies
-- ✅ Handle compilation issues automatically
-- ✅ Wait for your input before closing
+# Option A: Using Git (if Windows server has Git)
+git clone <your-repository> C:\Odoo17
+cd C:\Odoo17
 
-#### Step 2: Start Production Server
+# Option B: Copy files from WSL2 to Windows
+# From WSL2, copy to Windows shared location
+# Then move to C:\Odoo17 on Windows server
+```
+
+#### Step 2: First-Time Setup on Windows Server
+```cmd
+# Open Command Prompt as Administrator
+cd /d "C:\Odoo17"
+
+# Run initial environment setup
+setup-environment.bat
+```
+
+**What setup-environment.bat does:**
+- ✅ Creates Windows virtual environment (`odoo_env\Scripts\`)
+- ✅ Installs all Python dependencies
+- ✅ Handles binary wheel issues automatically
+- ✅ Validates Python installation
+
+#### Step 3: Verify PostgreSQL Configuration
+```cmd
+# Test PostgreSQL connection
+psql -h localhost -p 5432 -U admin -d postgres
+# Password: 1234
+
+# Should connect successfully
+```
+
+#### Step 4: Start Production Server
+```cmd
+# Start the production server
+start-production.bat
+```
+
+**Expected startup process:**
+1. ✅ Environment validation
+2. ✅ Virtual environment activation (`odoo_env\Scripts\activate.bat`)
+3. ✅ PostgreSQL connection test
+4. ✅ Python dependencies validation
+5. ✅ 10-worker server startup
+6. ✅ Server available at http://192.168.0.21:8069
+
+#### Step 5: Access and Test
+- **Main Interface**: http://192.168.0.21:8069
+- **Database Manager**: http://192.168.0.21:8069/web/database/manager
+- **Master Password**: 1234
+
+### Production Server Management
+
+#### Start Server
 ```cmd
 start-production.bat
 ```
-This will:
-- ✅ Start optimized worker processes
-- ✅ Validate system resources
-- ✅ Show startup progress
-- ✅ Keep running until you press Ctrl+C
+- Starts 10-worker production server
+- Optimized for 50+ concurrent users
+- Comprehensive health checks and validation
 
-#### Step 3: Access Your Server
-Once started, access your server at:
-- **Main Interface**: http://localhost:8069
-- **Database Manager**: http://localhost:8069/web/database/manager
-- **Master Password**: 1234
+#### Stop Server
+```cmd
+stop-production.bat
+```
+- Graceful shutdown with proper cleanup
+- Preserves user sessions and data
+- Memory and port cleanup
+
+#### Restart Server
+```cmd
+restart-production.bat
+```
+- Zero-downtime configuration reload
+- Health checks before and after restart
+- Automatic rollback on failure
+
+### Troubleshooting Windows Deployment
+
+#### Issue: "Batch files close immediately"
+**Solution**: Always run from Command Prompt as Administrator
+```cmd
+# Open Command Prompt as Administrator
+cd /d "C:\Odoo17"
+setup-environment.bat
+```
+
+#### Issue: "Virtual environment not found"
+**Solution**: Run setup-environment.bat first
+```cmd
+setup-environment.bat
+```
+This creates the proper Windows virtual environment structure.
+
+#### Issue: "PostgreSQL connection failed"
+**Solution**: Verify PostgreSQL 17 installation
+```cmd
+# Check PostgreSQL service
+net start postgresql-x64-17
+
+# Test connection
+psql -h localhost -p 5432 -U admin -d postgres
+```
+
+#### Issue: "Python dependencies missing"
+**Solution**: Run dependency installer
+```cmd
+install-odoo-deps.bat
+```
+
+#### Issue: "Port 8069 already in use"
+**Solution**: Stop existing processes
+```cmd
+stop-production.bat
+# Then try starting again
+start-production.bat
+```
+
+### File Structure for Windows Production
+
+```
+C:\Odoo17\
+├── odoo_env\           # Windows virtual environment
+│   └── Scripts\        # Windows activation scripts
+│       └── activate.bat
+├── start-production.bat    # Production server startup
+├── stop-production.bat     # Production server shutdown
+├── restart-production.bat  # Production server restart
+├── setup-environment.bat   # Initial Windows setup
+├── install-odoo-deps.bat   # Dependency installer
+├── odoo-prod.conf         # Production configuration
+├── odoo-bin              # Odoo executable
+├── requirements.txt      # Python dependencies
+├── addons\              # Standard Odoo modules
+├── custom_addons\       # Custom business modules
+├── logs\               # Production logs
+└── data\               # Data directory
+```
+
+### Performance Optimization for 50+ Users
+
+#### Memory Configuration (odoo-prod.conf)
+```ini
+workers = 10                    # 10 workers for 50+ users
+limit_memory_soft = 2147483648  # 2GB per worker
+limit_memory_hard = 3221225472  # 3GB per worker
+```
+
+#### Expected Resource Usage
+- **Memory**: ~30GB (10 workers × 3GB + overhead)
+- **CPU**: Moderate usage across all cores
+- **Network**: Ports 8069 (HTTP) and 8072 (websocket)
+
+### Deployment Best Practices
+
+#### 1. Environment Separation
+- **Development**: WSL2 with `start-dev.sh`
+- **Production**: Windows Server with batch files
+- **Never mix environments**
+
+#### 2. Version Control
+```cmd
+# On Windows production server
+git pull origin main
+setup-environment.bat  # If new dependencies
+restart-production.bat  # Apply changes
+```
+
+#### 3. Backup Strategy
+```cmd
+# Database backup
+pg_dump -h localhost -p 5432 -U admin -d your_database > backup.sql
+
+# File backup
+xcopy /E /I /Y C:\Odoo17\data C:\Backup\odoo_data
+```
+
+#### 4. Monitoring
+- Monitor `logs\odoo-prod.log` for errors
+- Check Windows Task Manager for resource usage
+- Verify http://192.168.0.21:8069/web/health endpoint
+
+### Quick Reference Commands
+
+#### Windows Production Server
+```cmd
+# First-time setup
+setup-environment.bat
+
+# Daily operations
+start-production.bat      # Start server
+stop-production.bat       # Stop server  
+restart-production.bat    # Restart server
+
+# Maintenance
+install-odoo-deps.bat    # Update dependencies
+```
+
+#### Development (WSL2)
+```bash
+# Development server
+./start-dev.sh
+
+# Access at http://localhost:8069
+```
+
+This setup provides a clean separation between development and production environments while maintaining consistency in configuration and functionality.
 
 ## Windows Production Deployment Guide
 ### Native Windows Deployment for 50 Concurrent Users
@@ -806,3 +971,116 @@ With these optimizations, you should see:
 - nginx configuration (not needed for native Windows deployment)
 
 This streamlined setup focuses on essential native Windows production deployment and Linux development workflows.
+
+---
+
+# Network Access Configuration
+
+## Enabling Friends to Access Your Odoo Server
+
+### Current Network Setup
+Based on your network configuration:
+- **Your Wi-Fi IP**: 192.168.6.42 (main network)
+- **WSL2 Internal**: 172.26.224.1 (internal)
+- **Local Access**: http://localhost:8069
+
+### Quick Setup for Network Access
+
+#### Step 1: Configure Windows Firewall (REQUIRED)
+Run as Administrator on Windows:
+```cmd
+# Navigate to Odoo directory
+cd "C:\path\to\your\Odoo17"
+
+# Run firewall setup (as Administrator)
+setup-firewall.bat
+```
+
+This creates Windows Firewall rules for:
+- Port 8069 (Odoo HTTP)
+- Port 8072 (Odoo Long Polling)
+
+#### Step 2: Start Odoo with Network Binding
+```bash
+# In WSL2/Linux
+./start-dev.sh
+```
+
+The updated script now:
+- ✅ Binds to all network interfaces (0.0.0.0)
+- ✅ Shows your network IP automatically
+- ✅ Provides URLs for friends to use
+
+#### Step 3: Share Access with Friends
+Your friends can now access Odoo at:
+```
+http://192.168.6.42:8069
+```
+
+### Access URLs Summary
+- **You (local)**: http://localhost:8069
+- **Friends (network)**: http://192.168.6.42:8069
+- **Database Manager**: Add `/web/database/manager` to any URL
+- **Master Password**: 1234 (for database management)
+
+### Security Considerations
+- ✅ **Network Scope**: Only accessible on your local network (192.168.6.x)
+- ✅ **Firewall Protected**: Rules only allow private/domain networks
+- ✅ **Master Password**: Database operations still require password 1234
+- ✅ **WSL2 Isolation**: Server runs in isolated WSL2 environment
+
+### Troubleshooting Network Access
+
+#### Friends Can't Connect
+1. **Check Windows Firewall**:
+   ```cmd
+   # Verify rules exist
+   netsh advfirewall firewall show rule name="Odoo HTTP Port 8069"
+   netsh advfirewall firewall show rule name="Odoo Long Polling Port 8072"
+   ```
+
+2. **Verify Your IP Address**:
+   ```cmd
+   # On Windows
+   ipconfig
+   # Look for Wi-Fi adapter IPv4 Address
+   ```
+
+3. **Test from Your Computer First**:
+   ```
+   # Try from your Windows browser
+   http://192.168.6.42:8069
+   ```
+
+#### Connection Refused
+- Ensure Odoo is running with `./start-dev.sh`
+- Check that odoo-dev.conf has `http_interface = 0.0.0.0`
+- Verify firewall rules are active
+
+#### Slow Performance with Multiple Users
+- Consider switching to Windows production mode for better performance:
+  ```cmd
+  start-production.bat  # 10 workers for multiple users
+  ```
+
+### Advanced Configuration
+
+#### Static IP Assignment (Optional)
+For consistent access, consider setting a static IP:
+1. Windows Settings → Network & Internet → Wi-Fi
+2. Click your network → Properties
+3. IP Assignment → Manual
+4. Set static IP (e.g., 192.168.6.42)
+
+#### Router Configuration (Optional)
+For external access outside your network:
+1. Configure router port forwarding: 8069 → 192.168.6.42:8069
+2. Update firewall rules for public profile
+3. **Security Warning**: Only do this if you understand the security implications
+
+### Files Modified for Network Access
+- `odoo-dev.conf`: Added `http_interface = 0.0.0.0`
+- `start-dev.sh`: Added network IP display and setup instructions
+- `setup-firewall.bat`: Created Windows Firewall configuration script
+
+This configuration allows seamless network access while maintaining security and performance.

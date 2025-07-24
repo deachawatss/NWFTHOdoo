@@ -22,22 +22,22 @@ REM ====================================
 :log_info
 echo %GREEN%[%date% %time%] INFO: %~1%NC%
 echo [%date% %time%] INFO: %~1 >> logs\shutdown.log
-exit /b
+goto :eof
 
 :log_error
 echo %RED%[%date% %time%] ERROR: %~1%NC%
 echo [%date% %time%] ERROR: %~1 >> logs\shutdown.log
-exit /b
+goto :eof
 
 :log_warning
 echo %YELLOW%[%date% %time%] WARNING: %~1%NC%
 echo [%date% %time%] WARNING: %~1 >> logs\shutdown.log
-exit /b
+goto :eof
 
 :log_success
 echo %CYAN%[%date% %time%] SUCCESS: %~1%NC%
 echo [%date% %time%] SUCCESS: %~1 >> logs\shutdown.log
-exit /b
+goto :eof
 
 REM ====================================
 REM SHUTDOWN HEADER
@@ -202,8 +202,8 @@ call :log_success "Odoo 17 Production server shutdown completed successfully"
 echo.
 echo %GREEN%Server stopped successfully. You can now:
 echo - Restart with: start-production.bat
-echo - Start development mode: start-dev.bat
-echo - Install as service: install-service.bat%NC%
+echo - Start development mode: start-dev.sh (Linux/WSL)
+echo - Restart production: restart-production.bat%NC%
 echo.
 
 pause

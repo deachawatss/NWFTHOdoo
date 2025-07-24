@@ -36,22 +36,22 @@ REM ====================================
 :log_info
 echo %GREEN%[%date% %time%] INFO: %~1%NC%
 echo [%date% %time%] INFO: %~1 >> logs\startup.log
-exit /b
+goto :eof
 
 :log_error
 echo %RED%[%date% %time%] ERROR: %~1%NC%
 echo [%date% %time%] ERROR: %~1 >> logs\startup.log
-exit /b
+goto :eof
 
 :log_warning
 echo %YELLOW%[%date% %time%] WARNING: %~1%NC%
 echo [%date% %time%] WARNING: %~1 >> logs\startup.log
-exit /b
+goto :eof
 
 :log_success
 echo %CYAN%[%date% %time%] SUCCESS: %~1%NC%
 echo [%date% %time%] SUCCESS: %~1 >> logs\startup.log
-exit /b
+goto :eof
 
 REM ====================================
 REM SYSTEM HEADER
