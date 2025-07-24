@@ -421,11 +421,31 @@ docker-compose exec db pg_dump -U admin database_name > backup.sql
 ./start-dev.sh                    # Start development server
 PGPASSWORD=1234 psql -h localhost -U admin -d postgres  # Database access
 
-# Windows Production
-install-odoo-deps.bat             # Install dependencies
+# Windows Production - FIRST TIME SETUP
+setup-environment.bat             # Create virtual environment and install dependencies
+
+# Windows Production - REGULAR USE
 start-production.bat              # Start production server
 stop-production.bat               # Stop production server
 restart-production.bat            # Restart production server
+
+# Windows Production - UPDATE DEPENDENCIES
+install-odoo-deps.bat             # Update dependencies only
+```
+
+**Git Workflow (NEW - Environment Isolation):**
+```bash
+# Clone fresh repository
+git clone <your-repo>
+cd Odoo17
+
+# First time setup (creates virtual environment)
+setup-environment.bat             # Windows
+./setup-environment.sh            # Linux (if needed)
+
+# Regular updates
+git pull
+# No need to reinstall environment - .gitignore protects it!
 ```
 
 **Key URLs:**

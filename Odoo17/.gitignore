@@ -56,3 +56,85 @@ package.json
 /man/
 /share/
 /src/
+
+# ====================================
+# CUSTOM ADDITIONS FOR DEPLOYMENT
+# ====================================
+
+# Python Virtual Environment (CRITICAL - prevents conflicts between environments)
+odoo_env/
+venv/
+env/
+.venv/
+.env/
+
+# Runtime Data (environment-specific)
+data/
+sessions/
+logs/
+backup/
+
+# Database files (should not be in git)
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+*.dump
+
+# Log files
+*.log
+
+# Backup files
+*.zip
+*.bak
+*.backup
+
+# PID files
+*.pid
+
+# Environment-specific config files
+.env.*
+*-local.*
+*_local.*
+local_*
+
+# Windows specific files
+desktop.ini
+ehthumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# SSL Certificates (security)
+*.pem
+*.key
+*.crt
+*.cert
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Mac/Linux specific
+.DS_Store
+.directory
+.Trash-*
+
+# Coverage and testing
+.coverage
+.pytest_cache/
+.tox/
+coverage.xml
+*.cover
+
+# Documentation build
+docs/_build/
+.sphinx-build/
