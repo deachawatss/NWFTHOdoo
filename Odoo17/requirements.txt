@@ -3,7 +3,8 @@
 # Pin setuptools to avoid pkg_resources deprecation warnings
 setuptools<81
 Babel==2.9.1 ; python_version < '3.11'  # min version = 2.6.0 (Focal with security backports)
-Babel==2.10.3 ; python_version >= '3.11'
+Babel==2.10.3 ; python_version >= '3.11' and python_version < '3.13'
+Babel>=2.14.0 ; python_version >= '3.13'  # Python 3.13 compatibility (cgi module removed)
 chardet==4.0.0 ; python_version < '3.11'  # (Jammy)
 chardet==5.2.0 ; python_version >= '3.11'
 cryptography==3.4.8; python_version < '3.12'  # incompatibility between pyopenssl 19.0.0 and cryptography>=37.0.0
@@ -19,6 +20,7 @@ geoip2==2.9.0
 gevent==21.8.0 ; sys_platform != 'win32' and python_version == '3.10'  # (Jammy)
 gevent==22.10.2; sys_platform != 'win32' and python_version > '3.10' and python_version < '3.12'
 gevent==24.2.1 ; sys_platform != 'win32' and python_version >= '3.12'  # (Noble)
+# gevent not required on Windows - Odoo will use threading fallback
 greenlet==1.1.2 ; sys_platform != 'win32' and python_version == '3.10'  # (Jammy)
 greenlet==2.0.2 ; sys_platform != 'win32' and python_version > '3.10' and python_version < '3.12'
 greenlet==3.0.3 ; sys_platform != 'win32' and python_version >= '3.12'  # (Noble)
@@ -30,7 +32,7 @@ libsass==0.20.1 ; python_version < '3.11'
 libsass==0.22.0 ; python_version >= '3.11'  # (Noble) Mostly to have a wheel package
 lxml==4.8.0 ; python_version <= '3.10'
 lxml==4.9.3 ; python_version > '3.10' and python_version < '3.12' # min 4.9.2, pinning 4.9.3 because of missing wheels for darwin in 4.9.3
-lxml==5.2.1; python_version >= '3.12' # (Noble - removed html clean)
+lxml==5.3.0 ; python_version >= '3.12' # Use 5.3.0 - earliest available version
 lxml-html-clean; python_version >= '3.12' # (Noble - removed from lxml, unpinned for futur security patches)
 MarkupSafe==2.0.1 ; python_version <= '3.10'
 MarkupSafe==2.1.2 ; python_version > '3.10' and python_version < '3.12'
@@ -41,14 +43,15 @@ ofxparse==0.21
 passlib==1.7.4 # min version = 1.7.2 (Focal with security backports)
 Pillow==9.0.1 ; python_version <= '3.10'
 Pillow==9.4.0 ; python_version > '3.10' and python_version < '3.12'
-Pillow==10.2.0 ; python_version >= '3.12'  # (Noble) Mostly to have a wheel package
+Pillow==11.3.0 ; python_version >= '3.12'  # Updated to working version
 polib==1.1.1
 psutil==5.9.0 ; python_version <= '3.10' 
 psutil==5.9.4 ; python_version > '3.10' and python_version < '3.12' 
 psutil==5.9.8 ; python_version >= '3.12' # (Noble) Mostly to have a wheel package
 psycopg2-binary==2.9.2 ; python_version == '3.10' # (Jammy)
 psycopg2-binary==2.9.5 ; python_version == '3.11'
-psycopg2-binary==2.9.9 ; python_version >= '3.12' # (Noble) Mostly to have a wheel package
+psycopg2-binary==2.9.5 ; python_version == '3.12' # Use 2.9.5 for better Python 3.12 compatibility
+psycopg2-binary>=2.9.10 ; python_version >= '3.13' # Use latest version for Python 3.13
 pydot==1.4.2
 pyopenssl==21.0.0 ; python_version < '3.12'
 pyopenssl==24.1.0 ; python_version >= '3.12' # (Noble) min 23.2.0, pinned for compatibility with cryptography==42.0.8 and security patches
@@ -73,7 +76,8 @@ requests==2.25.1 ;  python_version < '3.11' # versions < 2.25 aren't compatible 
 requests==2.31.0 ; python_version >= '3.11' # (Noble)
 rjsmin==1.1.0 ; python_version < '3.11'  # (jammy)
 rjsmin==1.2.0 ; python_version >= '3.11'
-rl-renderPM==4.0.3 ; sys_platform == 'win32' and python_version >= '3.12'  # Needed by reportlab 4.1.0 but included in deb package
+# rl-renderPM==4.0.3 ; sys_platform == 'win32' and python_version >= '3.12'  # Commented out due to wheel compatibility issues
+# Note: reportlab will use fallback rendering without rl-renderPM
 urllib3==1.26.5 ; python_version < '3.12' # indirect / min version = 1.25.8 (Focal with security backports)
 urllib3==2.0.7  ; python_version >= '3.12'  # (Noble) Compatibility with cryptography
 vobject==0.9.6.1

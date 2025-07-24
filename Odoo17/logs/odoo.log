@@ -1837,3 +1837,9 @@ LINE 3:             FROM ir_module_module
 2025-07-23 11:10:44,384 46100 INFO NWFTH-ERP-V1.0 werkzeug: 127.0.0.1 - - [23/Jul/2025 11:10:44] "GET /web/image?model=hr.employee&id=2&field=image_1024&unique=1753269043180 HTTP/1.1" 200 - 5 0.009 0.096
 2025-07-23 11:10:46,581 46100 INFO ? odoo.service.server: Initiating shutdown 
 2025-07-23 11:10:46,583 46100 INFO ? odoo.service.server: Hit CTRL-C again or send a second signal to force the shutdown. 
+2025-07-24 02:20:45,885 151976 INFO ? odoo: Odoo version 17.0 
+2025-07-24 02:20:45,886 151976 INFO ? odoo: Using configuration file at /home/deachawat/dev/projects/Odoo/Odoo17/odoo-dev.conf 
+2025-07-24 02:20:45,886 151976 INFO ? odoo: addons paths: ['/home/deachawat/dev/projects/Odoo/Odoo17/odoo/addons', '/home/deachawat/dev/projects/Odoo/Odoo17/data/addons/17.0', '/home/deachawat/dev/projects/Odoo/Odoo17/addons', '/home/deachawat/dev/projects/Odoo/Odoo17/custom_addons'] 
+2025-07-24 02:20:45,886 151976 INFO ? odoo: database: admin@localhost:5432 
+2025-07-24 02:20:46,051 151976 INFO ? odoo.addons.base.models.ir_actions_report: You need Wkhtmltopdf to print a pdf version of the reports. 
+2025-07-24 02:20:46,259 151976 INFO ? odoo.service.server: HTTP service (werkzeug) running on NB-DEACHAWAT.NWFTH.COM:8069 
