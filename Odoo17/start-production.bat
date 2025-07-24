@@ -11,6 +11,11 @@ cd /d "%~dp0"
 REM Create logs directory if needed
 if not exist "logs" mkdir logs
 
+REM Set UTF-8 encoding for Windows
+chcp 65001 >nul
+set PYTHONIOENCODING=utf-8
+set PYTHONLEGACYWINDOWSSTDIO=1
+
 REM Activate virtual environment
 echo Activating virtual environment...
 call odoo_env\Scripts\activate.bat
@@ -31,7 +36,8 @@ echo.
 echo Press Ctrl+C to stop the server
 echo.
 
-python -c "import ldap_compat" && python odoo-bin -c odoo.conf
+REM Load LDAP compatibility and start Odoo
+python odoo_ldap_patch.py && python odoo-bin -c odoo.conf
 
 echo.
 echo Odoo server stopped.

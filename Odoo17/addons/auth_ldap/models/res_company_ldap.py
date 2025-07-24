@@ -1,9 +1,38 @@
 # -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-import ldap
 import logging
-from ldap.filter import filter_format
+# Windows LDAP compatibility - load ldap3 compatibility layer first
+try:
+    import ldap
+except ImportError:
+    # Windows compatibility: use ldap3 with python-ldap interface
+    import sys
+    import os
+    # Add project root to path to find ldap_compat
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+    try:
+        import ldap_compat
+        import ldap
+    except ImportError as e:
+        raise ImportError(f"LDAP support not available on Windows. Please install ldap3: pip install ldap3. Error: {e}")
+
+# Import filter functions
+try:
+    from ldap.filter import filter_format
+except (ImportError, AttributeError):
+    # Fallback for Windows compatibility
+    def filter_format(filter_template, filter_args):
+        """Simple filter format function for LDAP compatibility"""
+        import re
+        result = filter_template
+        for arg in filter_args:
+            # Simple escaping for LDAP filter
+            escaped_arg = str(arg).replace('\\', '\\\\').replace('*', '\\*').replace('(', '\\(').replace(')', '\\)')
+            result = result.replace('%s', escaped_arg, 1)
+        return result
 
 from odoo import _, api, fields, models, tools
 from odoo.exceptions import AccessDenied

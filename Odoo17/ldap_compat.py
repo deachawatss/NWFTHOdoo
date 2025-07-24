@@ -90,8 +90,24 @@ except ImportError:
         
         ldap.initialize = initialize
         
+        # Create ldap.filter module
+        filter_module = types.ModuleType('ldap.filter')
+        
+        def filter_format(filter_template, filter_args):
+            """LDAP filter formatting function"""
+            result = filter_template
+            for arg in filter_args:
+                # Simple escaping for LDAP filter
+                escaped_arg = str(arg).replace('\\', '\\\\').replace('*', '\\*').replace('(', '\\(').replace(')', '\\)')
+                result = result.replace('%s', escaped_arg, 1)
+            return result
+            
+        filter_module.filter_format = filter_format
+        ldap.filter = filter_module
+        
         # Add to sys.modules so imports work
         sys.modules['ldap'] = ldap
+        sys.modules['ldap.filter'] = filter_module
         
         print("✓ LDAP compatibility layer activated for Windows")
         
