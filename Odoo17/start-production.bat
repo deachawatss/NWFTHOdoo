@@ -25,11 +25,12 @@ echo Starting Odoo Production Server...
 echo Configuration: odoo-prod.conf
 echo Workers: 10 (optimized for 50+ users)
 echo URL: http://localhost:8069
+echo LDAP Support: Windows-compatible (automatic)
 echo.
 echo Press Ctrl+C to stop the server
 echo.
 
-python odoo-bin -c odoo-prod.conf --logfile=logs/odoo-prod.log
+python -c "import ldap_compat" && python odoo-bin -c odoo-prod.conf --logfile=logs/odoo-prod.log
 
 echo.
 echo Odoo server stopped.

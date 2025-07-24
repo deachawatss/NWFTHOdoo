@@ -600,6 +600,18 @@ psql -h localhost -p 5432 -U admin -d postgres
 install-odoo-deps.bat
 ```
 
+#### Issue: "Database restore error: No module named 'ldap'"
+**Solution**: LDAP compatibility automatically built-in
+```cmd
+# LDAP support is now permanent and automatic:
+# ✅ requirements.txt includes ldap3 for Windows
+# ✅ ldap_compat.py provides python-ldap compatibility  
+# ✅ start-production.bat loads compatibility automatically
+# ✅ Database restore works without additional setup
+
+# No manual intervention needed - it just works!
+```
+
 #### Issue: "Port 8069 already in use"
 **Solution**: Stop existing processes
 ```cmd

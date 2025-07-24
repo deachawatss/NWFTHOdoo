@@ -68,8 +68,8 @@ echo Installing Windows-specific packages...
 pip install --only-binary=:all: psycopg2-binary lxml Pillow cryptography
 echo.
 
-REM Install all requirements
-echo Installing Odoo dependencies...
+REM Install all requirements (includes Windows LDAP support)
+echo Installing Odoo dependencies with Windows LDAP support...
 if exist "requirements.txt" (
     pip install -r requirements.txt
     if %errorlevel% neq 0 (
@@ -83,11 +83,11 @@ if exist "requirements.txt" (
 )
 
 REM Test critical imports
-echo.
 echo Testing critical imports...
 python -c "import odoo; print('✓ Odoo import: OK')" 2>nul || echo "✗ Odoo import: FAILED"
 python -c "import psycopg2; print('✓ PostgreSQL adapter: OK')" 2>nul || echo "✗ PostgreSQL adapter: FAILED"
-python -c "import ldap; print('✓ LDAP module: OK')" 2>nul || echo "✗ LDAP module: FAILED (optional)"
+python -c "import ldap3; print('✓ LDAP3 module: OK (Windows LDAP support)')" 2>nul || echo "✗ LDAP3 module: FAILED"
+python -c "import ldap_compat; import ldap; print('✓ LDAP compatibility: OK (database restore ready)')" 2>nul || echo "✗ LDAP compatibility: FAILED"
 
 echo.
 echo ====================================================================
