@@ -3,31 +3,20 @@ version: '3.8'
 services:
   db:
     image: postgres:15
-    container_name: odoo17_db
     environment:
       - POSTGRES_DB=postgres
       - POSTGRES_USER=admin
       - POSTGRES_PASSWORD=1234
-      - PGDATA=/var/lib/postgresql/data/pgdata
     volumes:
-      - odoo_db_data:/var/lib/postgresql/data/pgdata
+      - odoo_db_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-    networks:
-      - odoo_network
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d postgres"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   odoo:
     image: odoo:17
-    container_name: odoo17_app
     depends_on:
-      db:
-        condition: service_healthy
+      - db
     environment:
       - HOST=db
       - USER=admin
@@ -35,40 +24,11 @@ services:
       - POSTGRES_DB=postgres
     ports:
       - "8069:8069"
-      - "8072:8072"  # Long polling port
     volumes:
       - odoo_web_data:/var/lib/odoo
-      - ./config:/etc/odoo
       - ./custom_addons:/mnt/extra-addons
-      - ./logs:/var/log/odoo
-    networks:
-      - odoo_network
     restart: unless-stopped
-    command: -- --dev=reload,qweb,werkzeug,xml --log-level=info --database=postgres --db_host=db --db_user=admin --db_password=1234 --addons-path=/mnt/extra-addons,/usr/lib/python3/dist-packages/odoo/addons
-
-  # Development tools (optional)
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: odoo17_pgadmin
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@localhost
-      - PGADMIN_DEFAULT_PASSWORD=1234
-    ports:
-      - "8080:80"
-    depends_on:
-      - db
-    networks:
-      - odoo_network
-    restart: unless-stopped
-    profiles:
-      - tools
 
 volumes:
   odoo_web_data:
-    driver: local
   odoo_db_data:
-    driver: local
-
-networks:
-  odoo_network:
-    driver: bridge
