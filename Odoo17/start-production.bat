@@ -22,15 +22,16 @@ echo.
 
 REM Start Odoo
 echo Starting Odoo Production Server...
-echo Configuration: odoo-prod.conf
+echo Configuration: odoo.conf
 echo Workers: 10 (optimized for 50+ users)
 echo URL: http://localhost:8069
-echo LDAP Support: Windows-compatible (automatic)
+echo Database Manager: http://localhost:8069/web/database/manager
+echo Master Password: 1234 (admin/admin for database)
 echo.
 echo Press Ctrl+C to stop the server
 echo.
 
-python -c "import ldap_compat" && python odoo-bin -c odoo-prod.conf --logfile=logs/odoo-prod.log
+python -c "import ldap_compat" && python odoo-bin -c odoo.conf
 
 echo.
 echo Odoo server stopped.
