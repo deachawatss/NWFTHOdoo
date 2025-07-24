@@ -26,10 +26,22 @@ This guide covers the complete deployment of Odoo 17 on Windows Server for **50 
 
 ### Step 1: Configure PostgreSQL 17
 
-```cmd
-# Run as Administrator
-scripts\configure-postgresql.bat
-```
+**IMPORTANT**: Don't double-click .bat files! Use Command Prompt instead:
+
+1. **Open Command Prompt as Administrator**:
+   - Press `Windows Key + R`
+   - Type `cmd` and press `Ctrl + Shift + Enter`
+   - Click "Yes" when prompted
+
+2. **Navigate to your Odoo directory**:
+   ```cmd
+   cd /d "C:\path\to\your\Odoo17"
+   ```
+
+3. **Run PostgreSQL configuration**:
+   ```cmd
+   scripts\configure-postgresql.bat
+   ```
 
 This script will:
 - ✅ Auto-detect PostgreSQL 17 installation
@@ -44,6 +56,8 @@ This script will:
 start-production.bat
 ```
 
+**Note**: This script will keep running until you press Ctrl+C to stop it.
+
 This will:
 - ✅ Launch 10 worker processes
 - ✅ Validate system resources
@@ -53,7 +67,7 @@ This will:
 ### Step 3: Install as Windows Service (Optional)
 
 ```cmd
-# Run as Administrator
+# Run as Administrator (in the same Command Prompt)
 install-service.bat
 ```
 
@@ -255,6 +269,17 @@ schtasks /create /tn "Odoo Backup" /tr "C:\path\to\scripts\backup.bat --silent" 
 ---
 
 ## 🚨 Troubleshooting
+
+### Why Batch Files Close Automatically
+
+**Problem**: When you double-click `.bat` files, they close immediately
+**Solution**: Use Command Prompt instead of double-clicking
+
+1. Open Command Prompt as Administrator
+2. Navigate to Odoo directory: `cd /d "C:\path\to\Odoo17"`  
+3. Run scripts: `scripts\configure-postgresql.bat`
+
+**Alternative**: Right-click → "Run as administrator" (window stays open longer)
 
 ### Common Issues
 
