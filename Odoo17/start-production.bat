@@ -70,11 +70,16 @@ echo Target Users: 50 concurrent
 echo ====================================================================
 echo %NC%
 
+echo [DEBUG] Batch file started successfully
+pause
+
 REM ====================================
 REM NAVIGATE TO SCRIPT DIRECTORY
 REM ====================================
 cd /d "%~dp0"
 call :log_info "Navigating to Odoo directory: %CD%"
+echo [DEBUG] Navigation completed
+pause
 
 REM ====================================
 REM ENVIRONMENT VALIDATION
@@ -100,6 +105,9 @@ if not exist "%PYTHON_ENV%" (
     pause
     exit /b 1
 )
+
+echo [DEBUG] All required files found
+pause
 
 REM ====================================
 REM CREATE REQUIRED DIRECTORIES
@@ -160,8 +168,11 @@ call :log_success "PostgreSQL 17 connection verified"
 REM ====================================
 REM PYTHON ENVIRONMENT ACTIVATION
 REM ====================================
+echo [DEBUG] About to activate virtual environment
 call :log_info "Activating Python virtual environment..."
 call %PYTHON_ENV%\Scripts\activate.bat
+echo [DEBUG] Virtual environment activation completed
+pause
 
 REM Validate Python environment
 call :log_info "Validating Python dependencies..."
@@ -182,6 +193,8 @@ if !errorlevel! neq 0 (
 )
 
 call :log_success "Python environment validated"
+echo [DEBUG] Python validation completed successfully
+pause
 
 REM ====================================
 REM CONFIGURATION VALIDATION
