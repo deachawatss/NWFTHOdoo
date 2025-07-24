@@ -20,9 +20,14 @@ REM Show Python version
 echo Python version:
 python --version
 
-REM Create virtual environment if it doesn't exist
-if not exist "odoo_env" (
-    echo Creating virtual environment...
+REM Check if virtual environment activation script exists
+if not exist "odoo_env\Scripts\activate.bat" (
+    echo Virtual environment missing or corrupted. Recreating...
+    if exist "odoo_env" (
+        echo Removing corrupted virtual environment...
+        rmdir /s /q odoo_env
+    )
+    echo Creating new virtual environment...
     python -m venv odoo_env
     if %errorlevel% neq 0 (
         echo ERROR: Failed to create virtual environment!
@@ -31,7 +36,7 @@ if not exist "odoo_env" (
     )
     echo Virtual environment created successfully!
 ) else (
-    echo Virtual environment already exists.
+    echo Virtual environment exists and looks good.
 )
 
 REM Activate virtual environment

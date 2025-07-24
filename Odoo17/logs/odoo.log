@@ -1843,3 +1843,5 @@ LINE 3:             FROM ir_module_module
 2025-07-24 02:20:45,886 151976 INFO ? odoo: database: admin@localhost:5432 
 2025-07-24 02:20:46,051 151976 INFO ? odoo.addons.base.models.ir_actions_report: You need Wkhtmltopdf to print a pdf version of the reports. 
 2025-07-24 02:20:46,259 151976 INFO ? odoo.service.server: HTTP service (werkzeug) running on NB-DEACHAWAT.NWFTH.COM:8069 
+2025-07-24 03:02:52,489 151976 INFO ? odoo.service.server: Initiating shutdown 
+2025-07-24 03:02:52,493 151976 INFO ? odoo.service.server: Hit CTRL-C again or send a second signal to force the shutdown. 
