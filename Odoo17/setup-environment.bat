@@ -32,8 +32,26 @@ REM Always recreate virtual environment to ensure it's clean and Windows-compati
 if exist "odoo_env" (
     echo Removing existing virtual environment...
     echo (This ensures compatibility and prevents WSL2/Linux conflicts)
-    rmdir /s /q odoo_env
-    echo Removed successfully!
+    
+    REM Force remove with multiple attempts to handle file locks
+    rmdir /s /q odoo_env 2>nul
+    timeout /t 2 /nobreak >nul
+    
+    REM Verify removal and force if needed
+    if exist "odoo_env" (
+        echo Forcing removal of stubborn files...
+        attrib -r -h -s odoo_env\*.* /s /d >nul 2>&1
+        del /f /s /q odoo_env\*.* >nul 2>&1
+        rmdir /s /q odoo_env >nul 2>&1
+    )
+    
+    REM Final check
+    if exist "odoo_env" (
+        echo WARNING: Could not completely remove old environment
+        echo Attempting to work around the issue...
+    ) else (
+        echo Removed successfully!
+    )
 )
 
 echo Creating new Windows virtual environment...
