@@ -493,59 +493,53 @@ This comprehensive setup provides a stable, scalable Odoo 17 environment with co
 
 ### Step-by-Step Windows Production Deployment
 
-#### Step 1: Transfer Files to Windows Server
+#### Step 1: Deploy to Windows Server 192.168.0.21
 ```cmd
-# Option A: Using Git (if Windows server has Git)
+# On Windows Server, open Command Prompt as Administrator
+cd /d "C:\"
+
+# Option A: Git Pull (Recommended)
+cd C:\Odoo17
+git pull origin main
+
+# Option B: Fresh Clone
 git clone <your-repository> C:\Odoo17
 cd C:\Odoo17
-
-# Option B: Copy files from WSL2 to Windows
-# From WSL2, copy to Windows shared location
-# Then move to C:\Odoo17 on Windows server
 ```
 
-#### Step 2: First-Time Setup on Windows Server
+#### Step 2: Run Setup (Handles Everything Automatically)
 ```cmd
-# Open Command Prompt as Administrator
-cd /d "C:\Odoo17"
-
-# Run initial environment setup
+# This single command sets up everything:
 setup-environment.bat
 ```
 
-**What setup-environment.bat does:**
-- ✅ Creates Windows virtual environment (`odoo_env\Scripts\`)
-- ✅ Installs all Python dependencies
-- ✅ Handles binary wheel issues automatically
-- ✅ Validates Python installation
+**What setup-environment.bat automatically does:**
+- ✅ **Removes any corrupted virtual environment** (prevents WSL2/Linux conflicts)
+- ✅ **Creates fresh Windows virtual environment** (`odoo_env\Scripts\`)
+- ✅ **Tests virtual environment activation** (ensures Windows compatibility)
+- ✅ **Installs all Python dependencies** (Odoo, psycopg2-binary, etc.)
+- ✅ **Handles Python 3.13 compatibility** (Babel fixes, binary wheels)
+- ✅ **Validates complete installation** (tests Odoo import)
 
-#### Step 3: Verify PostgreSQL Configuration
+#### Step 3: Start Production Server
 ```cmd
-# Test PostgreSQL connection
-psql -h localhost -p 5432 -U admin -d postgres
-# Password: 1234
-
-# Should connect successfully
-```
-
-#### Step 4: Start Production Server
-```cmd
-# Start the production server
+# Start the optimized production server
 start-production.bat
 ```
 
 **Expected startup process:**
-1. ✅ Environment validation
-2. ✅ Virtual environment activation (`odoo_env\Scripts\activate.bat`)
-3. ✅ PostgreSQL connection test
-4. ✅ Python dependencies validation
-5. ✅ 10-worker server startup
+1. ✅ Environment validation (files, virtual environment)
+2. ✅ Virtual environment activation (Windows-native)
+3. ✅ PostgreSQL connection test (admin/1234)
+4. ✅ Python dependencies validation (Odoo, psycopg2)
+5. ✅ 10-worker server startup (optimized for 50+ users)
 6. ✅ Server available at http://192.168.0.21:8069
 
-#### Step 5: Access and Test
+#### Step 4: Access Your Production Server
 - **Main Interface**: http://192.168.0.21:8069
 - **Database Manager**: http://192.168.0.21:8069/web/database/manager
 - **Master Password**: 1234
+- **Capacity**: 50+ concurrent users
 
 ### Production Server Management
 
@@ -680,29 +674,43 @@ xcopy /E /I /Y C:\Odoo17\data C:\Backup\odoo_data
 
 ### Quick Reference Commands
 
-#### Windows Production Server
+#### Windows Production Server Deployment
 ```cmd
-# First-time setup
+# Step 1: Deploy code
+cd C:\Odoo17
+git pull origin main
+
+# Step 2: Setup environment (handles everything automatically)
 setup-environment.bat
 
+# Step 3: Start production server
+start-production.bat
+
 # Daily operations
-start-production.bat      # Start server
 stop-production.bat       # Stop server  
 restart-production.bat    # Restart server
 
-# Maintenance
-install-odoo-deps.bat    # Update dependencies
+# Maintenance (if needed)
+install-odoo-deps.bat    # Update dependencies only
 ```
 
 #### Development (WSL2)
 ```bash
-# Development server
+# Development server (Linux environment)
 ./start-dev.sh
 
 # Access at http://localhost:8069
 ```
 
-This setup provides a clean separation between development and production environments while maintaining consistency in configuration and functionality.
+### ✅ Complete Deployment Workflow
+
+**For you on Windows Server 192.168.0.21:**
+1. `git pull origin main` (get latest code)
+2. `setup-environment.bat` (automatic environment setup)
+3. `start-production.bat` (start production server)
+4. Access at http://192.168.0.21:8069
+
+This setup provides perfect separation between WSL2 development and Windows production while automatically handling all environment compatibility issues.
 
 ## Windows Production Deployment Guide
 ### Native Windows Deployment for 50 Concurrent Users

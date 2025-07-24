@@ -96,7 +96,7 @@ if not exist "%ODOO_CONFIG%" (
 
 if not exist "%PYTHON_ENV%" (
     call :log_error "Python virtual environment '%PYTHON_ENV%' not found!"
-    call :log_info "Please create virtual environment: python -m venv %PYTHON_ENV%"
+    call :log_info "Please run setup-environment.bat first!"
     pause
     exit /b 1
 )
@@ -168,7 +168,7 @@ call :log_info "Validating Python dependencies..."
 python -c "import odoo" >nul 2>&1
 if !errorlevel! neq 0 (
     call :log_error "Odoo Python package not found!"
-    call :log_error "Please install requirements: pip install -r requirements.txt"
+    call :log_error "Please run install-odoo-deps.bat first!"
     pause
     exit /b 1
 )
@@ -176,6 +176,7 @@ if !errorlevel! neq 0 (
 python -c "import psycopg2" >nul 2>&1
 if !errorlevel! neq 0 (
     call :log_error "PostgreSQL adapter (psycopg2) not found!"
+    call :log_error "Please run install-odoo-deps.bat first!"
     pause
     exit /b 1
 )
