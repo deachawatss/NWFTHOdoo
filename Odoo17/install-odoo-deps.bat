@@ -34,6 +34,14 @@ REM Install psycopg2-binary first with correct version for Python 3.13
 echo Installing psycopg2-binary for Python 3.13...
 pip install --only-binary=:all: "psycopg2-binary>=2.9.10"
 
+REM Force upgrade Babel for Python 3.13 compatibility
+echo Checking Python version for Babel compatibility...
+python -c "import sys; exit(0 if sys.version_info >= (3, 13) else 1)" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo Python 3.13+ detected - upgrading Babel for compatibility...
+    pip install --upgrade --force-reinstall "Babel==2.16.0"
+)
+
 REM Install other problematic packages
 echo Installing other binary packages...
 pip install --only-binary=:all: Pillow cryptography
