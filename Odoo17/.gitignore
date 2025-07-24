@@ -1,6 +1,6 @@
 # sphinx build directories
 _build/
-
+odoo.log
 # dotfiles (but allow important config files)
 .cache/
 .pytest_cache/

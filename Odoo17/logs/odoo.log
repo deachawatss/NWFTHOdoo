@@ -2363,3 +2363,23 @@ LINE 3:             FROM ir_module_module
 2025-07-24 05:46:26,532 181355 INFO ? odoo: database: admin@localhost:5432 
 2025-07-24 05:46:26,904 181355 INFO ? odoo.addons.base.models.ir_actions_report: You need Wkhtmltopdf to print a pdf version of the reports. 
 2025-07-24 05:46:27,515 181355 INFO ? odoo.service.server: HTTP service (werkzeug) running on NB-DEACHAWAT.NWFTH.COM:8069 
+2025-07-24 10:25:47,608 181355 INFO ? odoo.modules.loading: loading 1 modules... 
+2025-07-24 10:25:47,753 181355 INFO ? odoo.modules.loading: 1 modules loaded in 0.11s, 0 queries (+0 extra) 
+2025-07-24 10:25:47,768 181355 INFO ? odoo.modules.loading: loading 41 modules... 
+2025-07-24 10:25:49,142 181355 INFO ? odoo.modules.loading: 41 modules loaded in 1.37s, 0 queries (+0 extra) 
+2025-07-24 10:25:49,313 181355 INFO ? odoo.modules.loading: Modules loaded. 
+2025-07-24 10:25:49,327 181355 INFO ? odoo.modules.registry: Registry loaded in 2.161s 
+2025-07-24 10:25:49,341 181355 INFO NWFTH-ERP-V1.0 odoo.addons.base.models.ir_http: Generating routing map for key None 
+2025-07-24 10:25:49,352 181355 INFO NWFTH-ERP-V1.0 odoo.addons.base.models.ir_http: Generating routing map for key None 
+2025-07-24 10:25:50,926 181355 INFO NWFTH-ERP-V1.0 werkzeug: 127.0.0.1 - - [24/Jul/2025 10:25:50] "GET /web/service-worker.js HTTP/1.1" 200 - 8 0.058 1.852
+2025-07-24 10:25:51,039 181355 INFO NWFTH-ERP-V1.0 werkzeug: 127.0.0.1 - - [24/Jul/2025 10:25:51] "GET /web/database/manager HTTP/1.1" 200 - 24 0.283 4.014
+2025-07-24 10:26:17,143 181355 INFO NWFTH-ERP-V1.0 odoo.addons.base.models.ir_cron: Starting job `Partner Autocomplete: Sync with remote DB`. 
+2025-07-24 10:26:17,157 181355 INFO NWFTH-ERP-V1.0 odoo.addons.base.models.ir_cron: Job done: `Partner Autocomplete: Sync with remote DB` (0.014s). 
+2025-07-24 10:26:17,178 181355 INFO NWFTH-ERP-V1.0 odoo.addons.base.models.ir_cron: Starting job `SMS: SMS Queue Manager`. 
+2025-07-24 10:26:17,184 181355 INFO NWFTH-ERP-V1.0 odoo.addons.base.models.ir_cron: Job done: `SMS: SMS Queue Manager` (0.005s). 
+2025-07-24 10:26:17,188 181355 INFO NWFTH-ERP-V1.0 odoo.addons.base.models.ir_cron: Starting job `Notification: Send scheduled message notifications`. 
+2025-07-24 10:26:17,193 181355 INFO NWFTH-ERP-V1.0 odoo.addons.base.models.ir_cron: Job done: `Notification: Send scheduled message notifications` (0.005s). 
+2025-07-24 10:26:17,198 181355 INFO NWFTH-ERP-V1.0 odoo.addons.base.models.ir_cron: Starting job `Mail: Email Queue Manager`. 
+2025-07-24 10:26:17,207 181355 INFO NWFTH-ERP-V1.0 odoo.addons.base.models.ir_cron: Job done: `Mail: Email Queue Manager` (0.010s). 
+2025-07-24 10:26:17,212 181355 INFO NWFTH-ERP-V1.0 odoo.addons.base.models.ir_cron: Starting job `Snailmail: process letters queue`. 
+2025-07-24 10:26:17,217 181355 INFO NWFTH-ERP-V1.0 odoo.addons.base.models.ir_cron: Job done: `Snailmail: process letters queue` (0.005s). 

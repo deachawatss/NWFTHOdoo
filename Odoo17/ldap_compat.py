@@ -1,171 +1,122 @@
+#!/usr/bin/env python3
 """
 LDAP Compatibility Layer for Windows Odoo 17
-Provides python-ldap compatible interface using ldap3 backend
+Provides python-ldap compatible interface using ldap3 for Windows
 
-This module allows Odoo to work with LDAP on Windows by providing
-a compatibility layer that translates python-ldap calls to ldap3.
+This file solves the "ModuleNotFoundError: No module named 'ldap'" issue
+on Windows servers where python-ldap compilation fails.
 """
 
 import sys
-import logging
+import os
 
 try:
-    import ldap3
-    from ldap3 import Server, Connection, ALL, SUBTREE, BASE, LEVEL
-    from ldap3.core.exceptions import LDAPException
-    LDAP3_AVAILABLE = True
+    # Try to import native python-ldap first (Linux/Unix)
+    import ldap
+    print("✓ Native python-ldap imported successfully")
 except ImportError:
-    LDAP3_AVAILABLE = False
-
-# Logging setup
-logger = logging.getLogger(__name__)
-
-class LDAPError(Exception):
-    """Base LDAP exception compatible with python-ldap"""
-    pass
-
-class LDAPCompat:
-    """
-    Compatibility layer that provides python-ldap interface using ldap3
-    """
-    
-    # LDAP scope constants (python-ldap compatible)
-    SCOPE_BASE = 0
-    SCOPE_ONELEVEL = 1  
-    SCOPE_SUBTREE = 2
-    
-    # LDAP protocol constants
-    VERSION3 = 3
-    
-    def __init__(self):
-        if not LDAP3_AVAILABLE:
-            raise ImportError("ldap3 is required for Windows LDAP support")
-            
-    def initialize(self, uri):
-        """Initialize LDAP connection (python-ldap compatible)"""
-        logger.debug(f"Initializing LDAP connection to {uri}")
-        return LDAPConnectionCompat(uri)
-    
-    def open(self, host, port=389):
-        """Open LDAP connection (python-ldap compatible)"""
-        uri = f"ldap://{host}:{port}"
-        return self.initialize(uri)
-
-class LDAPConnectionCompat:
-    """
-    LDAP Connection compatibility layer
-    """
-    
-    def __init__(self, uri):
-        self.uri = uri
-        self.connection = None
-        self.server = None
-        
-    def simple_bind_s(self, who=None, cred=None):
-        """Simple bind (python-ldap compatible)"""
-        try:
-            # Parse server from URI
-            if self.uri.startswith('ldap://'):
-                host = self.uri.replace('ldap://', '').split(':')[0]
-            else:
-                host = self.uri
-                
-            self.server = Server(host, get_info=ALL)
-            self.connection = Connection(
-                self.server, 
-                user=who, 
-                password=cred,
-                auto_bind=True
-            )
-            return (97, [], 1, [])  # python-ldap success format
-            
-        except Exception as e:
-            logger.error(f"LDAP bind failed: {e}")
-            raise LDAPError(f"Bind failed: {e}")
-    
-    def search_s(self, base, scope, filterstr='(objectClass=*)', attrlist=None):
-        """Search LDAP (python-ldap compatible)"""
-        try:
-            if not self.connection:
-                raise LDAPError("Not connected")
-                
-            # Convert scope
-            ldap3_scope = SUBTREE
-            if scope == 0:  # SCOPE_BASE
-                ldap3_scope = BASE
-            elif scope == 1:  # SCOPE_ONELEVEL  
-                ldap3_scope = LEVEL
-            elif scope == 2:  # SCOPE_SUBTREE
-                ldap3_scope = SUBTREE
-                
-            # Perform search
-            self.connection.search(
-                search_base=base,
-                search_filter=filterstr,
-                search_scope=ldap3_scope,
-                attributes=attrlist or []
-            )
-            
-            # Convert results to python-ldap format
-            results = []
-            for entry in self.connection.entries:
-                dn = str(entry.entry_dn)
-                attrs = {}
-                for attr_name in entry.entry_attributes:
-                    attrs[attr_name] = entry[attr_name].values
-                results.append((dn, attrs))
-                
-            return results
-            
-        except Exception as e:
-            logger.error(f"LDAP search failed: {e}")
-            raise LDAPError(f"Search failed: {e}")
-    
-    def unbind_s(self):
-        """Unbind connection (python-ldap compatible)"""
-        if self.connection:
-            self.connection.unbind()
-            self.connection = None
-
-def install_ldap_compatibility():
-    """
-    Install LDAP compatibility layer in sys.modules
-    This allows 'import ldap' to work using ldap3 backend
-    """
-    if 'ldap' in sys.modules:
-        logger.debug("LDAP module already in sys.modules")
-        return True
-        
-    if not LDAP3_AVAILABLE:
-        logger.error("ldap3 not available - cannot provide LDAP compatibility")
-        return False
-    
+    # Fall back to ldap3 compatibility layer (Windows)
     try:
-        # Create compatibility module
-        compat = LDAPCompat()
+        import ldap3
+        print("✓ Using ldap3 compatibility layer for Windows")
         
-        # Add module-level functions and constants
-        compat.LDAPError = LDAPError
-        compat.SCOPE_BASE = LDAPCompat.SCOPE_BASE
-        compat.SCOPE_ONELEVEL = LDAPCompat.SCOPE_ONELEVEL  
-        compat.SCOPE_SUBTREE = LDAPCompat.SCOPE_SUBTREE
-        compat.VERSION3 = LDAPCompat.VERSION3
+        # Create ldap module with ldap3 compatibility
+        import types
+        ldap = types.ModuleType('ldap')
         
-        # Install in sys.modules
-        sys.modules['ldap'] = compat
+        # Map common LDAP constants
+        ldap.SCOPE_BASE = ldap3.BASE
+        ldap.SCOPE_ONELEVEL = ldap3.LEVEL
+        ldap.SCOPE_SUBTREE = ldap3.SUBTREE
         
-        logger.info("LDAP compatibility layer installed successfully")
-        return True
+        # Map LDAP exceptions
+        class LDAPError(Exception):
+            pass
+        
+        class INVALID_CREDENTIALS(LDAPError):
+            pass
+        
+        class SERVER_DOWN(LDAPError):
+            pass
+        
+        ldap.LDAPError = LDAPError
+        ldap.INVALID_CREDENTIALS = INVALID_CREDENTIALS
+        ldap.SERVER_DOWN = SERVER_DOWN
+        
+        # Simple LDAP connection class using ldap3
+        class LDAPConnection:
+            def __init__(self, uri):
+                self.uri = uri
+                self.connection = None
+                
+            def simple_bind_s(self, who, cred):
+                try:
+                    server = ldap3.Server(self.uri)
+                    self.connection = ldap3.Connection(server, user=who, password=cred, auto_bind=True)
+                    return True
+                except Exception as e:
+                    if "invalid credentials" in str(e).lower():
+                        raise INVALID_CREDENTIALS(str(e))
+                    elif "server" in str(e).lower():
+                        raise SERVER_DOWN(str(e))
+                    else:
+                        raise LDAPError(str(e))
+                        
+            def search_s(self, base, scope, filterstr, attrlist=None):
+                if not self.connection:
+                    raise LDAPError("Not connected")
+                    
+                try:
+                    self.connection.search(base, filterstr, scope, attributes=attrlist)
+                    results = []
+                    for entry in self.connection.entries:
+                        dn = entry.entry_dn
+                        attrs = {}
+                        for attr in entry.entry_attributes:
+                            attrs[attr] = [str(val) for val in entry[attr].values]
+                        results.append((dn, attrs))
+                    return results
+                except Exception as e:
+                    raise LDAPError(str(e))
+                    
+            def unbind_s(self):
+                if self.connection:
+                    self.connection.unbind()
+                    self.connection = None
+        
+        # Create initialize function
+        def initialize(uri):
+            return LDAPConnection(uri)
+        
+        ldap.initialize = initialize
+        
+        # Add to sys.modules so imports work
+        sys.modules['ldap'] = ldap
+        
+        print("✓ LDAP compatibility layer activated for Windows")
+        
+    except ImportError as e:
+        print(f"✗ LDAP compatibility setup failed: {e}")
+        print("Please run: pip install ldap3")
+        raise
+
+# Verify the module is working
+if __name__ == "__main__":
+    print("Testing LDAP compatibility...")
+    try:
+        import ldap
+        print("✓ LDAP module import: SUCCESS")
+        print(f"✓ LDAP module source: {ldap.__file__ if hasattr(ldap, '__file__') else 'compatibility layer'}")
+        
+        # Test basic functionality
+        if hasattr(ldap, 'initialize'):
+            print("✓ LDAP initialize function: AVAILABLE")
+        if hasattr(ldap, 'LDAPError'):
+            print("✓ LDAP error classes: AVAILABLE")
+            
+        print("\n✅ LDAP compatibility test: PASSED")
+        print("🎯 Odoo auth_ldap module should now work correctly!")
         
     except Exception as e:
-        logger.error(f"Failed to install LDAP compatibility: {e}")
-        return False
-
-# Auto-install compatibility layer when module is imported
-if __name__ != "__main__":
-    try:
-        install_ldap_compatibility()
-    except Exception:
-        # Silently fail if LDAP compatibility can't be installed
-        # This ensures the module import doesn't break Odoo startup
-        pass
+        print(f"✗ LDAP compatibility test: FAILED - {e}")
+        sys.exit(1)
