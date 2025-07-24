@@ -5,16 +5,16 @@
 # Translators:
 # Ryoko Tsuda <ryoko@quartile.co>, 2024
 # Martin Trigaux, 2024
-# Junko Augias, 2025
 # Wil Odoo, 2025
+# Junko Augias, 2025
 # 
 msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 17.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-02-10 10:35+0000\n"
+"POT-Creation-Date: 2025-05-14 20:48+0000\n"
 "PO-Revision-Date: 2023-10-26 23:09+0000\n"
-"Last-Translator: Wil Odoo, 2025\n"
+"Last-Translator: Junko Augias, 2025\n"
 "Language-Team: Japanese (https://app.transifex.com/odoo/teams/41243/ja/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -1120,6 +1120,13 @@ msgstr "全ユーザ"
 
 #. module: web
 #. odoo-javascript
+#: code:addons/web/static/src/views/fields/domain/domain_field.js:0
+#, python-format
+msgid "Allow expressions"
+msgstr "式の使用を許可"
+
+#. module: web
+#. odoo-javascript
 #: code:addons/web/static/src/core/colorlist/colorlist.js:0
 #, python-format
 msgid "Almond"
@@ -1376,7 +1383,7 @@ msgstr "自動保存"
 #: code:addons/web/static/src/views/view_dialogs/export_data_dialog.xml:0
 #, python-format
 msgid "Available fields"
-msgstr "利用可能な項目"
+msgstr "利用可能なフィールド"
 
 #. module: web
 #. odoo-javascript
@@ -1989,7 +1996,7 @@ msgstr "ドキュメントレイアウトを設定"
 #: code:addons/web/static/src/views/list/list_confirmation_dialog.xml:0
 #, python-format
 msgid "Confirm"
-msgstr "確認"
+msgstr "確定"
 
 #. module: web
 #. odoo-javascript
@@ -2304,7 +2311,7 @@ msgstr "データベース"
 #. module: web
 #: model_terms:ir.ui.view,arch_db:web.neutralize_banner
 msgid "Database neutralized for testing: no emails sent, etc."
-msgstr "テスト用にデータベースを無効化：電子メールの送信などを行わない"
+msgstr "テスト用にデータベースが安全化されました: メール送信などは無効です。"
 
 #. module: web
 #. odoo-javascript
@@ -2919,6 +2926,13 @@ msgstr "企業版"
 
 #. module: web
 #. odoo-javascript
+#: code:addons/web/static/src/core/debug/profiling/profiling_item.xml:0
+#, python-format
+msgid "Entry Count"
+msgstr "エントリ数"
+
+#. module: web
+#. odoo-javascript
 #: code:addons/web/static/src/core/file_upload/file_upload_service.js:0
 #, python-format
 msgid "Error"
@@ -3274,7 +3288,7 @@ msgid ""
 msgstr ""
 "Excel との互換性について、列数が 16384 を超える場合はデータをエクスポートできません。\n"
 "\n"
-"ヒント: 軸を反転させる、さらにフィルタリングする、または単位数を減らしてみて下さい。"
+"ヒント: 軸を反転させる、さらにフィルタリングする、または集計項目数を減らしてみて下さい。"
 
 #. module: web
 #. odoo-javascript
@@ -3628,7 +3642,14 @@ msgstr ""
 msgid ""
 "If checked, users won't be able to create records through the autocomplete "
 "dropdown at all."
-msgstr "チェックした場合、ユーザはオートコンプリートのドロップダウンからレコードを作成することができなくなります。"
+msgstr "チェックした場合、ユーザは自動入力のドロップダウンからレコードを作成することができなくなります。"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/views/fields/domain/domain_field.js:0
+#, python-format
+msgid "If true, non-literals are accepted"
+msgstr "true の場合、非リテラルが許可されます"
 
 #. module: web
 #. odoo-javascript
@@ -4471,7 +4492,7 @@ msgstr "F5キーを押してアプリケーションを再ロードすること�
 #: code:addons/web/static/src/views/view.xml:0
 #, python-format
 msgid "Measures"
-msgstr "分析対象"
+msgstr "集計項目"
 
 #. module: web
 #. odoo-javascript
@@ -5066,6 +5087,7 @@ msgstr "いいえ、そのままにして下さい。"
 
 #. module: web
 #. odoo-javascript
+#: code:addons/web/static/src/core/debug/profiling/profiling_item.xml:0
 #: code:addons/web/static/src/views/graph/graph_model.js:0
 #: code:addons/web/static/src/views/kanban/kanban_header.js:0
 #: code:addons/web/static/src/views/list/list_renderer.js:0
@@ -7140,6 +7162,20 @@ msgstr "このセルの内容はXLSXファイルには長すぎます。（%s文
 
 #. module: web
 #. odoo-javascript
+#: code:addons/web/static/src/views/fields/domain/domain_field.js:0
+#, python-format
+msgid "The domain involves non-literals. Their evaluation might fail."
+msgstr "このドメインには非リテラルが含まれています。それらの評価は失敗する可能性があります。"
+
+#. module: web
+#. odoo-javascript
+#: code:addons/web/static/src/views/fields/domain/domain_field.js:0
+#, python-format
+msgid "The domain should not involve non-literals"
+msgstr "ドメインに非リテラルを含めてはいけません"
+
+#. module: web
+#. odoo-javascript
 #: code:addons/web/static/src/core/errors/error_dialogs.xml:0
 #: code:addons/web/static/src/public/error_notifications.js:0
 #, python-format
@@ -8546,7 +8582,6 @@ msgstr "エイリアンモンスター"
 
 #. module: web
 #. odoo-javascript
-#: code:addons/web/static/src/core/debug/debug_menu_items.xml:0
 #: code:addons/web/static/src/core/tree_editor/tree_editor.xml:0
 #: code:addons/web/static/src/core/tree_editor/tree_editor.xml:0
 #, python-format
@@ -9307,7 +9342,7 @@ msgstr "プリン"
 #: code:addons/web/static/src/core/emoji_picker/emoji_data.js:0
 #, python-format
 msgid "bakery"
-msgstr "製パン店"
+msgstr "ベーカリー"
 
 #. module: web
 #. odoo-javascript
@@ -12665,7 +12700,7 @@ msgstr "建設作業員"
 #: code:addons/web/static/src/core/tree_editor/tree_editor_operator_editor.js:0
 #, python-format
 msgid "contains"
-msgstr "が次を含む"
+msgstr "次を含む"
 
 #. module: web
 #. odoo-javascript
@@ -19255,7 +19290,7 @@ msgstr "は次の日付の間である"
 #: code:addons/web/static/src/core/tree_editor/tree_editor_operator_editor.js:0
 #, python-format
 msgid "is in"
-msgstr "は以下内:"
+msgstr "次のいずれかに一致:"
 
 #. module: web
 #. odoo-javascript
@@ -19276,14 +19311,14 @@ msgstr "は以下内ではない:"
 #: code:addons/web/static/src/core/tree_editor/tree_editor_operator_editor.js:0
 #, python-format
 msgid "is not set"
-msgstr "は設定なし"
+msgstr "未設定"
 
 #. module: web
 #. odoo-javascript
 #: code:addons/web/static/src/core/tree_editor/tree_editor_operator_editor.js:0
 #, python-format
 msgid "is set"
-msgstr "は設定あり"
+msgstr "設定済"
 
 #. module: web
 #. odoo-javascript
@@ -22896,13 +22931,6 @@ msgstr "新月の顔"
 #, python-format
 msgid "new tab"
 msgstr "新規タブ"
-
-#. module: web
-#. odoo-javascript
-#: code:addons/web/static/src/views/view_dialogs/export_data_dialog.xml:0
-#, python-format
-msgid "new_template"
-msgstr "new_template"
 
 #. module: web
 #. odoo-javascript
@@ -27530,13 +27558,6 @@ msgstr "選択済"
 #, python-format
 msgid "selected records,"
 msgstr "選択されたレコード、"
-
-#. module: web
-#. odoo-javascript
-#: code:addons/web/static/src/core/debug/debug_menu_items.xml:0
-#, python-format
-msgid "self"
-msgstr "セルフ"
 
 #. module: web
 #. odoo-javascript
@@ -33631,20 +33652,6 @@ msgstr "星座"
 #, python-format
 msgid "zombie"
 msgstr "ゾンビ"
-
-#. module: web
-#. odoo-javascript
-#: code:addons/web/static/src/views/view_components/column_progress.xml:0
-#, python-format
-msgid "{{ bar.count }} {{ bar.string }}"
-msgstr "{{ bar.count }} {{ bar.string }}"
-
-#. module: web
-#. odoo-javascript
-#: code:addons/web/static/src/views/kanban/kanban_column_quick_create.xml:0
-#, python-format
-msgid "{{ relatedFieldName }}..."
-msgstr "{{ relatedFieldName }}..."
 
 #. module: web
 #. odoo-javascript

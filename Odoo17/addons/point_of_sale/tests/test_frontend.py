@@ -52,10 +52,6 @@ class TestPointOfSaleHttpCommon(AccountTestInvoicingHttpCommon):
                 (4, cls.env.ref('point_of_sale.group_pos_user').id),
             ],
         })
-        # When pos_mrp installed, protects from access error to mpr.bom (read when opening product info popup)
-        if group_mrp_user := cls.env.ref('mrp.group_mrp_user', raise_if_not_found=False):
-            cls.pos_user.write({'groups_id': [Command.link(group_mrp_user.id)]})
-
         cls.pos_admin = cls.env['res.users'].create({
             'name': 'A powerful PoS man!',
             'login': 'pos_admin',
@@ -822,6 +818,22 @@ class TestUi(TestPointOfSaleHttpCommon):
         self.assertEqual(len(pos_session.statement_line_ids), 1)
         self.assertEqual(pos_session.statement_line_ids[0].amount, -10)
 
+    def test_pos_closing_cash_decimals(self):
+        """
+        Test that the closing cash difference is rounded according to the currency specification
+        and does not have excessive decimal places.
+        """
+        self.main_pos_config.open_ui()
+        current_session = self.main_pos_config.current_session_id
+        current_session.post_closing_cash_details(560.40)
+        current_session.close_session_from_ui()
+
+        self.main_pos_config.with_user(self.pos_user).open_ui()
+        self.start_tour("/pos/ui?config_id=%d" % self.main_pos_config.id, 'CashClosingDecimals', login="pos_user")
+
+        pos_session = self.main_pos_config.current_session_id
+        self.assertEqual(pos_session.message_ids[0].body.striptags(), 'Opening difference: $\xa0-\ufeff1.91')
+
     def test_cash_payments_should_reflect_on_next_opening(self):
         self.main_pos_config.with_user(self.pos_user).open_ui()
         self.start_tour("/pos/ui?config_id=%d" % self.main_pos_config.id, 'OrderPaidInCash', login="pos_user")
@@ -1342,6 +1354,11 @@ class TestUi(TestPointOfSaleHttpCommon):
 
         self.assertAlmostEqual(order.amount_total, invoice.amount_total, places=2, msg="Order and Invoice amounts do not match.")
 
+
+    def test_combo_with_custom_attribute(self):
+        setup_pos_combo_items(self)
+        self.main_pos_config.with_user(self.pos_user).open_ui()
+        self.start_tour(f"/pos/ui?config_id={self.main_pos_config.id}", 'test_combo_with_custom_attribute', login="pos_user")
 
 # This class just runs the same tests as above but with mobile emulation
 class MobileTestUi(TestUi):

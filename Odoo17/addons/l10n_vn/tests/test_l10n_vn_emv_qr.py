@@ -56,11 +56,15 @@ class TestL10nVNEmvQrCode(AccountTestInvoicingCommon):
         with self.assertRaises(UserError, msg="The chosen QR-code type is not eligible for this invoice."):
             self.emv_qr_invoice._generate_qr_code()
 
-        # Without company partner city should fail
+        # Without company partner city or state should fail
         self.emv_qr_invoice.currency_id = self.env.ref('base.VND')
         self.company_data['company'].partner_id.city = False
         with self.assertRaises(UserError, msg="Missing Merchant City."):
             self.emv_qr_invoice._generate_qr_code()
+
+        # With state and no city should ok
+        self.company_data['company'].partner_id.state_id = self.env.ref('base.state_vn_VN-HP')
+        self.emv_qr_invoice._generate_qr_code()
 
         # Without paynow infomation should fail
         self.company_data['company'].partner_id.city = 'Vietnam'
@@ -81,7 +85,7 @@ class TestL10nVNEmvQrCode(AccountTestInvoicingCommon):
         )
 
         # Check the whole qr code string
-        self.assertEqual(emv_qr_vals, '00020101021238590010A0000007270129000697042201156607040600001290208QRIBFTTA52040000530370454031005802VN5914company_1_data6007Vietnam62170813INV/TEST/00016304600B')
+        self.assertEqual(emv_qr_vals, '00020101021238590010A0000007270129000697042201156607040600001290208QRIBFTTA52040000530370454031005802VN5914company_1_data6007Vietnam62150811INVTEST000163042656')
 
     def test_remove_vietnamese_accents(self):
         accent_string = "áàảãạăắằẳẵặâấầẩẫậÁÀẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬéèẻẽẹêếềểễệÉÈẺẼẸÊẾỀỂỄỆóòỏõọôốồổỗộơớờởỡợÓÒỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢíìỉĩịÍÌỈĨỊúùủũụưứừửữựÚÙỦŨỤƯỨỪỬỮỰýỳỷỹỵÝỲỶỸỴđĐ"
@@ -102,4 +106,4 @@ class TestL10nVNEmvQrCode(AccountTestInvoicingCommon):
         )
 
         # Check the whole qr code string
-        self.assertEqual(emv_qr_vals, '00020101021238590010A0000007270129000697042201156607040600001290208QRIBFTTA52040000530370454031005802VN5914aAeEoOiIuUyYdD6007Vietnam62170813INV/TEST/000263041AA5')
+        self.assertEqual(emv_qr_vals, '00020101021238590010A0000007270129000697042201156607040600001290208QRIBFTTA52040000530370454031005802VN5914aAeEoOiIuUyYdD6007Vietnam62150811INVTEST00026304E1C2')

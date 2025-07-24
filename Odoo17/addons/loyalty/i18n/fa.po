@@ -15,15 +15,16 @@
 # Hanna Kheradroosta, 2023
 # Abbas Ebadian, 2024
 # Mostafa Barmshory <mostafa.barmshory@gmail.com>, 2024
-# Mohammadamir Heshmatkhah <maheshmatkhah.soft@gmail.com>, 2024
+# Naser mars, 2025
+# Mohammadamir Heshmatkhah <maheshmatkhah.soft@gmail.com>, 2025
 # 
 msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 17.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-08-13 10:27+0000\n"
+"POT-Creation-Date: 2025-07-18 01:16+0000\n"
 "PO-Revision-Date: 2023-10-26 23:09+0000\n"
-"Last-Translator: Mohammadamir Heshmatkhah <maheshmatkhah.soft@gmail.com>, 2024\n"
+"Last-Translator: Mohammadamir Heshmatkhah <maheshmatkhah.soft@gmail.com>, 2025\n"
 "Language-Team: Persian (https://app.transifex.com/odoo/teams/41243/fa/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -98,7 +99,7 @@ msgstr "در هر سفارش %s"
 #: code:addons/loyalty/models/loyalty_reward.py:0
 #, python-format
 msgid "%s per point"
-msgstr "٪s به‌ازای هر امتیاز"
+msgstr "%s به‌ازای هر امتیاز"
 
 #. module: loyalty
 #. odoo-python
@@ -202,7 +203,6 @@ msgid ""
 "            </div>\n"
 "        "
 msgstr ""
-"```html\n"
 "<div style=\"background: #ffffff\">\n"
 "    <div style=\"margin:0px; font-size:24px; font-family:arial, 'helvetica neue', helvetica, sans-serif; line-height:36px; color:#333333; text-align: center\">\n"
 "        اینجا کارت هدیه شماست!\n"
@@ -228,8 +228,7 @@ msgstr ""
 "            <a t-attf-href=\"{{ object.get_base_url() }}/shop\" target=\"_blank\" style=\"text-decoration:none; font-family:arial, 'helvetica neue', helvetica, sans-serif; font-size:22px; color:#FFFFFF; border-style:solid; border-color:#999999; border-width:20px 30px; display:inline-block; background-color:#999999; border-radius:5px; font-weight:bold; font-style:normal; line-height:26px; width:auto; text-align:center\">همین الان استفاده کنید!</a>\n"
 "        </span>\n"
 "    </div>\n"
-"</div>\n"
-"```"
+"</div>"
 
 #. module: loyalty
 #: model_terms:ir.ui.view,arch_db:loyalty.loyalty_reward_view_kanban
@@ -290,11 +289,9 @@ msgid ""
 "                                    <br/>\n"
 "                                    the value of the coupon"
 msgstr ""
-"```html\n"
 "<span class=\"fw-bold text-decoration-underline\">اعطا</span>\n"
 "                                    <br/>\n"
-"                                    ارزش کوپن\n"
-"```"
+"                                    ارزش کوپن"
 
 #. module: loyalty
 #: model_terms:ir.ui.view,arch_db:loyalty.loyalty_reward_view_kanban
@@ -302,10 +299,8 @@ msgid ""
 "<span class=\"fw-bold text-decoration-underline\">In exchange of</span>\n"
 "                                    <br/>"
 msgstr ""
-"```html\n"
 "<span class=\"fw-bold text-decoration-underline\">در ازای</span>\n"
-"                                    <br/>\n"
-"```"
+"                                    <br/>"
 
 #. module: loyalty
 #: model_terms:ir.ui.view,arch_db:loyalty.loyalty_program_view_form
@@ -317,14 +312,12 @@ msgid ""
 "                                <span class=\"o_stat_text\" invisible=\"program_type != 'gift_card'\">Gift Cards</span>\n"
 "                                <span class=\"o_stat_text\" invisible=\"program_type != 'ewallet'\">eWallets</span>"
 msgstr ""
-"```html\n"
 "<span class=\"o_stat_text\" invisible=\"program_type not in ('coupons', 'next_order_coupons')\">کوپن‌ها</span>\n"
 "<span class=\"o_stat_text\" invisible=\"program_type != 'loyalty'\">کارت‌های وفاداری</span>\n"
 "<span class=\"o_stat_text\" invisible=\"program_type not in ('promotion', 'buy_x_get_y')\">تبلیغات</span>\n"
 "<span class=\"o_stat_text\" invisible=\"program_type != 'promo_code'\">تخفیف</span>\n"
 "<span class=\"o_stat_text\" invisible=\"program_type != 'gift_card'\">کارت‌های هدیه</span>\n"
-"<span class=\"o_stat_text\" invisible=\"program_type != 'ewallet'\">کیف پول‌های الکترونیکی</span>\n"
-"```"
+"<span class=\"o_stat_text\" invisible=\"program_type != 'ewallet'\">کیف پول‌های الکترونیکی</span>"
 
 #. module: loyalty
 #: model_terms:ir.ui.view,arch_db:loyalty.loyalty_report
@@ -332,10 +325,8 @@ msgid ""
 "<span class=\"text-center\">OR</span>\n"
 "                                        <br/>"
 msgstr ""
-"```html\n"
-"<span class=\"text-center\">یا</span>\n"
-"                                        <br/>\n"
-"```"
+"<span class=\"text-center\">یا </span>\n"
+"                                        <br/>"
 
 #. module: loyalty
 #: model_terms:ir.ui.view,arch_db:loyalty.loyalty_rule_view_form
@@ -343,17 +334,13 @@ msgid ""
 "<span colspan=\"2\" invisible=\"program_type != 'coupons'\">Grant the amount"
 " of coupon points defined as the coupon value</span>"
 msgstr ""
-"```html\n"
-"<span colspan=\"2\" invisible=\"program_type != 'coupons'\">اعطای مقدار امتیاز کوپن تعریف شده به عنوان ارزش کوپن</span>\n"
-"```"
+"<span colspan=\"2\" invisible=\"program_type != 'coupons'\">اعطای مقدار "
+"امتیاز کوپن تعریف شده به عنوان ارزش کوپن</span>"
 
 #. module: loyalty
 #: model_terms:ir.ui.view,arch_db:loyalty.loyalty_reward_view_form
 msgid "<span invisible=\"not clear_wallet\"> (or more)</span>"
-msgstr ""
-"```html\n"
-"<span invisible=\"not clear_wallet\"> (یا بیشتر)</span>\n"
-"```"
+msgstr "<span invisible=\"not clear_wallet\"> (یا بیشتر)</span>"
 
 #. module: loyalty
 #: model_terms:ir.ui.view,arch_db:loyalty.loyalty_generate_wizard_view_form
@@ -365,14 +352,12 @@ msgid ""
 "                            Generate \n"
 "                        </span>"
 msgstr ""
-"```html\n"
 "<span invisible=\"not will_send_mail\">\n"
 "                            ایجاد و ارسال\n"
 "                        </span>\n"
 "                        <span invisible=\"will_send_mail\">\n"
 "                            ایجاد\n"
-"                        </span>\n"
-"```"
+"                        </span>"
 
 #. module: loyalty
 #: model_terms:ir.ui.view,arch_db:loyalty.loyalty_reward_view_kanban
@@ -387,10 +372,7 @@ msgstr "<span>حداقل خرید</span>"
 #. module: loyalty
 #: model_terms:ir.ui.view,arch_db:loyalty.loyalty_report
 msgid "<span>Valid for purchase above</span>"
-msgstr ""
-"```html\n"
-"<span>معتبر برای خرید بالاتر از</span>\n"
-"```"
+msgstr "<span>معتبر برای خرید بالاتر از</span>"
 
 #. module: loyalty
 #: model_terms:ir.ui.view,arch_db:loyalty.loyalty_reward_view_form
@@ -400,18 +382,12 @@ msgstr "<span>رو</span>"
 #. module: loyalty
 #: model_terms:ir.ui.view,arch_db:loyalty.loyalty_report
 msgid "<span>products</span>"
-msgstr ""
-"```html\n"
-"<span>محصولات</span>\n"
-"```"
+msgstr "<span>محصولات</span>"
 
 #. module: loyalty
 #: model_terms:ir.ui.view,arch_db:loyalty.loyalty_rule_view_form
 msgid "<span>tax</span>"
-msgstr ""
-"```html\n"
-"<span>مالیات</span>\n"
-"```"
+msgstr "<span>مالیات </span>"
 
 #. module: loyalty
 #: model_terms:ir.ui.view,arch_db:loyalty.gift_card_report
@@ -470,7 +446,6 @@ msgid ""
 "</tbody></table>\n"
 "        "
 msgstr ""
-"```html\n"
 "<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%; margin:0px auto; background:#ffffff; color:#333333;\"><tbody>\n"
 "<tr>\n"
 "    <td valign=\"top\" style=\"text-align: center; font-size: 14px;\">\n"
@@ -517,8 +492,7 @@ msgstr ""
 "        </t>\n"
 "    </td>\n"
 "</tr>\n"
-"</tbody></table>\n"
-"```"
+"</tbody></table>"
 
 #. module: loyalty
 #. odoo-python
@@ -1100,7 +1074,7 @@ msgstr "تاریخ انقضا"
 #: code:addons/loyalty/models/loyalty_card.py:0
 #, python-format
 msgid "Expiration date cannot be set on a loyalty card."
-msgstr ""
+msgstr "تاریخ انقضا را نمی توان روی کارت وفاداری تنظیم کرد."
 
 #. module: loyalty
 #. odoo-python
@@ -1217,13 +1191,6 @@ msgstr "تولید و به اشتراک گذاری کوپن‌های منحصر�
 #: model_terms:ir.ui.view,arch_db:loyalty.loyalty_program_view_form
 msgid "Generate eWallet"
 msgstr "تولید کیف پول الکترونیکی"
-
-#. module: loyalty
-#. odoo-javascript
-#: code:addons/loyalty/static/src/xml/loyalty_templates.xml:0
-#, python-format
-msgid "Generate {{props.context.program_item_name}}"
-msgstr ""
 
 #. module: loyalty
 #. odoo-python
@@ -1635,6 +1602,7 @@ msgid "Portal Visible"
 msgstr "قابل مشاهده در پورتال"
 
 #. module: loyalty
+#: model:ir.model,name:loyalty.model_product_pricelist
 #: model:ir.model.fields,field_description:loyalty.field_loyalty_program__pricelist_ids
 msgid "Pricelist"
 msgstr "لیست قیمت"
@@ -1981,6 +1949,15 @@ msgstr ""
 
 #. module: loyalty
 #. odoo-python
+#: code:addons/loyalty/models/product_pricelist.py:0
+#, python-format
+msgid ""
+"This pricelist may not be archived. It is being used for active promotion "
+"programs: %s"
+msgstr ""
+
+#. module: loyalty
+#. odoo-python
 #: code:addons/loyalty/models/product_product.py:0
 #, python-format
 msgid ""
@@ -2004,6 +1981,13 @@ msgstr "تعداد کل سفارشات"
 #: model:ir.model.fields,field_description:loyalty.field_loyalty_program__trigger
 msgid "Trigger"
 msgstr "راه اندازی"
+
+#. module: loyalty
+#. odoo-python
+#: code:addons/loyalty/models/loyalty_reward.py:0
+#, python-format
+msgid "Unsupported search operator"
+msgstr ""
 
 #. module: loyalty
 #: model:ir.model.fields,field_description:loyalty.field_loyalty_card__use_count
@@ -2258,15 +2242,13 @@ msgid "usages"
 msgstr "استفاده‌ها"
 
 #. module: loyalty
+#: model_terms:ir.ui.view,arch_db:loyalty.loyalty_program_view_form
+msgid "used)"
+msgstr ""
+
+#. module: loyalty
 #. odoo-python
 #: code:addons/loyalty/models/loyalty_reward.py:0
 #, python-format
 msgid "your order"
 msgstr "سفارش شما"
-
-#. module: loyalty
-#. odoo-javascript
-#: code:addons/loyalty/static/src/xml/loyalty_templates.xml:0
-#, python-format
-msgid "{{loyalty_el_title}}"
-msgstr ""

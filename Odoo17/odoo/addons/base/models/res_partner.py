@@ -71,6 +71,9 @@ class FormatAddressMixin(models.AbstractModel):
                         self.env['ir.ui.view'].postprocess_and_fields(sub_arch, model=self._name)
                     except ValueError:
                         return arch
+                new_address_node = sub_arch.find('.//div[@class="o_address_format"]')
+                if new_address_node is not None:
+                    sub_arch = new_address_node
                 address_node.getparent().replace(address_node, sub_arch)
         elif address_format and not self._context.get('no_address_format'):
             # For the zip, city and state fields we need to move them around in order to follow the country address format.
@@ -637,6 +640,12 @@ class Partner(models.Model):
                 # value was already assigned for current company
                 ('company_id', '!=', self.env.company.id),
             ])
+            # prevent duplicate keys by removing existing properties from the partner
+            self.env['ir.property'].search([
+                ('fields_id', 'in', company_dependent_commercial_field_ids),
+                ('res_id', '=', f'res.partner,{self.id}'),
+                ('company_id', '!=', self.env.company.id),
+            ]).unlink()
             for prop in parent_properties:
                 prop.copy({'res_id': f'res.partner,{self.id}'})
 

@@ -273,6 +273,10 @@ function makeActionManager(env) {
                 const searchViewId = action.search_view_id ? action.search_view_id[0] : false;
                 action.views.push([searchViewId, "search"]);
             }
+            if ("no_breadcrumbs" in action.context) {
+                action._noBreadcrumbs = action.context.no_breadcrumbs;
+                delete action.context.no_breadcrumbs;
+            }
         }
         return action;
     }
@@ -541,8 +545,7 @@ function makeActionManager(env) {
         }
 
         viewProps.noBreadcrumbs =
-            "no_breadcrumbs" in action.context ? action.context.no_breadcrumbs : target === "new";
-        delete action.context.no_breadcrumbs;
+            "_noBreadcrumbs" in action ? action._noBreadcrumbs : target === "new";
         return {
             props: viewProps,
             config: {
@@ -675,14 +678,14 @@ function makeActionManager(env) {
                         });
                     }
                 }
-                this.isMounted = false;
+                controller.isMounted = false;
 
                 onMounted(this.onMounted);
                 onWillUnmount(this.onWillUnmount);
                 onError(this.onError);
             }
             onError(error) {
-                if (this.isMounted) {
+                if (controller.isMounted) {
                     // the error occurred on the controller which is
                     // already in the DOM, so simply show the error
                     Promise.resolve().then(() => {
@@ -764,9 +767,10 @@ function makeActionManager(env) {
                 }
                 resolve();
                 env.bus.trigger("ACTION_MANAGER:UI-UPDATED", _getActionMode(action));
-                this.isMounted = true;
+                controller.isMounted = true;
             }
             onWillUnmount() {
+                controller.isMounted = false;
                 if (action.target === "new" && dialogCloseResolve) {
                     dialogCloseResolve();
                 }
@@ -1374,6 +1378,9 @@ function makeActionManager(env) {
         }
         const controller = controllerStack[index];
         if (controller.action.type === "ir.actions.act_window") {
+            if (controller.isMounted) {
+                controller.exportedState = controller.getLocalState();
+            }
             const { action, exportedState, view, views } = controller;
             const props = { ...controller.props };
             if (exportedState && "resId" in exportedState) {

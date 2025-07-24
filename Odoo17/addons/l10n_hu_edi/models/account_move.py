@@ -343,8 +343,8 @@ class AccountMove(models.Model):
                 'action_text': _('View Company/ies'),
             },
             'company_not_huf': {
-                'records': self.company_id.filtered(lambda c: c.currency_id.name != 'HUF'),
-                'message': _('Please use HUF as company currency!'),
+                'records': self.company_id.filtered(lambda c: c.currency_id.name not in ['HUF', 'EUR']),
+                'message': _('Please use HUF or EUR as your company currency.'),
                 'action_text': _('View Company/ies'),
             },
             'partner_bank_account_invalid': {
@@ -510,10 +510,19 @@ class AccountMove(models.Model):
         for i, invoice in enumerate(self, start=1):
             invoice.l10n_hu_edi_batch_upload_index = i
 
+        def get_operation_type(invoice):
+            operation_type = 'MODIFY'
+            base_invoice = invoice._l10n_hu_get_chain_base()
+            if invoice == base_invoice:
+                operation_type = 'CREATE'
+            elif base_invoice.amount_residual == 0:
+                operation_type = 'STORNO'
+            return operation_type
+
         invoice_operations = [
             {
                 'index': invoice.l10n_hu_edi_batch_upload_index,
-                'operation': 'CREATE' if invoice._l10n_hu_get_chain_base() == invoice else 'MODIFY',
+                'operation': get_operation_type(invoice),
                 'invoice_data': base64.b64decode(invoice.l10n_hu_edi_attachment),
             }
             for invoice in self
@@ -824,6 +833,9 @@ class AccountMove(models.Model):
         supplier = self.company_id.partner_id
         customer = self.partner_id.commercial_partner_id
 
+        supplier_bank = self.partner_bank_id if self.partner_bank_id and self.move_type == "out_invoice" else supplier.bank_ids[:1]
+        customer_bank = self.partner_bank_id if self.partner_bank_id and self.move_type == "out_refund" else customer.bank_ids[:1]
+
         currency_huf = self.env.ref('base.HUF')
         currency_rate = self._l10n_hu_get_currency_rate()
 
@@ -837,12 +849,12 @@ class AccountMove(models.Model):
             'base_invoice': base_invoice if base_invoice != self else None,
             'supplier': supplier,
             'supplier_vat_data': get_vat_data(supplier, self.fiscal_position_id.foreign_vat),
-            'supplierBankAccountNumber': format_bank_account_number(self.partner_bank_id or supplier.bank_ids[:1]),
+            'supplierBankAccountNumber': format_bank_account_number(supplier_bank),
             'individualExemption': self.company_id.l10n_hu_tax_regime == 'ie',
             'customer': customer,
             'customerVatStatus': (not customer.is_company and 'PRIVATE_PERSON') or (customer.country_code == 'HU' and 'DOMESTIC') or 'OTHER',
             'customer_vat_data': get_vat_data(customer) if customer.is_company else None,
-            'customerBankAccountNumber': format_bank_account_number(customer.bank_ids[:1]),
+            'customerBankAccountNumber': format_bank_account_number(customer_bank),
             'smallBusinessIndicator': self.company_id.l10n_hu_tax_regime == 'sb',
             'exchangeRate': currency_rate,
             'cashAccountingIndicator': self.company_id.l10n_hu_tax_regime == 'ca',
