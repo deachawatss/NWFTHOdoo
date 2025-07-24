@@ -1,0 +1,101 @@
+# Odoo 17 Development Configuration for Windows Server
+# Optimized for fast development and testing
+
+services:
+  # PostgreSQL Database - Development Optimized
+  db:
+    image: postgres:13
+    container_name: odoo17_dev_db
+    environment:
+      - POSTGRES_DB=odoo_dev
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=1234
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - odoo-dev-db-data:/var/lib/postgresql/data/pgdata
+      - ./pg_config/postgresql-dev.conf:/etc/postgresql/postgresql.conf:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks:
+      - odoo-dev-network
+    # No resource limits for development - use all available resources
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+
+  # Odoo Application - Development Optimized
+  odoo:
+    build: .
+    container_name: odoo17_dev_app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - HOST=db
+      - USER=admin
+      - PASSWORD=1234
+      - POSTGRES_DB=odoo_dev
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=1234
+      - ODOO_RC=/opt/odoo/odoo-dev-docker.conf
+      # Suppress Python warnings
+      - PYTHONWARNINGS=ignore::DeprecationWarning:pkg_resources
+      - SETUPTOOLS_USE_DISTUTILS=stdlib
+      # Development environment variables
+      - ODOO_DEV_MODE=reload,qweb,werkzeug,xml
+    volumes:
+      # Use bind mounts for better I/O performance during development
+      - ./custom_addons:/opt/odoo/custom_addons:rw
+      - ./addons:/opt/odoo/addons:ro
+      - ./odoo-dev-docker.conf:/opt/odoo/odoo-dev-docker.conf:ro
+      - ./logs:/var/log/odoo:rw
+      - odoo-dev-web-data:/var/lib/odoo
+      - ./backup:/opt/odoo/backup:rw
+    ports:
+      - "127.0.0.1:8069:8069"    # Development web interface (localhost only)
+      - "127.0.0.1:8072:8072"    # Development long polling
+    restart: unless-stopped
+    command: ["odoo", "-c", "/opt/odoo/odoo-dev-docker.conf"]
+    networks:
+      - odoo-dev-network
+    # No resource limits for development
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8069/web/health || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 120s
+
+  # Redis for session storage (optional for development)
+  redis:
+    image: redis:7-alpine
+    container_name: odoo17_dev_redis
+    command: redis-server --appendonly no --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-dev-data:/data
+    restart: unless-stopped
+    networks:
+      - odoo-dev-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    profiles:
+      - redis  # Only start when explicitly requested
+
+# Persistent volumes for development
+volumes:
+  odoo-dev-db-data:
+    driver: local
+  odoo-dev-web-data:
+    driver: local
+  redis-dev-data:
+    driver: local
+
+# Network for development
+networks:
+  odoo-dev-network:
+    driver: bridge

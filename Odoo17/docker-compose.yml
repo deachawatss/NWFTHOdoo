@@ -6,7 +6,7 @@ services:
     image: postgres:13
     container_name: odoo17_db
     environment:
-      - POSTGRES_DB=postgres
+      - POSTGRES_DB=odoo_prod
       - POSTGRES_USER=admin
       - POSTGRES_PASSWORD=1234
       - PGDATA=/var/lib/postgresql/data/pgdata
@@ -39,7 +39,7 @@ services:
       - HOST=db
       - USER=admin
       - PASSWORD=1234
-      - POSTGRES_DB=postgres
+      - POSTGRES_DB=odoo_prod
       - POSTGRES_USER=admin
       - POSTGRES_PASSWORD=1234
       - ODOO_RC=/opt/odoo/odoo.conf
@@ -108,7 +108,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      - POSTGRES_DB=postgres
+      - POSTGRES_DB=odoo_prod
       - POSTGRES_USER=admin
       - POSTGRES_PASSWORD=1234
       - BACKUP_DIR=/backup
