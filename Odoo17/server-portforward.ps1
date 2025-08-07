@@ -26,25 +26,25 @@ Write-Host "   Network: External access enabled" -ForegroundColor Green
 Write-Host ""
 
 # Remove existing port forwarding rules (if any)
-Write-Host "🔄 Removing existing port forwarding rules..." -ForegroundColor Yellow
+Write-Host "Removing existing port forwarding rules..." -ForegroundColor Yellow
 try {
     netsh interface portproxy delete v4tov4 listenport=80 | Out-Null
     netsh interface portproxy delete v4tov4 listenport=8069 | Out-Null
     netsh interface portproxy delete v4tov4 listenport=443 | Out-Null
-    Write-Host "   ✅ Existing rules removed" -ForegroundColor Green
+    Write-Host "   Existing rules removed" -ForegroundColor Green
 } catch {
-    Write-Host "   ℹ️ No existing rules to remove" -ForegroundColor Gray
+    Write-Host "   No existing rules to remove" -ForegroundColor Gray
 }
 
 # Add new port forwarding rules for SERVER
-Write-Host "➕ Adding SERVER port forwarding rules..." -ForegroundColor Yellow
+Write-Host "Adding SERVER port forwarding rules..." -ForegroundColor Yellow
 
 # Forward port 80 (nginx) from Server to WSL
 $result80 = netsh interface portproxy add v4tov4 listenport=80 listenaddress=0.0.0.0 connectport=80 connectaddress=$wslIP
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "   ✅ Port 80 (HTTP/Nginx): SERVER → WSL" -ForegroundColor Green
+    Write-Host "   Port 80 (HTTP/Nginx): SERVER -> WSL" -ForegroundColor Green
 } else {
-    Write-Host "   ❌ Failed to set up port 80 forwarding" -ForegroundColor Red
+    Write-Host "   Failed to set up port 80 forwarding" -ForegroundColor Red
 }
 
 # Forward port 8069 (Odoo direct) from Server to WSL  
