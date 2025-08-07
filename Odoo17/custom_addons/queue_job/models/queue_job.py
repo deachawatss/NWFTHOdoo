@@ -8,7 +8,8 @@ from datetime import datetime, timedelta
 from odoo import _, api, exceptions, fields, models
 from odoo.tools import config, html_escape
 
-from odoo.addons.base_sparse_field.models.fields import Serialized
+# from odoo.addons.base_sparse_field.models.fields import Serialized
+from odoo.fields import Serialized
 
 from ..delay import Graph
 from ..exception import JobError
