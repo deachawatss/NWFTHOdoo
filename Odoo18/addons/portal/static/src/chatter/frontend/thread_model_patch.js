@@ -14,6 +14,14 @@ patch(Thread.prototype, {
         }
         return super.effectiveSelf;
     },
+    /** @deprecated */
+    get selves() {
+        const result = super.selves;
+        if (this.portal_partner) {
+            result.push(this.portal_partner);
+        }
+        return result;
+    },
     get rpcParams() {
         return {
             ...super.rpcParams,

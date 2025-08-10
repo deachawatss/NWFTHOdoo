@@ -138,16 +138,9 @@ msgid "Date"
 msgstr "Fecha"
 
 #. module: l10n_es_edi_tbai
-#: model:ir.model.fields,field_description:l10n_es_edi_tbai.field_account_move__display_name
-#: model:ir.model.fields,field_description:l10n_es_edi_tbai.field_account_move_line__display_name
-#: model:ir.model.fields,field_description:l10n_es_edi_tbai.field_account_move_reversal__display_name
-#: model:ir.model.fields,field_description:l10n_es_edi_tbai.field_account_move_send__display_name
-#: model:ir.model.fields,field_description:l10n_es_edi_tbai.field_certificate_certificate__display_name
 #: model:ir.model.fields,field_description:l10n_es_edi_tbai.field_l10n_es_edi_tbai_document__display_name
-#: model:ir.model.fields,field_description:l10n_es_edi_tbai.field_res_company__display_name
-#: model:ir.model.fields,field_description:l10n_es_edi_tbai.field_res_config_settings__display_name
 msgid "Display Name"
-msgstr "Nombre mostrado"
+msgstr "Nombre visible"
 
 #. module: l10n_es_edi_tbai
 #. odoo-python
@@ -171,16 +164,9 @@ msgid "Hacienda Foral de Gipuzkoa"
 msgstr "Diputación Foral de Gipuzkoa"
 
 #. module: l10n_es_edi_tbai
-#: model:ir.model.fields,field_description:l10n_es_edi_tbai.field_account_move__id
-#: model:ir.model.fields,field_description:l10n_es_edi_tbai.field_account_move_line__id
-#: model:ir.model.fields,field_description:l10n_es_edi_tbai.field_account_move_reversal__id
-#: model:ir.model.fields,field_description:l10n_es_edi_tbai.field_account_move_send__id
-#: model:ir.model.fields,field_description:l10n_es_edi_tbai.field_certificate_certificate__id
 #: model:ir.model.fields,field_description:l10n_es_edi_tbai.field_l10n_es_edi_tbai_document__id
-#: model:ir.model.fields,field_description:l10n_es_edi_tbai.field_res_company__id
-#: model:ir.model.fields,field_description:l10n_es_edi_tbai.field_res_config_settings__id
 msgid "ID"
-msgstr "ID"
+msgstr "Identificador"
 
 #. module: l10n_es_edi_tbai
 #. odoo-python
@@ -445,15 +431,14 @@ msgid "Rejected"
 msgstr "Rechazado"
 
 #. module: l10n_es_edi_tbai
+#: model_terms:ir.ui.view,arch_db:l10n_es_edi_tbai.view_move_form_inherit_l10n_es_edi_tbai
+msgid "Resend to TicketBAI"
+msgstr "Reenviar a TicketBAI"
+
+#. module: l10n_es_edi_tbai
 #: model:ir.model.fields,field_description:l10n_es_edi_tbai.field_l10n_es_edi_tbai_document__response_message
 msgid "Response Message"
 msgstr "Mensaje de respuesta"
-
-#. module: l10n_es_edi_tbai
-#. odoo-python
-#: code:addons/l10n_es_edi_tbai/wizards/account_move_reversal.py:0
-msgid "Reversals mixing invoices with and without TicketBAI are not allowed."
-msgstr "No se permiten reversiones que mezclen facturas con y sin TicketBAI."
 
 #. module: l10n_es_edi_tbai
 #: model_terms:ir.ui.view,arch_db:l10n_es_edi_tbai.view_move_form_inherit_l10n_es_edi_tbai
@@ -689,6 +674,15 @@ msgid ""
 msgstr ""
 "No puede reestablecer a borrador un asiento que se publicó en la cadena de "
 "TicketBai."
+
+#. module: l10n_es_edi_tbai
+#. odoo-python
+#: code:addons/l10n_es_edi_tbai/models/account_move.py:0
+msgid ""
+"Be careful if you modified this vendor bill, "
+"because the official version is still the previous one sent. "
+msgstr "Ten cuidado aquí si modificaste esta factura del proveedor, "
+"porque la versión oficial sigue siendo la precedente que se envió."
 
 #. module: l10n_es_edi_tbai
 #. odoo-python

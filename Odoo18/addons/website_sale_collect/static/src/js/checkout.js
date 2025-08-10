@@ -3,7 +3,7 @@ import publicWidget from '@web/legacy/js/public/public_widget';
 
 publicWidget.registry.WebsiteSaleCheckout.include({
     events: Object.assign({}, publicWidget.registry.WebsiteSaleCheckout.prototype.events, {
-        'click .js_wsc_delete_product': '_onClickDeleteProduct',
+        'click .js_delete_product': '_onClickDeleteProduct',
     }),
 
     // #=== EVENT HANDLERS ===#
@@ -15,10 +15,10 @@ publicWidget.registry.WebsiteSaleCheckout.include({
      * @param {Event} ev
      */
     async _onClickDeleteProduct(ev) {
-        await rpc('/shop/cart/update', {
-            line_id: parseInt(ev.target.dataset.lineId, 10),
+        await rpc('/shop/cart/update_json', {
             product_id: parseInt(ev.target.dataset.productId, 10),
-            quantity: 0,
+            set_qty: 0,
+            display: false,  // No need to return the rendered templates.
         });
         window.location.reload();  // Reload all cart values.
     },
@@ -45,10 +45,11 @@ publicWidget.registry.WebsiteSaleCheckout.include({
      *
      * @override method from `@website_sale/js/checkout`
      */
-    _isDeliveryMethodReady() {
+    _canEnableMainButton() {
         if (this.dmRadios.length === 0) {  // If there are no delivery methods.
             return this._super.apply(this, arguments);  // Skip override.
         }
+        // TODO: move logic below to `_isDeliveryMethodReady` override on master
         const checkedRadio = this.el.querySelector('input[name="o_delivery_radio"]:checked');
         let hasWarning = false;
         if (checkedRadio) {

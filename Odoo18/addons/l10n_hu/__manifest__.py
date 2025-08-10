@@ -21,6 +21,5 @@ Accounting chart and localization for Hungary
     'demo': [
         'demo/demo_company.xml',
     ],
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

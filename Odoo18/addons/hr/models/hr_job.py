@@ -5,8 +5,8 @@ from odoo import api, fields, models, _
 from odoo.addons.web_editor.tools import handle_history_divergence
 
 
-class HrJob(models.Model):
-    _name = 'hr.job'
+class Job(models.Model):
+    _name = "hr.job"
     _description = "Job Position"
     _inherit = ['mail.thread']
     _order = 'sequence'
@@ -14,27 +14,23 @@ class HrJob(models.Model):
     active = fields.Boolean(default=True)
     name = fields.Char(string='Job Position', required=True, index='trigram', translate=True)
     sequence = fields.Integer(default=10)
-    expected_employees = fields.Integer(compute='_compute_employees', string='Total Forecasted Employees',
+    expected_employees = fields.Integer(compute='_compute_employees', string='Total Forecasted Employees', store=True,
         help='Expected number of employees for this job position after new recruitment.')
-    no_of_employee = fields.Integer(compute='_compute_employees', string="Current Number of Employees",
+    no_of_employee = fields.Integer(compute='_compute_employees', string="Current Number of Employees", store=True,
         help='Number of employees currently occupying this job position.')
     no_of_recruitment = fields.Integer(string='Target', copy=False,
         help='Number of new employees you expect to recruit.', default=1)
     employee_ids = fields.One2many('hr.employee', 'job_id', string='Employees', groups='base.group_user')
     description = fields.Html(string='Job Description', sanitize_attributes=False)
     requirements = fields.Text('Requirements')
-    department_id = fields.Many2one('hr.department', string='Department', check_company=True, tracking=True, index='btree_not_null')
-    company_id = fields.Many2one('res.company', string='Company', default=lambda self: self.env.company, tracking=True)
-    contract_type_id = fields.Many2one('hr.contract.type', string='Employment Type', tracking=True)
+    department_id = fields.Many2one('hr.department', string='Department', check_company=True)
+    company_id = fields.Many2one('res.company', string='Company', default=lambda self: self.env.company)
+    contract_type_id = fields.Many2one('hr.contract.type', string='Employment Type')
 
-    _name_company_uniq = models.Constraint(
-        'unique(name, company_id, department_id)',
-        'The name of the job position must be unique per department in company!',
-    )
-    _no_of_recruitment_positive = models.Constraint(
-        'CHECK(no_of_recruitment >= 0)',
-        'The expected number of new employees must be positive.',
-    )
+    _sql_constraints = [
+        ('name_company_uniq', 'unique(name, company_id, department_id)', 'The name of the job position must be unique per department in company!'),
+        ('no_of_recruitment_positive', 'CHECK(no_of_recruitment >= 0)', 'The expected number of new employees must be positive.')
+    ]
 
     @api.depends('no_of_recruitment', 'employee_ids.job_id', 'employee_ids.active')
     def _compute_employees(self):
@@ -47,7 +43,7 @@ class HrJob(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         """ We don't want the current user to be follower of all created job """
-        return super(HrJob, self.with_context(mail_create_nosubscribe=True)).create(vals_list)
+        return super(Job, self.with_context(mail_create_nosubscribe=True)).create(vals_list)
 
     def copy_data(self, default=None):
         vals_list = super().copy_data(default=default)
@@ -56,4 +52,4 @@ class HrJob(models.Model):
     def write(self, vals):
         if len(self) == 1:
             handle_history_divergence(self, 'description', vals)
-        return super().write(vals)
+        return super(Job, self).write(vals)

@@ -6,7 +6,7 @@ from odoo.addons.onboarding.models.onboarding_progress import ONBOARDING_PROGRES
 from odoo.exceptions import ValidationError
 
 
-class OnboardingOnboardingStep(models.Model):
+class OnboardingStep(models.Model):
     _name = 'onboarding.onboarding.step'
     _description = 'Onboarding Step'
     _order = 'sequence asc, id asc'

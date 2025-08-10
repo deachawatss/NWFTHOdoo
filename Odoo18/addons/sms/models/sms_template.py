@@ -4,9 +4,9 @@
 from odoo import api, fields, models, _
 
 
-class SmsTemplate(models.Model):
+class SMSTemplate(models.Model):
     "Templates for sending SMS"
-    _name = 'sms.template'
+    _name = "sms.template"
     _inherit = ['mail.render.mixin', 'template.reset.mixin']
     _description = 'SMS Templates'
 
@@ -47,7 +47,7 @@ class SmsTemplate(models.Model):
 
     def unlink(self):
         self.sudo().mapped('sidebar_action_id').unlink()
-        return super().unlink()
+        return super(SMSTemplate, self).unlink()
 
     def action_create_sidebar_action(self):
         ActWindow = self.env['ir.actions.act_window']

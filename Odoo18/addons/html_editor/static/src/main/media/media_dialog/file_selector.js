@@ -169,10 +169,7 @@ export class FileSelectorControlPanel extends Component {
             return;
         }
         await this.props.uploadFiles(inputFiles);
-        const fileInputEl = this.fileInput.el;
-        if (fileInputEl) {
-            fileInputEl.value = "";
-        }
+        this.fileInput.el.value = "";
     }
 }
 
@@ -366,9 +363,7 @@ export class FileSelector extends Component {
             .then(async (result) => {
                 const blob = await result.blob();
                 blob.id = new Date().getTime();
-                blob.name = new URL(url, window.location.href).pathname
-                    .split("/")
-                    .findLast((s) => s);
+                blob.name = new URL(url).pathname.split("/").findLast((s) => s);
                 await this.uploadFiles([blob]);
             })
             .catch(async () => {
@@ -388,23 +383,20 @@ export class FileSelector extends Component {
                         resolve();
                     };
                     imageEl.onload = () => {
-                        this.onLoadUploadedUrl(url, resolve);
+                        this.uploadService
+                            .uploadUrl(
+                                url,
+                                {
+                                    resModel: this.props.resModel,
+                                    resId: this.props.resId,
+                                },
+                                (attachment) => this.onUploaded(attachment)
+                            )
+                            .then(resolve);
                     };
                     imageEl.src = url;
                 });
             });
-    }
-
-    async onLoadUploadedUrl(url, resolve) {
-        await this.uploadService.uploadUrl(
-            url,
-            {
-                resModel: this.props.resModel,
-                resId: this.props.resId,
-            },
-            (attachment) => this.onUploaded(attachment)
-        );
-        resolve();
     }
 
     async onUploaded(attachment) {
@@ -477,9 +469,9 @@ export class FileSelector extends Component {
         if (firstHiddenAttachmentEl) {
             const attachmentBottom = firstHiddenAttachmentEl.getBoundingClientRect().bottom;
             const attachmentIndex = attachmentEls.indexOf(firstHiddenAttachmentEl);
-            const firstNextRowAttachmentEl = attachmentEls
-                .slice(attachmentIndex)
-                .find((el) => el.getBoundingClientRect().bottom > attachmentBottom);
+            const firstNextRowAttachmentEl = attachmentEls.slice(attachmentIndex).find((el) => {
+                return el.getBoundingClientRect().bottom > attachmentBottom;
+            });
             scrollToEl = firstNextRowAttachmentEl || scrollToEl;
         }
         scrollToEl.scrollIntoView({ block: "end", inline: "nearest", behavior: "smooth" });

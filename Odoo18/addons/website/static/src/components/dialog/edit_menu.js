@@ -61,7 +61,7 @@ export class MenuDialog extends Component {
                     this.url.input.value = input.value;
                 },
             };
-            const unmountAutocompleteWithPages = wUtils.autocompleteWithPages(input, options, this.env);
+            const unmountAutocompleteWithPages = wUtils.autocompleteWithPages(input, options);
             return () => unmountAutocompleteWithPages();
         }, () => [this.urlInputRef.el]);
     }
@@ -200,13 +200,12 @@ export class EditMenuDialog extends Component {
     addMenu(isMegaMenu) {
         this.dialogs.add(MenuDialog, {
             isMegaMenu,
-            url: "#",
             save: (name, url, isNewWindow) => {
                 const newMenu = {
                     fields: {
                         id: `menu_${(new Date).toISOString()}`,
                         name,
-                        url,
+                        url: isMegaMenu ? '#' : url,
                         new_window: isNewWindow,
                         'is_mega_menu': isMegaMenu,
                         sequence: 0,

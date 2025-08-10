@@ -16,7 +16,7 @@ class TestAngloSaxonValuationPurchaseMRP(AccountTestInvoicingCommon):
         super().setUpClass()
         cls.vendor01 = cls.env['res.partner'].create({'name': "Super Vendor"})
 
-        cls.stock_input_account, cls.stock_output_account, cls.stock_valuation_account, cls.expense_account, cls.income_account, cls.stock_journal = _create_accounting_data(cls.env)
+        cls.stock_input_account, cls.stock_output_account, cls.stock_valuation_account, cls.expense_account, cls.stock_journal = _create_accounting_data(cls.env)
         cls.avco_category = cls.env['product.category'].create({
             'name': 'AVCO',
             'property_cost_method': 'average',
@@ -28,7 +28,7 @@ class TestAngloSaxonValuationPurchaseMRP(AccountTestInvoicingCommon):
         })
 
         currency_grp = cls.env.ref('base.group_multi_currency')
-        cls.env.user.write({'group_ids': [(4, currency_grp.id)]})
+        cls.env.user.write({'groups_id': [(4, currency_grp.id)]})
 
         cls.env.company.anglo_saxon_accounting = True
 
@@ -105,12 +105,14 @@ class TestAngloSaxonValuationPurchaseMRP(AccountTestInvoicingCommon):
             'is_storable': True,
             'categ_id': self.avco_category.id,
             'uom_id': uom_litre.id,
+            'uom_po_id': uom_litre.id,
         } for name in ['01', '02']])
 
         kit = self.env['product.product'].create({
             'name': 'Super Kit',
             'type': 'consu',
             'uom_id': uom_unit.id,
+            'uom_po_id': uom_unit.id,
         })
 
         bom_kit = self.env['mrp.bom'].create({
@@ -132,7 +134,7 @@ class TestAngloSaxonValuationPurchaseMRP(AccountTestInvoicingCommon):
         with po_form.order_line.new() as pol_form:
             pol_form.product_id = kit
             pol_form.price_unit = 100
-            pol_form.tax_ids.clear()
+            pol_form.taxes_id.clear()
         po = po_form.save()
         po.button_confirm()
 
@@ -151,6 +153,7 @@ class TestAngloSaxonValuationPurchaseMRP(AccountTestInvoicingCommon):
             'location_id': stock_location.id,
             'location_dest_id': customer_location.id,
             'move_ids': [(0, 0, {
+                'name': kit.name,
                 'product_id': kit.id,
                 'product_uom': kit.uom_id.id,
                 'product_uom_qty': 1.0,

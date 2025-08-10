@@ -28,8 +28,7 @@
                             </t>.
                         </span>
                         <span class="my-0" t-else="">
-                            starts on
-                            <span t-out="formatEventDateBegin"/>
+                            starts on <span t-out="sponsorData.event_date_begin_located"/>
                         </span>
                     </div>
                 </t>

@@ -3,7 +3,7 @@ from ast import literal_eval
 from collections import OrderedDict
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError, MissingError
-from odoo.fields import Domain
+from odoo.osv import expression
 from lxml import etree, html
 import logging
 from random import randint
@@ -24,11 +24,6 @@ class WebsiteSnippetFilter(models.Model):
     limit = fields.Integer(help='The limit is the maximum number of records retrieved', required=True)
     website_id = fields.Many2one('website', string='Website', ondelete='cascade')
     model_name = fields.Char(string='Model name', compute='_compute_model_name')
-    help = fields.Text(
-        string="Description",
-        help="Optional help text describing the filter usage and/or purpose.",
-        translate=True,
-    )
 
     @api.depends('filter_id', 'action_server_id')
     def _compute_model_name(self):
@@ -94,17 +89,16 @@ class WebsiteSnippetFilter(models.Model):
 
         if self.filter_id:
             filter_sudo = self.filter_id.sudo()
-            domain = Domain(filter_sudo._get_eval_domain())
+            domain = filter_sudo._get_eval_domain()
             if 'website_id' in self.env[filter_sudo.model_id]:
-                domain &= self.env['website'].get_current_website().website_domain()
+                domain = expression.AND([domain, self.env['website'].get_current_website().website_domain()])
             if 'company_id' in self.env[filter_sudo.model_id]:
                 website = self.env['website'].get_current_website()
-                domain &= Domain('company_id', 'in', [False, website.company_id.id])
+                domain = expression.AND([domain, [('company_id', 'in', [False, website.company_id.id])]])
             if 'is_published' in self.env[filter_sudo.model_id]:
-                domain &= Domain('is_published', '=', True)
+                domain = expression.AND([domain, [('is_published', '=', True)]])
             if search_domain:
-                search_domain = Domain(search_domain)
-                domain &= search_domain
+                domain = expression.AND([domain, search_domain])
             try:
                 records = self.env[filter_sudo.model_id].sudo(False).with_context(**literal_eval(filter_sudo.context)).search(
                     domain,

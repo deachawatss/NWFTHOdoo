@@ -695,7 +695,7 @@ class TestSurveyInternals(common.TestSurveyCommon, MailCase):
 
     def test_survey_session_leaderboard(self):
         """Check leaderboard rendering with small (max) scores values."""
-        start_time = datetime.datetime(2023, 7, 7, 12, 0, 0)
+        start_time = fields.datetime(2023, 7, 7, 12, 0, 0)
         test_survey = self.env['survey.survey'].create({
             'title': 'Test This Survey',
             'scoring_type': 'scoring_with_answers',
@@ -878,8 +878,6 @@ class TestSurveyInternals(common.TestSurveyCommon, MailCase):
             'time_limit': 60,
             'title': 'Where is india?',
         }])
-        test_survey.session_question_id = q_01
-
         answer_correct, answer_incorrect = q_01.suggested_answer_ids
         user_input = self.env['survey.user_input'].create({'survey_id': test_survey.id, 'is_session_answer': True})
         for (seconds_since_start, answer), expected_score in zip(

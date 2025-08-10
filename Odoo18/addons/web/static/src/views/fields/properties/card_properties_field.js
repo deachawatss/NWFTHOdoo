@@ -4,8 +4,9 @@ import { propertiesField, PropertiesField } from "./properties_field";
 export class CardPropertiesField extends PropertiesField {
     static template = "web.CardPropertiesField";
 
-    async checkDefinitionWriteAccess() {
-        return false;
+    async _checkDefinitionAccess() {
+        // can not edit properties definition in cards
+        this.state.canChangeDefinition = false;
     }
 }
 

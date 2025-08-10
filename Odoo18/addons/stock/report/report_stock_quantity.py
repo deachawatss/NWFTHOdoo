@@ -30,9 +30,6 @@ class ReportStockQuantity(models.Model):
     company_id = fields.Many2one('res.company', readonly=True)
     warehouse_id = fields.Many2one('stock.warehouse', readonly=True)
 
-    def _get_product_qty_col(self):
-        return "q.quantity"
-
     def init(self):
         """
         Because we can transfer a product from a warehouse to another one thanks to a stock move, we need to
@@ -46,8 +43,8 @@ class ReportStockQuantity(models.Model):
             - the dest warehouse is kept if the SM is not the duplicated one and is not an interwarehouse
                 OR the SM is the duplicated one and is an interwarehouse
         """
-        tools.drop_view_if_exists(self.env.cr, 'report_stock_quantity')
-        query = f"""
+        tools.drop_view_if_exists(self._cr, 'report_stock_quantity')
+        query = """
 CREATE or REPLACE VIEW report_stock_quantity AS (
 WITH
     warehouse_cte AS(
@@ -128,7 +125,7 @@ FROM (SELECT
         pp.product_tmpl_id,
         'forecast' as state,
         date.*::date,
-        {self._get_product_qty_col()} as product_qty,
+        q.quantity as product_qty,
         q.company_id,
         wh.id as warehouse_id
     FROM

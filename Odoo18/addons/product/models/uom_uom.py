@@ -1,21 +1,21 @@
 # -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import models, fields, _
+from odoo import api, models, _
 
 
-class UomUom(models.Model):
+class UoM(models.Model):
     _inherit = 'uom.uom'
 
-    product_uom_ids = fields.One2many('product.uom', 'uom_id', string='Barcodes', domain=lambda self: ['|', ('product_id', '=', self.env.context.get('product_id')), ('product_id', 'in', self.env.context.get('product_ids', []))])
-
-    def action_open_packaging_barcodes(self):
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('Packaging Barcodes'),
-            'res_model': 'product.uom',
-            'view_mode': 'list',
-            'view_id': self.env.ref('product.product_uom_list_view').id,
-            'domain': [('uom_id', '=', self.id)],
-        }
+    @api.onchange('rounding')
+    def _onchange_rounding(self):
+        precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
+        if self.rounding < 1.0 / 10.0**precision:
+            return {'warning': {
+                'title': _('Warning!'),
+                'message': _(
+                    "This rounding precision is higher than the Decimal Accuracy"
+                    " (%(digits)s digits).\nThis may cause inconsistencies in computations.\n"
+                    "Please set a precision between %(min_precision)s and 1.",
+                    digits=precision, min_precision=1.0 / 10.0**precision),
+            }}

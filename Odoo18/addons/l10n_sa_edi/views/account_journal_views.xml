@@ -15,7 +15,7 @@
                     <page name="zatca_einvoicing" string="ZATCA" invisible="country_code != 'SA' or type != 'sale'">
                         <group>
                             <group>
-                                <field name="l10n_sa_serial_number"/>
+                                <field name="l10n_sa_serial_number" readonly="1" groups="base.group_no_one"/>
                             </group>
                         </group>
                         <p>
@@ -23,11 +23,6 @@
                                 In order to be able to submit Invoices to ZATCA, the following steps need to be completed:
                             </b>
                             <ol class="mt-2 mb-4">
-                                <li>
-                                    Set a Serial Number for your device
-                                    <i class="fa fa-check text-success ms-1"
-                                       invisible="not l10n_sa_serial_number"/>
-                                </li>
                                 <li>
                                     Request a Compliance Certificate (CCSID)
                                     <i class="fa fa-check text-success ms-1"
@@ -92,19 +87,5 @@
             </field>
         </record>
 
-        <record id="view_account_form_inherit" model="ir.ui.view">
-            <field name="name">account.move.form.inherit</field>
-            <field name="model">account.move</field>
-            <field name="inherit_id" ref="account.view_move_form" />
-            <field name="arch" type="xml">
-                <xpath expr="//button[@name='action_retry_edi_documents_error']" position="attributes">
-                    <attribute name="invisible">l10n_sa_edi_chain_head_id</attribute>
-                </xpath>
-                <xpath expr="//button[@name='action_retry_edi_documents_error']" position="after">
-                    <!-- when invoice is stuck due to chain head, retry action does not make sense (there are no issues with the current invoice), and instead, we redirect them to the affected invoice -->
-                    <button name="action_show_chain_head" type="object" class="oe_link py-0 text-danger" string="Blocking Invoice" invisible="not l10n_sa_edi_chain_head_id"/>
-                </xpath>
-            </field>
-        </record>
     </data>
 </odoo>

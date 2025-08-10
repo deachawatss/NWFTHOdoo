@@ -2,7 +2,6 @@
 
 from odoo import api, models
 
-
 class AccountJournal(models.Model):
     _inherit = "account.journal"
 

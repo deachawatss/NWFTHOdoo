@@ -1,8 +1,7 @@
 import { expect, test } from "@odoo/hoot";
 import { animationFrame } from "@odoo/hoot-mock";
 import { click, manuallyDispatchProgrammaticEvent, press } from "@odoo/hoot-dom";
-import { MAIN_PLUGINS } from "@html_editor/plugin_sets";
-import { DYNAMIC_PLACEHOLDER_PLUGINS } from "@html_editor/backend/plugin_sets";
+import { DYNAMIC_PLACEHOLDER_PLUGINS, MAIN_PLUGINS } from "@html_editor/plugin_sets";
 import { defineModels, models, onRpc, serverState } from "@web/../tests/web_test_helpers";
 import { setupEditor } from "./_helpers/editor";
 import { insertText } from "./_helpers/user_actions";
@@ -27,7 +26,6 @@ test("inserted value from dynamic placeholder should contain the data-oe-t-inlin
             dynamicPlaceholderResModel: "res.users",
         },
     });
-    onRpc("res.users", "mail_get_partner_fields", () => ["partner_id"]);
 
     await insertText(editor, "/dynamicplaceholder");
     await press("Enter");

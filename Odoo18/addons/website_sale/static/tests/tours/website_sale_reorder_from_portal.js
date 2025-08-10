@@ -1,6 +1,8 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
-import { clickOnElement } from '@website/js/tours/tour_utils';
 import { assertCartContains } from '@website_sale/js/tours/tour_utils';
+import { clickOnElement } from '@website/js/tours/tour_utils';
 
 registry.category("web_tour.tours").add('website_sale_reorder_from_portal', {
         url: '/my/orders',
@@ -19,8 +21,8 @@ registry.category("web_tour.tours").add('website_sale_reorder_from_portal', {
             run: "click",
             expectUnloadPage: true,
         },
-        ...assertCartContains({productName: 'Reorder Product 1'}),
-        ...assertCartContains({productName: 'Reorder Product 2'}),
+        assertCartContains({productName: 'Reorder Product 1'}),
+        assertCartContains({productName: 'Reorder Product 2'}),
         {
             content: "Check that quantity is 1",
             trigger: ".js_quantity[value='1']",
@@ -53,8 +55,8 @@ registry.category("web_tour.tours").add('website_sale_reorder_from_portal', {
             run: "click",
             expectUnloadPage: true,
         },
-        ...assertCartContains({productName: 'Reorder Product 1'}),
-        ...assertCartContains({productName: 'Reorder Product 2'}),
+        assertCartContains({productName: 'Reorder Product 1'}),
+        assertCartContains({productName: 'Reorder Product 2'}),
         {
             content: "Check that quantity is 2",
             trigger: ".js_quantity[value='2']",
@@ -87,8 +89,8 @@ registry.category("web_tour.tours").add('website_sale_reorder_from_portal', {
             run: "click",
             expectUnloadPage: true,
         },
-        ...assertCartContains({productName: 'Reorder Product 1'}),
-        ...assertCartContains({productName: 'Reorder Product 2'}),
+        assertCartContains({productName: 'Reorder Product 1'}),
+        assertCartContains({productName: 'Reorder Product 2'}),
         {
             content: "Check that quantity is 1",
             trigger: ".js_quantity[value='1']",
@@ -96,36 +98,17 @@ registry.category("web_tour.tours").add('website_sale_reorder_from_portal', {
         // Fourth reorder making sure confirmation dialog doesn't pop up unnecessary
         {
             content: "Deleting All products from cart",
-            trigger: "div.js_cart_lines",
-        },
-        {
-            trigger: "#cart_products:has(.o_cart_product:eq(3)):not(:has(.o_cart_product:eq(4)))",
-        },
-        {
-            trigger: `a.js_delete_product:first`,
-            run: "click",
-        },
-        {
-            trigger: "#cart_products:has(.o_cart_product:eq(2)):not(:has(.o_cart_product:eq(3)))",
-        },
-        {
-            trigger: `a.js_delete_product:first`,
-            run: "click",
-        },
-        {
-            trigger: "#cart_products:has(.o_cart_product:eq(1)):not(:has(.o_cart_product:eq(2)))",
-        },
-        {
-            trigger: `a.js_delete_product:first`,
-            run: "click",
-        },
-        {
-            trigger: "#cart_products:has(.o_cart_product:eq(0)):not(:has(.o_cart_product:eq(1)))",
-        },
-        {
-            trigger: `a.js_delete_product:first`,
-            run: "click",
-            expectUnloadPage: true,
+            trigger: 'div.js_cart_lines',
+            run: async () => {
+                $('a.js_delete_product:first').click();
+                await new Promise((r) => setTimeout(r, 1000));
+                $('a.js_delete_product:first').click();
+                await new Promise((r) => setTimeout(r, 1000));
+                $('a.js_delete_product:first').click();
+                await new Promise((r) => setTimeout(r, 1000));
+                $('a.js_delete_product:first').click();
+                await new Promise((r) => setTimeout(r, 1000));
+            }
         },
         {
             content: "Go to my orders",
@@ -148,7 +131,7 @@ registry.category("web_tour.tours").add('website_sale_reorder_from_portal', {
             run: "click",
             expectUnloadPage: true,
         },
-        ...assertCartContains({productName: 'Reorder Product 1'}),
+        assertCartContains({productName: 'Reorder Product 1'}),
         {
             content: "Check that quantity is 1",
             trigger: ".js_quantity[value='1']",

@@ -1,3 +1,4 @@
+/** @odoo-module **/
 import { startWebClient } from "@web/start";
 import { SubcontractingPortalWebClient } from "./subcontracting_portal";
 import { registry } from "@web/core/registry";

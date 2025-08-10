@@ -1,7 +1,8 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import models
-from odoo.fields import Domain
+from odoo.osv.expression import OR
 
 
 class StockPicking(models.Model):
@@ -14,5 +15,5 @@ class StockPicking(models.Model):
             return action
         domain = action['domain']
         domain_subcontracting = [('id', 'in', (subcontracted_productions.move_raw_ids | subcontracted_productions.move_finished_ids).stock_valuation_layer_ids.ids)]
-        domain = Domain.OR([domain, domain_subcontracting])
+        domain = OR([domain, domain_subcontracting])
         return dict(action, domain=domain)

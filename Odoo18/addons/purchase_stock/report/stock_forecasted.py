@@ -4,14 +4,14 @@
 from odoo import models
 
 
-class StockForecasted_Product_Product(models.AbstractModel):
+class StockForecasted(models.AbstractModel):
     _inherit = 'stock.forecasted_product_product'
 
     def _get_report_header(self, product_template_ids, product_ids, wh_location_ids):
         res = super()._get_report_header(product_template_ids, product_ids, wh_location_ids)
         domain = [('state', 'in', ['draft', 'sent', 'to approve'])]
         domain += self._product_purchase_domain(product_template_ids, product_ids)
-        warehouse_id = self.env.context.get('warehouse_id', False)
+        warehouse_id = self.env['stock.warehouse']._get_warehouse_id_from_context()
         if warehouse_id:
             domain += [('order_id.picking_type_id.warehouse_id', '=', warehouse_id)]
             company = self.env['stock.warehouse'].browse(warehouse_id).company_id

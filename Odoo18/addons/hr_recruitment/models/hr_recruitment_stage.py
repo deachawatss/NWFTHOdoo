@@ -4,8 +4,8 @@
 from odoo import api, fields, models, _
 
 
-class HrRecruitmentStage(models.Model):
-    _name = 'hr.recruitment.stage'
+class RecruitmentStage(models.Model):
+    _name = "hr.recruitment.stage"
     _description = "Recruitment Stages"
     _order = 'sequence'
 
@@ -34,11 +34,11 @@ class HrRecruitmentStage(models.Model):
 
     @api.model
     def default_get(self, fields):
-        if self.env.context and self.env.context.get('default_job_id') and not self.env.context.get('hr_recruitment_stage_mono', False):
-            context = dict(self.env.context)
+        if self._context and self._context.get('default_job_id') and not self._context.get('hr_recruitment_stage_mono', False):
+            context = dict(self._context)
             context.pop('default_job_id')
             self = self.with_context(context)
-        return super().default_get(fields)
+        return super(RecruitmentStage, self).default_get(fields)
 
     @api.depends('hired_stage')
     def _compute_is_warning_visible(self):

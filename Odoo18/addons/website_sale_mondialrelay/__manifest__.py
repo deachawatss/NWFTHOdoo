@@ -20,7 +20,6 @@ This module allow your customer to choose a Point Relais® and use it as shippin
             'website_sale_mondialrelay/static/src/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
     'auto_install': True,
 }

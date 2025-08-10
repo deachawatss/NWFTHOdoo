@@ -15,7 +15,7 @@ export const graphView = {
     Model: GraphModel,
     ArchParser: GraphArchParser,
     SearchModel: GraphSearchModel,
-    searchMenuTypes: ["filter", "groupBy", "favorite"],
+    searchMenuTypes: ["filter", "groupBy", "comparison", "favorite"],
     buttonTemplate: "web.GraphView.Buttons",
 
     props: (genericProps, view) => {

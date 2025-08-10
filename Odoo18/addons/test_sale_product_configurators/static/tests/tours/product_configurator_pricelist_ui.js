@@ -1,5 +1,7 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
-import { stepUtils } from "@web_tour/tour_utils";
+import { stepUtils } from "@web_tour/tour_service/tour_utils";
 import configuratorTourUtils from "@sale/js/tours/product_configurator_tour_utils";
 import tourUtils from "@sale/js/tours/tour_utils";
 
@@ -40,16 +42,16 @@ registry.category("web_tour.tours").add('sale_product_configurator_pricelist_tou
         ...tourUtils.addProduct("Customizable Desk (TEST)"),
         {
             content: "check price is correct (USD)",
-            trigger: 'main.modal-body>table:nth-child(1)>tbody>tr:nth-child(1)>td:nth-child(3) span:contains("750.00")',
+            trigger: 'main.modal-body>table:nth-child(1)>tbody>tr:nth-child(1)>td:nth-child(4) span:contains("750.00")',
         },
         {
             content: "add one more",
-            trigger: 'main.modal-body>table:nth-child(1)>tbody>tr:nth-child(1)>td:nth-child(4)>div>button:has(i.fa-plus)',
+            trigger: 'main.modal-body>table:nth-child(1)>tbody>tr:nth-child(1)>td:nth-child(3)>div>button:has(i.fa-plus)',
             run: "click",
         },
         {
             content: "check price for 2",
-            trigger: 'main.modal-body>table:nth-child(1)>tbody>tr:nth-child(1)>td:nth-child(3) span:contains("600.00")',
+            trigger: 'main.modal-body>table:nth-child(1)>tbody>tr:nth-child(1)>td:nth-child(4) span:contains("600.00")',
         },
         configuratorTourUtils.addOptionalProduct("Conference Chair (TEST)"),
         configuratorTourUtils.increaseProductQuantity("Conference Chair (TEST)"),

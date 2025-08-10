@@ -3,10 +3,11 @@
 
 from markupsafe import Markup
 from odoo import api, fields, models, _, tools
-from odoo.fields import Domain
+from odoo.osv import expression
 
 
-class MailingMailing(models.Model):
+class MassMailing(models.Model):
+    _name = 'mailing.mailing'
     _inherit = 'mailing.mailing'
 
     sale_quotation_count = fields.Integer('Quotation Count', compute='_compute_sale_quotation_count')
@@ -24,7 +25,7 @@ class MailingMailing(models.Model):
 
     @api.depends('mailing_domain')
     def _compute_sale_invoiced_amount(self):
-        domain = Domain.AND([
+        domain = expression.AND([
             [('source_id', 'in', self.source_id.ids)],
             [('state', 'not in', ['draft', 'cancel'])]
         ])
@@ -56,7 +57,7 @@ class MailingMailing(models.Model):
         }
 
     def action_redirect_to_invoiced(self):
-        domain = Domain.AND([
+        domain = expression.AND([
             [('source_id', '=', self.source_id.id)],
             [('state', 'not in', ['draft', 'cancel'])]
         ])
@@ -83,7 +84,7 @@ class MailingMailing(models.Model):
 
     def _prepare_statistics_email_values(self):
         self.ensure_one()
-        values = super()._prepare_statistics_email_values()
+        values = super(MassMailing, self)._prepare_statistics_email_values()
         if not self.user_id:
             return values
 

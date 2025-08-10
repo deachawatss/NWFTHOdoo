@@ -4,7 +4,7 @@
 from odoo import models, fields
 
 
-class L10n_Eg_EdiUomCode(models.Model):
+class UomCode(models.Model):
     _name = 'l10n_eg_edi.uom.code'
     _description = 'ETA code for the unit of measures'
 

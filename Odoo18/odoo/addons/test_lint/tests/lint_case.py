@@ -1,11 +1,9 @@
 import ast
 import fnmatch
 import os
-from collections.abc import Iterable
-from os.path import join as opj
-from typing import Generic, TypeVar
+j = os.path.join
 
-from odoo.modules import Manifest
+from odoo.modules import get_modules, get_module_path
 from odoo.tests import BaseCase
 
 
@@ -17,31 +15,22 @@ class LintCase(BaseCase):
         """ Yields the paths of all the module files matching the provided globs
         (AND-ed)
         """
-        if modules is None:
-            module_roots = [m.path for m in Manifest.all_addon_manifests()]
-        else:
-            module_roots = [m.path for name in modules if (m := Manifest.for_addon(name))]
-        for modroot in module_roots:
+        for modroot in map(get_module_path, modules or get_modules()):
             for root, _, fnames in os.walk(modroot):
-                fnames = [opj(root, n) for n in fnames]
+                fnames = [j(root, n) for n in fnames]
                 for glob in globs:
                     fnames = fnmatch.filter(fnames, glob)
                 yield from fnames
 
 
-T = TypeVar('T')
-class NodeVisitor(Generic[T]):
-    """An expanded NodeVisitor which yields / returns the result of its visits.
+class NodeVisitor():
+    """Simple NodeVisitor."""
 
-    WARNING: ``visit_$NODE`` methods *must* return an iterable, and the result
-             of ``visit`` *must* be consumed
-    """
-
-    def visit(self, node: ast.AST) -> Iterable[T]:
+    def visit(self, node):
         method = 'visit_' + node.__class__.__name__
         visitor = getattr(self, method, self.generic_visit)
         return visitor(node)
 
-    def generic_visit(self, node: ast.AST) -> Iterable[T]:
+    def generic_visit(self, node):
         for child in ast.iter_child_nodes(node):
             yield from self.visit(child)

@@ -317,6 +317,7 @@ describe("formatFloat", () => {
         expect(formatFloat(-1e21, options)).toBe("-1e+21");
         expect(formatFloat(-1.0045e22, options)).toBe("-1e+22");
         expect(formatFloat(-1.012e43, options)).toBe("-1.01e+43");
+        expect(formatFloat(-0.0000001, options)).toBe("0.00");
 
         Object.assign(options, { decimals: 2, minDigits: 2 });
         expect(formatFloat(1020000, options)).toBe("1,020k");
@@ -330,16 +331,7 @@ describe("formatFloat", () => {
         expect(formatFloat(1.0045e22, options)).toBe("1.005e+22");
         expect(formatFloat(-1.0045e22, options)).toBe("-1.004e+22");
 
-        [
-            { val: 2.35, decimals: 1, resFixed: "2.4", resHuman: "2.4" },
-            { val: 2.55, decimals: 1, resFixed: "2.5", resHuman: "2.6" },
-            { val: 2.925, decimals: 2, resFixed: "2.92", resHuman: "2.93" },
-            { val: 1.925, decimals: 2, resFixed: "1.93", resHuman: "1.93" },
-        ].forEach(({ val, decimals, resFixed, resHuman }) => {
-            Object.assign(options, { decimals });
-            const value = parseFloat(val);
-            expect(value.toFixed(decimals)).toBe(resFixed);
-            expect(formatFloat(value, options)).toBe(resHuman);
-        });
+        Object.assign(options, { humanReadable: false });
+        expect(formatFloat(-0.0000001, options)).toBe("0.00");
     });
 });

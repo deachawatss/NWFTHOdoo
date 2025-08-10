@@ -3,14 +3,13 @@
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
-from odoo.tools import float_is_zero
+from odoo.tools import float_is_zero, float_compare
 
 from itertools import groupby
 from collections import defaultdict
 
-
 class StockPicking(models.Model):
-    _inherit = 'stock.picking'
+    _inherit='stock.picking'
 
     pos_session_id = fields.Many2one('pos.session', index=True)
     pos_order_id = fields.Many2one('pos.order', index=True)
@@ -32,7 +31,7 @@ class StockPicking(models.Model):
         """We'll create some picking based on order_lines"""
 
         pickings = self.env['stock.picking']
-        stockable_lines = lines.filtered(lambda l: l.product_id.type == 'consu' and not l.product_id.uom_id.is_zero(l.qty))
+        stockable_lines = lines.filtered(lambda l: l.product_id.type == 'consu' and not float_is_zero(l.qty, precision_rounding=l.product_id.uom_id.rounding))
         if not stockable_lines:
             return pickings
         positive_lines = stockable_lines.filtered(lambda l: l.qty > 0)
@@ -76,6 +75,7 @@ class StockPicking(models.Model):
 
     def _prepare_stock_move_vals(self, first_line, order_lines):
         return {
+            'name': first_line.name,
             'product_uom': first_line.product_id.uom_id.id,
             'picking_id': self.id,
             'picking_type_id': self.picking_type_id.id,
@@ -91,7 +91,7 @@ class StockPicking(models.Model):
         self.ensure_one()
         lines_by_product = groupby(sorted(lines, key=lambda l: l.product_id.id), key=lambda l: l.product_id.id)
         move_vals = []
-        for _product, olines in lines_by_product:
+        for dummy, olines in lines_by_product:
             order_lines = self.env['pos.order.line'].concat(*olines)
             move_vals.append(self._prepare_stock_move_vals(order_lines[0], order_lines))
         moves = self.env['stock.move'].create(move_vals)
@@ -129,9 +129,8 @@ class StockPicking(models.Model):
                 for line in rec.move_line_ids:
                     if not line.product_id.is_storable or line.product_id.valuation != 'real_time':
                         continue
-                    accounts = line.product_id._get_product_accounts()
-                    out = accounts['stock_output']
-                    exp = accounts['expense']
+                    out = line.product_id.categ_id.property_stock_account_output_categ_id
+                    exp = line.product_id._get_product_accounts()['expense']
                     line_cost = next(iter(line.move_id._get_price_unit().values())) * line.quantity_product_uom
                     if line_cost != 0:
                         cost_per_account[out, exp] += line_cost
@@ -161,7 +160,6 @@ class StockPicking(models.Model):
                 move.action_post()
         return res
 
-
 class StockPickingType(models.Model):
     _name = 'stock.picking.type'
     _inherit = ['stock.picking.type', 'pos.load.mixin']
@@ -183,19 +181,17 @@ class StockPickingType(models.Model):
                 raise ValidationError(_("You cannot archive '%(picking_type)s' as it is used by POS configuration '%(config)s'.", picking_type=picking_type.name, config=pos_config.name))
 
     @api.model
-    def _load_pos_data_domain(self, data, config):
-        return [('id', '=', config.picking_type_id.id)]
+    def _load_pos_data_domain(self, data):
+        return [('id', '=', data['pos.config']['data'][0]['picking_type_id'])]
 
     @api.model
-    def _load_pos_data_fields(self, config):
+    def _load_pos_data_fields(self, config_id):
         return ['id', 'use_create_lots', 'use_existing_lots']
-
 
 class ProcurementGroup(models.Model):
     _inherit = 'procurement.group'
 
     pos_order_id = fields.Many2one('pos.order', 'POS Order')
-
 
 class StockMove(models.Model):
     _inherit = 'stock.move'

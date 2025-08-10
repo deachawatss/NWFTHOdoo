@@ -73,9 +73,9 @@ class PosOrder(models.Model):
             raise UserError(self.env._("Please create an invoice for an amount over %s.", self.company_id.l10n_es_simplified_invoice_limit))
 
         if self.refunded_order_id:
-            if self.to_invoice and not self.refunded_order_id.account_move:
+            if self.to_invoice and self.refunded_order_id.state != 'invoiced':
                 raise UserError(self.env._("You cannot invoice a refund whose linked order hasn't been invoiced."))
-            if not self.to_invoice and self.refunded_order_id.account_move:
+            if not self.to_invoice and self.refunded_order_id.state == 'invoiced':
                 raise UserError(self.env._("Please invoice the refund as the linked order has been invoiced."))
 
         return super()._process_saved_order(draft)
@@ -90,10 +90,8 @@ class PosOrder(models.Model):
 
     def _prepare_invoice_vals(self):
         vals = super()._prepare_invoice_vals()
-        mapped_tbai_req = self.mapped('l10n_es_tbai_is_required')
-        if len(set(mapped_tbai_req)) > 1:
-            raise UserError(self.env._("You cannot mix orders that require TicketBAI with those that don't."))
-        if mapped_tbai_req[0]:
+
+        if self.l10n_es_tbai_is_required:
             vals['l10n_es_tbai_refund_reason'] = self.l10n_es_tbai_refund_reason
 
         return vals
@@ -159,6 +157,12 @@ class PosOrder(models.Model):
         for base_line in base_lines:
             base_line['name'] = base_line['record'].name
         self.env['l10n_es_edi_tbai.document']._add_base_lines_tax_amounts(base_lines, self.company_id)
+
+        for base_line in base_lines:
+            sign = base_line['is_refund'] and -1 or 1
+            base_line['gross_price_unit'] = sign * base_line['gross_price_unit']
+            base_line['discount_amount'] = sign * base_line['discount_amount']
+            base_line['price_total'] = sign * base_line['price_total']
 
         return {
             'is_sale': True,

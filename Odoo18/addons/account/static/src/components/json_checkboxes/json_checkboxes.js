@@ -36,7 +36,7 @@ export class JsonCheckboxes extends Component {
 
 export const jsonCheckboxes = {
     component: JsonCheckboxes,
-    supportedTypes: ["json"],
+    supportedTypes: ["jsonb"],
 }
 
 registry.category("fields").add("account_json_checkboxes", jsonCheckboxes);

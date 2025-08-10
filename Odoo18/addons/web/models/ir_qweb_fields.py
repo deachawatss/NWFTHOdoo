@@ -10,13 +10,15 @@ from odoo import api, models, fields
 from odoo.tools import html_escape as escape
 
 
-class IrQwebFieldImage(models.AbstractModel):
+class Image(models.AbstractModel):
     """
     Widget options:
 
     ``class``
         set as attribute on the generated <img> tag
     """
+    _name = 'ir.qweb.field.image'
+    _description = 'Qweb Field Image'
     _inherit = 'ir.qweb.field.image'
 
     def _get_src_urls(self, record, field_name, options):
@@ -111,8 +113,8 @@ class IrQwebFieldImage(models.AbstractModel):
 
         return Markup(''.join(img))
 
-
-class IrQwebFieldImage_Url(models.AbstractModel):
+class ImageUrlConverter(models.AbstractModel):
+    _description = 'Qweb Field Image'
     _inherit = 'ir.qweb.field.image_url'
 
     def _get_src_urls(self, record, field_name, options):

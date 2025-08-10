@@ -1,9 +1,10 @@
 from odoo import Command, models, fields, api, _
+from odoo.addons.account.models.exceptions import TaxClosingNonPostedDependingMovesError
 from odoo.exceptions import UserError
 
 
 class ValidateAccountMove(models.TransientModel):
-    _name = 'validate.account.move'
+    _name = "validate.account.move"
     _description = "Validate Account Move"
 
     move_ids = fields.Many2many('account.move')
@@ -36,14 +37,13 @@ class ValidateAccountMove(models.TransientModel):
         for wizard in self:
             wizard.abnormal_amount_partner_ids = wizard.move_ids.filtered('abnormal_amount_warning').partner_id
 
-    @api.model
-    def default_get(self, fields):
-        result = super().default_get(fields)
-        if 'move_ids' in fields and not result.get('move_ids'):
-            if self.env.context.get('active_model') == 'account.move':
-                domain = [('id', 'in', self.env.context.get('active_ids', [])), ('state', '=', 'draft')]
-            elif self.env.context.get('active_model') == 'account.journal':
-                domain = [('journal_id', '=', self.env.context.get('active_id')), ('state', '=', 'draft')]
+    def default_get(self, fields_list):
+        result = super().default_get(fields_list)
+        if 'move_ids' in fields_list and not result.get('move_ids'):
+            if self._context.get('active_model') == 'account.move':
+                domain = [('id', 'in', self._context.get('active_ids', [])), ('state', '=', 'draft')]
+            elif self._context.get('active_model') == 'account.journal':
+                domain = [('journal_id', '=', self._context.get('active_id')), ('state', '=', 'draft')]
             else:
                 raise UserError(_("Missing 'active_model' in context."))
 
@@ -61,8 +61,23 @@ class ValidateAccountMove(models.TransientModel):
             self.abnormal_date_partner_ids.ignore_abnormal_invoice_date = True
         if self.force_post:
             self.move_ids.auto_post = 'no'
-        self.move_ids._post(not self.force_post)
-
+        try:
+            self.move_ids._post(not self.force_post)
+        except TaxClosingNonPostedDependingMovesError as exception:
+            return {
+                "type": "ir.actions.client",
+                "tag": "account_reports.redirect_action",
+                "target": "new",
+                "name": "Depending Action",
+                "params": {
+                    "depending_action": exception.args[0],
+                    "message": _("It seems there is some depending closing move to be posted"),
+                    "button_text": _("Depending moves"),
+                },
+                'context': {
+                    'dialog_size': 'medium',
+                },
+            }
         if autopost_bills_wizard := self.move_ids._show_autopost_bills_wizard():
             return autopost_bills_wizard
         return {'type': 'ir.actions.act_window_close'}

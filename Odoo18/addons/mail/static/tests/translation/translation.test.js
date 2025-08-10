@@ -1,4 +1,6 @@
+import { describe, test } from "@odoo/hoot";
 import {
+    assertSteps,
     click,
     contains,
     defineMailModels,
@@ -6,9 +8,9 @@ import {
     openFormView,
     start,
     startServer,
+    step,
 } from "@mail/../tests/mail_test_helpers";
-import { describe, test } from "@odoo/hoot";
-import { asyncStep, serverState, waitForSteps } from "@web/../tests/web_test_helpers";
+import { serverState } from "@web/../tests/web_test_helpers";
 
 describe.current.tags("desktop");
 defineMailModels();
@@ -23,7 +25,7 @@ test("Toggle display of original/translated version of chatter message", async (
         res_id: partnerId,
     });
     onRpcBefore("/mail/message/translate", () => {
-        asyncStep("Request");
+        step("Request");
         return { body: "To bad weather, good face.", lang_name: "Spanish", error: null };
     });
     await start();
@@ -41,7 +43,7 @@ test("Toggle display of original/translated version of chatter message", async (
     await contains(".o-mail-Message", { text: "Al mal tiempo, buena cara." });
     await click("[title='Translate']");
     // The translation button should not trigger more than one external request for a single message.
-    await waitForSteps(["Request"]);
+    await assertSteps(["Request"]);
 });
 
 test("translation of email message", async () => {
@@ -54,11 +56,9 @@ test("translation of email message", async () => {
         author_id: partnerId,
         res_id: partnerId,
     });
-    onRpcBefore("/mail/message/translate", (args) => ({
-        body: "To bad weather, good face.",
-        lang_name: "Spanish",
-        error: null,
-    }));
+    onRpcBefore("/mail/message/translate", (args) => {
+        return { body: "To bad weather, good face.", lang_name: "Spanish", error: null };
+    });
     await start();
     await openFormView("res.partner", partnerId);
     await contains("span", {
@@ -66,7 +66,7 @@ test("translation of email message", async () => {
         parent: [".o-mail-Message-body > div", { shadowRoot: true }],
     });
     await click("button[title='Expand']");
-    await click(".o-dropdown-item:contains('Translate')");
+    await click("span[title='Translate']");
     await contains("span", {
         text: "To bad weather, good face.",
         parent: [".o-mail-Message-body > div", { shadowRoot: true }],
@@ -75,7 +75,7 @@ test("translation of email message", async () => {
         text: "(Translated from: Spanish)",
     });
     await click("button[title='Expand']");
-    await click(".o-dropdown-item:contains('Revert')");
+    await click("span[title='Revert']");
     await contains("span", {
         text: "Al mal tiempo, buena cara.",
         parent: [".o-mail-Message-body > div", { shadowRoot: true }],

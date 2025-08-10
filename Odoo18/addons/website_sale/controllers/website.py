@@ -8,39 +8,35 @@ from odoo.http import request, route
 from odoo.addons.base.models.ir_qweb_fields import nl2br_enclose
 from odoo.addons.website.controllers import main
 from odoo.addons.website.controllers.form import WebsiteForm
-from odoo.addons.website_sale.models.website import (
-    FISCAL_POSITION_SESSION_CACHE_KEY,
-    PRICELIST_SESSION_CACHE_KEY,
-    PRICELIST_SELECTED_SESSION_CACHE_KEY
-)
 
 
 class WebsiteSaleForm(WebsiteForm):
 
     @route('/website/form/shop.sale.order', type='http', auth="public", methods=['POST'], website=True)
     def website_form_saleorder(self, **kwargs):
-        model_record = request.env.ref('sale.model_sale_order').sudo()
+        model_record = request.env.ref('sale.model_sale_order')
         try:
             data = self.extract_data(model_record, kwargs)
         except ValidationError as e:
             return json.dumps({'error_fields': e.args[0]})
 
-        if not (order_sudo := request.cart):
+        order = request.website.sale_get_order()
+        if not order:
             return json.dumps({'error': "No order found; please add a product to your cart."})
 
         if data['record']:
-            order_sudo.write(data['record'])
+            order.write(data['record'])
 
         if data['custom']:
-            order_sudo._message_log(
+            order._message_log(
                 body=nl2br_enclose(data['custom'], 'p'),
                 message_type='comment',
             )
 
         if data['attachments']:
-            self.insert_attachment(model_record, order_sudo.id, data['attachments'])
+            self.insert_attachment(model_record, order.id, data['attachments'])
 
-        return json.dumps({'id': order_sudo.id})
+        return json.dumps({'id': order.id})
 
 
 class Website(main.Website):
@@ -48,9 +44,8 @@ class Website(main.Website):
     def _login_redirect(self, uid, redirect=None):
         # If we are logging in, clear the current pricelist to be able to find
         # the pricelist that corresponds to the user afterwards.
-        request.session.pop(PRICELIST_SESSION_CACHE_KEY, None)
-        request.session.pop(FISCAL_POSITION_SESSION_CACHE_KEY, None)
-        request.session.pop(PRICELIST_SELECTED_SESSION_CACHE_KEY, None)
+        request.session.pop('website_sale_current_pl', None)
+        request.session.pop('website_sale_selected_pl_id', None)
         return super()._login_redirect(uid, redirect=redirect)
 
     @route()
@@ -76,9 +71,9 @@ class Website(main.Website):
 
     @route()
     def change_lang(self, lang, **kwargs):
-        if cart := request.cart:
-            request.env.add_to_compute(
-                cart.order_line._fields['name'],
-                cart.order_line.with_context(lang=lang),
-            )
+        order_sudo = request.website.sale_get_order()
+        request.env.add_to_compute(
+            order_sudo.order_line._fields['name'],
+            order_sudo.order_line.with_context(lang=lang),
+        )
         return super().change_lang(lang, **kwargs)

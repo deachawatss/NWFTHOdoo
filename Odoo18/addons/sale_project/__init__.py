@@ -4,7 +4,6 @@
 from . import models
 from . import controllers
 from . import report
-from . import wizard
 
 def _set_allow_billable_in_project(env):
     Project = env['project.project']

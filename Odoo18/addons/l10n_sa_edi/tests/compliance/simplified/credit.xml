@@ -9,6 +9,9 @@
   <cbc:DocumentCurrencyCode>SAR</cbc:DocumentCurrencyCode>
   <cbc:TaxCurrencyCode>SAR</cbc:TaxCurrencyCode>
   <cbc:BuyerReference>Mohammed Ali</cbc:BuyerReference>
+  <cac:OrderReference>
+    <cbc:ID>Test</cbc:ID>
+  </cac:OrderReference>
   <cac:BillingReference>
     <cac:InvoiceDocumentReference>
       <cbc:ID>INV/2023/00034</cbc:ID>
@@ -50,7 +53,7 @@
         <cbc:CityName>&#1575;&#1604;&#1605;&#1583;&#1610;&#1606;&#1577; &#1575;&#1604;&#1605;&#1606;&#1608;&#1585;&#1577;</cbc:CityName>
         <cbc:PostalZone>42317</cbc:PostalZone>
         <cbc:CountrySubentity>Riyadh</cbc:CountrySubentity>
-        <cbc:CountrySubentityCode>RYA</cbc:CountrySubentityCode>
+        <cbc:CountrySubentityCode>RUH</cbc:CountrySubentityCode>
         <cac:Country>
           <cbc:IdentificationCode>SA</cbc:IdentificationCode>
           <cbc:Name>Saudi Arabia</cbc:Name>
@@ -67,7 +70,7 @@
           <cbc:CityName>&#1575;&#1604;&#1605;&#1583;&#1610;&#1606;&#1577; &#1575;&#1604;&#1605;&#1606;&#1608;&#1585;&#1577;</cbc:CityName>
           <cbc:PostalZone>42317</cbc:PostalZone>
           <cbc:CountrySubentity>Riyadh</cbc:CountrySubentity>
-          <cbc:CountrySubentityCode>RYA</cbc:CountrySubentityCode>
+          <cbc:CountrySubentityCode>RUH</cbc:CountrySubentityCode>
           <cac:Country>
             <cbc:IdentificationCode>SA</cbc:IdentificationCode>
             <cbc:Name>Saudi Arabia</cbc:Name>
@@ -88,7 +91,7 @@
           <cbc:CityName>&#1575;&#1604;&#1605;&#1583;&#1610;&#1606;&#1577; &#1575;&#1604;&#1605;&#1606;&#1608;&#1585;&#1577;</cbc:CityName>
           <cbc:PostalZone>42317</cbc:PostalZone>
           <cbc:CountrySubentity>Riyadh</cbc:CountrySubentity>
-          <cbc:CountrySubentityCode>RYA</cbc:CountrySubentityCode>
+          <cbc:CountrySubentityCode>RUH</cbc:CountrySubentityCode>
           <cac:Country>
             <cbc:IdentificationCode>SA</cbc:IdentificationCode>
             <cbc:Name>Saudi Arabia</cbc:Name>
@@ -113,7 +116,7 @@
       </cac:PartyName>
       <cac:PostalAddress>
         <cbc:CountrySubentity>Riyadh</cbc:CountrySubentity>
-        <cbc:CountrySubentityCode>RYA</cbc:CountrySubentityCode>
+        <cbc:CountrySubentityCode>RUH</cbc:CountrySubentityCode>
         <cac:Country>
           <cbc:IdentificationCode>SA</cbc:IdentificationCode>
           <cbc:Name>Saudi Arabia</cbc:Name>
@@ -123,7 +126,7 @@
         <cbc:RegistrationName>Mohammed Ali</cbc:RegistrationName>
         <cac:RegistrationAddress>
           <cbc:CountrySubentity>Riyadh</cbc:CountrySubentity>
-          <cbc:CountrySubentityCode>RYA</cbc:CountrySubentityCode>
+          <cbc:CountrySubentityCode>RUH</cbc:CountrySubentityCode>
           <cac:Country>
             <cbc:IdentificationCode>SA</cbc:IdentificationCode>
             <cbc:Name>Saudi Arabia</cbc:Name>
@@ -137,7 +140,7 @@
         <cbc:RegistrationName>Mohammed Ali</cbc:RegistrationName>
         <cac:RegistrationAddress>
           <cbc:CountrySubentity>Riyadh</cbc:CountrySubentity>
-          <cbc:CountrySubentityCode>RYA</cbc:CountrySubentityCode>
+          <cbc:CountrySubentityCode>RUH</cbc:CountrySubentityCode>
           <cac:Country>
             <cbc:IdentificationCode>SA</cbc:IdentificationCode>
             <cbc:Name>Saudi Arabia</cbc:Name>

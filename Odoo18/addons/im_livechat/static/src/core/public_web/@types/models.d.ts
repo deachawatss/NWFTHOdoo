@@ -1,18 +1,17 @@
 declare module "models" {
     export interface DiscussApp {
-        defaultLivechatCategory: DiscussAppCategory;
-        livechats: Thread[];
-    }
-    export interface DiscussAppCategory {
-        livechat_channel_id: LivechatChannel;
-    }
-    export interface LivechatChannel {
-        appCategory: DiscussAppCategory;
-        threads: Thread[];
+        defaultLivechatCategory: DiscussAppCategory,
+        livechats: Thread,
     }
     export interface Thread {
-        appAsLivechats: DiscussApp;
-        country_id: Country;
-        livechat_channel_id: LivechatChannel;
+        anonymous_country: Country,
+        anonymous_name: String,
+        appAsLivechats: DiscussApp,
+    }
+    export interface Store {
+        has_access_livechat: boolean,
+    }
+    export interface LivechatChannel {
+        threads: Thread[],
     }
 }

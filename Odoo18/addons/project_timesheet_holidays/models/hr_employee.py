@@ -5,7 +5,7 @@ from odoo import api, fields, models
 from collections import defaultdict
 
 
-class HrEmployee(models.Model):
+class Employee(models.Model):
     _inherit = 'hr.employee'
 
     @api.model_create_multi
@@ -23,7 +23,7 @@ class HrEmployee(models.Model):
     def write(self, vals):
         if vals.get('active'):
             inactive_emp = self.filtered(lambda e: not e.active)
-        result = super().write(vals)
+        result = super(Employee, self).write(vals)
         self_company = self.with_context(allowed_company_ids=self.company_id.ids)
         if 'active' in vals:
             if vals.get('active'):
@@ -40,7 +40,7 @@ class HrEmployee(models.Model):
         return result
 
     def _delete_future_public_holidays_timesheets(self):
-        future_timesheets = self.env['account.analytic.line'].sudo().search([('global_leave_id', '!=', False), ('date', '>=', fields.Date.today()), ('employee_id', 'in', self.ids)])
+        future_timesheets = self.env['account.analytic.line'].sudo().search([('global_leave_id', '!=', False), ('date', '>=', fields.date.today()), ('employee_id', 'in', self.ids)])
         future_timesheets.write({'global_leave_id': False})
         future_timesheets.unlink()
 

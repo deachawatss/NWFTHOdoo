@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { HierarchyNavbar } from "./hierarchy_navbar";
 import { Layout } from "@web/search/layout";
 import { registry } from "@web/core/registry";

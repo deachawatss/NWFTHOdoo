@@ -4,7 +4,6 @@
 from odoo import _, fields, models
 from odoo.exceptions import UserError
 
-
 class PosConfig(models.Model):
     _inherit = 'pos.config'
 
@@ -47,7 +46,7 @@ class PosConfig(models.Model):
 
         if invalid_reward_products_msg:
             prefix_error_msg = _("To continue, make the following reward products available in Point of Sale.")
-            raise UserError(f"{prefix_error_msg}\n{invalid_reward_products_msg}")  # pylint: disable=missing-gettext
+            raise UserError(f"{prefix_error_msg}\n{invalid_reward_products_msg}")
         if gift_card_programs:
             for gc_program in gift_card_programs:
                 # Do not allow a gift card program with more than one rule or reward, and check that they make sense
@@ -90,7 +89,7 @@ class PosConfig(models.Model):
         if (
             (coupon.expiration_date and coupon.expiration_date < check_date)
             or (program.date_to and program.date_to < today_date)
-            or (program.limit_usage and program.total_order_count >= program.max_usage)
+            or (program.limit_usage and program.sudo().total_order_count >= program.max_usage)
         ):
             error_message = _("This coupon is expired (%s).", code)
         elif program.date_from and program.date_from > today_date:

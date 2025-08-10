@@ -3,7 +3,8 @@
 from odoo import fields, models
 
 
-class ResCountry(models.Model):
+class ResPartner(models.Model):
+    _name = 'res.country'
     _inherit = 'res.country'
 
     l10n_cl_customs_code = fields.Char('Customs Code')

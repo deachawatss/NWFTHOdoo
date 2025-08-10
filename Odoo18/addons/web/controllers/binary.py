@@ -123,7 +123,7 @@ class Binary(http.Controller):
                     if filename.endswith('.map'):
                         _logger.error(".map should have been generated through debug assets, (version %s most likely outdated)", unique)
                         raise request.not_found()
-                    bundle_name, rtl, asset_type, autoprefix = rw_env['ir.asset']._parse_bundle_name(filename, debug_assets)
+                    bundle_name, rtl, asset_type = rw_env['ir.asset']._parse_bundle_name(filename, debug_assets)
                     css = asset_type == 'css'
                     js = asset_type == 'js'
                     bundle = rw_env['ir.qweb']._get_asset_bundle(
@@ -132,7 +132,6 @@ class Binary(http.Controller):
                         js=js,
                         debug_assets=debug_assets,
                         rtl=rtl,
-                        autoprefix=autoprefix,
                         assets_params=assets_params,
                     )
                     # check if the version matches. If not, redirect to the last version
@@ -306,7 +305,7 @@ class Binary(http.Controller):
     @http.route([
         '/web/sign/get_fonts',
         '/web/sign/get_fonts/<string:fontname>',
-    ], type='jsonrpc', auth='none')
+    ], type='json', auth='none')
     def get_fonts(self, fontname=None):
         """This route will return a list of base64 encoded fonts.
 
@@ -327,7 +326,7 @@ class Binary(http.Controller):
         else:
             font_filenames = sorted([fn for fn in os.listdir(fonts_directory) if fn.endswith(supported_exts)])
             for filename in font_filenames:
-                with file_open(os.path.join(fonts_directory, filename), 'rb', filter_ext=supported_exts) as font_file:
-                    font = base64.b64encode(font_file.read())
+                font_file = file_open(os.path.join(fonts_directory, filename), 'rb', filter_ext=supported_exts)
+                font = base64.b64encode(font_file.read())
                 fonts.append(font)
         return fonts

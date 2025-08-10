@@ -3,7 +3,7 @@
 from odoo import api, fields, models
 
 
-class StockReplenishMixin(models.AbstractModel):
+class ProductReplenishMixin(models.AbstractModel):
     _inherit = 'stock.replenish.mixin'
 
     supplier_id = fields.Many2one('product.supplierinfo', string="Vendor")

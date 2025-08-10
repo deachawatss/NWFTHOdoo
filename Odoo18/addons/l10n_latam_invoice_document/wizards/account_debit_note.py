@@ -2,6 +2,7 @@ from odoo import models
 
 
 class AccountDebitNote(models.TransientModel):
+
     _inherit = 'account.debit.note'
 
     def create_debit(self):

@@ -3,20 +3,19 @@ import { SuggestionService } from "@mail/core/common/suggestion_service";
 import { patch } from "@web/core/utils/patch";
 
 patch(SuggestionService.prototype, {
-    async fetchPartnersRoles(term, thread, { abortSignal } = {}) {
+    async fetchPartners(term, thread, { abortSignal } = {}) {
         if (thread.model === "project.task") {
-            this.store.insert(
-                await this.makeOrmCall(
-                    "project.task",
-                    "get_mention_suggestions",
-                    [thread.id],
-                    { search: term },
-                    { abortSignal }
-                )
+            const suggestedPartners = await this.makeOrmCall(
+                "project.task",
+                "get_mention_suggestions",
+                [thread.id],
+                { search: term },
+                { abortSignal }
             );
-            return;
+            this.store.insert(suggestedPartners);
+            thread.limitedMentions = suggestedPartners["res.partner"];
         }
-        return super.fetchPartnersRoles(...arguments);
+        return super.fetchPartners(...arguments);
     },
 
     getPartnerSuggestions(thread) {

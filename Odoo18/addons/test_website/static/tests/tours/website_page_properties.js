@@ -4,7 +4,7 @@ import {
     getClientActionUrl,
     registerWebsitePreviewTour,
 } from "@website/js/tours/tour_utils";
-import { stepUtils } from "@web_tour/tour_utils";
+import { stepUtils } from "@web_tour/tour_service/tour_utils";
 
 const openPagePropertiesDialog = [
     {
@@ -140,6 +140,7 @@ function testCommonProperties(url, canPublish, modifiedUrl = undefined) {
             {
                 content: "Verify is not in menu",
                 trigger: `:visible :iframe #top_menu:not(:has(a[href="${url}"]))`,
+                timeout: 30000,
             },
             stepUtils.goToUrl(getClientActionUrl("/")),
             ...assertPageCanonicalUrlIs("/"),

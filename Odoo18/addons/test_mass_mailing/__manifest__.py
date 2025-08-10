@@ -3,7 +3,7 @@
 {
     'name': 'Mass Mail Tests',
     'version': '1.0',
-    'category': 'Marketing/Email Marketing',
+    'category': 'Hidden',
     'sequence': 8765,
     'summary': 'Mass Mail Tests: feature and performance tests for mass mailing',
     'description': """This module contains tests related to mass mailing. Those
@@ -19,6 +19,5 @@ test_mail. """,
         'security/ir.model.access.csv',
     ],
     'installable': True,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

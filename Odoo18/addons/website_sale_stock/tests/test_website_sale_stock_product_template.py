@@ -5,7 +5,7 @@ from datetime import datetime
 from odoo.fields import Command
 from odoo.tests import HttpCase, tagged
 
-from odoo.addons.website_sale.tests.common import MockRequest
+from odoo.addons.website.tools import MockRequest
 from odoo.addons.website_sale_stock.tests.common import WebsiteSaleStockCommon
 
 
@@ -60,14 +60,8 @@ class TestWebsiteSaleStockProductTemplate(HttpCase, WebsiteSaleStockCommon):
         self.cart.order_line = [Command.create({'product_id': product_a.id, 'product_uom_qty': 3})]
 
         with MockRequest(self.env, website=self.website, sale_order_id=self.cart.id):
-            combination_info = self.env['product.template'].with_context(
-                website_sale_stock_get_quantity=True
-            )._get_additionnal_combination_info(
-                combo_product,
-                quantity=3,
-                uom=combo_product.uom_id,
-                date=datetime(2000, 1, 1),
-                website=self.website
+            combination_info = self.env['product.template']._get_additionnal_combination_info(
+                combo_product, quantity=3, date=datetime(2000, 1, 1), website=self.website
             )
 
         self.assertEqual(combination_info['max_combo_quantity'], 2)
@@ -79,15 +73,8 @@ class TestWebsiteSaleStockProductTemplate(HttpCase, WebsiteSaleStockCommon):
         })
         combo_product = self._create_product(type='combo', combo_ids=[Command.link(combo.id)])
 
-        with MockRequest(self.env, website=self.website, sale_order_id=self.cart.id):
-            combination_info = self.env['product.template'].with_context(
-                website_sale_stock_get_quantity=True
-            )._get_additionnal_combination_info(
-                combo_product,
-                quantity=3,
-                uom=combo_product.uom_id,
-                date=datetime(2000, 1, 1),
-                website=self.website
-            )
+        combination_info = self.env['product.template']._get_additionnal_combination_info(
+            combo_product, quantity=3, date=datetime(2000, 1, 1), website=self.website
+        )
 
         self.assertNotIn('max_combo_quantity', combination_info)

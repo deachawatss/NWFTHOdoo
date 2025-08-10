@@ -1,7 +1,9 @@
 /** @ts-check */
 
 import { MultiRecordSelector } from "@web/core/record_selectors/multi_record_selector";
-import { DateFilterValue } from "../date_filter_value/date_filter_value";
+import { RELATIVE_DATE_RANGE_TYPES } from "@spreadsheet/helpers/constants";
+import { DateFilterValue } from "../filter_date_value/filter_date_value";
+import { DateFromToValue } from "../filter_date_from_to_value/filter_date_from_to_value";
 
 import { Component, onWillStart } from "@odoo/owl";
 import { components } from "@odoo/o-spreadsheet";
@@ -11,36 +13,28 @@ import { Domain } from "@web/core/domain";
 import { user } from "@web/core/user";
 import { TextFilterValue } from "../filter_text_value/filter_text_value";
 import { getFields, ModelNotFoundError } from "@spreadsheet/data_sources/data_source";
-import { SelectionFilterValue } from "../selection_filter_value/selection_filter_value";
-import {
-    isTextualOperator,
-    isSetOperator,
-    getDefaultValue,
-} from "@spreadsheet/global_filters/helpers";
 
 const { ValidationMessages } = components;
 
 export class FilterValue extends Component {
-    static template = "spreadsheet.FilterValue";
+    static template = "spreadsheet_edition.FilterValue";
     static components = {
-        TextFilterValue,
         DateFilterValue,
+        DateFromToValue,
         MultiRecordSelector,
-        SelectionFilterValue,
+        TextFilterValue,
         ValidationMessages,
     };
     static props = {
         filter: Object,
         model: Object,
-        setGlobalFilterValue: Function,
-        globalFilterValue: { optional: true },
         showTitle: { type: Boolean, optional: true },
-        showClear: { type: Boolean, optional: true },
     };
 
     setup() {
         this.getters = this.props.model.getters;
-        this.fieldService = useService("field");
+        this.relativeDateRangesTypes = RELATIVE_DATE_RANGE_TYPES;
+        this.nameService = useService("name");
         this.isValid = false;
         onWillStart(async () => {
             if (this.filter.type !== "relation") {
@@ -48,7 +42,8 @@ export class FilterValue extends Component {
                 return;
             }
             try {
-                await getFields(this.fieldService, this.filter.modelName);
+                const odooDataProvider = this.props.model.config.custom.odooDataProvider;
+                await getFields(odooDataProvider.serverData, this.filter.modelName);
                 this.isValid = true;
             } catch (e) {
                 if (e instanceof ModelNotFoundError) {
@@ -60,20 +55,12 @@ export class FilterValue extends Component {
         });
     }
 
-    get isTextualOperator() {
-        return isTextualOperator(this.filterValue?.operator);
-    }
-
-    get isSetOperator() {
-        return isSetOperator(this.filterValue?.operator);
-    }
-
     get filter() {
         return this.props.filter;
     }
 
     get filterValue() {
-        return this.props.globalFilterValue;
+        return this.getters.getGlobalFilterValue(this.filter.id);
     }
 
     get textAllowedValues() {
@@ -98,38 +85,12 @@ export class FilterValue extends Component {
         );
     }
 
-    getDefaultOperator() {
-        return getDefaultValue(this.filter.type).operator;
-    }
-
     onDateInput(id, value) {
-        this.props.setGlobalFilterValue(id, value);
+        this.props.model.dispatch("SET_GLOBAL_FILTER_VALUE", { id, value });
     }
 
     onTextInput(id, value) {
-        if (Array.isArray(value) && value.length === 0) {
-            this.clear(id);
-            return;
-        }
-        const operator = this.filterValue?.operator ?? this.getDefaultOperator();
-        this.props.setGlobalFilterValue(id, { operator, strings: value });
-    }
-
-    onBooleanInput(id, value) {
-        if (Array.isArray(value) && value.length === 0) {
-            this.clear(id);
-            return;
-        }
-        this.props.setGlobalFilterValue(id, value);
-    }
-
-    onSelectionInput(id, value) {
-        if (Array.isArray(value) && value.length === 0) {
-            this.clear(id);
-            return;
-        }
-        const operator = this.filterValue?.operator ?? this.getDefaultOperator();
-        this.props.setGlobalFilterValue(id, { operator, selectionValues: value });
+        this.props.model.dispatch("SET_GLOBAL_FILTER_VALUE", { id, value });
     }
 
     async onTagSelected(id, resIds) {
@@ -137,15 +98,23 @@ export class FilterValue extends Component {
             // force clear, even automatic default values
             this.clear(id);
         } else {
-            const operator = this.filterValue?.operator ?? this.getDefaultOperator();
-            this.props.setGlobalFilterValue(
-                id,
-                { operator, ids: resIds },
+            const displayNames = await this.nameService.loadDisplayNames(
+                this.filter.modelName,
+                resIds
             );
+            this.props.model.dispatch("SET_GLOBAL_FILTER_VALUE", {
+                id,
+                value: resIds,
+                displayNames: Object.values(displayNames),
+            });
         }
     }
 
+    translate(text) {
+        return _t(text);
+    }
+
     clear(id) {
-        this.props.setGlobalFilterValue(id);
+        this.props.model.dispatch("CLEAR_GLOBAL_FILTER_VALUE", { id });
     }
 }

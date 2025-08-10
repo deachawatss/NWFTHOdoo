@@ -1,6 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import api, fields, models, modules, _
+from odoo import api, fields, models, _
 from odoo.tools import config
 
 
@@ -32,11 +32,9 @@ class ResPartner(models.Model):
 
     def geo_localize(self):
         # We need country names in English below
-        if not self.env.context.get('force_geo_localize') and (
-            self.env.context.get('import_file')
-            or modules.module.current_test
-            or not self.env.registry.ready
-        ):
+        if not self._context.get('force_geo_localize') \
+                and (self._context.get('import_file') \
+                     or any(config[key] for key in ['test_enable', 'test_file', 'init', 'update'])):
             return False
         partners_not_geo_localized = self.env['res.partner']
         for partner in self.with_context(lang='en_US'):

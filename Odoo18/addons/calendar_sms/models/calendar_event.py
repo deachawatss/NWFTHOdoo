@@ -4,7 +4,6 @@
 from odoo import models, _
 from odoo.exceptions import UserError
 
-
 class CalendarEvent(models.Model):
     _inherit = 'calendar.event'
 
@@ -16,7 +15,7 @@ class CalendarEvent(models.Model):
                 partners = event._mail_get_partners()[event.id].filtered(
                     lambda partner: partner.phone_sanitized and partner not in declined_partners
                 )
-                if event.user_id and not alarm.notify_responsible:
+                if event.user_id and not alarm.sms_notify_responsible:
                     partners -= event.user_id.partner_id
                 event._message_sms_with_template(
                     template=alarm.sms_template_id,

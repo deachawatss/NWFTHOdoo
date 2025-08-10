@@ -11,6 +11,8 @@ class AccountChartTemplate(models.AbstractModel):
         return {
             'property_account_receivable_id': 'a2310',
             'property_account_payable_id': 'a5310',
+            'property_account_expense_categ_id': 'a7550',
+            'property_account_income_categ_id': 'a6110',
             'code_digits': '4',
         }
 
@@ -33,7 +35,5 @@ class AccountChartTemplate(models.AbstractModel):
                 'default_cash_difference_expense_account_id': 'a8299',
                 'account_sale_tax_id': 'VAT_S_G_21_LV',
                 'account_purchase_tax_id': 'VAT_P_G_21_LV',
-                'expense_account_id': 'a7550',
-                'income_account_id': 'a6110',
             },
         }

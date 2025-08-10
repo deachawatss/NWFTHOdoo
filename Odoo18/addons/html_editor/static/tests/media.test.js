@@ -1,14 +1,12 @@
-import { EDITABLE_MEDIA_CLASS } from "@html_editor/utils/dom_info";
 import { describe, expect, test } from "@odoo/hoot";
-import { click, press, waitFor } from "@odoo/hoot-dom";
+import { click, press, waitFor, waitForNone } from "@odoo/hoot-dom";
 import { animationFrame, tick } from "@odoo/hoot-mock";
-import { makeMockEnv, onRpc } from "@web/../tests/web_test_helpers";
-import { cleanHints } from "./_helpers/dispatch";
-import { base64Img, setupEditor, testEditor } from "./_helpers/editor";
+import { contains, makeMockEnv, onRpc } from "@web/../tests/web_test_helpers";
+import { setupEditor } from "./_helpers/editor";
 import { getContent } from "./_helpers/selection";
+import { insertText } from "./_helpers/user_actions";
 import { expectElementCount } from "./_helpers/ui_expectations";
-import { deleteBackward, deleteForward, insertText } from "./_helpers/user_actions";
-import { MAIN_PLUGINS, NO_EMBEDDED_COMPONENTS_FALLBACK_PLUGINS } from "@html_editor/plugin_sets";
+import { delay } from "@web/core/utils/concurrency";
 
 test("Can replace an image", async () => {
     onRpc("ir.attachment", "search_read", () => [
@@ -49,7 +47,7 @@ test("Replace an image with link by a document should remove the link", async ()
     const env = await makeMockEnv();
     await setupEditor(
         `<p><a href="http://test.com"><img class="img-fluid" src="/web/static/img/logo.png"></a></p>`,
-        { env, config: { Plugins: [...MAIN_PLUGINS, ...NO_EMBEDDED_COMPONENTS_FALLBACK_PLUGINS] } }
+        { env }
     );
     expect("img[src='/web/static/img/logo.png']").toHaveCount(1);
     await click("img");
@@ -150,117 +148,6 @@ describe("Powerbox search keywords", () => {
     });
 });
 
-describe("(non-)editable media", () => {
-    describe.tags("desktop");
-    describe("toolbar", () => {
-        test("toolbar should open when clicking on an image in an editable context", async () => {
-            const { editor } = await setupEditor(
-                `<div contenteditable="true"><img src="${base64Img}"></div>`
-            );
-            await click("img");
-            await animationFrame();
-            await expectElementCount(".o-we-toolbar", 1);
-            // Now pressing the delete button should remove the image.
-            await click(".o-we-toolbar button[name='image_delete']");
-            cleanHints(editor);
-            expect(getContent(editor.editable)).toBe(
-                `<div contenteditable="true" class="o-paragraph">[]<br></div>`
-            );
-        });
-        test("toolbar should not open when clicking on an image in an non-editable context", async () => {
-            const { editor } = await setupEditor(
-                `<div contenteditable="false"><img src="${base64Img}"></div>`
-            );
-            await click("img");
-            await animationFrame();
-            await expectElementCount(".o-we-toolbar", 0);
-            expect(getContent(editor.editable)).toBe(
-                `<div contenteditable="false">[<img src="${base64Img}">]</div>`
-            );
-        });
-        test("toolbar should open when clicking on an editable image in a non-editable context", async () => {
-            const { editor } = await setupEditor(
-                `<div contenteditable="false"><img src="${base64Img}" class="${EDITABLE_MEDIA_CLASS}"></div>`
-            );
-            await click("img");
-            await animationFrame();
-            await expectElementCount(".o-we-toolbar", 1);
-            // Now pressing the delete button should remove the image.
-            await click(".o-we-toolbar button[name='image_delete']");
-            expect(getContent(editor.editable)).toBe(`<div contenteditable="false">[]<br></div>`);
-        });
-    });
-    describe("delete", () => {
-        test("delete should remove an image in an editable context", async () => {
-            const contentBefore = `<div contenteditable="true"><img src="${base64Img}"></div>`;
-            const contentAfter = `<div contenteditable="true">[]<br></div>`;
-            // Forward
-            await testEditor({
-                contentBefore,
-                stepFunction: async (editor) => {
-                    await click("img");
-                    deleteForward(editor);
-                },
-                contentAfter,
-            });
-            // Backward
-            await testEditor({
-                contentBefore,
-                stepFunction: async (editor) => {
-                    await click("img");
-                    deleteBackward(editor);
-                },
-                contentAfter,
-            });
-        });
-        test("delete should not remove an image in an non-editable context", async () => {
-            const contentBefore = `<div contenteditable="false"><img src="${base64Img}"></div>`;
-            // Forward
-            await testEditor({
-                contentBefore,
-                stepFunction: async (editor) => {
-                    await click("img");
-                    deleteForward(editor);
-                },
-                // TODO: there should be no difference between forward and backward.
-                contentAfter: `<div contenteditable="false">[<img src="${base64Img}">]</div>`,
-            });
-            // Backward
-            await testEditor({
-                contentBefore,
-                stepFunction: async (editor) => {
-                    await click("img");
-                    deleteBackward(editor);
-                },
-                // TODO: there should be no difference between forward and backward.
-                contentAfter: `<div contenteditable="false">[]<img src="${base64Img}"></div>`,
-            });
-        });
-        test("delete should remove an editable image in a non-editable context", async () => {
-            const contentBefore = `<div contenteditable="false"><img src="${base64Img}" class="${EDITABLE_MEDIA_CLASS}"></div>`;
-            const contentAfter = `<div contenteditable="false">[]<br></div>`;
-            // Forward
-            await testEditor({
-                contentBefore,
-                stepFunction: async (editor) => {
-                    await click("img");
-                    deleteForward(editor);
-                },
-                contentAfter,
-            });
-            // Backward
-            await testEditor({
-                contentBefore,
-                stepFunction: async (editor) => {
-                    await click("img");
-                    deleteBackward(editor);
-                },
-                contentAfter,
-            });
-        });
-    });
-});
-
 test("cropper should not open for external image", async () => {
     onRpc("/html_editor/get_image_info", () => ({
         original: false,
@@ -269,12 +156,34 @@ test("cropper should not open for external image", async () => {
     await setupEditor(
         `<p>[<img src="https://download.odoocdn.com/icons/website/static/description/icon.png">]</p>`
     );
-    await waitFor('button[name="image_transform"]');
+    await waitFor('div[name="image_transform"]');
 
-    await click('button[name="image_transform"]');
+    await click('div[name="image_transform"] > .btn');
     await animationFrame();
 
     await click('.btn[name="image_crop"]');
     await waitFor(".o_notification_manager .o_notification", { timeout: 1000 });
+    expect("img.o_we_cropper_img").toHaveCount(0);
+});
+
+test("Image cropper disappear on backspace", async () => {
+    onRpc("/html_editor/get_image_info", () => ({
+        original: {
+            image_src: "#",
+        },
+    }));
+    onRpc("/web/image/__odoo__unknown__src__/", async () => {
+        await delay(50);
+        return {};
+    });
+
+    await setupEditor(`<p>[<img src="#">]</p>`);
+    await waitFor(".o-we-toolbar");
+
+    await contains('.o-we-toolbar .btn[name="image_crop"]').click();
+    await waitFor(".o_we_crop_widget", { timeout: 1000 });
+    expect("img.o_we_cropper_img").toHaveCount(1);
+    press("backspace");
+    await waitForNone(".o_we_crop_widget", { timeout: 1000 });
     expect("img.o_we_cropper_img").toHaveCount(0);
 });

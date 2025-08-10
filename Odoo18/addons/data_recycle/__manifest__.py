@@ -24,6 +24,5 @@
             'data_recycle/static/src/views/*.xml',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

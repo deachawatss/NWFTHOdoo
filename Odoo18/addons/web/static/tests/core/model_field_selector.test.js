@@ -116,7 +116,9 @@ test("creating a field chain from scratch", async () => {
 
     // Clicking on the "Product" field should update the popover to show
     // the product fields (so only "Product Name" and the default fields should be there)
-    await followRelation();
+    await contains(
+        ".o_model_field_selector_popover .o_model_field_selector_popover_relation_icon"
+    ).click();
     expect(".o_model_field_selector_popover_item_name").toHaveCount(5);
     expect(queryAllTexts(".o_model_field_selector_popover_item_name").at(-1)).toBe("Product Name", {
         message: "the name of the last suggestion should be 'Product Name'",
@@ -137,7 +139,9 @@ test("creating a field chain from scratch", async () => {
         ".o_model_field_selector_popover .o_model_field_selector_popover_relation_icon"
     ).toHaveCount(1);
 
-    await followRelation();
+    await contains(
+        ".o_model_field_selector_popover .o_model_field_selector_popover_relation_icon"
+    ).click();
     await contains(".o_model_field_selector_popover_item_name:last").click();
     expect(".o_model_field_selector_popover").toHaveCount(0);
     expect(getValueFromDOM()).toBe("Product -> Product Name");
@@ -173,42 +177,11 @@ test("use the filter option", async () => {
             readonly: false,
             path: "",
             resModel: "partner",
-            filter: (field, path, resModel) => {
-                const result = field.type === "many2one" && field.searchable;
-                if (result) {
-                    expect.step(resModel);
-                }
-                return result;
-            },
+            filter: (field) => field.type === "many2one" && field.searchable,
         },
     });
     await openModelFieldSelectorPopover();
     expect(getDisplayedFieldNames()).toEqual(["Product"]);
-    expect.verifySteps(["partner"]);
-});
-
-test("use the sort option", async () => {
-    await mountWithCleanup(ModelFieldSelector, {
-        props: {
-            readonly: false,
-            path: "",
-            resModel: "partner",
-            sort: (fields) =>
-                Object.keys(fields).sort((a, b) =>
-                    fields[b].string.localeCompare(fields[a].string)
-                ),
-        },
-    });
-    await openModelFieldSelectorPopover();
-    expect(getDisplayedFieldNames()).toEqual([
-        "Product",
-        "Last Modified on",
-        "Id",
-        "Foo",
-        "Display name",
-        "Created on",
-        "Bar",
-    ]);
 });
 
 test("default `showSearchInput` option", async () => {
@@ -379,7 +352,7 @@ test("select a relational field does not follow relation", async () => {
     ]);
     expect(".o_model_field_selector_popover_relation_icon").toHaveCount(1);
 
-    await followRelation();
+    await contains(".o_model_field_selector_popover_relation_icon").click();
     expect(getDisplayedFieldNames()).toEqual([
         "Created on",
         "Display name",
@@ -418,7 +391,7 @@ test("can follow relations", async () => {
     ]);
     expect(".o_model_field_selector_popover_relation_icon").toHaveCount(1);
 
-    await followRelation();
+    await contains(".o_model_field_selector_popover_relation_icon").click();
     expect(getDisplayedFieldNames()).toEqual([
         "Created on",
         "Display name",

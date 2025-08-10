@@ -5,10 +5,14 @@ class ResCompany(models.Model):
     _inherit = 'res.company'
 
     l10n_tr_nilvera_api_key = fields.Char(string="Nilvera API key", groups='base.group_system')
-    l10n_tr_nilvera_use_test_env = fields.Boolean(
-        string="Use testing environment",
+    l10n_tr_nilvera_environment = fields.Selection(
+        string="Nilvera Environment",
+        selection=[
+            ('sandbox', "Test"),
+            ('production', "Production"),
+        ],
         required=True,
-        default=True,
+        default='sandbox',
     )
     l10n_tr_nilvera_purchase_journal_id = fields.Many2one(
         comodel_name='account.journal',

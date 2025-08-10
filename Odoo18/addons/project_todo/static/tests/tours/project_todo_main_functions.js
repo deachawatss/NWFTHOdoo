@@ -1,6 +1,8 @@
+/** @odoo-module */
+
 import { markup } from "@odoo/owl";
 import { registry } from "@web/core/registry";
-import { stepUtils } from "@web_tour/tour_utils";
+import { stepUtils } from "@web_tour/tour_service/tour_utils";
 
 registry.category("web_tour.tours").add('project_todo_main_functions', {
     url: '/odoo',
@@ -8,7 +10,7 @@ registry.category("web_tour.tours").add('project_todo_main_functions', {
     trigger: '.o_app[data-menu-xmlid="project_todo.menu_todo_todos"]',
     run: "click",
 }, {
-    trigger: ".o_project_task_kanban_view .o_column_quick_create.o_quick_create_folded div",
+    trigger: ".o_project_task_kanban_view .o_column_quick_create .o_kanban_add_column",
     content: "Create a personal stage from the To-do kanban view",
     run: "click",
 },
@@ -163,10 +165,9 @@ registry.category("web_tour.tours").add('project_todo_main_functions', {
     trigger: 'button[name="action_convert_to_task"]',
     content: 'Convert the todo to a task',
     run: "click",
-    expectUnloadPage: true,
 }, {
-    trigger: ".o_form_view .breadcrumb-item:last-child",
-    content: markup`Let's go back to the <b>kanban view</b> to have an overview of tasks linked to project chosen.`,
+    trigger: ".breadcrumb-item:nth-child(1)",
+    content: markup("Let's go back to the <b>kanban view</b> to have an overview of your next tasks."),
     run: "click",
 }, {
     trigger: ".o_kanban_view",

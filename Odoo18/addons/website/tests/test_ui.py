@@ -2,7 +2,6 @@
 
 import base64
 import json
-import unittest
 
 from werkzeug.urls import url_encode
 
@@ -11,7 +10,6 @@ import odoo.tests
 from odoo import http
 from odoo.addons.base.tests.common import HttpCaseWithUserDemo
 from odoo.addons.web_editor.controllers.main import Web_Editor
-from odoo.addons.website.tests.common import HttpCaseWithWebsiteUser
 from odoo.fields import Command
 
 
@@ -152,7 +150,7 @@ class TestUiHtmlEditor(HttpCaseWithUserDemo):
 
     def test_html_editor_scss(self):
         self.user_demo.write({
-            'group_ids': [(6, 0, [
+            'groups_id': [(6, 0, [
                 self.env.ref('base.group_user').id,
                 self.env.ref('website.group_website_designer').id
             ])]
@@ -180,7 +178,7 @@ class TestUiHtmlEditor(HttpCaseWithUserDemo):
         # disable undraw, no third party should be called in tests
         # Mocked for the previews in the media dialog
         mock_media_library_search.routing_type = 'json'
-        Web_Editor.media_library_search = http.route(['/web_editor/media_library_search'], type='jsonrpc', auth='user', website=True)(mock_media_library_search)
+        Web_Editor.media_library_search = http.route(['/web_editor/media_library_search'], type='json', auth='user', website=True)(mock_media_library_search)
 
         self.start_tour("/", 'website_media_dialog_undraw', login='admin')
 
@@ -198,8 +196,6 @@ class TestUiHtmlEditorWithExternal(HttpCaseWithUserDemo):
 
 @odoo.tests.tagged('-at_install', 'post_install')
 class TestUiTranslate(odoo.tests.HttpCase):
-    # TODO master-mysterious-egg fix error
-    @unittest.skip("prepare mysterious-egg for merging")
     def test_admin_tour_rte_translator(self):
         self.env['res.lang'].create({
             'name': 'Parseltongue',
@@ -235,8 +231,6 @@ class TestUiTranslate(odoo.tests.HttpCase):
         self.assertNotEqual(new_menu.name, 'value pa-GB', msg="The new menu should not have its value edited, only its translation")
         self.assertEqual(new_menu.with_context(lang=parseltongue.code).name, 'value pa-GB', msg="The new translation should be set")
 
-    # TODO master-mysterious-egg fix error
-    @unittest.skip("prepare mysterious-egg for merging")
     def test_translate_text_options(self):
         lang_en = self.env.ref('base.lang_en')
         lang_fr = self.env.ref('base.lang_fr')
@@ -256,7 +250,6 @@ class TestUiTranslate(odoo.tests.HttpCase):
             'code': 'pa_GB',
             'iso_code': 'pa_GB',
             'url_code': 'pa_GB',
-            'direction': 'rtl',
         }, {
             'name': 'Fake User Lang',
             'code': 'fu_GB',
@@ -268,11 +261,7 @@ class TestUiTranslate(odoo.tests.HttpCase):
         self.env.ref('base.user_admin').lang = fake_user_lang.code
         self.env.ref('website.s_cover').update_field_translations('arch_db', {
             parseltongue.code: {
-                # See contact_us_label
                 'Contact us': 'Contact us in Parseltongue'
-            },
-            fake_user_lang.code: {
-                'Contact us': 'Contact us in Fake User Lang'
             }
         })
         website = self.env['website'].create({
@@ -285,26 +274,28 @@ class TestUiTranslate(odoo.tests.HttpCase):
             'language_ids': [(6, 0, [self.env.ref('base.lang_en').id, parseltongue.id])],
             'default_lang_id': parseltongue.id,
         })
-        self.env['website'].create({
-            'name': 'website fu_GB',
-            'language_ids': [Command.set([fake_user_lang.id])],
-            'default_lang_id': fake_user_lang.id,
-        })
 
         self.start_tour(f"/website/force/{website.id}", 'snippet_translation', login='admin')
         self.start_tour(f"/website/force/{website_2.id}", 'snippet_translation_changing_lang', login='admin')
-        self.start_tour(f"/website/force/{website_2.id}", 'snippet_translation_switching_website', login='admin')
-        self.start_tour(f"/website/force/{website.id}", 'snippet_dialog_rtl', login='admin')
 
 
 @odoo.tests.common.tagged('post_install', '-at_install')
-class TestUi(HttpCaseWithWebsiteUser):
+class TestUi(odoo.tests.HttpCase):
 
     def test_01_admin_tour_homepage(self):
         self.start_tour("/odoo", 'homepage', login='admin')
 
     def test_02_restricted_editor(self):
-        self.start_tour(self.env['website'].get_client_action_url('/'), 'restricted_editor', login="website_user")
+        self.restricted_editor = self.env['res.users'].create({
+            'name': 'Restricted Editor',
+            'login': 'restricted',
+            'password': 'restricted',
+            'groups_id': [(6, 0, [
+                self.ref('base.group_user'),
+                self.ref('website.group_website_restricted_editor')
+            ])]
+        })
+        self.start_tour(self.env['website'].get_client_action_url('/'), 'restricted_editor', login='restricted')
 
     def test_04_website_navbar_menu(self):
         website = self.env['website'].search([], limit=1)
@@ -318,7 +309,7 @@ class TestUi(HttpCaseWithWebsiteUser):
         self.start_tour("/", 'website_navbar_menu')
 
     def test_05_specific_website_editor(self):
-        asset_bundle_xmlid = "website.assets_edit_frontend"
+        asset_bundle_xmlid = 'website.assets_wysiwyg'
         website_default = self.env['website'].search([], limit=1)
 
         new_website = self.env['website'].create({'name': 'New Website'})
@@ -334,7 +325,7 @@ class TestUi(HttpCaseWithWebsiteUser):
 
         self.env['ir.asset'].create({
             'name': 'EditorExtension',
-            'bundle': "website.assets_edit_frontend",
+            'bundle': 'website.assets_wysiwyg',
             'path': custom_url,
             'website_id': new_website.id,
         })
@@ -344,14 +335,14 @@ class TestUi(HttpCaseWithWebsiteUser):
         base_website_css_version = base_website_bundle.get_version('css')
         base_website_js_version = base_website_bundle.get_version('js')
 
-        new_website_bundle_modified = self.env['ir.qweb']._get_asset_bundle("website.assets_edit_frontend", assets_params={'website_id': new_website.id})
+        new_website_bundle_modified = self.env['ir.qweb']._get_asset_bundle('website.assets_wysiwyg', assets_params={'website_id': new_website.id})
         self.assertIn(custom_url, [f['url'] for f in new_website_bundle_modified.files])
         self.assertEqual(new_website_bundle_modified.get_version('css'), base_website_css_version)
         self.assertNotEqual(new_website_bundle_modified.get_version('js'), base_website_js_version, "js version for new website should now have been changed")
 
         url_params = url_encode({'path': '/@/'})
-        self.start_tour(f'/website/force/{website_default.id}?{url_params}', "generic_website_editor", login="website_user")
-        self.start_tour(f'/website/force/{new_website.id}?{url_params}', "specific_website_editor", login="website_user")
+        self.start_tour(f'/website/force/{website_default.id}?{url_params}', "generic_website_editor", login='admin')
+        self.start_tour(f'/website/force/{new_website.id}?{url_params}', "specific_website_editor", login='admin')
 
     def test_06_public_user_editor(self):
         website_default = self.env['website'].search([], limit=1)
@@ -426,15 +417,13 @@ class TestUi(HttpCaseWithWebsiteUser):
     def test_08_website_style_custo(self):
         self.start_tour(self.env['website'].get_client_action_url('/'), 'website_style_edition', login='admin')
 
-    # TODO master-mysterious-egg fix error
-    @unittest.skip("prepare mysterious-egg for merging")
     def test_09_website_edit_link_popover(self):
-        self.start_tour('/@/', 'edit_link_popover', login='admin', timeout=180)
+        self.start_tour('/@/', 'edit_link_popover', login='admin', step_delay=500, timeout=180)
 
     def test_10_website_conditional_visibility(self):
         self.start_tour(self.env['website'].get_client_action_url('/'), 'conditional_visibility_1', login='admin')
-        self.start_tour('/odoo', 'conditional_visibility_2', login='website_user')
-        self.start_tour(self.env['website'].get_client_action_url('/'), 'conditional_visibility_3', login='admin', timeout=180)
+        self.start_tour('/odoo', 'conditional_visibility_2', login='admin')
+        self.start_tour(self.env['website'].get_client_action_url('/'), 'conditional_visibility_3', login='admin', step_delay=500, timeout=180)
         self.start_tour(self.env['website'].get_client_action_url('/'), 'conditional_visibility_4', login='admin')
         self.start_tour(self.env['website'].get_client_action_url('/'), 'conditional_visibility_5', login='admin')
 
@@ -453,11 +442,60 @@ class TestUi(HttpCaseWithWebsiteUser):
         self.env['website'].browse(1).write({'language_ids': [(4, lang.id, 0)]})
         self.start_tour("/nl/contactus", 'edit_translated_page_redirect', login='admin')
 
+    def test_13_editor_focus_blur_unit_test(self):
+        # TODO this should definitely not be a website python tour test but
+        # while waiting for a proper web_editor qunit JS test suite for the
+        # editor, it is better than no test at all as this was broken multiple
+        # times already.
+        self.env["ir.ui.view"].create([{
+            'name': 's_focusblur',
+            'key': 'website.s_focusblur',
+            'type': 'qweb',
+            'arch': """
+                <section class="s_focusblur bg-success py-5">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-lg-6 s_focusblur_child1 bg-warning py-5"></div>
+                            <div class="col-lg-6 s_focusblur_child2 bg-danger py-5"></div>
+                        </div>
+                    </div>
+                </section>
+            """,
+        }, {
+            'name': 's_focusblur_snippets',
+            'mode': 'extension',
+            'inherit_id': self.env.ref('website.snippets').id,
+            'key': 'website.s_focusblur_snippets',
+            'type': 'qweb',
+            'arch': """
+                <data>
+                    <xpath expr="//*[@id='snippet_structure']//t[@t-snippet]" position="before">
+                        <t t-snippet="website.s_focusblur" group="content"/>
+                    </xpath>
+                </data>
+            """,
+        }, {
+            'name': 's_focusblur_options',
+            'mode': 'extension',
+            'inherit_id': self.env.ref('web_editor.snippet_options').id,
+            'key': 'website.s_focusblur_options',
+            'type': 'qweb',
+            'arch': """
+                <data>
+                    <xpath expr=".">
+                        <div data-js="FocusBlurParent" data-selector=".s_focusblur"/>
+                        <div data-js="FocusBlurChild1" data-selector=".s_focusblur_child1"/>
+                        <div data-js="FocusBlurChild2" data-selector=".s_focusblur_child2"/>
+                    </xpath>
+                </data>
+            """,
+        }])
+
+        self.start_tour('/', 'focus_blur_snippets', login='admin')
+
     def test_14_carousel_snippet_content_removal(self):
         self.start_tour(self.env['website'].get_client_action_url('/'), 'carousel_content_removal', login='admin')
 
-    # TODO master-mysterious-egg fix error
-    @unittest.skip("prepare mysterious-egg for merging")
     def test_15_website_link_tools(self):
         self.start_tour(self.env['website'].get_client_action_url('/'), 'link_tools', login="admin")
 
@@ -518,7 +556,6 @@ class TestUi(HttpCaseWithWebsiteUser):
             'social_github': 'https://github.com/odoo',
             'social_instagram': 'https://www.instagram.com/explore/tags/odoo/',
             'social_tiktok': 'https://www.tiktok.com/@odoo',
-            'social_discord': 'https://discord.com/servers/discord-town-hall-169256939211980800',
         })
         self.start_tour("/", 'website_media_dialog_icons', login='admin')
 
@@ -607,16 +644,17 @@ class TestUi(HttpCaseWithWebsiteUser):
 
         self.start_tour('/', 'website_no_dirty_page', login='admin')
 
-    def test_interaction_lifecycle(self):
+    def test_website_default_snippet_text(self):
+        self.start_tour('/', 'website_default_snippet_text', login='admin')
+
+    def test_widget_lifecycle(self):
         self.env['ir.asset'].create({
             'name': 'wysiwyg_patch_start_and_destroy',
             'bundle': 'website.assets_wysiwyg',
-            'path': 'website/static/tests/tour_utils/lifecycle_patch_wysiwyg.js',
+            'path': 'website/static/tests/tour_utils/widget_lifecycle_patch_wysiwyg.js',
         })
-        self.start_tour(self.env['website'].get_client_action_url('/'), 'interaction_lifecycle', login='admin')
+        self.start_tour(self.env['website'].get_client_action_url('/'), 'widget_lifecycle', login='admin')
 
-    # TODO master-mysterious-egg fix error
-    @unittest.skip("prepare mysterious-egg for merging")
     def test_drop_404_ir_attachment_url(self):
         website_snippets = self.env.ref('website.snippets')
         self.env['ir.ui.view'].create([{
@@ -707,9 +745,6 @@ class TestUi(HttpCaseWithWebsiteUser):
     def test_snippet_carousel(self):
         self.start_tour('/', 'snippet_carousel', login='admin')
 
-    def test_snippet_carousel_autoplay(self):
-        self.start_tour("/", "snippet_carousel_autoplay", login="admin")
-
     def test_media_iframe_video(self):
         self.start_tour("/", "website_media_iframe_video", login="admin")
 
@@ -722,11 +757,5 @@ class TestUi(HttpCaseWithWebsiteUser):
     def test_website_seo_notification(self):
         self.start_tour(self.env['website'].get_client_action_url("/"), "website_seo_notification", login="admin")
 
-    def test_website_add_snippet_dialog(self):
-        self.start_tour("/", "website_add_snippet_dialog", login="admin")
-
     def test_popup_visibility_option(self):
         self.start_tour("/", "website_popup_visibility_option", login="admin")
-
-    def test_systray_items_disappear(self):
-        self.start_tour("/", "website_systray_items_disappear", login="admin")

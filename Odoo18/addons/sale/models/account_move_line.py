@@ -1,6 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import _, fields, models
+from odoo import fields, models, _
 from odoo.exceptions import UserError
 from odoo.tools import float_compare, float_is_zero
 
@@ -14,7 +14,6 @@ class AccountMoveLine(models.Model):
         'sale_order_line_invoice_rel',
         'invoice_line_id', 'order_line_id',
         string='Sales Order Lines', readonly=True, copy=False)
-    sale_line_warn_msg = fields.Text(related='product_id.sale_line_warn_msg')
 
     def _copy_data_extend_business_fields(self, values):
         # OVERRIDE to copy the 'sale_line_ids' field as well.
@@ -60,7 +59,7 @@ class AccountMoveLine(models.Model):
         self.ensure_one()
         if self.sale_line_ids:
             return False
-        uom_precision_digits = self.env['decimal.precision'].precision_get('Product Unit')
+        uom_precision_digits = self.env['decimal.precision'].precision_get('Product Unit of Measure')
         return float_compare(self.credit or 0.0, self.debit or 0.0, precision_digits=uom_precision_digits) != 1 and self.product_id.expense_policy not in [False, 'no']
 
     def _sale_create_reinvoice_sale_line(self):
@@ -170,10 +169,10 @@ class AccountMoveLine(models.Model):
             'name': self.name,
             'sequence': last_sequence,
             'price_unit': price,
-            'tax_ids': [x.id for x in taxes],
+            'tax_id': [x.id for x in taxes],
             'discount': 0.0,
             'product_id': self.product_id.id,
-            'product_uom_id': self.product_uom_id.id,
+            'product_uom': self.product_uom_id.id,
             'product_uom_qty': self.quantity,
             'is_expense': True,
             'analytic_distribution': self.analytic_distribution,
@@ -196,7 +195,7 @@ class AccountMoveLine(models.Model):
                 date=order.date_order,
             )
 
-        uom_precision_digits = self.env['decimal.precision'].precision_get('Product Unit')
+        uom_precision_digits = self.env['decimal.precision'].precision_get('Product Unit of Measure')
         if float_is_zero(unit_amount, precision_digits=uom_precision_digits):
             return 0.0
 

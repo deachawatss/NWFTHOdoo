@@ -17,6 +17,7 @@ export class IntegerField extends Component {
         decimals: { type: Number, optional: true },
         inputType: { type: String, optional: true },
         step: { type: Number, optional: true },
+        placeholder: { type: String, optional: true },
     };
     static defaultProps = {
         formatNumber: true,
@@ -109,12 +110,13 @@ export const integerField = {
     ],
     supportedTypes: ["integer"],
     isEmpty: (record, fieldName) => record.data[fieldName] === false,
-    extractProps: ({ options }) => ({
+    extractProps: ({ attrs, options }) => ({
         formatNumber:
             options?.enable_formatting !== undefined ? Boolean(options.enable_formatting) : true,
         humanReadable: !!options.human_readable,
         inputType: options.type,
         step: options.step,
+        placeholder: attrs.placeholder,
         decimals: options.decimals || 0,
     }),
 };

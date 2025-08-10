@@ -20,35 +20,32 @@
         'account_edi_ubl_cii',
     ],
     'external_dependencies': {
-        'python': ['phonenumbers'],
-        'apt': {
-            'phonenumbers': 'python3-phonenumbers',
-        },
+        'python': ['phonenumbers']
     },
     'data': [
         'data/cron.xml',
         'data/mail_templates_email_layouts.xml',
         'data/res_partner_data.xml',
         'security/ir.model.access.csv',
+        'views/account_journal_dashboard_views.xml',
         'views/account_move_views.xml',
         'views/account_portal_templates.xml',
         'views/res_partner_views.xml',
         'views/res_config_settings_views.xml',
         'wizard/peppol_registration_views.xml',
-        'wizard/peppol_config_wizard.xml',
+        'wizard/service_wizard.xml',
     ],
     'demo': [
         'demo/account_peppol_demo.xml',
     ],
     'post_init_hook': '_account_peppol_post_init',
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
     'assets': {
         'web.assets_backend': [
             'account_peppol/static/src/components/**/*',
         ],
         'web.assets_frontend': [
-            'account_peppol/static/src/interactions/*',
+            'account_peppol/static/src/js/*',
         ],
     },
     'auto_install': ['account_edi_ubl_cii'],  # auto-install when account_edi_ubl_cii AND one company exists in countries above

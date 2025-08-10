@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { loadCSS } from "@web/core/assets";
 import { AutoComplete } from "@web/core/autocomplete/autocomplete";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
@@ -34,7 +36,7 @@ import {
 } from "@website/js/text_processing";
 import { throttleForAnimation } from "@web/core/utils/timing";
 
-import { Component, markup, useRef, useState } from "@odoo/owl";
+import { Component, markup, useEffect, useRef, useState } from "@odoo/owl";
 
 const InputUserValueWidget = options.userValueWidgetsRegistry['we-input'];
 const SelectUserValueWidget = options.userValueWidgetsRegistry['we-select'];
@@ -154,6 +156,31 @@ const UrlPickerUserValueWidget = InputUserValueWidget.extend({
         this._super(...arguments);
     }
 });
+
+class GoogleFontAutoComplete extends AutoComplete {
+    setup() {
+        super.setup();
+        this.inputRef = useRef("input");
+        this.sourcesListRef = useRef("sourcesList");
+        useEffect((el) => {
+            el.setAttribute("id", "google_font");
+        }, () => [this.inputRef.el]);
+    }
+
+    get dropdownOptions() {
+        return {
+            ...super.dropdownOptions,
+            position: "bottom-fit",
+        };
+    }
+
+    onInput(ev) {
+        super.onInput(ev);
+        if (this.sourcesListRef.el) {
+            this.sourcesListRef.el.scrollTop = 0;
+        }
+    }
+}
 
 const FontFamilyPickerUserValueWidget = SelectUserValueWidget.extend({
     events: Object.assign({}, SelectUserValueWidget.prototype.events || {}, {
@@ -313,7 +340,7 @@ const FontFamilyPickerUserValueWidget = SelectUserValueWidget.extend({
     async _onAddFontClick(ev) {
         const addFontDialog = class extends Component {
             static template = "website.dialog.addFont";
-            static components = { AutoComplete, Dialog };
+            static components = { GoogleFontAutoComplete, Dialog };
             static props = { close: Function, title: String, onClickSave: Function };
             state = useState({
                 valid: true, loading: false,
@@ -349,17 +376,18 @@ const FontFamilyPickerUserValueWidget = SelectUserValueWidget.extend({
                     return filtered.map((fontFamilyName) => {
                         return {
                             label: fontFamilyName,
-                            onSelect: () => this.onGoogleFontSelect(fontFamilyName),
+                            value: fontFamilyName,
                         };
                     });
                 }}];
             }
-            async onGoogleFontSelect(fontFamily) {
+            async onGoogleFontSelect(selected) {
                 this.fileInput.el.value = "";
                 this.state.uploadedFonts = [];
                 this.state.uploadedFontName = undefined;
                 this.state.uploadedFontFaces = undefined;
                 try {
+                    const fontFamily = selected.value;
                     const result = await fetch(`https://fonts.googleapis.com/css?family=${encodeURIComponent(fontFamily)}:300,300i,400,400i,700,700i`, {method: 'HEAD'});
                     // Google fonts server returns a 400 status code if family is not valid.
                     if (result.ok) {
@@ -2069,32 +2097,6 @@ options.registry.Carousel = options.registry.CarouselHandler.extend({
         return this._addSlide();
     },
 
-    /**
-     * Add a custom class if all controllers are hidden.
-     */
-    toggleControllers() {
-        const carouselEl = this.$target[0].closest(".carousel");
-        const indicatorsWrapEl = carouselEl.querySelector(".carousel-indicators");
-        const areControllersHidden = carouselEl.classList.contains("s_carousel_arrows_hidden") && indicatorsWrapEl.classList.contains("s_carousel_indicators_hidden");
-        carouselEl.classList.toggle("s_carousel_controllers_hidden", areControllersHidden);
-    },
-
-    /**
-     * Toggle card images.
-     */
-    toggleCardImg(previewMode, widgetValue, params) {
-        const carouselEl = this.$target[0].closest(".carousel");
-        if (widgetValue) {
-            const cardEls = carouselEl.querySelectorAll(".card");
-            for (const cardEl of cardEls) {
-                const imageWrapperEl = renderToElement("website.s_carousel_cards.imageWrapper");
-                cardEl.insertAdjacentElement("afterbegin", imageWrapperEl);
-            }
-        } else {
-            carouselEl.querySelectorAll("figure").forEach(el => el.remove());
-        }
-    },
-
     //--------------------------------------------------------------------------
     // Private
     //--------------------------------------------------------------------------
@@ -2179,6 +2181,7 @@ options.registry.Carousel = options.registry.CarouselHandler.extend({
                         $snippet: $activeSlide,
                         ifInactiveOptions: true,
                     });
+                    this.$bsTarget.trigger("active_slide_targeted"); // TODO remove in master: kept for compatibility.
                     this.trigger_up("enable_loading_effect");
                     resolve();
                 }, 0.2 * _slideDuration);
@@ -2187,32 +2190,7 @@ options.registry.Carousel = options.registry.CarouselHandler.extend({
             this.$bsTarget.carousel(direction);
         });
     },
-    /**
-     * @override
-     */
-    async selectClass(previewMode, widgetValue, params) {
-        // Prevent the "Controllers" option from being "centered" when
-        // arrows and indicators are displayed
-        await this._super(...arguments);
 
-        // Specific to "s_carousel_cards" and "s_carousel_intro", where the
-        // controllers are horizontally aligned.
-        const carouselEl = this.$target[0].closest(".carousel");
-        const horizontalControllersEl = carouselEl.querySelector(".o_horizontal_controllers_row");
-        if (["arrows_opt", "indicators_opt"].includes(params.name) && horizontalControllersEl) {
-            // FIXME need to migrate s_carousel_intro_controllers_row
-            const indicatorsEl = carouselEl.querySelector(".carousel-indicators");
-
-            const hasHiddenArrows = carouselEl.classList.contains("s_carousel_arrows_hidden");
-            const hasHiddenIndicators = indicatorsEl.classList.contains(
-                "s_carousel_indicators_hidden"
-            );
-
-            const contentBetween = !hasHiddenIndicators && !hasHiddenArrows;
-            horizontalControllersEl.classList.toggle("justify-content-between", contentBetween);
-            horizontalControllersEl.classList.toggle("justify-content-center", !contentBetween);
-        }
-    },
     //--------------------------------------------------------------------------
     // Handlers
     //--------------------------------------------------------------------------
@@ -2296,6 +2274,7 @@ options.registry.CarouselItem = options.Class.extend({
         this.$targetCarousel = this.$target.closest(".carousel");
         this.$indicators = this.$carousel.find('.carousel-indicators');
         this.$controls = this.$carousel.find('.carousel-control-prev, .carousel-control-next, .carousel-indicators');
+        this.carouselOptionName = this.$carousel[0].classList.contains("s_carousel_intro") ? "CarouselIntro" : "Carousel";
 
         var leftPanelEl = this.$overlay.data('$optionsSection')[0];
         var titleTextEl = leftPanelEl.querySelector('we-title > span');
@@ -2347,7 +2326,7 @@ options.registry.CarouselItem = options.Class.extend({
     addSlideItem(previewMode, widgetValue, params) {
         return new Promise(resolve => {
             this.trigger_up("option_update", {
-                optionName: "Carousel",
+                optionName: this.carouselOptionName,
                 name: "add_slide",
                 data: {
                     onSuccess: () => resolve(),
@@ -2368,10 +2347,11 @@ options.registry.CarouselItem = options.Class.extend({
             // The active indicator is deleted to ensure that the other
             // indicators will still work after the deletion.
             const $toDelete = $items.filter('.active').add(this.$indicators.find('.active'));
+            this.removing = true; // TODO remove in master: kept for stable.
             // Go to the previous slide.
             await new Promise(resolve => {
                 this.trigger_up("option_update", {
-                    optionName: "Carousel",
+                    optionName: this.carouselOptionName,
                     name: "slide",
                     data: {
                         direction: "prev",
@@ -2383,6 +2363,7 @@ options.registry.CarouselItem = options.Class.extend({
             $toDelete.remove();
             this.$controls.toggleClass("d-none", newLength === 1);
             this.$carousel.trigger("content_changed");
+            this.removing = false;
         }
         this.options.wysiwyg.odooEditor.historyUnpauseSteps();
         this.hasRemovedSlide = true;
@@ -2397,7 +2378,7 @@ options.registry.CarouselItem = options.Class.extend({
         const direction = widgetValue === "left" ? "prev" : "next";
         return new Promise(resolve => {
             this.trigger_up("option_update", {
-                optionName: "Carousel",
+                optionName: this.carouselOptionName,
                 name: "slide",
                 data: {
                     direction: direction,
@@ -2458,29 +2439,16 @@ options.registry.Parallax = options.Class.extend({
      *
      * @see this.selectClass for parameters
      */
-    async setParallaxType(previewMode, widgetValue, params) {
-        const isParallax = widgetValue !== "none";
-        this.$target[0].classList.toggle("parallax", isParallax);
-        this.$target[0].classList.toggle("s_parallax_is_fixed", widgetValue === "fixed");
-        this.$target[0].classList.toggle("s_parallax_no_overflow_hidden", widgetValue === "none" || widgetValue === "fixed");
-        const typeValues = {
-            "none": 0,
-            "fixed": 1,
-            "top": 1.5,
-            "bottom": -1.5,
-            "zoom_in": 1.2,
-            "zoom_out": 0.2,
-        };
-        this.$target[0].dataset.scrollBackgroundRatio = typeValues[widgetValue];
-        // Set a parallax type only if there is a zoom option selected.
-        // This is to avoid useless element in the DOM since in the animation
-        // we need the type only for zoom options.
-        if (widgetValue === "zoom_in" || widgetValue === "zoom_out") {
-            this.$target[0].dataset.parallaxType = widgetValue;
-        } else {
-            delete this.$target[0].dataset.parallaxType;
+    async selectDataAttribute(previewMode, widgetValue, params) {
+        await this._super(...arguments);
+        if (params.attributeName !== 'scrollBackgroundRatio') {
+            return;
         }
 
+        const isParallax = (widgetValue !== '0');
+        this.$target.toggleClass('parallax', isParallax);
+        this.$target.toggleClass('s_parallax_is_fixed', widgetValue === '1');
+        this.$target.toggleClass('s_parallax_no_overflow_hidden', (widgetValue === '0' || widgetValue === '1'));
         if (isParallax) {
             if (!this.parallaxEl) {
                 this.parallaxEl = document.createElement('span');
@@ -2511,15 +2479,16 @@ options.registry.Parallax = options.Class.extend({
      * @override
      */
     async _computeWidgetState(methodName, params) {
-        if (methodName === "setParallaxType" && params.parallaxTypeOpt) {
-            const attributeValue = parseFloat(this.$target[0].dataset.scrollBackgroundRatio?.trim() || 0)
-            switch (attributeValue) {
-                case 0:
-                    return "none";
-                case 1:
-                    return "fixed";
+        if (methodName === 'selectDataAttribute' && params.parallaxTypeOpt) {
+            const attrName = params.attributeName;
+            const attrValue = (this.$target[0].dataset[attrName] || params.attributeDefaultValue).trim();
+            switch (attrValue) {
+                case '0':
+                case '1': {
+                    return attrValue;
+                }
                 default: {
-                    return this.$target[0].dataset.parallaxType || (attributeValue > 0 ? "top" : "bottom");
+                    return (attrValue.startsWith('-') ? '-1.5' : '1.5');
                 }
             }
         }
@@ -2868,24 +2837,6 @@ options.registry.TopMenuVisibility = VisibilityPageOptionUpdate.extend({
         }
         return _super(...arguments);
     },
-    /**
-     * @override
-     */
-    async _computeWidgetVisibility(widgetName, params) {
-        if (widgetName === 'over_content_header_visibility_opt') {
-            let value;
-            this.trigger_up('action_demand', {
-                actionName: 'get_page_option',
-                params: ['header_overlay'],
-                onSuccess: v => value = v,
-            });
-            // The option might not even be available on this specific page
-            // (while the 'header_visible' one is), in this case the retrieved
-            // value is `null`
-            return value !== null;
-        }
-        return this._super(...arguments);
-    },
 });
 
 options.registry.topMenuColor = options.Class.extend({
@@ -3036,55 +2987,6 @@ options.registry.HideFooter = VisibilityPageOptionUpdate.extend({
     shownValue: 'shown',
 });
 
-options.registry.FooterTemplateSelector = options.Class.extend({
-
-    //--------------------------------------------------------------------------
-    // Options
-    //--------------------------------------------------------------------------
-
-    /**
-     * Enables the footer view and its corresponding copyright view to match
-     * content width
-     *
-     * @override
-     */
-    customizeWebsiteViews: async function (previewMode, widgetValue, params) {
-        await rpc("/website/update_footer_template", {
-            'template_key': widgetValue,
-            'possible_values': this._getDataKeysFromPossibleValues(params.possibleValues),
-        });
-    },
-});
-
-options.registry.ContainerWidthFooter = options.registry.ContainerWidth.extend({
-    /**
-     * @override
-     */
-    start() {
-        this._copyrightAlreadyUpdated = false;
-        return this._super(...arguments);
-    },
-
-    //--------------------------------------------------------------------------
-    // Options
-    //--------------------------------------------------------------------------
-
-    /**
-     * Make sure views are enabled only once (required due to the apply-to).
-     *
-     * @override
-     */
-    async customizeWebsiteViews(previewMode, widgetValue, params) {
-        // TODO: When new API available, update 'data-apply-to' to avoid
-        // customize-website-views to be called for all elements, just once.
-        if (this._copyrightAlreadyUpdated || previewMode) {
-            return;
-        }
-        this._copyrightAlreadyUpdated = true;
-        return this._super(...arguments);
-    },
-});
-
 /**
  * Handles the edition of snippet's anchor name.
  */
@@ -3145,10 +3047,7 @@ options.registry.anchor = options.Class.extend({
         buttonEl.addEventListener("click", async (ev) => {
             const anchorLink = this._getAnchorLink();
             await browser.navigator.clipboard.writeText(anchorLink);
-            const message = _t("Anchor copied to clipboard%(br)sLink: %(link)s", {
-                br: markup`<br>`,
-                link: anchorLink,
-            });
+            const message = markup(_t("Anchor copied to clipboard<br>Link: %s", anchorLink));
             this.notification.add(message, {
                 type: "success",
                 buttons: [{name: _t("Edit"), onClick: () => this._openAnchorDialog(buttonEl), primary: true}],
@@ -4353,6 +4252,18 @@ options.registry.MegaMenuLayout = options.registry.SelectTemplate.extend({
             .classList.value.split(' ').filter(cl => cl.startsWith('s_mega_menu'))[0];
         return `website.${templateDefiningClass}`;
     },
+    /**
+     * @override
+     */
+    async _computeWidgetVisibility(widgetName, params) {
+        if (params.optionsPossibleValues.selectClass?.includes("o_mega_menu_container_size")) {
+            const headerTemplate = weUtils.getCSSVariableValue("header-template");
+            if (["hamburger", "sidebar"].includes(headerTemplate.slice(1, -1))) {
+                return false;
+            }
+        }
+        return this._super(...arguments);
+    },
 });
 
 /**
@@ -4509,8 +4420,8 @@ options.registry.GalleryElement = options.Class.extend({
      * @see this.selectClass for parameters
      */
     position(previewMode, widgetValue, params) {
-        const optionName = this.$target[0].classList.contains("carousel-item")
-            ? "Carousel"
+        const carouselOptionName = this.$target[0].parentNode.parentNode.classList.contains("s_carousel_intro") ? "CarouselIntro" : "Carousel";
+        const optionName = this.$target[0].classList.contains("carousel-item") ? carouselOptionName
             : "GalleryImageList";
         const itemEl = this.$target[0];
         this.trigger_up("option_update", {

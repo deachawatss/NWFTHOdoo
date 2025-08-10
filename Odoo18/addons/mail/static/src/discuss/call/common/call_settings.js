@@ -5,7 +5,6 @@ import { browser } from "@web/core/browser/browser";
 import { debounce } from "@web/core/utils/timing";
 import { isMobileOS } from "@web/core/browser/feature_detection";
 import { useService } from "@web/core/utils/hooks";
-import { useMicrophoneVolume } from "@mail/utils/common/hooks";
 import { ActionPanel } from "@mail/discuss/core/common/action_panel";
 
 export class CallSettings extends Component {
@@ -19,13 +18,12 @@ export class CallSettings extends Component {
     setup() {
         super.setup();
         this.notification = useService("notification");
-        this.store = useService("mail.store");
-        this.rtc = useService("discuss.rtc");
-        this.microphoneVolume = useMicrophoneVolume();
+        this.store = useState(useService("mail.store"));
+        this.rtc = useState(useService("discuss.rtc"));
         this.state = useState({
             userDevices: [],
         });
-        this.pttExtService = useService("discuss.ptt_extension");
+        this.pttExtService = useState(useService("discuss.ptt_extension"));
         this.saveBackgroundBlurAmount = debounce(() => {
             browser.localStorage.setItem(
                 "mail_user_setting_background_blur_amount",
@@ -52,14 +50,6 @@ export class CallSettings extends Component {
             }
             this.state.userDevices = await browser.navigator.mediaDevices.enumerateDevices();
         });
-    }
-
-    get stopText() {
-        return _t("Stop");
-    }
-
-    get testText() {
-        return _t("Test");
     }
 
     get pushToTalkKeyText() {
@@ -102,7 +92,16 @@ export class CallSettings extends Component {
     }
 
     onClickDownloadLogs() {
-        this.rtc.dumpLogs({ download: true });
+        this.rtc.logSnapshot();
+        const data = JSON.stringify(this.rtc.state.globalLogs);
+        const blob = new Blob([data], { type: "application/json" });
+        const downloadLink = document.createElement("a");
+        const now = luxon.DateTime.now().toFormat("yyyy-ll-dd_HH-mm");
+        downloadLink.download = `RtcLogs_${now}.json`;
+        const url = URL.createObjectURL(blob);
+        downloadLink.href = url;
+        downloadLink.click();
+        URL.revokeObjectURL(url);
     }
 
     onClickRegisterKeyButton() {
@@ -111,6 +110,10 @@ export class CallSettings extends Component {
 
     onChangeDelay(ev) {
         this.store.settings.setDelayValue(ev.target.value);
+    }
+
+    onChangeThreshold(ev) {
+        this.store.settings.setThresholdValue(parseFloat(ev.target.value));
     }
 
     onChangeBlur(ev) {

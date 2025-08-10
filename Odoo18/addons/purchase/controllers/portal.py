@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import base64
@@ -7,7 +8,7 @@ from datetime import datetime
 from odoo import http
 from odoo.exceptions import AccessError, MissingError
 from odoo.http import request, Response
-from odoo.tools.image import image_process
+from odoo.tools import image_process
 from odoo.tools.translate import _
 from odoo.addons.portal.controllers import portal
 from odoo.addons.portal.controllers.portal import pager as portal_pager
@@ -24,7 +25,7 @@ class CustomerPortal(portal.CustomerPortal):
             ]) if PurchaseOrder.has_access('read') else 0
         if 'purchase_count' in counters:
             values['purchase_count'] = PurchaseOrder.search_count([
-                ('state', 'in', ['purchase', 'cancel'])
+                ('state', 'in', ['purchase', 'done', 'cancel'])
             ]) if PurchaseOrder.has_access('read') else 0
         return values
 
@@ -129,9 +130,10 @@ class CustomerPortal(portal.CustomerPortal):
             page, date_begin, date_end, sortby, filterby,
             [],
             {
-                'all': {'label': _('All'), 'domain': [('state', 'in', ['purchase', 'cancel'])]},
+                'all': {'label': _('All'), 'domain': [('state', 'in', ['purchase', 'done', 'cancel'])]},
                 'purchase': {'label': _('Purchase Order'), 'domain': [('state', '=', 'purchase')]},
                 'cancel': {'label': _('Cancelled'), 'domain': [('state', '=', 'cancel')]},
+                'done': {'label': _('Locked'), 'domain': [('state', '=', 'done')]},
             },
             'all',
             "/my/purchase",
@@ -149,11 +151,15 @@ class CustomerPortal(portal.CustomerPortal):
 
         report_type = kw.get('report_type')
         if report_type in ('html', 'pdf', 'text'):
-            report_ref = 'purchase.report_purchase_quotation' if order_sudo.state in ['rfq','sent'] else 'purchase.action_report_purchase_order'
-            return self._show_report(model=order_sudo, report_type=report_type, report_ref=report_ref, download=kw.get('download'))
+            return self._show_report(model=order_sudo, report_type=report_type, report_ref='purchase.action_report_purchase_order', download=kw.get('download'))
 
-        if kw.get('acknowledge'):
-            order_sudo.action_acknowledge()
+        confirm_type = kw.get('confirm')
+        if confirm_type == 'reminder':
+            order_sudo.confirm_reminder_mail(kw.get('confirmed_date'))
+        if confirm_type == 'reception':
+            order_sudo._confirm_reception_mail()
+        if confirm_type == 'decline':
+            order_sudo._decline_reception_mail()
 
         values = self._purchase_order_get_page_view_values(order_sudo, access_token, **kw)
         update_date = kw.get('update')
@@ -163,7 +169,7 @@ class CustomerPortal(portal.CustomerPortal):
             return request.render("purchase.portal_my_purchase_order_update_date", values)
         return request.render("purchase.portal_my_purchase_order", values)
 
-    @http.route(['/my/purchase/<int:order_id>/update'], type='jsonrpc', auth="public", website=True)
+    @http.route(['/my/purchase/<int:order_id>/update'], type='json', auth="public", website=True)
     def portal_my_purchase_order_update_dates(self, order_id=None, access_token=None, **kw):
         """User update scheduled date on purchase order line.
         """
@@ -205,14 +211,13 @@ class CustomerPortal(portal.CustomerPortal):
         builders = order_sudo._get_edi_builders()
 
         # This handles only one builder for now, more can be added in the future
-        # TODO: add builder choice on modal
-        if len(builders) == 0:
+        if len(builders) != 1:
             return request.redirect('/my')
         builder = builders[0]
 
         xml_content = builder._export_order(order_sudo)
 
-        download_name = builder._export_invoice_filename(order_sudo)  # works even if it's a SO or PO
+        download_name = builder._export_purchase_order_filename(order_sudo)
 
         http_headers = [
             ('Content-Type', 'text/xml'),

@@ -1,3 +1,4 @@
+/* @odoo-module */
 //
 // This file is meant to regroup your javascript code. You can either copy/past
 // any code that should be executed on each page loading or write your own
@@ -7,18 +8,18 @@
 //
 /*
 import { ConfirmationDialog } from '@web/core/confirmation_dialog/confirmation_dialog';
-import { Interaction } from "@web/public/interaction";
-import { registry } from "@web/core/registry";
+import publicWidget from '@web/legacy/js/public/public_widget';
 
-class HelloWorldPopup extends Interaction {
-    static selector = "#wrapwrap";
+publicWidget.registry.HelloWorldPopup = publicWidget.Widget.extend({
+    selector: '#wrapwrap',
 
+    init() {
+        this._super(...arguments);
+        this.dialog = this.bindService("dialog");
+    },
     start() {
-        this.services.dialog.add(ConfirmationDialog, { body: "hello world"});
-    }
-}
-
-registry
-    .category("public.interactions")
-    .add("website.hello_world_popup", HelloWorldPopup);
+        this.dialog.add(ConfirmationDialog, { body: 'Hello World' });
+        return this._super.apply(this, arguments);
+    },
+});
 */

@@ -3,7 +3,6 @@
 
 from odoo import fields, models, _
 
-
 class FleetVehicleLogContract(models.Model):
     _inherit = 'fleet.vehicle.log.contract'
 

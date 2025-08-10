@@ -26,16 +26,12 @@ export function useTestClientAction() {
 /**
  * @param {Parameters<typeof mountWithCleanup>[1]} [options]
  */
-export async function mountWebClient(options = {}) {
-    const WebClientComponent = options.WebClient || WebClient;
-    delete options.WebClient;
-    const webClient = await mountWithCleanup(WebClientComponent, options);
+export async function mountWebClient(options) {
+    await mountWithCleanup(WebClient, options);
     // Wait for visual changes caused by a potential loadState
     await animationFrame();
     // wait for BlankComponent
     await animationFrame();
     // wait for the regular rendering
     await animationFrame();
-
-    return webClient;
 }

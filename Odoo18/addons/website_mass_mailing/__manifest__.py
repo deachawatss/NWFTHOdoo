@@ -14,35 +14,25 @@ On a simple click, your visitors can subscribe to mailing lists managed in the E
     'data': [
         'security/ir.model.access.csv',
         'data/ir_model_data.xml',
+        'views/snippets/s_popup.xml',
         'views/snippets_templates.xml',
     ],
     'auto_install': ['website', 'mass_mailing'],
     'assets': {
         'web.assets_frontend': [
-            'website_mass_mailing/static/src/scss/website_mass_mailing.scss',
-            'website_mass_mailing/static/src/interactions/**/*',
             'website_mass_mailing/static/src/scss/website_mass_mailing_popup.scss',
             'website_mass_mailing/static/src/js/website_mass_mailing.js',
             'website_mass_mailing/static/src/xml/*.xml',
         ],
-        'website.website_builder_assets': [
+        'website.assets_wysiwyg': [
+            'website_mass_mailing/static/src/js/website_mass_mailing.editor.js',
             'website_mass_mailing/static/src/js/mass_mailing_form_editor.js',
-            'website_mass_mailing/static/src/website_builder/**/*',
-            ('remove', 'website_mass_mailing/static/src/website_builder/**/*.inside.scss'),
-        ],
-        'website.assets_edit_frontend': [
-            'website_mass_mailing/static/src/website_builder/mailing_list_subscribe_option.inside.scss',
+            'website_mass_mailing/static/src/scss/website_mass_mailing_edit_mode.scss',
+            'website_mass_mailing/static/src/snippets/s_popup/options.js',
         ],
         'web.assets_tests': [
-            'website_mass_mailing/static/tests/tours/**/*',
-        ],
-        'web.assets_unit_tests': [
-            'website_mass_mailing/static/tests/interactions/**/*',
-        ],
-        'web.assets_unit_tests_setup': [
-            'website_mass_mailing/static/src/interactions/**/*',
+            'website_mass_mailing/static/tests/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

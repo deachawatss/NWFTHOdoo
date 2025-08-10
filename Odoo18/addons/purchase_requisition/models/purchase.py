@@ -23,15 +23,24 @@ class PurchaseOrderGroup(models.Model):
 class PurchaseOrder(models.Model):
     _inherit = 'purchase.order'
 
-    requisition_id = fields.Many2one('purchase.requisition', string='Agreement', copy=False, index='btree_not_null')
+    requisition_id = fields.Many2one('purchase.requisition', string='Agreement', copy=False)
     requisition_type = fields.Selection(related='requisition_id.requisition_type')
 
-    purchase_group_id = fields.Many2one('purchase.order.group', index='btree_not_null')
+    purchase_group_id = fields.Many2one('purchase.order.group')
     alternative_po_ids = fields.One2many(
         'purchase.order', related='purchase_group_id.order_ids', readonly=False,
         domain="[('id', '!=', id), ('state', 'in', ['draft', 'sent', 'to approve'])]",
         string="Alternative POs", check_company=True,
         help="Other potential purchase orders for purchasing products")
+    has_alternatives = fields.Boolean(
+        "Has Alternatives", compute='_compute_has_alternatives',
+        help="Whether or not this purchase order is linked to another purchase order as an alternative.")
+
+    @api.depends('purchase_group_id')
+    def _compute_has_alternatives(self):
+        self.has_alternatives = False
+        if self.env.user.has_group('purchase_requisition.group_purchase_alternatives'):
+            self.filtered(lambda po: po.purchase_group_id).has_alternatives = True
 
     @api.onchange('requisition_id')
     def _onchange_requisition_id(self):
@@ -60,16 +69,13 @@ class PurchaseOrder(models.Model):
                     self.origin = self.origin + ', ' + requisition.name
             else:
                 self.origin = requisition.name
-        self.note = requisition.description
+        self.notes = requisition.description
         if requisition.date_start:
             self.date_order = max(fields.Datetime.now(), fields.Datetime.to_datetime(requisition.date_start))
         else:
             self.date_order = fields.Datetime.now()
 
         # Create PO lines if necessary
-        # Do not clobber existing lines if the PO is already confirmed
-        if self.state != 'draft':
-            return
         order_lines = []
         for line in requisition.line_ids:
             # Compute name
@@ -85,9 +91,9 @@ class PurchaseOrder(models.Model):
             taxes_ids = fpos.map_tax(line.product_id.supplier_taxes_id.filtered(lambda tax: tax.company_id == requisition.company_id)).ids
 
             # Compute quantity and price_unit
-            if line.product_uom_id != line.product_id.uom_id:
-                product_qty = line.product_uom_id._compute_quantity(line.product_qty, line.product_id.uom_id)
-                price_unit = line.product_uom_id._compute_price(line.price_unit, line.product_id.uom_id)
+            if line.product_uom_id != line.product_id.uom_po_id:
+                product_qty = line.product_uom_id._compute_quantity(line.product_qty, line.product_id.uom_po_id)
+                price_unit = line.product_uom_id._compute_price(line.price_unit, line.product_id.uom_po_id)
             else:
                 product_qty = line.product_qty
                 price_unit = line.price_unit
@@ -205,7 +211,7 @@ class PurchaseOrder(models.Model):
         po_alternatives = self | self.alternative_po_ids
 
         for line in po_alternatives.order_line:
-            if not line.product_qty or not line.price_total_cc or line.state in ['cancel', 'purchase']:
+            if not line.product_qty or not line.price_total_cc or line.state in ['cancel', 'purchase', 'done']:
                 continue
 
             # if no best price line => no best price unit line either
@@ -272,7 +278,7 @@ class PurchaseOrderLine(models.Model):
                 continue
             for line in pol.order_id.requisition_id.line_ids:
                 if line.product_id == pol.product_id:
-                    pol.price_unit = line.product_uom_id._compute_price(line.price_unit, pol.product_uom_id)
+                    pol.price_unit = line.product_uom_id._compute_price(line.price_unit, pol.product_uom)
                     partner = pol.order_id.partner_id or pol.order_id.requisition_id.vendor_id
                     params = {'order_id': pol.order_id}
                     seller = pol.product_id._select_seller(
@@ -294,7 +300,7 @@ class PurchaseOrderLine(models.Model):
         super(PurchaseOrderLine, po_lines_without_requisition)._compute_price_unit_and_date_planned_and_name()
 
     def action_clear_quantities(self):
-        zeroed_lines = self.filtered(lambda l: l.state not in ['cancel', 'purchase'])
+        zeroed_lines = self.filtered(lambda l: l.state not in ['cancel', 'purchase', 'done'])
         zeroed_lines.write({'product_qty': 0})
         if len(self) > len(zeroed_lines):
             return {

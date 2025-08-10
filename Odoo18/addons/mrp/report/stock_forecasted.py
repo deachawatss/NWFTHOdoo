@@ -4,7 +4,7 @@
 from odoo import api, models
 
 
-class StockForecasted_Product_Product(models.AbstractModel):
+class StockForecasted(models.AbstractModel):
     _inherit = 'stock.forecasted_product_product'
 
     def _prepare_report_line(self, quantity, move_out=None, move_in=None, replenishment_filled=True, product=False, reserved_move=False, in_transit=False, read=True):

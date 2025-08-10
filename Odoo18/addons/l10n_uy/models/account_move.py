@@ -13,6 +13,7 @@ UY_DOC_SUBTYPES = [
 
 
 class AccountMove(models.Model):
+
     _inherit = 'account.move'
 
     def _get_starting_sequence(self):

@@ -28,10 +28,9 @@ class UtmCampaign(models.Model):
     is_auto_campaign = fields.Boolean(default=False, string="Automatically Generated Campaign", help="Allows us to filter relevant Campaigns")
     color = fields.Integer(string='Color Index')
 
-    _unique_name = models.Constraint(
-        'UNIQUE(name)',
-        'The name must be unique',
-    )
+    _sql_constraints = [
+        ('unique_name', 'UNIQUE(name)', 'The name must be unique'),
+    ]
 
     @api.depends('title')
     def _compute_name(self):

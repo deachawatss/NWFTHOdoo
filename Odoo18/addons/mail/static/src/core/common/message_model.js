@@ -1,25 +1,35 @@
-import { fields, Record } from "@mail/core/common/record";
+import { Record } from "@mail/core/common/record";
 import {
     EMOJI_REGEX,
     convertBrToLineBreak,
-    decorateEmojis,
     htmlToTextContentInline,
     prettifyMessageContent,
 } from "@mail/utils/common/format";
+import { createDocumentFragmentFromContent } from "@mail/utils/common/html";
+
+import { toRaw } from "@odoo/owl";
 
 import { browser } from "@web/core/browser/browser";
 import { stateToUrl } from "@web/core/browser/router";
-import { loadEmoji } from "@web/core/emoji_picker/emoji_picker";
 import { _t } from "@web/core/l10n/translation";
 import { rpc } from "@web/core/network/rpc";
 import { user } from "@web/core/user";
-import { createDocumentFragmentFromContent, createElementWithContent } from "@web/core/utils/html";
+import { setElementContent } from "@web/core/utils/html";
 import { url } from "@web/core/utils/urls";
 
 const { DateTime } = luxon;
 export class Message extends Record {
-    static _name = "mail.message";
     static id = "id";
+    /** @type {Object.<number, import("models").Message>} */
+    static records = {};
+    /** @returns {import("models").Message} */
+    static get(data) {
+        return super.get(data);
+    }
+    /** @returns {import("models").Message|import("models").Message[]} */
+    static insert(data) {
+        return super.insert(...arguments);
+    }
 
     /** @param {Object} data */
     update(data) {
@@ -30,36 +40,16 @@ export class Message extends Record {
         }
     }
 
-    attachment_ids = fields.Many("ir.attachment", { inverse: "message" });
-    author_id = fields.One("Persona");
-    author_guest_id = fields.One("Persona");
-    get author() {
-        return this.author_id || this.author_guest_id;
-    }
-    body = fields.Html("");
-    call_history_ids = fields.Many("discuss.call.history");
-    richBody = fields.Html("", {
-        compute() {
-            if (!this.store.emojiLoader.loaded) {
-                loadEmoji();
-            }
-            return decorateEmojis(this.body) ?? "";
-        },
-    });
-    richTranslationValue = fields.Html("", {
-        compute() {
-            if (!this.store.emojiLoader.loaded) {
-                loadEmoji();
-            }
-            return decorateEmojis(this.translationValue) ?? "";
-        },
-    });
-    composer = fields.One("Composer", { inverse: "message", onDelete: (r) => r.delete() });
-    date = fields.Datetime();
+    attachment_ids = Record.many("Attachment", { inverse: "message" });
+    author = Record.one("Persona");
+    body = Record.attr("", { html: true });
+    composer = Record.one("Composer", { inverse: "message", onDelete: (r) => r.delete() });
+    /** @type {DateTime} */
+    date = Record.attr(undefined, { type: "datetime" });
     /** @type {string} */
     default_subject;
     /** @type {boolean} */
-    edited = fields.Attr(false, {
+    edited = Record.attr(false, {
         compute() {
             return Boolean(
                 // ".o-mail-Message-edited" is the class added by the mail.thread in _message_update_content
@@ -68,32 +58,70 @@ export class Message extends Record {
             );
         },
     });
-    hasLink = fields.Attr(false, {
+    hasEveryoneSeen = Record.attr(false, {
+        /** @this {import("models").Message} */
+        compute() {
+            return this.thread?.membersThatCanSeen.every((m) => m.hasSeen(this));
+        },
+    });
+    isMessagePreviousToLastSelfMessageSeenByEveryone = Record.attr(false, {
+        /** @this {import("models").Message} */
+        compute() {
+            if (!this.thread?.lastSelfMessageSeenByEveryone) {
+                return false;
+            }
+            return this.id < this.thread.lastSelfMessageSeenByEveryone.id;
+        },
+    });
+    isReadBySelf = Record.attr(false, {
+        compute() {
+            return (
+                this.thread?.selfMember?.seen_message_id?.id >= this.id &&
+                this.thread?.selfMember?.new_message_separator > this.id
+            );
+        },
+    });
+    hasSomeoneSeen = Record.attr(false, {
+        /** @this {import("models").Message} */
+        compute() {
+            return this.thread?.membersThatCanSeen
+                .filter(({ persona }) => !persona.eq(this.author))
+                .some((m) => m.hasSeen(this));
+        },
+    });
+    hasSomeoneFetched = Record.attr(false, {
+        /** @this {import("models").Message} */
+        compute() {
+            if (!this.thread) {
+                return false;
+            }
+            const otherFetched = this.thread.channelMembers.filter(
+                (m) => m.persona.notEq(this.author) && m.fetched_message_id?.id >= this.id
+            );
+            return otherFetched.length > 0;
+        },
+    });
+    hasLink = Record.attr(false, {
         compute() {
             if (this.isBodyEmpty) {
                 return false;
             }
-            const div = createElementWithContent("div", this.body);
+            const div = document.createElement("div");
+            setElementContent(div, this.body);
             return Boolean(div.querySelector("a:not([data-oe-model])"));
         },
     });
     /** @type {number|string} */
     id;
-    /** @type {Array[Array[string]]} */
-    incoming_email_cc;
-    /** @type {Array[Array[string]]} */
-    incoming_email_to;
-    get isDiscussion() {
-        return this.store.mt_comment?.eq(this.subtype_id);
-    }
-    get isNote() {
-        return this.store.mt_note?.eq(this.subtype_id);
-    }
+    /** @type {boolean} */
+    is_discussion;
+    /** @type {boolean} */
+    is_note;
     /** @type {boolean} */
     is_transient;
-    message_link_preview_ids = fields.Many("mail.message.link.preview", { inverse: "message_id" });
+    linkPreviews = Record.many("LinkPreview", { inverse: "message", onDelete: (r) => r.delete() });
     /** @type {number[]} */
-    parent_id = fields.One("mail.message");
+    parentMessage = Record.one("Message");
     /**
      * When set, this temporary/pending message failed message post, and the
      * value is a callback to re-attempt to post the message.
@@ -101,7 +129,7 @@ export class Message extends Record {
      * @type {() => {} | undefined}
      */
     postFailRedo = undefined;
-    reactions = fields.Many("MessageReactions", {
+    reactions = Record.many("MessageReactions", {
         inverse: "message",
         /**
          * @param {import("models").MessageReactions} r1
@@ -109,39 +137,33 @@ export class Message extends Record {
          */
         sort: (r1, r2) => r1.sequence - r2.sequence,
     });
-    notification_ids = fields.Many("mail.notification", { inverse: "mail_message_id" });
-    partner_ids = fields.Many("Persona");
-    subtype_id = fields.One("mail.message.subtype");
-    thread = fields.One("Thread");
-    threadAsNeedaction = fields.One("Thread", {
+    notifications = Record.many("Notification", { inverse: "message" });
+    recipients = Record.many("Persona");
+    thread = Record.one("Thread");
+    threadAsNeedaction = Record.one("Thread", {
         compute() {
             if (this.needaction) {
                 return this.thread;
             }
         },
     });
-    threadAsNewest = fields.One("Thread");
-    threadAsInEdition = fields.One("Thread", {
+    threadAsNewest = Record.one("Thread");
+    /** @type {DateTime} */
+    scheduledDatetime = Record.attr(undefined, { type: "datetime" });
+    onlyEmojis = Record.attr(false, {
         compute() {
-            if (this.composer) {
-                return this.thread;
-            }
-        },
-    });
-    scheduledDatetime = fields.Datetime();
-    onlyEmojis = fields.Attr(false, {
-        compute() {
-            const bodyWithoutTags = createElementWithContent("div", this.body).textContent;
+            const div = document.createElement("div");
+            setElementContent(div, this.body);
+            const bodyWithoutTags = div.textContent;
             const withoutEmojis = bodyWithoutTags.replace(EMOJI_REGEX, "");
-            return (
-                bodyWithoutTags.length > 0 &&
-                bodyWithoutTags.match(EMOJI_REGEX) &&
-                withoutEmojis.trim().length === 0
-            );
+            return bodyWithoutTags.length > 0 && withoutEmojis.trim().length === 0;
         },
     });
     /** @type {string} */
     subject;
+    /** @type {string} */
+    subtype_description;
+    threadAsFirstUnread = Record.one("Thread", { inverse: "firstUnreadMessage" });
     /** @type {Object[]} */
     trackingValues = [];
     /** @type {string|undefined} */
@@ -154,8 +176,10 @@ export class Message extends Record {
     message_type;
     /** @type {string|undefined} */
     notificationType;
-    create_date = fields.Datetime();
-    write_date = fields.Datetime();
+    /** @type {luxon.DateTime} */
+    create_date = Record.attr(undefined, { type: "datetime" });
+    /** @type {luxon.DateTime} */
+    write_date = Record.attr(undefined, { type: "datetime" });
     /** @type {undefined|Boolean} */
     needaction;
     starred = false;
@@ -165,17 +189,14 @@ export class Message extends Record {
      * @returns {boolean}
      */
     get allowsEdition() {
-        return this.store.self.main_user_id?.is_admin || this.isSelfAuthored;
+        return this.store.self.isAdmin || this.isSelfAuthored;
     }
 
     get bubbleColor() {
-        if (this.message_type === "notification") {
-            return undefined;
-        }
-        if (!this.isSelfAuthored && !this.isNote && !this.isHighlightedFromMention) {
+        if (!this.isSelfAuthored && !this.is_note && !this.isHighlightedFromMention) {
             return "blue";
         }
-        if (this.isSelfAuthored && !this.isNote && !this.isHighlightedFromMention) {
+        if (this.isSelfAuthored && !this.is_note && !this.isHighlightedFromMention) {
             return "green";
         }
         if (this.isHighlightedFromMention) {
@@ -185,7 +206,7 @@ export class Message extends Record {
     }
 
     get editable() {
-        if (this.isEmpty || !this.allowsEdition) {
+        if (!this.allowsEdition) {
             return false;
         }
         return this.message_type === "comment";
@@ -210,7 +231,9 @@ export class Message extends Record {
     get dateSimpleWithDay() {
         const userLocale = { locale: user.lang };
         if (this.datetime.hasSame(DateTime.now(), "day")) {
-            return this.datetime.toLocaleString(DateTime.TIME_SIMPLE, userLocale);
+            return _t("Today at %(time)s", {
+                time: this.datetime.toLocaleString(DateTime.TIME_SIMPLE, userLocale),
+            });
         }
         if (this.datetime.hasSame(DateTime.now().minus({ day: 1 }), "day")) {
             return _t("Yesterday at %(time)s", {
@@ -240,19 +263,31 @@ export class Message extends Record {
         return this.thread?.effectiveSelf ?? this.store.self;
     }
 
+    /**
+     * Get the current user's active identities.These identities include both
+     * the cookie-authenticated persona and the partner authenticated with the
+     * portal token in the context of the related thread.
+     *
+     * @deprecated
+     * @returns {import("models").Persona[]}
+     */
+    get selves() {
+        return this.thread?.selves ?? [this.store.self];
+    }
+
     get datetimeShort() {
         return this.datetime.toLocaleString(DateTime.DATETIME_SHORT_WITH_SECONDS);
     }
 
     get isSelfMentioned() {
-        return this.effectiveSelf.in(this.partner_ids);
+        return this.effectiveSelf.in(this.recipients);
     }
 
     get isHighlightedFromMention() {
         return this.isSelfMentioned && this.thread?.model === "discuss.channel";
     }
 
-    isSelfAuthored = fields.Attr(false, {
+    isSelfAuthored = Record.attr(false, {
         compute() {
             if (!this.author) {
                 return false;
@@ -272,17 +307,17 @@ export class Message extends Record {
     }
 
     get isSubjectSimilarToThreadName() {
-        if (!this.subject || !this.thread || !this.thread.display_name) {
+        if (!this.subject || !this.thread || !this.thread.name) {
             return false;
         }
         const regexPrefix = /^((re|fw|fwd)\s*:\s*)*/i;
-        const cleanedThreadName = this.thread.display_name.replace(regexPrefix, "");
+        const cleanedThreadName = this.thread.name.replace(regexPrefix, "");
         const cleanedSubject = this.subject.replace(regexPrefix, "");
         return cleanedSubject === cleanedThreadName;
     }
 
     get isSubjectDefault() {
-        const name = this.thread?.display_name;
+        const name = this.thread?.name;
         const threadName = name ? name.trim().toLowerCase() : "";
         const defaultSubject = this.default_subject ? this.default_subject.toLowerCase() : "";
         const candidates = new Set([defaultSubject, threadName]);
@@ -299,7 +334,6 @@ export class Message extends Record {
 
     isTranslatable(thread) {
         return (
-            !this.isEmpty &&
             this.store.hasMessageTranslationFeature &&
             !["discuss.channel", "mail.box"].includes(thread?.model)
         );
@@ -309,18 +343,18 @@ export class Message extends Record {
         return !this.isBodyEmpty;
     }
 
-    isEmpty = fields.Attr(false, {
+    isEmpty = Record.attr(false, {
         /** @this {import("models").Message} */
         compute() {
             return (
                 this.isBodyEmpty &&
                 this.attachment_ids.length === 0 &&
                 this.trackingValues.length === 0 &&
-                !this.subtype_id?.description
+                !this.subtype_description
             );
         },
     });
-    isBodyEmpty = fields.Attr(undefined, {
+    isBodyEmpty = Record.attr(undefined, {
         compute() {
             return (
                 !this.body ||
@@ -355,50 +389,28 @@ export class Message extends Record {
             this.body.startsWith("<a") &&
             this.body.endsWith("/a>") &&
             this.body.match(/<\/a>/im)?.length === 1 &&
-            this.message_link_preview_ids.length === 1 &&
-            this.message_link_preview_ids[0].link_preview_id.isImage
+            this.linkPreviews.length === 1 &&
+            this.linkPreviews[0].isImage
         );
     }
 
-    get authorName() {
-        if (this.author) {
-            return this.getPersonaName(this.author);
+    get inlineBody() {
+        if (!this.body) {
+            return "";
         }
-        return this.email_from;
+        return htmlToTextContentInline(this.body);
     }
-
-    get notificationHidden() {
-        return false;
-    }
-
-    inlineBody = fields.Html("", {
-        /** @this {import("models").Message} */
-        compute() {
-            if (this.notificationType === "call") {
-                return _t("%(caller)s started a call", { caller: this.authorName });
-            }
-            if (this.isEmpty) {
-                return _t("This message has been removed");
-            }
-            if (!this.body) {
-                return "";
-            }
-            return decorateEmojis(htmlToTextContentInline(this.body));
-        },
-    });
 
     get notificationIcon() {
         switch (this.notificationType) {
             case "pin":
                 return "fa fa-thumb-tack";
-            case "call":
-                return "fa fa-phone";
         }
         return null;
     }
 
     get failureNotifications() {
-        return this.notification_ids.filter((notification) => notification.isFailure);
+        return this.notifications.filter((notification) => notification.isFailure);
     }
 
     get scheduledDateSimple() {
@@ -410,72 +422,16 @@ export class Message extends Record {
     get canToggleStar() {
         return Boolean(
             !this.is_transient &&
-                !this.isPending &&
                 this.thread &&
                 this.store.self.type === "partner" &&
-                this.store.self.main_user_id?.share === false &&
+                this.store.self.isInternalUser &&
                 this.persistent
         );
     }
 
-    get hasOnlyAttachments() {
-        return this.isBodyEmpty && this.attachment_ids.length > 0;
-    }
-
-    previewText = fields.Html("", {
-        /** @this {import("models").Message} */
-        compute() {
-            if (!this.hasOnlyAttachments) {
-                return this.inlineBody || this.subtype_id?.description;
-            }
-            const { attachment_ids: attachments } = this;
-            if (!attachments || attachments.length === 0) {
-                return "";
-            }
-            switch (attachments.length) {
-                case 1:
-                    return attachments[0].previewName;
-                case 2:
-                    return _t("%(file1)s and %(file2)s", {
-                        file1: attachments[0].previewName,
-                        file2: attachments[1].previewName,
-                        count: attachments.length - 1,
-                    });
-                default:
-                    return _t("%(file1)s and %(count)s other attachments", {
-                        file1: attachments[0].previewName,
-                        count: attachments.length - 1,
-                    });
-            }
-        },
-    });
-
-    get previewIcon() {
-        const { attachment_ids: attachments } = this;
-        if (!attachments || attachments.length === 0) {
-            return "";
-        }
-        const firstAttachment = attachments[0];
-        switch (true) {
-            case firstAttachment.isImage:
-                return "fa-picture-o";
-            case firstAttachment.mimetype === "audio/mpeg":
-                return firstAttachment.voice ? "fa-microphone" : "fa-headphones";
-            case firstAttachment.isVideo:
-                return "fa-video-camera";
-            default:
-                return "fa-file";
-        }
-    }
-
     /** @param {import("models").Thread} thread the thread where the message is shown */
     canAddReaction(thread) {
-        return Boolean(
-            !this.is_transient &&
-                !this.isPending &&
-                this.thread?.can_react &&
-                !this.thread.isTransient
-        );
+        return Boolean(!this.is_transient && this.thread?.can_react);
     }
 
     /** @param {import("models").Thread} thread the thread where the message is shown */
@@ -503,84 +459,30 @@ export class Message extends Record {
         this.store.env.services.notification.add(notification, { type });
     }
 
-    async copyMessageText() {
-        const messageBody = convertBrToLineBreak(this.body);
-        try {
-            await browser.navigator.clipboard.writeText(messageBody);
-        } catch {
-            this.store.env.services.notification.add(
-                _t("Message Copy Failed (Permission denied?)!"),
-                { type: "danger" }
-            );
-        }
-        this.store.env.services.notification.add(_t("Message Copied!"), { type: "info" });
-    }
-
-    async edit(
-        body,
-        attachments = [],
-        { mentionedChannels = [], mentionedPartners = [], mentionedRoles = [] } = {}
-    ) {
+    async edit(body, attachments = [], { mentionedChannels = [], mentionedPartners = [] } = {}) {
         if (convertBrToLineBreak(this.body) === body && attachments.length === 0) {
             return;
         }
         const validMentions = this.store.getMentionsFromText(body, {
             mentionedChannels,
             mentionedPartners,
-            mentionedRoles,
         });
-        const hadLink = this.hasLink; // to remove old previews if message no longer contains any link
         const data = await rpc("/mail/message/update_content", {
             attachment_ids: attachments
                 .concat(this.attachment_ids)
                 .map((attachment) => attachment.id),
             attachment_tokens: attachments
                 .concat(this.attachment_ids)
-                .map((attachment) => attachment.ownership_token),
-            body: await prettifyMessageContent(body, { validMentions }),
+                .map((attachment) => attachment.access_token),
+            body: await prettifyMessageContent(body, validMentions),
             message_id: this.id,
             partner_ids: validMentions?.partners?.map((partner) => partner.id),
-            role_ids: validMentions?.roles?.map((role) => role.id),
             ...this.thread.rpcParams,
         });
-        this.store.insert(data);
-        if ((hadLink || this.hasLink) && this.store.hasLinkPreviewFeature) {
+        this.store.insert(data, { html: true });
+        if (this.hasLink && this.store.hasLinkPreviewFeature) {
             rpc("/mail/link_preview", { message_id: this.id }, { silent: true });
         }
-    }
-
-    /** @param {import("models").Thread} thread the thread where the message is being viewed when starting edition */
-    enterEditMode(thread) {
-        const text = convertBrToLineBreak(this.body);
-        if (thread?.messageInEdition) {
-            thread.messageInEdition.composer = undefined;
-        }
-        this.composer = {
-            mentionedPartners: this.partner_ids,
-            text,
-            selection: {
-                start: text.length,
-                end: text.length,
-                direction: "none",
-            },
-        };
-    }
-
-    /** @param {import("models").Thread} thread the thread where the message is being viewed when stopping edition */
-    exitEditMode(thread) {
-        const threadAsInEdition = this.threadAsInEdition;
-        this.composer = undefined;
-        if (threadAsInEdition && threadAsInEdition.eq(thread)) {
-            threadAsInEdition.composer.autofocus++;
-        }
-    }
-
-    /**
-     * @param {import("models").Persona} persona
-     * @returns {string}
-     */
-    getPersonaName(persona) {
-        return this.thread?.getPersonaName(persona) || persona.displayName;
     }
 
     async react(content) {
@@ -608,7 +510,6 @@ export class Message extends Record {
         });
         this.body = "";
         this.attachment_ids = [];
-        this.composer = undefined;
     }
 
     async setDone() {
@@ -634,16 +535,27 @@ export class Message extends Record {
         const thread = this.thread;
         await thread.selfFollower.remove();
         this.store.env.services.notification.add(
-            _t('You are no longer following "%(thread_name)s".', {
-                thread_name: thread.display_name,
-            }),
+            _t('You are no longer following "%(thread_name)s".', { thread_name: thread.name }),
             { type: "success" }
         );
     }
 
-    hideAllLinkPreviews() {
-        rpc("/mail/link_preview/hide", {
-            message_link_preview_ids: this.message_link_preview_ids.map((lpm) => lpm.id),
+    get channelMemberHaveSeen() {
+        return this.thread.membersThatCanSeen.filter(
+            (m) => m.hasSeen(this) && m.persona.notEq(this.author)
+        );
+    }
+
+    /** @param {import("models").Thread} thread the thread where the message is shown */
+    onClickMarkAsUnread(thr) {
+        const message = toRaw(this);
+        const thread = toRaw(thr);
+        if (!thread.selfMember || thread.selfMember?.new_message_separator === message.id) {
+            return;
+        }
+        return rpc("/discuss/channel/mark_as_unread", {
+            channel_id: message.thread.id,
+            message_id: message.id,
         });
     }
 }

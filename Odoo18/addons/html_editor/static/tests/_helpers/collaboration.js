@@ -65,7 +65,9 @@ export const setupMultiEditor = async (spec) => {
         };
         peerInfos[peerId] = peerInfo;
         let n = 0;
-        HistoryPlugin.prototype.generateId = () => `fake_id_${n++}`;
+        HistoryPlugin.prototype.generateId = () => {
+            return `fake_id_${n++}`;
+        };
         let selection;
         const defaultPlugins = MAIN_PLUGINS;
         const base = await setupEditor(spec.contentBefore, {
@@ -219,9 +221,9 @@ export function renderTextualSelection(peerInfos) {
     }
 
     for (const nodeId of Object.keys(cursorNodes)) {
-        cursorNodes[nodeId] = cursorNodes[nodeId].sort(
-            (a, b) => b.offset - a.offset || b.peerId.localeCompare(a.peerId)
-        );
+        cursorNodes[nodeId] = cursorNodes[nodeId].sort((a, b) => {
+            return b.offset - a.offset || b.peerId.localeCompare(a.peerId);
+        });
     }
 
     for (const peerInfo of peerInfosList) {

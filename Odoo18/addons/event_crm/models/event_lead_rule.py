@@ -64,7 +64,7 @@ class EventLeadRule(models.Model):
     intended in order to give more freedom to the user using the automatic
     lead generation.
     """
-    _name = 'event.lead.rule'
+    _name = "event.lead.rule"
     _description = "Event Lead Rules"
 
     # Definition
@@ -137,11 +137,8 @@ class EventLeadRule(models.Model):
           self have to run. Triggers should already be checked, only filters are
           applied here.
 
-        :returns: newly-created leads. Updated leads are not returned.
+        :return leads: newly-created leads. Updated leads are not returned.
         """
-        if not self:
-            return self.env['crm.lead']
-
         # order by ID, ensure first created wins
         registrations = registrations.sorted('id')
 
@@ -176,7 +173,7 @@ class EventLeadRule(models.Model):
                     lead_vals_list.append(registration._get_lead_values(rule))
             else:
                 # check if registrations are part of a group, for example a sale order, to know if we update or create leads
-                for toupdate_leads, _group_key, group_registrations in rule_group_info[rule]:
+                for (toupdate_leads, group_key, group_registrations) in rule_group_info[rule]:
                     if toupdate_leads:
                         additionnal_description = group_registrations._get_lead_description(_("New registrations"), line_counter=True)
                         for lead in toupdate_leads:
@@ -188,10 +185,6 @@ class EventLeadRule(models.Model):
                         lead_vals_list.append(group_registrations._get_lead_values(rule))
 
         return self.env['crm.lead'].create(lead_vals_list)
-
-    def action_execute_rule(self):
-        events = self.event_id or self.env['event.event'].search([('is_finished', '!=', True)])
-        return events.action_generate_leads(event_lead_rules=self)
 
     def _filter_registrations(self, registrations):
         """ Keep registrations matching rule conditions. Those are

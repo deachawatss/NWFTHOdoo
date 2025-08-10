@@ -1,3 +1,4 @@
+/** @odoo-module */
 import {
     ancestors,
     closestElement,

@@ -1,21 +1,96 @@
+import {
+    getResModel,
+    useMakeGetFieldDef,
+    useMakeGetConditionDescription,
+} from "@web/core/tree_editor/utils";
 import { Component, onWillStart, onWillUpdateProps } from "@odoo/owl";
+import { useService } from "@web/core/utils/hooks";
 import { Dropdown } from "@web/core/dropdown/dropdown";
 import { DropdownItem } from "@web/core/dropdown/dropdown_item";
-import { cloneTree, connector, isTree, TRUE_TREE } from "@web/core/tree_editor/condition_tree";
+import {
+    condition,
+    cloneTree,
+    formatValue,
+    removeVirtualOperators,
+    connector,
+    isTree,
+} from "@web/core/tree_editor/condition_tree";
 import {
     getDefaultValue,
     getValueEditorInfo,
 } from "@web/core/tree_editor/tree_editor_value_editors";
-import { getResModel } from "@web/core/tree_editor/utils";
-import { areEquivalentTrees } from "@web/core/tree_editor/virtual_operators";
-import { useService } from "@web/core/utils/hooks";
-import { shallowEqual } from "@web/core/utils/objects";
+import { ModelFieldSelector } from "@web/core/model_field_selector/model_field_selector";
+import { useLoadFieldInfo } from "@web/core/model_field_selector/utils";
+import { deepEqual, shallowEqual } from "@web/core/utils/objects";
+
+const TRUE_TREE = condition(1, "=", 1);
+
+function collectDifferences(tree, otherTree) {
+    // some differences shadow the other differences "below":
+    if (tree.type !== otherTree.type) {
+        return [{ type: "other" }];
+    }
+    if (tree.negate !== otherTree.negate) {
+        return [{ type: "other" }];
+    }
+    if (tree.type === "condition") {
+        if (formatValue(tree.path) !== formatValue(otherTree.path)) {
+            return [{ type: "other" }];
+        }
+        if (formatValue(tree.value) !== formatValue(otherTree.value)) {
+            return [{ type: "other" }];
+        }
+        if (formatValue(tree.operator) !== formatValue(otherTree.operator)) {
+            if (tree.operator === "!=" && otherTree.operator === "set") {
+                return [{ type: "replacement", tree, operator: "set" }];
+            } else if (tree.operator === "=" && otherTree.operator === "not_set") {
+                return [{ type: "replacement", tree, operator: "not_set" }];
+            } else {
+                return [{ type: "other" }];
+            }
+        }
+        return [];
+    }
+    if (tree.value !== otherTree.value) {
+        return [{ type: "other" }];
+    }
+    if (tree.type === "complex_condition") {
+        return [];
+    }
+    if (tree.children.length !== otherTree.children.length) {
+        return [{ type: "other" }];
+    }
+    const diffs = [];
+    for (let i = 0; i < tree.children.length; i++) {
+        const child = tree.children[i];
+        const otherChild = otherTree.children[i];
+        const childDiffs = collectDifferences(child, otherChild);
+        if (childDiffs.some((d) => d.type !== "replacement")) {
+            return [{ type: "other" }];
+        }
+        diffs.push(...childDiffs);
+    }
+    return diffs;
+}
+
+function restoreVirtualOperators(tree, otherTree) {
+    const diffs = collectDifferences(tree, otherTree);
+    // note that the array diffs is homogeneous:
+    // we have diffs of the form [], [other], [repl, ..., repl]
+    if (diffs.some((d) => d.type !== "replacement")) {
+        return;
+    }
+    for (const { tree, operator } of diffs) {
+        tree.operator = operator;
+    }
+}
 
 export class TreeEditor extends Component {
     static template = "web.TreeEditor";
     static components = {
         Dropdown,
         DropdownItem,
+        ModelFieldSelector,
         TreeEditor,
     };
     static props = {
@@ -31,10 +106,8 @@ export class TreeEditor extends Component {
         isDebugMode: { type: Boolean, optional: true },
         defaultConnector: { type: [{ value: "&" }, { value: "|" }], optional: true },
         isSubTree: { type: Boolean, optional: true },
-        allowExpressions: { type: Boolean, optional: true },
     };
     static defaultProps = {
-        allowExpressions: true,
         defaultConnector: "&",
         readonly: false,
         isSubTree: false,
@@ -43,15 +116,18 @@ export class TreeEditor extends Component {
     setup() {
         this.isTree = isTree;
         this.fieldService = useService("field");
-        this.treeProcessor = useService("tree_processor");
+        this.nameService = useService("name");
+        this.loadFieldInfo = useLoadFieldInfo(this.fieldService);
+        this.makeGetFieldDef = useMakeGetFieldDef(this.fieldService);
+        this.makeGetConditionDescription = useMakeGetConditionDescription(
+            this.fieldService,
+            this.nameService
+        );
         onWillStart(() => this.onPropsUpdated(this.props));
         onWillUpdateProps((nextProps) => this.onPropsUpdated(nextProps));
     }
 
     async onPropsUpdated(props) {
-        if (this.tree) {
-            this.previousTree = this.tree;
-        }
         this.tree = cloneTree(props.tree);
         if (shallowEqual(this.tree, TRUE_TREE)) {
             this.tree = connector(props.defaultConnector);
@@ -59,26 +135,24 @@ export class TreeEditor extends Component {
             this.tree = connector(props.defaultConnector, [this.tree]);
         }
 
-        if (this.previousTree && areEquivalentTrees(this.tree, this.previousTree)) {
-            this.tree = this.previousTree;
+        if (this.previousTree) {
+            // find "first" difference
+            restoreVirtualOperators(this.tree, this.previousTree);
             this.previousTree = null;
         }
 
-        await this.prepareInfo(props);
-    }
-
-    async prepareInfo(props) {
         const [fieldDefs, getFieldDef] = await Promise.all([
             this.fieldService.loadFields(props.resModel),
-            this.treeProcessor.makeGetFieldDef(props.resModel, this.tree),
+            this.makeGetFieldDef(props.resModel, this.tree),
         ]);
         this.getFieldDef = getFieldDef;
         this.defaultCondition = props.getDefaultCondition(fieldDefs);
 
         if (props.readonly) {
-            this.getConditionDescription = await this.treeProcessor.makeGetConditionDescription(
+            this.getConditionDescription = await this.makeGetConditionDescription(
                 props.resModel,
-                this.tree
+                this.tree,
+                this.getFieldDef
             );
         }
     }
@@ -92,74 +166,53 @@ export class TreeEditor extends Component {
     }
 
     notifyChanges() {
+        this.previousTree = cloneTree(this.tree);
         this.props.update(this.tree);
     }
 
-    _updateConnector(node) {
-        node.value = node.value === "&" ? "|" : "&";
-        node.negate = false;
-    }
-
-    updateConnector(node) {
-        this.updateNode(node, () => this._updateConnector(node));
-    }
-
-    _updateComplexCondition(node, value) {
+    updateConnector(node, value) {
         node.value = value;
+        node.negate = false;
+        this.notifyChanges();
     }
 
     updateComplexCondition(node, value) {
-        this.updateNode(node, () => this._updateComplexCondition(node, value));
+        node.value = value;
+        this.notifyChanges();
     }
 
-    makeCondition(parent, condition) {
-        condition ||= parent.children.findLast((c) => c.type === "condition");
-        return cloneTree(condition || this.defaultCondition);
+    createNewLeaf() {
+        return cloneTree(this.defaultCondition);
     }
 
-    _addNewCondition(parent, node) {
-        if (node) {
-            const index = parent.children.indexOf(node);
-            parent.children.splice(index + 1, 0, this.makeCondition(parent, node));
-        } else {
-            parent.children.push(this.makeCondition(parent));
-        }
+    createNewBranch(value) {
+        return connector(value, [this.createNewLeaf(), this.createNewLeaf()]);
     }
 
-    addNewCondition(parent, node) {
-        this.updateNode(parent, () => this._addNewCondition(parent, node));
+    insertRootLeaf(parent) {
+        parent.children.push(this.createNewLeaf());
+        this.notifyChanges();
     }
 
-    _addNewConnector(parent, node) {
+    insertLeaf(parent, node) {
+        const newNode = node.type !== "connector" ? cloneTree(node) : this.createNewLeaf();
         const index = parent.children.indexOf(node);
+        parent.children.splice(index + 1, 0, newNode);
+        this.notifyChanges();
+    }
+
+    insertBranch(parent, node) {
         const nextConnector = parent.value === "&" ? "|" : "&";
-        parent.children.splice(
-            index + 1,
-            0,
-            connector(nextConnector, [this.makeCondition(parent, node)])
-        );
+        const newNode = this.createNewBranch(nextConnector);
+        const index = parent.children.indexOf(node);
+        parent.children.splice(index + 1, 0, newNode);
+        this.notifyChanges();
     }
 
-    addNewConnector(parent, node) {
-        this.updateNode(parent, () => this._addNewConnector(parent, node));
-    }
-
-    _delete(ancestors, node) {
-        if (ancestors.length === 0) {
-            return;
-        }
-        const parent = ancestors.at(-1);
+    delete(parent, node) {
         const index = parent.children.indexOf(node);
         parent.children.splice(index, 1);
-        ancestors = ancestors.slice(0, ancestors.length - 1);
-        if (parent.children.length === 0) {
-            this._delete(ancestors, parent);
-        }
-    }
-
-    delete(ancestors, node) {
-        const upperNode = ancestors[0] || node;
-        this.updateNode(upperNode, () => this._delete(ancestors, node));
+        this.notifyChanges();
     }
 
     getResModel(node) {
@@ -179,52 +232,35 @@ export class TreeEditor extends Component {
 
     getValueEditorInfo(node) {
         const fieldDef = this.getFieldDef(node.path);
-        return getValueEditorInfo(fieldDef, node.operator, {
-            allowExpressions: this.props.allowExpressions,
-        });
+        return getValueEditorInfo(fieldDef, node.operator);
     }
 
-    async _updatePath(node, path) {
-        const { fieldDef } = await this.fieldService.loadFieldInfo(this.props.resModel, path);
+    async updatePath(node, path) {
+        const { fieldDef } = await this.loadFieldInfo(this.props.resModel, path);
         node.path = path;
         node.negate = false;
         node.operator = this.props.getDefaultOperator(fieldDef);
         node.value = getDefaultValue(fieldDef, node.operator);
+        this.notifyChanges();
     }
 
-    async updatePath(node, path) {
-        this.updateNode(node, () => this._updatePath(node, path));
-    }
-
-    _updateLeafOperator(node, operator, negate) {
+    updateLeafOperator(node, operator, negate) {
+        const previousNode = cloneTree(node);
         const fieldDef = this.getFieldDef(node.path);
         node.negate = negate;
         node.operator = operator;
         node.value = getDefaultValue(fieldDef, operator, node.value);
-    }
-
-    updateLeafOperator(node, operator, negate) {
-        this.updateNode(node, () => this._updateLeafOperator(node, operator, negate));
-    }
-
-    _updateLeafValue(node, value) {
-        node.value = value;
+        if (deepEqual(removeVirtualOperators(node), removeVirtualOperators(previousNode))) {
+            // no interesting changes for parent
+            // this means that parent might not render the domain selector
+            // but we need to udpate editors
+            this.render();
+        }
+        this.notifyChanges();
     }
 
     updateLeafValue(node, value) {
-        this.updateNode(node, () => this._updateLeafValue(node, value));
-    }
-
-    async updateNode(node, operation) {
-        const previousNode = cloneTree(node);
-        await operation();
-        if (areEquivalentTrees(node, previousNode)) {
-            // no interesting changes for parent
-            // this means that the parent might not render the domain selector
-            // but we need to udpate editors
-            await this.prepareInfo(this.props);
-            this.render();
-        }
+        node.value = value;
         this.notifyChanges();
     }
 

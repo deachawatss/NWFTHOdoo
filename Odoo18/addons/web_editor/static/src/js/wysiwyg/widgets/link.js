@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { session } from "@web/session";
 import * as OdooEditorLib from "@web_editor/js/editor/odoo-editor/src/OdooEditor";
 import { _t } from "@web/core/l10n/translation";
@@ -163,6 +165,7 @@ export class Link extends Component {
             target: data.isNewWindow ? '_blank' : '',
         });
         if (typeof data.classes === "string") {
+            data.classes = data.classes.replace(/o_default_snippet_text/, '');
             attrs.class = `${data.classes}`;
         }
         if (data.rel) {
@@ -554,6 +557,8 @@ export class Link extends Component {
      * @private
      */
     async _updateState(props) {
+        // TODO In master move to link_tools.
+        this.initialIsNewWindowFromProps = props.initialIsNewWindow;
         this.initialNewWindow = props.initialIsNewWindow;
 
         this.state.className = "";
@@ -603,7 +608,7 @@ export class Link extends Component {
             this.state.originalText = this.state.originalText ? this.state.originalText.replace(/[ \t\r\n]+/g, ' ') : '';
         }
 
-        this.state.url ||= this._deduceUrl(this.state.originalText);
+        this.state.url ||= this._deduceUrl(this.state.originalText, this.linkEl);
 
         if (this.linkEl) {
             this.initialNewWindow = this.initialNewWindow || this.linkEl.target === '_blank';
@@ -708,7 +713,7 @@ export class Link extends Component {
      */
     __onURLInput() {
         const inputValue = this.$el[0].querySelector('#o_link_dialog_url_input').value;
-        this.state.url = this._deduceUrl(inputValue) || inputValue;
+        this.state.url = this._deduceUrl(inputValue, this.linkEl) || inputValue;
         this._onURLInput(...arguments);
     }
     /**

@@ -8,10 +8,10 @@
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~18.3\n"
+"Project-Id-Version: Odoo Server 18.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-05-06 09:28+0000\n"
-"PO-Revision-Date: 2025-05-06 12:04+0000\n"
+"POT-Creation-Date: 2025-03-19 20:36+0000\n"
+"PO-Revision-Date: 2025-05-09 09:41+0000\n"
 "Last-Translator: Tony Ng, 2025\n"
 "Language-Team: Chinese (Taiwan) (https://app.transifex.com/odoo/teams/41243/zh_TW/)\n"
 "MIME-Version: 1.0\n"
@@ -60,18 +60,6 @@ msgstr "無法處理負數金額的交易。"
 #: model:ir.model.fields.selection,name:pos_pine_labs.selection__pos_payment_method__pine_labs_allowed_payment_mode__card
 msgid "Card"
 msgstr "卡片"
-
-#. module: pos_pine_labs
-#: model:ir.model.fields,field_description:pos_pine_labs.field_pos_payment__display_name
-#: model:ir.model.fields,field_description:pos_pine_labs.field_pos_payment_method__display_name
-msgid "Display Name"
-msgstr "顯示名稱"
-
-#. module: pos_pine_labs
-#: model:ir.model.fields,field_description:pos_pine_labs.field_pos_payment__id
-#: model:ir.model.fields,field_description:pos_pine_labs.field_pos_payment_method__id
-msgid "ID"
-msgstr "識別碼"
 
 #. module: pos_pine_labs
 #: model:ir.model.fields,field_description:pos_pine_labs.field_pos_payment_method__pine_labs_allowed_payment_mode

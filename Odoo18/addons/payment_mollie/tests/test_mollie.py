@@ -32,10 +32,7 @@ class MollieTest(MollieCommon, PaymentHttpCommon):
         with patch(
             'odoo.addons.payment_mollie.models.payment_provider.PaymentProvider'
             '._mollie_make_request',
-            return_value={
-                'status': 'paid',
-                'amount': {'value': str(self.amount), 'currency': self.currency.name},
-            },
+            return_value={'status': 'paid'},
         ):
             self._make_http_post_request(url, data=self.notification_data)
         self.assertEqual(tx.state, 'done')

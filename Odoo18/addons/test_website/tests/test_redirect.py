@@ -18,7 +18,7 @@ class TestRedirect(HttpCase):
             'login': 'portal_user',
             'password': 'portal_user',
             'email': 'portal_user@mail.com',
-            'group_ids': [(6, 0, [self.env.ref('base.group_portal').id])]
+            'groups_id': [(6, 0, [self.env.ref('base.group_portal').id])]
         })
 
     def test_01_redirect_308_model_converter(self):
@@ -56,12 +56,12 @@ class TestRedirect(HttpCase):
         self.assertTrue(redirect_url in r.text, "Ensure the url_for has replaced the href URL in the DOM")
 
     def test_redirect_308_by_method_url_rewrite(self):
-        self.env['website.rewrite'].create([{
+        self.env['website.rewrite'].create({
             'name': 'Test Website Redirect',
             'redirect_type': '308',
             'url_from': url_from,
             'url_to': f'{url_from}_new',
-        } for url_from in ('/get', '/post', '/get_post')])
+        } for url_from in ('/get', '/post', '/get_post'))
 
         self.env.ref('test_website.test_view').arch = '''
             <t>
@@ -89,7 +89,7 @@ class TestRedirect(HttpCase):
         rec_published = self.env['test.model'].create({'name': 'name', 'website_published': True})
         rec_unpublished = self.env['test.model'].create({'name': 'name', 'website_published': False})
 
-        WebsiteHttp = odoo.addons.website.models.ir_http.IrHttp
+        WebsiteHttp = odoo.addons.website.models.ir_http.Http
 
         def _get_error_html(env, code, value):
             return str(code).split('_')[-1], f"CUSTOM {code}"
@@ -141,16 +141,16 @@ class TestRedirect(HttpCase):
             self.assertURLEqual(resp.headers.get('Location'), f"/test_website/308/name-{rec_unpublished.id}")
 
             resp = self.url_open(f"/test_website/308/name-{rec_unpublished.id}", allow_redirects=False)
-            self.assertEqual(resp.status_code, 403)
-            self.assertEqual(resp.text, "CUSTOM 403")
+            self.assertEqual(resp.status_code, 404)
+            self.assertEqual(resp.text, "CUSTOM 404")
 
             resp = self.url_open(f"/test_website/200/xx-{rec_unpublished.id}", allow_redirects=False)
             self.assertEqual(resp.status_code, 308)
             self.assertURLEqual(resp.headers.get('Location'), f"/test_website/308/xx-{rec_unpublished.id}")
 
             resp = self.url_open(f"/test_website/308/xx-{rec_unpublished.id}", allow_redirects=False)
-            self.assertEqual(resp.status_code, 403)
-            self.assertEqual(resp.text, "CUSTOM 403")
+            self.assertEqual(resp.status_code, 404)
+            self.assertEqual(resp.text, "CUSTOM 404")
 
             # with seo_name as slug
             rec_published.seo_name = "seo_name"
@@ -168,8 +168,8 @@ class TestRedirect(HttpCase):
             self.assertURLEqual(resp.headers.get('Location'), f"/test_website/308/xx-{rec_unpublished.id}")
 
             resp = self.url_open(f"/test_website/308/xx-{rec_unpublished.id}", allow_redirects=False)
-            self.assertEqual(resp.status_code, 403)
-            self.assertEqual(resp.text, "CUSTOM 403")
+            self.assertEqual(resp.status_code, 404)
+            self.assertEqual(resp.text, "CUSTOM 404")
 
             resp = self.url_open("/test_website/200/xx-100", allow_redirects=False)
             self.assertEqual(resp.status_code, 308)
@@ -204,10 +204,10 @@ class TestRedirect(HttpCase):
         r = self.url_open(url_rec1)
         self.assertEqual(r.status_code, 200)
 
-        # 2. Accessing unpublished record: expecting 403 by default
+        # 2. Accessing unpublished record: expecting 404 for public users
         rec1.is_published = False
         r = self.url_open(url_rec1)
-        self.assertEqual(r.status_code, 403)
+        self.assertEqual(r.status_code, 404)
 
         # 3. Accessing unpublished record with redirect to a 404: expecting 404
         redirect = self.env['website.rewrite'].create({

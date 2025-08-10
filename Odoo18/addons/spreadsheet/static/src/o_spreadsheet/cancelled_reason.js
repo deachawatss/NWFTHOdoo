@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 /**
  * @enum {string}
  */
@@ -6,7 +8,6 @@ export const CommandResult = {
     FilterNotFound: "FilterNotFound",
     InvalidFilterMove: "InvalidFilterMove",
     DuplicatedFilterLabel: "DuplicatedFilterLabel",
-    InvalidFilterLabel: "InvalidFilterLabel",
     PivotCacheNotLoaded: "PivotCacheNotLoaded",
     InvalidValueTypeCombination: "InvalidValueTypeCombination",
     ListIdDuplicated: "ListIdDuplicated",

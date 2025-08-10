@@ -22,7 +22,7 @@
                         data-hotkey="q"
                         class="btn-primary"/>
                     <button name="process_no_expired"
-                        string="Proceed except expired"
+                        string="Proceed except for expired one"
                         type="object"
                         data-hotkey="w"
                         class="btn-secondary"/>

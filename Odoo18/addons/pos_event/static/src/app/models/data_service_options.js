@@ -7,21 +7,24 @@ patch(DataServiceOptions.prototype, {
             ...super.databaseTable,
             "event.registration": {
                 key: "id",
-                condition: (record) =>
-                    !record.pos_order_line_id || record.pos_order_line_id?.order_id?.finalized,
+                condition: (record) => {
+                    return (
+                        !record.pos_order_line_id || record.pos_order_line_id?.order_id?.finalized
+                    );
+                },
             },
             "event.registration.answer": {
                 key: "id",
-                condition: (record) =>
-                    !record.registration_id ||
-                    record.registration_id?.pos_order_line_id?.order_id?.finalized,
+                condition: (record) => {
+                    return (
+                        !record.registration_id ||
+                        record.registration_id?.pos_order_line_id?.order_id?.finalized
+                    );
+                },
             },
         };
     },
     get dynamicModels() {
         return [...super.dynamicModels, "event.registration", "event.registration.answer"];
-    },
-    get pohibitedAutoLoadedModels() {
-        return [...super.pohibitedAutoLoadedModels, "event.registration"];
     },
 });

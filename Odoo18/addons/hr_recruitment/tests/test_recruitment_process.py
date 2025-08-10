@@ -30,7 +30,7 @@ class TestRecruitmentProcess(TestHrCommon):
             'name': 'HR Recruitment Officer',
             'login': "hrro",
             'email': "hrofcr@yourcompany.com",
-            'group_ids': [(6, 0, [self.env.ref('hr_recruitment.group_hr_recruitment_user').id])]
+            'groups_id': [(6, 0, [self.env.ref('hr_recruitment.group_hr_recruitment_user').id])]
         })
 
         # An applicant is interested in the job position. So he sends a resume by email.
@@ -70,7 +70,7 @@ class TestRecruitmentProcess(TestHrCommon):
                 "name": "user_1",
                 "login": "user_1",
                 "email": "user_1@example.com",
-                "group_ids": [
+                "groups_id": [
                     (4, self.env.ref("hr.group_hr_manager").id),
                     (4, self.env.ref("hr_recruitment.group_hr_recruitment_manager").id),
                 ],
@@ -87,7 +87,7 @@ class TestRecruitmentProcess(TestHrCommon):
             }
         )
         application = self.env["hr.applicant"].create(
-            {"partner_name": "Test Job Application for Notification", "job_id": job.id}
+            {"candidate_id": self.env['hr.candidate'].create({'partner_name': 'Test Job Application for Notification'}).id, "job_id": job.id}
         )
         new_application_message = application.message_ids.filtered(
             lambda m: m.subtype_id == new_application_mt
@@ -138,6 +138,77 @@ class TestRecruitmentProcess(TestHrCommon):
             request_message = request_file.read()
         self.env['mail.thread'].message_process('hr.applicant', request_message, custom_values={"job_id": job_developer.id})
 
-        # Make sure the applicant are created in the right company
+        # Make sure the candidate and applicant are created in the right company
         applicant = self.env['hr.applicant'].search([('email_from', 'ilike', 'Richard_Anderson@yahoo.com')], limit=1)
         self.assertEqual(applicant.company_id, other_company, 'Applicant should be created in the right company')
+        self.assertEqual(applicant.candidate_id.company_id, other_company, 'Candidate should be created in the right company')
+
+    def test_multiple_emails_only_one_candidate(self):
+        """Make sure that receiving multiple emails from the same address does not create multiple candidates"""
+        job_developer, job_plumber = self.env["hr.job"].create(
+            [
+                {
+                    "name": "Experienced Developer",
+                },
+                {
+                    "name": "Junior Plumber",
+                },
+            ]
+        )
+
+        applicant_1_msg = """MIME-Version: 1.0
+Date: Thu, 19 Dec 2024 10:30:45 +0100
+Message-ID: <application1>
+Subject: Developer Application
+From:  Applicant 1 <applicant_1@example.com>
+To: hr@mycompany.com
+Content-Type: text/plain; charset="UTF-8"
+
+Hello, I want to be a developer.
+        """
+
+        applicant_2_msg = """MIME-Version: 1.0
+Date: Thu, 19 Dec 2024 15:30:00 +0100
+Message-ID: <application2>
+Subject: Plumber Application
+From:  Applicant 1 <applicant_1@example.com>
+To: hr@mycompany.com
+Content-Type: text/plain; charset="UTF-8"
+
+Hello, I want to be a plumber.
+        """
+
+        applicant_3_msg = """MIME-Version: 1.0
+Date: Thu, 19 Dec 2024 18:30:00 +0100
+Message-ID: <application3>
+Subject: Here is my application
+From:  Applicant 2 <applicant_2@example.com>
+To: hr@mycompany.com
+Content-Type: text/plain; charset="UTF-8"
+
+Hello, I want to work for you.
+        """
+
+        application_1_id = self.env["mail.thread"].message_process(
+            "hr.applicant", applicant_1_msg, custom_values={"job_id": job_developer.id}
+        )
+        application_2_id = self.env["mail.thread"].message_process(
+            "hr.applicant", applicant_2_msg, custom_values={"job_id": job_plumber.id}
+        )
+        application_3_id = self.env["mail.thread"].message_process(
+            "hr.applicant", applicant_3_msg, custom_values={"job_id": job_developer.id}
+        )
+
+        application_1 = self.env["hr.applicant"].browse(application_1_id)
+        application_2 = self.env["hr.applicant"].browse(application_2_id)
+        application_3 = self.env["hr.applicant"].browse(application_3_id)
+        self.assertEqual(
+            application_1.candidate_id,
+            application_2.candidate_id,
+            "Application 1 and 2 should have the same candidate",
+        )
+        self.assertNotEqual(
+            application_1.candidate_id,
+            application_3.candidate_id,
+            "Application 1 and 3 should not have the same candidate",
+        )

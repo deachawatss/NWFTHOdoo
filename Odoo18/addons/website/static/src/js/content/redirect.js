@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { session } from '@web/session';
 
 /**

@@ -17,14 +17,10 @@ class TestHrWorkEntry(TransactionCase):
         cls.employee_a = cls.env['hr.employee'].create({
             'name': 'Employee A',
             'company_id': cls.company_a.id,
-            'contract_date_start': '2023-01-01',
-            'date_version': '2023-01-01',
         })
         cls.employee_b = cls.env['hr.employee'].create({
             'name': 'Employee B',
             'company_id': cls.company_b.id,
-            'contract_date_start': '2023-01-01',
-            'date_version': '2023-01-01',
         })
         # Create a work entry type
         cls.work_entry_type = cls.env['hr.work.entry.type'].create({

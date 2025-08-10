@@ -18,13 +18,13 @@ class TestProjectRecurrence(TransactionCase):
         user_group_project_recurring_task = cls.env.ref('project.group_project_recurring_tasks')
         Users = cls.env['res.users'].with_context({'no_reset_password': True})
 
-        cls.env.user.group_ids += user_group_project_recurring_task
+        cls.env.user.groups_id += user_group_project_recurring_task
         cls.user_projectuser = Users.create({
             'name': 'Armande ProjectUser',
             'login': 'armandel',
             'password': 'armandel',
             'email': 'armande.projectuser@example.com',
-            'group_ids': [(6, 0, [user_group_employee.id, user_group_project_user.id, user_group_project_recurring_task.id])]
+            'groups_id': [(6, 0, [user_group_employee.id, user_group_project_user.id, user_group_project_recurring_task.id])]
         })
 
         cls.stage_a = cls.env['project.task.type'].create({'name': 'a'})
@@ -112,16 +112,17 @@ class TestProjectRecurrence(TransactionCase):
             form.repeat_type = 'until'
             form.repeat_until = self.date_01_01 + relativedelta(months=1, days=1)
             form.date_deadline = self.date_01_01
+            with form.child_ids.new() as subtask_form:
+                subtask_form.name = 'test subtask'
             task = form.save()
 
-        with freeze_time(self.date_01_01 + relativedelta(days=30)):
-            task.state = '1_done'
+        task.state = '1_done'
         self.assertEqual(len(task.recurrence_id.task_ids), 2, "Since this is before repeat_until, next occurrence should have been created")
 
         last_recurring_task = task.recurrence_id.task_ids.filtered(lambda t: t != task)
-        with freeze_time(self.date_01_01 + relativedelta(days=32)):
-            last_recurring_task.state = '1_done'
+        last_recurring_task.state = '1_done'
         self.assertEqual(len(task.recurrence_id.task_ids), 2, "Since this is after repeat_until, next occurrence shouldn't have been created")
+        self.assertEqual(len(task.recurrence_id.task_ids.child_ids), 2, "2 subtasks should have been created")
 
     def test_recurring_settings_change(self):
         self.env['res.config.settings'] \
@@ -277,91 +278,3 @@ class TestProjectRecurrence(TransactionCase):
 
         self.assertEqual(len(side_task1.depend_on_ids), 0)
         self.assertCountEqual(side_task2.depend_on_ids.ids, [node3.id, parent_copy_node3.id], 'SideTask2 - Node3 and SideTask2 - Node3copy relations should be present')
-
-    def test_next_occurrence_batch_call(self):
-        tasks = self.env['project.task'].with_context({'mail_create_nolog': True}).create([
-            {
-                'name': 'Recurring Task 1',
-                'project_id': self.project_recurring.id,
-                'recurring_task': True,
-                'repeat_unit': 'week',
-                'repeat_type': 'forever',
-                'date_deadline': "2023-01-01 00:00:00",
-                'child_ids': [
-                    Command.create({
-                        'name': 'R1 Sub Task 1',
-                        'project_id': self.project_recurring.id,
-                        'date_deadline': "2023-01-02 00:00:00",
-                        'child_ids': [
-                            Command.create({
-                                'name': 'R1 Sub Task 2',
-                                'project_id': self.project_recurring.id,
-                                'date_deadline': "2023-01-03 00:00:00",
-                            })
-                        ],
-                    }),
-                ],
-            },
-            {
-                'name': 'Recurring Task 2',
-                'project_id': self.project_recurring.id,
-                'recurring_task': True,
-                'repeat_unit': 'week',
-                'repeat_type': 'forever',
-                'date_deadline': "2023-01-04 00:00:00",
-                'child_ids': [
-                    Command.create({
-                        'name': 'R2 Sub Task',
-                        'project_id': self.project_recurring.id,
-                        'date_deadline': "2023-01-05 00:00:00",
-                    }),
-                ],
-            },
-        ])
-        tasks_copy = self.env['project.task.recurrence']._create_next_occurrences(tasks)
-        # Every date should be 1 week later
-        self.assertEqual(datetime(2023, 1, 8, 0, 0), tasks_copy[0].date_deadline)
-        self.assertEqual(datetime(2023, 1, 9, 0, 0), tasks_copy[0].child_ids.date_deadline)
-        self.assertEqual(datetime(2023, 1, 10, 0, 0), tasks_copy[0].child_ids.child_ids.date_deadline)
-        self.assertEqual(datetime(2023, 1, 11, 0, 0), tasks_copy[1].date_deadline)
-        self.assertEqual(datetime(2023, 1, 12, 0, 0), tasks_copy[1].child_ids.date_deadline)
-
-    def test_recurrent_tasks_without_archive_user(self):
-        task = self.env['project.task'].create({
-            'project_id': self.project_recurring.id,
-            'name': 'Test task',
-            'stage_id': self.stage_b.id,
-            'user_ids': [Command.set([self.user.id, self.user_projectuser.id])],
-            'recurring_task': True,
-            'repeat_type': 'forever',
-        })
-        self.user_projectuser.action_archive()
-        task.write({'state': '1_done'})
-        self.assertEqual((task.recurrence_id.task_ids - task).user_ids, self.user)
-
-    def test_recurrent_sub_tasks_without_archive_user(self):
-        """
-        Test the behavior of recurring tasks when a user assigned to a child task is archived.
-        Steps:
-        1. Create a parent task with a recurring rule.
-        2. Add a child task with assigned users.
-        3. Archive one of the users assigned to the child task.
-        4. Complete the parent task to generate a recurring task.
-        5. Verify the new task excludes archived users.
-        """
-        parent_task = self.env['project.task'].create({
-            'project_id': self.project_recurring.id,
-            'name': 'Task A',
-            'stage_id': self.stage_b.id,
-            'recurring_task': True,
-            'repeat_type': 'forever',
-            'child_ids': [Command.create({
-                'project_id': self.project_recurring.id,
-                'name': 'Sub task A',
-                'stage_id': self.stage_b.id,
-                'user_ids': [Command.set([self.user.id, self.user_projectuser.id])],
-            })],
-        })
-        self.user_projectuser.action_archive()
-        parent_task.write({'state': '1_done'})
-        self.assertEqual((parent_task.recurrence_id.task_ids - parent_task).child_ids.user_ids, self.user)

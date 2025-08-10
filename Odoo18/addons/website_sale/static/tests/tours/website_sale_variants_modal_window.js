@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
     import { registry } from "@web/core/registry";
 
     // This tour relies on a data created from the python test.
@@ -55,11 +57,11 @@
         },
         {
             content: "Check always variant",
-            trigger: 'span[class*=h6]:contains(M always)',
+            trigger: 'div>a>h6:contains(M always)',
         },
         {
             content: "Check dynamic variant",
-            trigger: 'span[class*=h6]:contains(M dynamic)',
+            trigger: 'div>a>h6:contains(M dynamic)',
         },
         {
             content: "Check never variant",

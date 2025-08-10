@@ -39,7 +39,6 @@ def format_time(env, time, tz=False, time_format='medium', lang_code=False):
     except babel.core.UnknownLocaleError:
         return time
 
-
 class MailRenderMixin(models.AbstractModel):
     _name = 'mail.render.mixin'
     _description = 'Mail Render Mixin'
@@ -52,7 +51,7 @@ class MailRenderMixin(models.AbstractModel):
     lang = fields.Char(
         'Language',
         help="Optional translation language (ISO code) to select when sending out an email. "
-             "If not set, the main partner's language will be used. This should usually be a placeholder expression "
+             "If not set, the english version will be used. This should usually be a placeholder expression "
              "that provides the appropriate language, e.g. {{ object.partner_id.lang }}.")
     # rendering context
     render_model = fields.Char("Rendering Model", compute='_compute_render_model', store=False)
@@ -91,8 +90,8 @@ class MailRenderMixin(models.AbstractModel):
         return name in ['render_engine', 'render_options'] or super()._valid_field_parameter(field, name)
 
     @api.model_create_multi
-    def create(self, vals_list):
-        record = super().create(vals_list)
+    def create(self, values_list):
+        record = super().create(values_list)
         if self._unrestricted_rendering:
             # If the rendering is unrestricted (e.g. mail.template),
             # check the user is part of the mail editor group to create a new template if the template is dynamic
@@ -107,8 +106,8 @@ class MailRenderMixin(models.AbstractModel):
             self._check_access_right_dynamic_template()
         return True
 
-    def _update_field_translations(self, field_name, translations, digest=None, source_lang=''):
-        res = super()._update_field_translations(field_name, translations, digest=digest, source_lang=source_lang)
+    def _update_field_translations(self, fname, translations, digest=None, source_lang=None):
+        res = super()._update_field_translations(fname, translations, digest=digest, source_lang=source_lang)
         if self._unrestricted_rendering:
             for lang in translations:
                 # If the rendering is unrestricted (e.g. mail.template),
@@ -163,62 +162,15 @@ class MailRenderMixin(models.AbstractModel):
 
     @api.model
     def _render_encapsulate(self, layout_xmlid, html, add_context=None, context_record=None):
-        """ Encapsulate html content (i.e. an email body) in a layout containing
-        more complex html. Used to generate a 'email friendly' content from
-        simple html content.
-
-        Typical usage: encapsulate content in email layouts like 'mail_notification_layout'
-        or 'mail_notification_light'. Also used for digest layouts. This leads
-        to some default rendering values being computed here, often used in those
-        templates. """
-        record_name = (add_context or {}).get('record_name', context_record.display_name if context_record else '')
-        subtype = (add_context or {}).get('subtype', self.env['mail.message.subtype'].sudo())
         template_ctx = {
             'body': html,
+            'record_name': context_record.display_name if context_record else '',
+            'model_description': self.env['ir.model']._get(context_record._name).display_name if context_record else False,
+            'company': context_record['company_id'] if (context_record and 'company_id' in context_record) else self.env.company,
             'record': context_record,
-            'record_name': record_name,
-            **(add_context or {}),
         }
-        # the 'mail_notification_light' expects a mail.message 'message' context, let's give it one
-        if not template_ctx.get('message'):
-            msg_vals = {'body': html}
-            if context_record:
-                msg_vals.update({'model': context_record._name, 'res_id': context_record.id})
-            template_ctx['message'] = self.env['mail.message'].sudo().new(msg_vals)
-        # other message info
-        if not subtype:
-            template_ctx['is_discussion'] = False
-            template_ctx['subtype_internal'] = False
-        else:
-            if 'is_discussion' not in template_ctx:
-                template_ctx['is_discussion'] = subtype.id == self.env['ir.model.data']._xmlid_to_res_id('mail.mt_comment')
-            if 'subtype_internal' not in template_ctx:
-                template_ctx['subtype_internal'] = subtype.is_internal
-        template_ctx.setdefault('subtype', subtype)
-        template_ctx.setdefault('tracking_values', [])
-        # record info
-        if 'model_description' not in template_ctx:
-            template_ctx['model_description'] = self.env['ir.model']._get(context_record._name).display_name if context_record else False
-        template_ctx.setdefault('subtitles', [record_name])
-        # user / environment
-        template_ctx.setdefault('author_user', False)
-        if 'company' not in template_ctx:
-            template_ctx['company'] = context_record._mail_get_companies(default=self.env.company)[context_record.id] if context_record else self.env.company
-        template_ctx.setdefault('email_add_signature', False)
-        template_ctx.setdefault('lang', self.env.lang)
-        template_ctx.setdefault('signature', '')
-        template_ctx.setdefault('show_unfollow', False)
-        template_ctx.setdefault('website_url', '')
-        # display: actions / buttons
-        template_ctx.setdefault('button_access', False)
-        template_ctx.setdefault('has_button_access', False)
-        # display
-        template_ctx.setdefault('email_notification_force_header', self.env.context.get('email_notification_force_header', False))
-        template_ctx.setdefault('email_notification_force_footer', self.env.context.get('email_notification_force_footer', False))
-        template_ctx.setdefault('email_notification_allow_header', self.env.context.get('email_notification_allow_header', True))
-        template_ctx.setdefault('email_notification_allow_footer', self.env.context.get('email_notification_allow_footer', False))
-        # tools
-        template_ctx.setdefault('is_html_empty', is_html_empty)
+        if add_context:
+            template_ctx.update(**add_context)
 
         html = self.env['ir.qweb']._render(layout_xmlid, template_ctx, minimal_qcontext=True, raise_if_not_found=False)
         if not html:
@@ -259,15 +211,15 @@ class MailRenderMixin(models.AbstractModel):
             for fname, field in template._fields.items():
                 engine = getattr(field, 'render_engine', 'inline_template')
                 if engine in ('qweb', 'qweb_view'):
-                    if self._has_unsafe_expression_template_qweb(template[fname], template.render_model, fname):
+                    if self._has_unsafe_expression_template_qweb(template[fname], template.render_model):
                         return True
                 else:
-                    if self._has_unsafe_expression_template_inline_template(template[fname], template.render_model, fname):
+                    if self._has_unsafe_expression_template_inline_template(template[fname], template.render_model):
                         return True
         return False
 
     @api.model
-    def _has_unsafe_expression_template_qweb(self, template_src, model, fname=None):
+    def _has_unsafe_expression_template_qweb(self, template_src, model):
         if template_src:
             try:
                 node = html.fragment_fromstring(template_src, create_parent='div')
@@ -279,7 +231,7 @@ class MailRenderMixin(models.AbstractModel):
         return False
 
     @api.model
-    def _has_unsafe_expression_template_inline_template(self, template_txt, model, fname=None):
+    def _has_unsafe_expression_template_inline_template(self, template_txt, model):
         if template_txt:
             template_instructions = parse_inline_template(str(template_txt))
             expressions = [inst[1] for inst in template_instructions]
@@ -308,13 +260,12 @@ class MailRenderMixin(models.AbstractModel):
           * various formatting tools;
         """
         render_context = {
-            'ctx': self.env.context,
-            'format_addr': tools.formataddr,
+            'ctx': self._context,
             'format_date': lambda date, date_format=False, lang_code=False: format_date(self.env, date, date_format, lang_code),
             'format_datetime': lambda dt, tz=False, dt_format=False, lang_code=False: format_datetime(self.env, dt, tz, dt_format, lang_code),
             'format_time': lambda time, tz=False, time_format=False, lang_code=False: format_time(self.env, time, tz, time_format, lang_code),
             'format_amount': lambda amount, currency, lang_code=False: tools.format_amount(self.env, amount, currency, lang_code),
-            'format_duration': tools.format_duration,
+            'format_duration': lambda value: tools.format_duration(value),
             'is_html_empty': is_html_empty,
             'slug': self.env['ir.http']._slug,
             'user': self.env.user,
@@ -341,8 +292,7 @@ class MailRenderMixin(models.AbstractModel):
         :param dict options: options for rendering propagated to IrQweb render
           (see docstring for available options);
 
-        :returns: {res_id: string of rendered template based on record}
-        :rtype: dict
+        :return dict: {res_id: string of rendered template based on record}
         """
         results = dict.fromkeys(res_ids, u"")
         if not template_src or not res_ids:
@@ -413,10 +363,9 @@ class MailRenderMixin(models.AbstractModel):
                 value = escape(value or '')
                 return value if tag.lower() == 't' else f"<{tag}>{value}</{tag}>"
 
-            # normalize the HTML (add a parent div to avoid modification of the template)
+            # normalize the HTML (add a parent div to avoid modification of the template
+            # it will be removed by html_normalize)
             template_src = html_normalize(f'<div>{template_src}</div>')
-            if template_src.startswith('<div>') and template_src.endswith('</div>'):
-                template_src = template_src[5:-6]
 
             result[record.id] = Markup(re.sub(
                 r'''<(\w+)[\s|\n]+t-out=[\s|\n]*(\'|\")((\w|\.)+)(\2)[\s|\n]*((\/>)|(>[\s|\n]*([^<>]*?))[\s|\n]*<\/\1>)''',
@@ -448,8 +397,7 @@ class MailRenderMixin(models.AbstractModel):
         :param dict options: options for rendering propagated to IrQweb render
           (see docstring for available options);
 
-        :returns: {res_id: string of rendered template based on record}
-        :rtype: dict
+        :return dict: {res_id: string of rendered template based on record}
         """
         results = {}
         if not res_ids:
@@ -500,8 +448,7 @@ class MailRenderMixin(models.AbstractModel):
         :param dict options: options for rendering (no options available
           currently);
 
-        :returns: {res_id: string of rendered template based on record}
-        :rtype: dict
+        :return dict: {res_id: string of rendered template based on record}
         """
         results = dict.fromkeys(res_ids, "")
         if not template_txt or not res_ids:
@@ -571,8 +518,7 @@ class MailRenderMixin(models.AbstractModel):
 
         :param rendered: result of ``_render_template``;
 
-        :returns: updated version of rendered per record ID;
-        :rtype: dict
+        :return dict: updated version of rendered per record ID;
         """
         res_ids = list(rendered.keys())
         for res_id, rendered_html in rendered.items():
@@ -590,10 +536,6 @@ class MailRenderMixin(models.AbstractModel):
             parsed_datetime = self.env['mail.mail']._parse_scheduled_datetime(scheduled_date)
             scheduled_date = parsed_datetime.replace(tzinfo=None) if parsed_datetime else False
         return scheduled_date
-
-    @api.model
-    def _render_template_get_valid_options(self):
-        return {'post_process', 'preserve_comments'}
 
     @api.model
     def _render_template(self, template_src, model, res_ids, engine='inline_template',
@@ -621,8 +563,7 @@ class MailRenderMixin(models.AbstractModel):
             behavior is to remove them. It is used notably for browser-specific
             code implemented like comments;
 
-        :returns: ``{res_id: string of rendered template based on record}``
-        :rtype: dict
+        :return dict: {res_id: string of rendered template based on record}
         """
         if options is None:
             options = {}
@@ -637,7 +578,7 @@ class MailRenderMixin(models.AbstractModel):
                 _('Template rendering supports only inline_template, qweb, or qweb_view (view or raw); received %(engine)s instead.',
                   engine=engine)
             )
-        valid_render_options = self._render_template_get_valid_options()
+        valid_render_options = {'post_process', 'preserve_comments'}
         if not set((options or {}).keys()) <= valid_render_options:
             raise ValueError(
                 _('Those values are not supported as options when rendering: %(param_names)s',
@@ -669,21 +610,11 @@ class MailRenderMixin(models.AbstractModel):
           Odoo model given by model;
         :param string engine: inline_template or qweb_view;
 
-        :return: {res_id: lang code (i.e. en_US)}
-        :rtype: dict
+        :return dict: {res_id: lang code (i.e. en_US)}
         """
         self.ensure_one()
-        if self.lang:
-            rendered_langs = self._render_template(
-                self.lang, self.render_model, res_ids, engine=engine)
-        else:
-            rendered_langs = dict.fromkeys(res_ids, "")
-            records = self.env[self.render_model].browse(res_ids)
-            customers = records._mail_get_partners()
-            for record in records:
-                partner = customers[record.id][0] if customers[record.id] else self.env['res.partner']
-                rendered_langs[record.id] = partner.lang
 
+        rendered_langs = self._render_template(self.lang, self.render_model, res_ids, engine=engine)
         return dict(
             (res_id, lang)
             for res_id, lang in rendered_langs.items()
@@ -696,9 +627,9 @@ class MailRenderMixin(models.AbstractModel):
         :param list res_ids: list of ids of records (all belonging to same model
           defined by self.render_model)
         :param string engine: inline_template, qweb, or qweb_view;
-        :return: {lang: (template with lang=lang_code if specific lang computed
+
+        :return dict: {lang: (template with lang=lang_code if specific lang computed
           or template, res_ids targeted by that language}
-        :rtype: dict
         """
         self.ensure_one()
 
@@ -715,9 +646,7 @@ class MailRenderMixin(models.AbstractModel):
         )
 
     def _render_field(self, field, res_ids, engine='inline_template',
-                      # lang options
-                      compute_lang=False, res_ids_lang=False, set_lang=False,
-                      # rendering context and options
+                      compute_lang=False, set_lang=False,
                       add_context=None, options=None):
         """ Given some record ids, render a template located on field on all
         records. ``field`` should be a field of self (i.e. ``body_html`` on
@@ -732,8 +661,6 @@ class MailRenderMixin(models.AbstractModel):
         :param boolean compute_lang: compute language to render on translated
           version of the template instead of default (probably english) one.
           Language will be computed based on ``self.lang``;
-        :param dict res_ids_lang: record id to lang, e.g. already rendered
-          using another way;
         :param string set_lang: force language for rendering. It should be a
           valid lang code matching an activate res.lang. Checked only if
           ``compute_lang`` is False;
@@ -750,8 +677,7 @@ class MailRenderMixin(models.AbstractModel):
             behavior is to remove them. It is used notably for browser-specific
             code implemented like comments;
 
-        :return: {res_id: string of rendered template based on record}
-        :rtype: dict
+        :return dict: {res_id: string of rendered template based on record}
         """
         if field not in self:
             raise ValueError(
@@ -759,37 +685,32 @@ class MailRenderMixin(models.AbstractModel):
                   field_name=field
                  )
             )
+        if options is None:
+            options = {}
+
         self.ensure_one()
         if compute_lang:
             templates_res_ids = self._classify_per_lang(res_ids)
-        elif res_ids_lang:
-            templates_res_ids = {}
-            for res_id, lang in res_ids_lang.items():
-                lang_values = templates_res_ids.setdefault(lang, (self.with_context(lang=lang), []))
-                lang_values[1].append(res_id)
         elif set_lang:
             templates_res_ids = {set_lang: (self.with_context(lang=set_lang), res_ids)}
         else:
-            templates_res_ids = {self.env.context.get('lang'): (self, res_ids)}
+            templates_res_ids = {self._context.get('lang'): (self, res_ids)}
 
         # rendering options (update default defined on field by asked options)
-        f = self._fields[field]
-        if hasattr(f, 'render_engine') and f.render_engine:
-            engine = f.render_engine
+        engine = getattr(self._fields[field], 'render_engine', engine)
+        field_options = getattr(self._fields[field], 'render_options', {})
+        if options:
+            field_options.update(**options)
 
-        render_options = options.copy() if options else {}
-        if hasattr(f, 'render_options') and f.render_options:
-            render_options = {**f.render_options, **render_options}
-
-        return {
-            res_id: rendered
-            for (template, tpl_res_ids) in templates_res_ids.values()
+        return dict(
+            (res_id, rendered)
+            for lang, (template, tpl_res_ids) in templates_res_ids.items()
             for res_id, rendered in template._render_template(
                 template[field],
                 template.render_model,
                 tpl_res_ids,
                 engine=engine,
                 add_context=add_context,
-                options=render_options,
+                options=field_options,
             ).items()
-        }
+        )

@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { Component, useState } from "@odoo/owl";
 import { CheckBox } from "@web/core/checkbox/checkbox";
 import { Dialog } from "@web/core/dialog/dialog";

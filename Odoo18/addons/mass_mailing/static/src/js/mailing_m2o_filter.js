@@ -1,16 +1,12 @@
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
 import { Domain } from '@web/core/domain';
 import { registry } from '@web/core/registry';
 import { Dropdown } from "@web/core/dropdown/dropdown";
 import { useService } from "@web/core/utils/hooks";
-import { computeM2OProps, Many2One } from "@web/views/fields/many2one/many2one";
-import {
-    buildM2OFieldDescription,
-    extractM2OFieldProps,
-    m2oSupportedOptions,
-    Many2OneField,
-} from "@web/views/fields/many2one/many2one_field";
-import { Component, useState, useEffect } from "@odoo/owl";
+import { Many2OneField, many2OneField } from '@web/views/fields/many2one/many2one_field';
+import { useState, useEffect } from "@odoo/owl";
 
 export class MailingFilterDropdown extends Dropdown {
     setup() {
@@ -32,10 +28,10 @@ export class MailingFilterDropdown extends Dropdown {
  * in form of the favorite filter, or to remove the store filters.
  *
  */
-export class FieldMany2OneMailingFilter extends Component {
+export class FieldMany2OneMailingFilter extends Many2OneField {
     static template = "mass_mailing.MailingFilter";
     static components = {
-        Many2One,
+        ...Many2OneField.components,
         MailingFilterDropdown,
     };
     static props = {
@@ -44,6 +40,7 @@ export class FieldMany2OneMailingFilter extends Component {
         model_field: { type: String, optional: true },
     };
     static defaultProps = {
+        ...Many2OneField.defaultProps,
         domain_field: "mailing_domain",
         model_field: "mailing_model_id",
     };
@@ -51,15 +48,10 @@ export class FieldMany2OneMailingFilter extends Component {
     setup() {
         super.setup();
         this.notification = useService("notification");
-        this.orm = useService("orm");
         this.filter = useState({
             canSaveFilter: false,
         });
         useEffect(() => this._updateFilterIcons());
-    }
-
-    get m2oProps() {
-        return computeM2OProps(this.props);
     }
 
     /**
@@ -81,7 +73,7 @@ export class FieldMany2OneMailingFilter extends Component {
             return;
         }
         const filterCount = this.props.record.data.mailing_filter_count;
-        const dropdown = document.querySelector('.o_field_mailing_filter .o_field_many2one_selection > .o_input_dropdown')
+        const dropdown = document.querySelector('.o_field_mailing_filter > .o_field_many2one_selection > .o_input_dropdown')
         if (dropdown) {
             dropdown.classList.toggle('d-none', !filterCount);
         }
@@ -113,6 +105,7 @@ export class FieldMany2OneMailingFilter extends Component {
         el.classList.toggle('d-none', recordDomain === '[]');
         this.filter.canSaveFilter = !this.props.record.data.mailing_filter_id
             || value.length
+            || this.state.isFloating
             || filterDomain !== recordDomain;
         this.filter.canRemoveFilter = !this.filter.canSaveFilter
     }
@@ -141,16 +134,14 @@ export class FieldMany2OneMailingFilter extends Component {
      * @param {event} ev
      */
     async onRemoveFilter(ev) {
-        const filterId = this.props.record.data.mailing_filter_id.id;
+        const filterId = this.props.record.data.mailing_filter_id[0];
         const mailingDomain = this.props.record.data[this.props.domain_field];
         // Prevent multiple clicks to avoid trying to deleting same record multiple times.
         ev.target.disabled = true;
 
         await this.orm.unlink('mailing.filter', [filterId]);
-        this.props.record.update({
-            [this.props.name]: false,
-            [this.props.domain_field]: mailingDomain,
-        });
+        this.update(false);
+        this.props.record.update({[this.props.domain_field]: mailingDomain});
     }
 
     /**
@@ -178,19 +169,18 @@ export class FieldMany2OneMailingFilter extends Component {
             const [newFilterId] = await this.env.model.orm.create("mailing.filter", [{
                 name: filterName,
                 mailing_domain: this.props.record.data[this.props.domain_field],
-                mailing_model_id: this.props.record.data[this.props.model_field].id,
+                mailing_model_id: this.props.record.data[this.props.model_field][0],
             }]);
-            this.props.record.update({
-                [this.props.name]: { id: newFilterId, display_name: filterName },
-            });
+            this.update([{ id: newFilterId, name: filterName }]);
         }
     }
 }
 
-registry.category("fields").add("mailing_filter", {
-    ...buildM2OFieldDescription(FieldMany2OneMailingFilter),
+export const fieldMany2OneMailingFilter = {
+    ...many2OneField,
+    component: FieldMany2OneMailingFilter,
     supportedOptions: [
-        ...m2oSupportedOptions,
+        ...many2OneField.supportedOptions,
         {
             label: _t("Domain field"),
             name: "domain_field",
@@ -202,12 +192,14 @@ registry.category("fields").add("mailing_filter", {
             name: "model_field",
             type: "field",
             availableTypes: ["char"]
-        },
+        }
     ],
     extractProps({ options }) {
-        const props = extractM2OFieldProps(...arguments);
+        const props = many2OneField.extractProps(...arguments);
         props.domain_field = options.domain_field;
         props.model_field = options.model_field;
         return props;
     },
-});
+};
+
+registry.category("fields").add("mailing_filter", fieldMany2OneMailingFilter);

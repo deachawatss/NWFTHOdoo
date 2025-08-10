@@ -30,40 +30,10 @@ export function selectTable(table) {
     ];
 }
 
-export function selectRandomValueInInput(inputSelector) {
-    return {
-        content: `Select Random Value in Input`,
-        trigger: inputSelector,
-        run: (helpers) => {
-            const options = document.querySelectorAll(`${inputSelector} option`);
-            for (const option of options) {
-                // Verify if the option is not disabled
-                if (option.disabled || option.value === "") {
-                    continue;
-                }
-
-                const targetOption = option;
-                const optionValue = targetOption.value;
-                helpers.anchor.value = optionValue;
-                helpers.anchor.dispatchEvent(new Event("change"));
-                break;
-            }
-        },
-    };
-}
-
-export function fillInput(inputPlaceholder, value) {
-    return {
-        content: `Fill input with ${value}`,
-        trigger: `input[placeholder="${inputPlaceholder}"]`,
-        run: `edit ${value}`,
-    };
-}
-
-export function checkProduct(name, price, quantity = "1") {
+export function checkProduct(name, price, quantity) {
     return {
         content: `Check product card with ${name} and ${price}`,
-        trigger: `.product-cart-item:has(div:contains("${name}")):has(div:contains("${quantity}")):has(div .o-so-tabular-nums:contains("${price}"))`,
+        trigger: `.product-card-item:has(strong:contains("${name}")):has(div:contains("${quantity}")):has(div .o-so-tabular-nums:contains("${price}"))`,
         run: "click",
     };
 }
@@ -73,7 +43,7 @@ export function checkAttribute(productName, attributes) {
     let attributeStringReadable = "";
 
     for (const attr of attributes) {
-        attributeString += `div:contains("${attr.name}: ${attr.value}") +`;
+        attributeString += `div:contains("${attr.name} : ${attr.value}") +`;
         attributeStringReadable = ` ${attr.name} : ${attr.value},`;
     }
 
@@ -82,7 +52,7 @@ export function checkAttribute(productName, attributes) {
 
     return {
         content: `Check product card with ${productName} and ${attributeStringReadable}`,
-        trigger: `.product-cart-item div:contains("${productName}"):has(${attributeString})`,
+        trigger: `.product-card-item div:contains("${productName}") + div ${attributeString}`,
         run: "click",
     };
 }
@@ -91,7 +61,7 @@ export function checkCombo(comboName, products) {
     const steps = [];
 
     for (const product of products) {
-        let step = `.product-cart-item div:contains("${comboName}"):has(div:contains(${product.product}))`;
+        let step = `.product-card-item div:contains("${comboName}"):has(div div.small div:contains(${product.product}))`;
 
         if (product.attributes.length > 0) {
             for (const attr of product.attributes) {
@@ -109,18 +79,11 @@ export function checkCombo(comboName, products) {
     return steps;
 }
 
-export function checkTotalPrice(price) {
-    return {
-        content: `The total price to pay is ${price}`,
-        trigger: `.order-price :contains(Total):contains(${price})`,
-    };
-}
-
 export function cancelOrder() {
     return [
         {
             content: `Click on 'Cancel' button`,
-            trigger: '.o_self_cart_page .btn:contains("Cancel")',
+            trigger: '.order-cart-content .btn:contains("Cancel")',
             run: "click",
         },
         {
@@ -129,4 +92,12 @@ export function cancelOrder() {
             run: "click",
         },
     ];
+}
+
+export function removeLine(productName) {
+    return {
+        content: `remove orderline with name ${productName}`,
+        trigger: `.product-card-item:has(.product-info strong:contains(${productName})) .product-controllers button:eq(0)`,
+        run: "click",
+    };
 }

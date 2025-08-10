@@ -120,15 +120,20 @@ export class MailTrackingValue extends models.ServerModel {
         return trackingValues.map((tracking) => {
             const irField = IrModelFields.find((field) => field.id === tracking.field_id);
             return {
+                changedField: capitalize(irField.ttype),
                 id: tracking.id,
-                fieldInfo: {
-                    changedField: capitalize(irField.ttype),
+                fieldName: irField.name,
+                fieldType: irField.ttype,
+                newValue: {
                     currencyId: tracking.currency_id,
-                    fieldType: irField.ttype,
                     floatPrecision: this.env[irField.model]._fields[irField.name].digits,
+                    value: this._format_display_value(tracking, "new"),
                 },
-                newValue: this._format_display_value(tracking, "new"),
-                oldValue: this._format_display_value(tracking, "old"),
+                oldValue: {
+                    currencyId: tracking.currency_id,
+                    floatPrecision: this.env[irField.model]._fields[irField.name].digits,
+                    value: this._format_display_value(tracking, "old"),
+                },
             };
         });
     }

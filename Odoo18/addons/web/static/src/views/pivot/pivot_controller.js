@@ -5,14 +5,12 @@ import { useSetupAction } from "@web/search/action_hook";
 import { SearchBar } from "@web/search/search_bar/search_bar";
 import { useSearchBarToggler } from "@web/search/search_bar/search_bar_toggler";
 import { CogMenu } from "@web/search/cog_menu/cog_menu";
-import { Widget } from "@web/views/widgets/widget";
-import { ActionHelper } from "@web/views/action_helper";
 
 import { Component, useRef } from "@odoo/owl";
 
 export class PivotController extends Component {
     static template = "web.PivotView";
-    static components = { Layout, SearchBar, CogMenu, Widget, ActionHelper };
+    static components = { Layout, SearchBar, CogMenu };
     static props = {
         ...standardViewProps,
         Model: Function,
@@ -22,11 +20,7 @@ export class PivotController extends Component {
     };
 
     setup() {
-        this.model = useModelWithSampleData(
-            this.props.Model,
-            this.props.modelParams,
-            this.modelOptions
-        );
+        this.model = useModelWithSampleData(this.props.Model, this.props.modelParams);
 
         useSetupAction({
             rootRef: useRef("root"),
@@ -38,24 +32,6 @@ export class PivotController extends Component {
         });
         this.searchBarToggler = useSearchBarToggler();
     }
-
-    get displayNoContent() {
-        if (this.props.info.noContentHelp === false) {
-            return false;
-        }
-        const { metaData, useSampleModel } = this.model;
-        return useSampleModel || !this.model.hasData() || !metaData.activeMeasures.length;
-    }
-
-    get modelOptions() {
-        return {
-            lazy:
-                !this.env.config.isReloadingController &&
-                !this.env.inDialog &&
-                !!this.props.display.controlPanel,
-        };
-    }
-
     /**
      * @returns {Object}
      */

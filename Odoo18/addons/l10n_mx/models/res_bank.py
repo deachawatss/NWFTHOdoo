@@ -4,7 +4,7 @@
 from odoo import fields, models
 
 
-class ResBank(models.Model):
+class Bank(models.Model):
     _inherit = "res.bank"
 
     def _get_fiscal_country_codes(self):

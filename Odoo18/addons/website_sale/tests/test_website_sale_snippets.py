@@ -1,11 +1,10 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import logging
 
 from odoo.tests import HttpCase, tagged
-
-from odoo.addons.http_routing.tests.common import MockRequest
-
+from odoo.addons.website.tools import MockRequest
 
 _logger = logging.getLogger(__name__)
 

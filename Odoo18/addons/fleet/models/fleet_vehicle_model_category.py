@@ -9,10 +9,9 @@ class FleetVehicleModelCategory(models.Model):
     _description = 'Category of the model'
     _order = 'sequence asc, id asc'
 
-    _name_uniq = models.Constraint(
-        'UNIQUE (name)',
-        'Category name must be unique',
-    )
+    _sql_constraints = [
+        ('name_uniq', 'UNIQUE (name)', 'Category name must be unique')
+    ]
 
     name = fields.Char(required=True)
     sequence = fields.Integer()

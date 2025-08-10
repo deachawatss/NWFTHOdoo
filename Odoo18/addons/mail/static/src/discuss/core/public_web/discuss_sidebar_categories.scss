@@ -19,34 +19,35 @@ $o-mail-DiscussSidebarChannel-borderOpacity: .05;
 .o-mail-DiscussSidebarChannel-country {
     bottom: -2px;
     left: -4px;
-    width: 16px;
+    width: 12px;
 }
 
 .o-mail-DiscussSidebar-floatingMenu {
     max-width: 250px !important;
+    --border-opacity: 0.5;
 }
 
 .o-mail-DiscussSidebar-item {
     line-height: 2; // so that same height as actions
     background-color: inherit !important;
 
-    &:hover .o-mail-DiscussSidebarChannel-actions {
+    &:hover .o-mail-DiscussSidebarChannel-commands {
         display: flex !important;
-    }
-}
-
-.o-mail-DiscussSidebarChannel-actions button {
-    opacity: 35%;
-    --border-opacity: .15;
-
-    &:hover, &.o-showingActions {
-        opacity: 100%;
-        --border-opacity: .25;
+        .btn-group .btn {
+            &:hover {
+                border-color: var(--mail-DiscussSidebarChannel-commandsHover, rgba($o-action, .15));
+                background-color: $o-view-background-color !important;
+            }
+            &:not(:hover) {
+                border-color: transparent;
+                background-color: transparent;
+            }
+        }
     }
 }
 
 .o-mail-DiscussSidebarCategory-chevronCompact {
-    left: - map-get($spacers, 1)/2;
+    left: map-get($spacers, 1);
 }
 
 .o-mail-DiscussSidebarCategory-toggler {
@@ -66,8 +67,14 @@ $o-mail-DiscussSidebarChannel-borderOpacity: .05;
     background-color: inherit !important; // Not 'bg-inherit' so it cancels btn hover effect too
 }
 
+.o-mail-DiscussSidebarChannel-threadIcon {
+    font-size: xx-small;
+    width: 14px;
+    height: 14px;
+}
+
 .o-mail-DiscussSidebarChannel-indicatorCompact {
-    top: 1px;
+    top: 3px;
     left: 3px;
 }
 
@@ -76,41 +83,35 @@ $o-mail-DiscussSidebarChannel-borderOpacity: .05;
 }
 
 .o-mail-DiscussSidebar-unreadIndicator {
-    font-size: 0.4rem;
-    left: -3px;
-
-    .o-mail-DiscussSidebarChannel-container.o-bordered & {
-        &.o-mail-DiscussSidebarChannel, &.o-compact {
-            filter: drop-shadow(1px 2px 0px $white) drop-shadow(-1px 1px 0px $white) drop-shadow(1px -1px 0px $white) drop-shadow(-1px -2px 0px $white);
-        }
-    }
+    font-size: 0.35rem;
+    left: 0px;
 
     .o-mail-DiscussSidebarSubchannel &:not(.o-compact) {
         left: map-get($spacers, 2) + map-get($spacers, 1) / 2;
     }
 }
 
-.o-mail-DiscussSidebarCategories-searchBtn {
+.o-mail-DiscussSidebarCategories-quickSearchBtn {
     padding-top: map-get($spacers, 1) + map-get($spacers, 2) / 2; // so that button is square like other items
     padding-bottom: map-get($spacers, 1) + map-get($spacers, 2) / 2; // so that button is square like other items
+
+    &.o-active {
+        background-color: rgba($o-action, .75);
+        color: #fff;
+    }
 }
 
-.o-mail-DiscussSidebarCategories-search {
-    --border-opacity: .5;
+.o-mail-DiscussSidebarQuickSearchInput {
+    outline: 1px solid rgba($border-color, 1);
+    outline-offset: -1px;
 
-    &, & input {
-        background-color: $o-view-background-color !important;
-    }
-
-    &:has(.o-mail-DiscussSidebarCategories-searchClickable:hover) {
-        &, & input {
-            background-color: mix($gray-100, $gray-200) !important;
-        }
+    &.o-active {
+        outline-color: $o-action;
     }
 }
 
 .o-mail-DiscussSidebarSubchannel svg {
     color: var(--mail-DiscussSidebarSubchannel-svgColor, mix($gray-300, $gray-400, 75%));
-    left: 22px;
+    left: 20px;
     transform: scaleX(1) #{"/* rtl:scaleX(-1) */"};
 }

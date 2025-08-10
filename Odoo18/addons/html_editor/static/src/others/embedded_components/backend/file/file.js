@@ -78,9 +78,11 @@ export class EmbeddedFileComponent extends ReadonlyEmbeddedFileComponent {
 export const fileEmbedding = {
     name: "file",
     Component: EmbeddedFileComponent,
-    getProps: (host) => ({ host, ...getEmbeddedProps(host) }),
-    getStateChangeManager: (config) =>
-        new StateChangeManager(
+    getProps: (host) => {
+        return { host, ...getEmbeddedProps(host) };
+    },
+    getStateChangeManager: (config) => {
+        return new StateChangeManager(
             Object.assign(config, {
                 propertyUpdater: {
                     fileData: (state, previous, next) => {
@@ -93,5 +95,6 @@ export const fileEmbedding = {
                     },
                 },
             })
-        ),
+        );
+    },
 };

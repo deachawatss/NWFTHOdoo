@@ -1,10 +1,12 @@
+/** @odoo-module **/
+
+import options from "@web_editor/js/editor/snippets.options";
+import { MediaDialog } from "@web_editor/components/media_dialog/media_dialog";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { _t } from "@web/core/l10n/translation";
+import "@website/js/editor/snippets.options";
 import { rpc } from "@web/core/network/rpc";
 import { renderToElement } from "@web/core/utils/render";
-import { MediaDialog } from "@web_editor/components/media_dialog/media_dialog";
-import options from "@web_editor/js/editor/snippets.options";
-import "@website/js/editor/snippets.options";
 import { useChildSubEnv } from "@odoo/owl";
 import weUtils from '@web_editor/js/common/utils';
 
@@ -12,34 +14,11 @@ options.registry.WebsiteSaleGridLayout = options.Class.extend({
     /**
      * @override
      */
-    async start() {
-        await this._super(...arguments);
-
-        const gridEl = this.$target[0].querySelector('#o_wsale_products_grid');
-        if (gridEl) {
-            this.ppg = parseInt(gridEl.dataset.ppg);
-            this.ppr = parseInt(gridEl.dataset.ppr);
-            this.gap = this.$target[0].style.getPropertyValue('--o-wsale-products-grid-gap');
-            this.default_sort = gridEl.dataset.defaultSort;
-        } else {
-            const { data_res_model, data_res_id } = this.options.recordInfo;
-            [{
-                shop_ppg: this.ppg,
-                shop_ppr: this.ppr,
-                shop_gap: this.gap,
-                shop_default_sort: this.default_sort,
-            }] = await this.orm.read(
-                data_res_model,
-                [data_res_id],
-                ['shop_ppg', 'shop_ppr', 'shop_gap', 'shop_default_sort'],
-            );
-        }
-
-        // Activate HTML previews when necessary only
-        // See 'website_sale.editor_previews' XML template
-        if(this.$target[0].classList.contains('o_wsale_edit_preview_enabled')) {
-            this._handlePreviews();
-        }
+    start: function () {
+        this.ppg = parseInt(this.$target.closest('[data-ppg]').data('ppg'));
+        this.ppr = parseInt(this.$target.closest('[data-ppr]').data('ppr'));
+        this.default_sort = this.$target.closest('[data-default-sort]').data('default-sort');
+        return this._super.apply(this, arguments);
     },
     /**
      * @override
@@ -82,14 +61,6 @@ options.registry.WebsiteSaleGridLayout = options.Class.extend({
     /**
      * @see this.selectClass for params
      */
-    setDefaultGap: function (previewMode, widgetValue, params) {
-        this.gap = widgetValue + "px";
-        this.$target[0].style.setProperty('--o-wsale-products-grid-gap', this.gap);
-        return rpc('/shop/config/website', { 'shop_gap':  this.gap });
-    },
-    /**
-     * @see this.selectClass for params
-     */
     setDefaultSort: function (previewMode, widgetValue, params) {
         this.default_sort = widgetValue;
         return rpc('/shop/config/website', { 'shop_default_sort': this.default_sort });
@@ -113,63 +84,6 @@ options.registry.WebsiteSaleGridLayout = options.Class.extend({
     //--------------------------------------------------------------------------
 
     /**
-     * The 'selectClass' method is not triggered for editor options that require a page
-     * reload (see 'data-reload'). '_handlePreviews' binds 'mouseover' functions on these
-     * UI element directly.
-     *
-     * @private
-     */
-    _handlePreviews() {
-        const targetEl = this.$target[0];
-        const previewsEls = this.el.querySelectorAll('[data-wsale-preview-classes]');
-
-        previewsEls.forEach((el) => {
-            const additionalClasses = el.getAttribute('data-wsale-preview-classes')
-                ?.split(',')
-                .map(cls => cls.trim())
-                .filter(cls => !targetEl.classList.contains(cls)) || [];
-
-            const previewId = el.getAttribute('data-wsale-preview-id');
-            const xmlTemplate = previewId ? renderToElement(previewId) : null;
-            const placeBeforeEls = targetEl.querySelectorAll(el.getAttribute('data-wsale-preview-place-before'));
-            const placeAfterEls = targetEl.querySelectorAll(el.getAttribute('data-wsale-preview-place-after'));
-
-            // Since actionable elements can be either a single element (el) or a NodeList (when
-            // `el` has the class o_we_checkbox_wrapper), we handle both cases properly.
-            const uiEl = el.classList.contains('o_we_checkbox_wrapper')
-                ? el.querySelectorAll('we-title, we-checkbox')
-                : el;
-            const actionableEls = uiEl instanceof NodeList ? [...uiEl] : [uiEl];
-
-            actionableEls.forEach(actionableEl => {
-                actionableEl.addEventListener('mouseover', () => {
-                    if (xmlTemplate && (placeBeforeEls.length || placeAfterEls.length)) {
-                        placeBeforeEls.forEach(placeBeforeEl =>
-                            placeBeforeEl.insertAdjacentElement('beforebegin', xmlTemplate.cloneNode(true))
-                        );
-
-                        placeAfterEls.forEach(placeAfterEl =>
-                            placeAfterEl.insertAdjacentElement('afterend', xmlTemplate.cloneNode(true))
-                        );
-                    }
-
-                    requestAnimationFrame(() => {
-                        targetEl.classList.add(...additionalClasses);
-                    });
-                });
-
-                actionableEl.addEventListener('mouseout', () => {
-                    requestAnimationFrame(() => {
-                        targetEl.classList.remove(...additionalClasses);
-                    });
-                    if (xmlTemplate) {
-                        targetEl.querySelectorAll('[data-wsale-injected-preview]').forEach(el => el.remove());
-                    }
-                });
-            });
-        });
-    },
-    /**
      * @override
      */
     _computeWidgetState: function (methodName, params) {
@@ -179,9 +93,6 @@ options.registry.WebsiteSaleGridLayout = options.Class.extend({
             }
             case 'setPpr': {
                 return this.ppr;
-            }
-            case 'setGap': {
-                return this.gap;
             }
             case 'setDefaultSort': {
                 return this.default_sort;
@@ -204,7 +115,6 @@ options.registry.WebsiteSaleProductsItem = options.Class.extend({
      */
     willStart: async function () {
         const _super = this._super.bind(this);
-        this.isLayoutList = this.$target[0].closest('#o_wsale_container').classList.contains('o_wsale_layout_list');
         this.ppr = this.$target.closest('[data-ppr]').data('ppr');
         this.defaultSort = this.$target[0].closest('[data-default-sort]').dataset.defaultSort
         this.productTemplateID = parseInt(this.$target.find('[data-oe-model="product.template"]').data('oe-id'));
@@ -354,8 +264,6 @@ options.registry.WebsiteSaleProductsItem = options.Class.extend({
         // of arbitrary DOM elements and not just widgets.
         await this._super(...arguments);
         this.$el.find('[data-name="ribbon_customize_opt"]').toggleClass('d-none', !this.ribbonEditMode);
-        this.$el[0].querySelector('.o_wsale_soptions_menu_sizes').classList.toggle('d-none', this.isLayoutList);
-        this.$el[0].querySelector('[data-name="o_wsale_change_sequence_widget"]').classList.toggle('d-none', this.isLayoutList);
     },
 
     //--------------------------------------------------------------------------
@@ -541,19 +449,12 @@ class AttachmentMediaDialog extends MediaDialog {
     async save() {
         await super.save();
         const selectedMedia = this.selectedMedia[this.state.activeTab];
-        const type = this.state.activeTab === "IMAGES" ? "image" : "video";
         if (selectedMedia.length) {
-            await this.props.extraMediaSave(type, selectedMedia);
+            await this.props.extraImageSave(selectedMedia);
         }
         this.props.close();
     }
 }
-
-options.registry.WebsiteSaleCheckoutPage = options.Class.extend({
-    setExtraStep: function (previewMode, widgetValue, params) {
-        return rpc("/shop/config/website", { "extra_step": widgetValue });
-    },
-});
 
 options.registry.WebsiteSaleProductPage = options.Class.extend({
     init() {
@@ -680,27 +581,23 @@ options.registry.WebsiteSaleProductPage = options.Class.extend({
         let extraImageEls;
         this.call("dialog", "add", AttachmentMediaDialog, {
             multiImages: true,
-            noDocuments: true,
-            noIcons: true,
+            onlyImages: true,
             // Kinda hack-ish but the regular save does not get the information we need
             save: async (imgEls) => {
                 extraImageEls = imgEls;
             },
-            extraMediaSave: async (type, attachments) => {
-                if (type === 'image') {
-                    for (const index in attachments) {
-                        const attachment = attachments[index];
-                        if (attachment.mimetype.startsWith("image/")) {
-                            if (["image/gif", "image/svg+xml"].includes(attachment.mimetype)) {
-                                continue;
-                            }
-                            await this._convertAttachmentToWebp(attachment, extraImageEls[index]);
+            extraImageSave: async (attachments) => {
+                for (const index in attachments) {
+                    const attachment = attachments[index];
+                    if (attachment.mimetype.startsWith("image/")) {
+                        if (["image/gif", "image/svg+xml"].includes(attachment.mimetype)) {
+                            continue;
                         }
+                        await this._convertAttachmentToWebp(attachment, extraImageEls[index]);
                     }
                 }
-                rpc('/shop/product/extra-media', {
-                    media: attachments,
-                    type: type,
+                rpc(`/shop/product/extra-images`, {
+                    images: attachments,
                     product_product_id: this.productProductID,
                     product_template_id: this.productTemplateID,
                     combination_ids: this._getSelectedVariantValues(this.$target.find('.js_add_cart_variants')),
@@ -835,7 +732,7 @@ options.registry.WebsiteSaleProductPage = options.Class.extend({
         const isGrid = !!this.productDetailMain.querySelector('#o-grid-product');
         switch (widgetName) {
             case 'o_wsale_thumbnail_pos':
-                return Boolean(this.productPageCarousel) && hasImages && multipleImages;
+                return Boolean(this.productPageCarousel) && hasImages;
             case 'o_wsale_grid_spacing':
                 return isGrid && multipleImages;
             case 'o_wsale_grid_columns':
@@ -949,23 +846,6 @@ options.registry.ReplaceMedia.include({
             return this.isProductPageImage;
         }
         return this._super(...arguments);
-    },
-    /**
-     * @override
-     */
-    async replaceMedia() {
-        if (this.isProductPageImage && this.data.snippetName === 'Video') {
-            // Only allow video tab while replacing videos
-            await this.options.wysiwyg.openMediaDialog({
-                node: this.$target[0],
-                noImages: true,
-                noDocuments: true,
-                noIcons: true,
-            });
-        }
-        else {
-            await this._super(...arguments);
-        }
     }
 });
 

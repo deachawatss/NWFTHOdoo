@@ -95,7 +95,7 @@ class StockQuant(TransactionCase):
     def test_get_available_quantity_2(self):
         """ Quantity availability with multiple quants in a location.
         """
-        for _i in range(3):
+        for i in range(3):
             self.env['stock.quant'].create({
                 'product_id': self.product.id,
                 'location_id': self.stock_location.id,
@@ -106,7 +106,7 @@ class StockQuant(TransactionCase):
     def test_get_available_quantity_3(self):
         """ Quantity availability with multiple quants (including negatives ones) in a location.
         """
-        for _i in range(3):
+        for i in range(3):
             self.env['stock.quant'].create({
                 'product_id': self.product.id,
                 'location_id': self.stock_location.id,
@@ -204,7 +204,7 @@ class StockQuant(TransactionCase):
     def test_increase_available_quantity_2(self):
         """ Increase the available quantity when multiple quants are already in a location.
         """
-        for _i in range(2):
+        for i in range(2):
             self.env['stock.quant'].create({
                 'product_id': self.product.id,
                 'location_id': self.stock_location.id,
@@ -292,7 +292,7 @@ class StockQuant(TransactionCase):
     def test_decrease_available_quantity_2(self):
         """ Decrease the available quantity when multiple quants are already in a location.
         """
-        for _i in range(2):
+        for i in range(2):
             self.env['stock.quant'].create({
                 'product_id': self.product.id,
                 'location_id': self.stock_location.id,
@@ -355,7 +355,7 @@ class StockQuant(TransactionCase):
         """ Increase the reserved quantity of quantity x when there's two quants in a given
         location which have an available quantity of x together.
         """
-        for _i in range(2):
+        for i in range(2):
             self.env['stock.quant'].create({
                 'product_id': self.product.id,
                 'location_id': self.stock_location.id,
@@ -444,29 +444,6 @@ class StockQuant(TransactionCase):
         self.env['stock.quant']._update_reserved_quantity(self.product, self.stock_location, -10.0, strict=True)
         self.assertEqual(self.env['stock.quant']._get_available_quantity(self.product, self.stock_location), 10.0)
         self.assertEqual(len(self.gather_relevant(self.product, self.stock_location)), 1)
-
-    def test_change_tracking_1(self):
-        """ change a product from consumable to storable and check that a reserved quant is created"""
-        quants = self.gather_relevant(self.product_consu, self.stock_location)
-        self.assertEqual(sum(quants.mapped('reserved_quantity')), 0.0)
-        stock_location = self.stock_location
-        dst_location = self.stock_subloc2
-        move = self.env['stock.move'].create({
-            'product_id': self.product_consu.id,
-            'location_id': stock_location.id,
-            'location_dest_id': dst_location.id,
-            'product_uom_qty': 5,
-            'product_uom': self.product_consu.uom_id.id,
-        })
-        move._action_confirm()
-        move.quantity = 5
-        # No reservation as product is consumable
-        quants = self.gather_relevant(self.product_consu, self.stock_location)
-        self.assertEqual(sum(quants.mapped('reserved_quantity')), 0.0)
-
-        self.product_consu.is_storable = True
-        quants = self.gather_relevant(self.product_consu, self.stock_location)
-        self.assertEqual(sum(quants.mapped('reserved_quantity')), 5.0)
 
     def test_action_done_1(self):
         pack_location = self.env.ref('stock.location_pack_zone')
@@ -654,7 +631,7 @@ class StockQuant(TransactionCase):
         """
         # Enable multi-locations to be able to set an origin location for delivery
         grp_multi_loc = self.env.ref('stock.group_stock_multi_locations')
-        self.env.user.write({'group_ids': [Command.link(grp_multi_loc.id)]})
+        self.env.user.write({'groups_id': [Command.link(grp_multi_loc.id)]})
 
         closest_strategy = self.env['product.removal'].search([('method', '=', 'closest')])
         self.stock_location.removal_strategy_id = closest_strategy
@@ -719,6 +696,7 @@ class StockQuant(TransactionCase):
         self.env['stock.quant']._update_available_quantity(self.product, self.stock_location, 1.0)
 
         move = self.env['stock.move'].create({
+            'name': 'OUT 1 product',
             'product_id': self.product.id,
             'product_uom_qty': 1,
             'product_uom': self.product.uom_id.id,
@@ -734,6 +712,7 @@ class StockQuant(TransactionCase):
         tomorrow = fields.Datetime.now() + timedelta(days=1)
         with patch.object(fields.Datetime, 'now', lambda: tomorrow):
             move = self.env['stock.move'].create({
+                'name': 'IN 1 product',
                 'product_id': self.product.id,
                 'product_uom_qty': 1,
                 'product_uom': self.product.uom_id.id,
@@ -756,6 +735,7 @@ class StockQuant(TransactionCase):
         self.env['stock.quant']._update_available_quantity(self.product, self.stock_location, 10.0)
 
         move = self.env['stock.move'].create({
+            'name': 'Move 1 product',
             'product_id': self.product.id,
             'product_uom_qty': 1,
             'product_uom': self.product.uom_id.id,
@@ -788,6 +768,7 @@ class StockQuant(TransactionCase):
             'location_id': supplier_location.id,
             'location_dest_id': stock_location.id,
             'move_ids': [(0, 0, {
+                'name': 'In 10 x %s' % self.product.name,
                 'product_id': self.product.id,
                 'location_id': supplier_location.id,
                 'location_dest_id': stock_location.id,
@@ -820,7 +801,7 @@ class StockQuant(TransactionCase):
 
     def test_quant_display_name(self):
         """ Check the display name of a quant. """
-        self.env.user.group_ids += self.env.ref('stock.group_production_lot')
+        self.env.user.groups_id += self.env.ref('stock.group_production_lot')
         sn1 = self.env['stock.lot'].create({
             'name': 'sn1',
             'product_id': self.product_serial.id,
@@ -854,6 +835,7 @@ class StockQuant(TransactionCase):
             'location_id': supplier_location.id,
             'location_dest_id': stock_location.id,
             'move_ids': [(0, 0, {
+                'name': self.product_serial.name,
                 'product_id': self.product_serial.id,
                 'location_id': supplier_location.id,
                 'location_dest_id': stock_location.id,
@@ -889,6 +871,7 @@ class StockQuant(TransactionCase):
             'location_id': supplier_location.id,
             'location_dest_id': stock_location.id,
             'move_ids': [(0, 0, {
+                'name': self.product_serial.name,
                 'product_id': self.product_serial.id,
                 'location_id': supplier_location.id,
                 'location_dest_id': stock_location.id,
@@ -952,7 +935,7 @@ class StockQuant(TransactionCase):
             return Form.from_action(self.env, quant_ids.action_stock_quant_relocate())
 
         self.env['stock.quant.package'].search([]).unlink()
-        self.env.user.write({'group_ids': [(4, self.env.ref('stock.group_tracking_lot').id)]})
+        self.env.user.write({'groups_id': [(4, self.env.ref('stock.group_tracking_lot').id)]})
         package_01 = self.env['stock.quant.package'].create({})
         package_02 = self.env['stock.quant.package'].create({})
         self.env['stock.quant']._update_available_quantity(self.product, self.stock_location, 10, package_id=package_01)
@@ -1293,6 +1276,7 @@ class StockQuant(TransactionCase):
             'location_id': dst_location.id,
             'location_dest_id': stock_location.id,
             'move_ids': [(0, 0, {
+                'name': 'In 5 x %s' % product.name,
                 'product_id': product.id,
                 'location_id': stock_location.id,
                 'location_dest_id': dst_location.id,
@@ -1319,31 +1303,6 @@ class StockQuant(TransactionCase):
         history = self.env['stock.move.line'].search(action['domain'])
         self.assertTrue(history)
 
-    def test_diff_unset_after_create(self):
-        """
-        Test that validating moves does not set new quant's inventory_diff_quantity
-        """
-        warehouse = self.env.ref('stock.warehouse0')
-        picking = self.env['stock.picking'].create({
-            'picking_type_id': warehouse.in_type_id.id,
-            'location_id': self.ref('stock.stock_location_suppliers'),
-            'location_dest_id': self.stock_location.id,
-            'move_ids': [Command.create({
-                'product_id': self.product.id,
-                'location_id': self.ref('stock.stock_location_suppliers'),
-                'location_dest_id': self.stock_location.id,
-                'product_uom_qty': 5,
-                'product_uom': self.product.uom_id.id,
-            })],
-        })
-        picking.action_confirm()
-        picking.move_ids.quantity = 5.0
-        picking.move_ids.picked = True
-        picking.button_validate()
-        quant = self.product.stock_quant_ids.filtered(lambda q: q.location_id == self.stock_location)
-        self.assertTrue(quant)
-        self.assertEqual(quant.inventory_diff_quantity, 0)
-
     def test_reserve_fractional_qty(self):
         lot1 = self.env['stock.lot'].create({'name': 'lot1', 'product_id': self.product_serial.id})
         lot2 = self.env['stock.lot'].create({'name': 'lot2', 'product_id': self.product_serial.id})
@@ -1355,6 +1314,7 @@ class StockQuant(TransactionCase):
                 lot_id=lot,
             )
         move = self.env['stock.move'].create({
+            'name': 'test_reserve_small_qty',
             'location_id': self.stock_location.id,
             'location_dest_id': self.stock_subloc2.id,
             'product_id': self.product_serial.id,
@@ -1412,7 +1372,6 @@ class StockQuantRemovalStrategy(TransactionCase):
         self.product = self.env['product.product'].create({
             'name': 'Product',
             'is_storable': True,
-            'categ_id': self.env.ref('product.product_category_goods').id,
         })
         self.product.categ_id.removal_strategy_id = self.least_package_strategy.id
         self.stock_location = self.env['stock.location'].create({
@@ -1422,6 +1381,7 @@ class StockQuantRemovalStrategy(TransactionCase):
 
     def _generate_data(self, packages_data):
         move = self.env['stock.move'].create({
+            'name': 'Test Least Package',
             'product_id': self.product.id,
             'product_uom': self.product.uom_id.id,
             'location_id': self.ref('stock.stock_location_suppliers'),
@@ -1446,7 +1406,7 @@ class StockQuantRemovalStrategy(TransactionCase):
                     'quantity': number_of_packages,
                 }))
                 continue
-            for _dummy in range(number_of_packages):
+            for dummy in range(number_of_packages):
                 package = packages[0]
                 packages = packages[1:]
                 ml_vals_list.append(dict(**ml_common_vals, **{
@@ -1472,6 +1432,7 @@ class StockQuantRemovalStrategy(TransactionCase):
 
         # Out 1000 should selecte a package with 1000 units inside
         move = self.env['stock.move'].create({
+            'name': 'Test Least Package',
             'product_id': self.product.id,
             'product_uom': self.product.uom_id.id,
             'location_id': self.stock_location.id,
@@ -1500,6 +1461,7 @@ class StockQuantRemovalStrategy(TransactionCase):
 
         # Out 1000 should select a package with 1000 units inside
         move = self.env['stock.move'].create({
+            'name': 'Test Least Package',
             'product_id': self.product.id,
             'product_uom': self.product.uom_id.id,
             'location_id': self.stock_location.id,
@@ -1530,6 +1492,7 @@ class StockQuantRemovalStrategy(TransactionCase):
         self._generate_data(packages_data)
 
         move = self.env['stock.move'].create({
+            'name': 'Test Least Package',
             'product_id': self.product.id,
             'product_uom': self.product.uom_id.id,
             'location_id': self.stock_location.id,
@@ -1563,6 +1526,7 @@ class StockQuantRemovalStrategy(TransactionCase):
         self._generate_data(packages_data)
 
         move = self.env['stock.move'].create({
+            'name': 'Test Least Package',
             'product_id': self.product.id,
             'product_uom': self.product.uom_id.id,
             'location_id': self.stock_location.id,
@@ -1588,6 +1552,7 @@ class StockQuantRemovalStrategy(TransactionCase):
         self.env['stock.quant']._update_available_quantity(self.product, self.stock_location, 1.0, package_id=package)
 
         move = self.env['stock.move'].create({
+            'name': 'OUT 1 product',
             'product_id': self.product.id,
             'product_uom_qty': 1,
             'product_uom': self.product.uom_id.id,
@@ -1608,3 +1573,67 @@ class StockQuantRemovalStrategy(TransactionCase):
             ('package_id', '=', package.id),
             ('location_id', '=', self.stock_location.id),
         ]))
+
+    def test_quant_cache_for_packages(self):
+        """
+        Create and assign a delivery for different packages.
+        Create an internal transfer to move on of the package in a sublocation.
+        Check that the delivery is still reserved in the proper locations.
+        """
+        products = self.env['product.product'].create([
+            {'name': 'Good product', 'is_storable': True},
+            {'name': 'Great product', 'is_storable': True},
+            {'name': 'Super product', 'is_storable': True},
+        ])
+        products.categ_id.removal_strategy_id = self.env['product.removal']
+        packages = self.env['stock.quant.package'].create([
+            {'name': 'Pack 001'},
+            {'name': 'Pack 002'},
+        ])
+        warehouse = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)])
+        # Pack the first 2 prodcuts in Pack 001 and the last in Pack 002
+        self.env['stock.quant']._update_available_quantity(products[0], warehouse.lot_stock_id, 1.0, package_id=packages[0])
+        self.env['stock.quant']._update_available_quantity(products[1], warehouse.lot_stock_id, 1.0, package_id=packages[0])
+        self.env['stock.quant']._update_available_quantity(products[2], warehouse.lot_stock_id, 1.0, package_id=packages[1])
+        sublocation = self.env['stock.location'].create({
+            'name': 'sublocation',
+            'location_id': warehouse.lot_stock_id.id,
+        })
+        delivery, internal_transfer = self.env['stock.picking'].create([
+            {
+                'name': 'Delivery',
+                'location_id': warehouse.lot_stock_id.id,
+                'location_dest_id': self.ref('stock.stock_location_customers'),
+                'picking_type_id': warehouse.out_type_id.id,
+                'move_ids': [
+                    Command.create({
+                        'name': f'move {product.name}',
+                        'location_id': warehouse.lot_stock_id.id,
+                        'location_dest_id': self.ref('stock.stock_location_customers'),
+                        'product_id': product.id,
+                        'product_uom_qty': 1,
+                    }) for product in products
+                ]
+            },
+            {
+                'name': 'Internal transfer',
+                'location_id': warehouse.lot_stock_id.id,
+                'location_dest_id': sublocation.id,
+                'picking_type_id': warehouse.int_type_id.id,
+            },
+        ])
+        delivery.action_confirm()
+        # Make an internal transfer to move Pack 001 in a sublocation
+        warehouse.int_type_id.show_entire_packs = True
+        with Form(internal_transfer) as picking_form:
+            with picking_form.package_level_ids.new() as package_level:
+                package_level.package_id = packages[0]
+        internal_transfer.action_confirm()
+        internal_transfer.package_level_ids.is_done = True
+        internal_transfer.button_validate()
+        quants = self.env['stock.quant'].search([('product_id', 'in', products.ids)])
+        self.assertRecordValues(quants, [
+            {'product_id': products[2].id, 'location_id':  warehouse.lot_stock_id.id, 'package_id': packages[1].id, 'quantity': 1.0, 'reserved_quantity': 1.0},
+            {'product_id': products[0].id, 'location_id':  sublocation.id, 'package_id': packages[0].id, 'quantity': 1.0, 'reserved_quantity': 1.0},
+            {'product_id': products[1].id, 'location_id':  sublocation.id, 'package_id': packages[0].id, 'quantity': 1.0, 'reserved_quantity': 1.0},
+        ])

@@ -5,7 +5,7 @@
 {
     'name': 'Purchase and MRP Management',
     'version': '1.0',
-    'category': 'Supply Chain/Purchase',
+    'category': 'Inventory/Purchase',
     'description': """
 This module provides facility to the user to install mrp and purchase modules at a time.
 ========================================================================================
@@ -31,6 +31,5 @@ from purchase order.
             'mrp/static/src/**/*.js',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

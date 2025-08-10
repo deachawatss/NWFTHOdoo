@@ -26,12 +26,12 @@
           <div class=" px-3 o_field_widget o_readonly_modifier o_field_CopyClipboardChar">
             <div class="d-grid rounded-2 overflow-hidden">
               <span t-out="state.url"/>
-              <CopyButton className="'o_btn_char_copy btn-sm'" content="state.url" successText="copiedText" icon="'fa-clipboard'"/>
+              <CopyButton className="'o_btn_char_copy btn-sm'" content="state.url" successText="copiedText" icon="'fa-clone'"/>
             </div>
           </div>
         </t>
         <div t-else="" class="d-flex align-items-center justify-content-center h-100">
-          <i class="fa fa-circle-o-notch fa-spin px-2"/><span>Generating sharing link</span>
+          <i class="fa fa-spin fa-spinner px-2"/><span>Generating sharing link</span>
         </div>
       </t>
     </Dropdown>

@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 export const CSS_PREFIX = '.o_mail_wrapper';
 
 export const BTN_SIZE_STYLES = {

@@ -15,7 +15,7 @@ class PosSelfKiosk(http.Controller):
                     'access_token': config_access_token,
                     'session_info': {
                         **request.env["ir.http"].get_frontend_session_info(),
-                        'currencies': request.env["res.currency"].get_all_currencies(),
+                        'currencies': request.env["ir.http"].get_currencies(),
                         'data': {
                             'config_id': pos_config.id,
                             'self_ordering_mode': pos_config.self_ordering_mode,
@@ -26,16 +26,10 @@ class PosSelfKiosk(http.Controller):
                 }
             )
 
-    @http.route("/pos-self/data/<config_id>", type='jsonrpc', auth='public', website=True)
+    @http.route("/pos-self/data/<config_id>", type='json', auth='public', website=True)
     def get_self_ordering_data(self, config_id=None, access_token=None, table_identifier=None):
         pos_config, _, _ = self._verify_entry_access(config_id, access_token, table_identifier)
         data = pos_config.load_self_data()
-        return data
-
-    @http.route("/pos-self/relations/<config_id>", type='jsonrpc', auth='public')
-    def get_self_ordering_relations(self, config_id=None, access_token=None, table_identifier=None):
-        pos_config, _, _ = self._verify_entry_access(config_id, access_token, table_identifier)
-        data = pos_config.load_data_params()
         return data
 
     def _verify_entry_access(self, config_id=None, access_token=None, table_identifier=None):

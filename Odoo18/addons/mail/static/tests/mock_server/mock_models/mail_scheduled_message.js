@@ -6,19 +6,20 @@ export class MailScheduledMessage extends models.ServerModel {
 
     author_id = fields.Generic({ default: () => serverState.partnerId });
 
-    _to_store(store) {
+    _to_store(ids, store) {
         /** @type {import("mock_models").IrAttachment} */
         const IrAttachment = this.env["ir.attachment"];
         /** @type {import("mock_models").ResPartner} */
         const ResPartner = this.env["res.partner"];
 
-        for (const message of this) {
+        const messages = this.browse(ids);
+        for (const message of messages) {
             store.add("mail.scheduled.message", {
                 attachment_ids: mailDataHelpers.Store.many(
                     IrAttachment.browse(message.attachment_ids)
                 ),
-                author_id: mailDataHelpers.Store.one(ResPartner.browse(message.author_id)),
-                body: ["markup", message.body],
+                author: mailDataHelpers.Store.one(ResPartner.browse(message.author_id)),
+                body: message.body,
                 id: message.id,
                 scheduled_date: message.scheduled_date,
                 subject: message.subject,

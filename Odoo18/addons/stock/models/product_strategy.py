@@ -1,11 +1,13 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import _, api, fields, models
-from odoo.fields import Domain
+from odoo.osv import expression
 from odoo.exceptions import UserError
+from odoo.tools.float_utils import float_compare
 
 
-class ProductRemoval(models.Model):
+class RemovalStrategy(models.Model):
     _name = 'product.removal'
     _description = 'Removal Strategy'
 
@@ -43,10 +45,9 @@ class StockPutawayRule(models.Model):
     product_id = fields.Many2one(
         'product.product', 'Product', check_company=True,
         default=_default_product_id,
-        index='btree_not_null',
         domain="[('product_tmpl_id', '=', context.get('active_id', False))] if context.get('active_model') == 'product.template' else [('type', '!=', 'service')]",
         ondelete='cascade')
-    category_id = fields.Many2one('product.category', 'Product Category', index='btree_not_null',
+    category_id = fields.Many2one('product.category', 'Product Category',
         default=_default_category_id, domain=[('filter_for_stock_putaway_rule', '=', True)], ondelete='cascade')
     location_in_id = fields.Many2one(
         'stock.location', 'When product arrives in', check_company=True,
@@ -109,17 +110,20 @@ class StockPutawayRule(models.Model):
             for rule in self:
                 if rule.company_id.id != vals['company_id']:
                     raise UserError(_("Changing the company of this record is forbidden at this point, you should rather archive it and create a new one."))
-        return super().write(vals)
+        return super(StockPutawayRule, self).write(vals)
 
     def _get_last_used_search_domain(self, product):
         self.ensure_one()
-        domain = Domain([
-            ('state', '=', 'done'),
-            ('location_dest_id', 'child_of', self.location_out_id.id),
-            ('product_id', '=', product.id),
+        domain = expression.AND([
+            [('state', '=', 'done')],
+            [('location_dest_id', 'child_of', self.location_out_id.id)],
+            [('product_id', '=', product.id)],
         ])
         if self.package_type_ids:
-            domain &= Domain('result_package_id.package_type_id', 'in', self.package_type_ids.ids)
+            domain = expression.AND([
+                domain,
+                [('result_package_id.package_type_id', 'in', self.package_type_ids.ids)],
+            ])
         return domain
 
     def _get_last_used_location(self, product):
@@ -166,7 +170,7 @@ class StockPutawayRule(models.Model):
                             return location
                         else:
                             checked_locations.add(location)
-                elif product.uom_id.compare(qty_by_location[location.id], 0) > 0:
+                elif float_compare(qty_by_location[location.id], 0, precision_rounding=product.uom_id.rounding) > 0:
                     if location._check_can_be_used(product, quantity, location_qty=qty_by_location[location.id]):
                         return location
                     else:

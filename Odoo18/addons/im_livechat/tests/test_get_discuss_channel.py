@@ -5,6 +5,7 @@ from freezegun import freeze_time
 from unittest.mock import patch, PropertyMock
 
 from odoo import fields
+from odoo.tools.misc import limited_field_access_token
 from odoo.addons.im_livechat.tests.common import TestImLivechatCommon
 from odoo.addons.mail.tests.common import MailCommon
 from odoo.tests import new_test_user, tagged
@@ -17,11 +18,9 @@ class TestGetDiscussChannel(TestImLivechatCommon, MailCommon):
         For every 5 channels opening, we check that all operators were assigned.
         """
 
-        for _i in range(5):
+        for i in range(5):
             discuss_channels = self._open_livechat_discuss_channel()
-            channel_operator_ids = [
-                channel_info["livechat_operator_id"]["id"] for channel_info in discuss_channels
-            ]
+            channel_operator_ids = [channel_info['operator']['id'] for channel_info in discuss_channels]
             self.assertTrue(all(partner_id in channel_operator_ids for partner_id in self.operators.mapped('partner_id').ids))
 
     def test_channel_get_livechat_visitor_info(self):
@@ -33,17 +32,17 @@ class TestGetDiscussChannel(TestImLivechatCommon, MailCommon):
         operator = self.operators[0]
         with patch('odoo.http.GeoIP.country_code', new_callable=PropertyMock(return_value=belgium.code)):
             data = self.make_jsonrpc_request(
-                "/im_livechat/get_session",
+                '/im_livechat/get_session',
                 {
-                    "anonymous_name": "Visitor 22",
-                    "previous_operator_id": operator.partner_id.id,
-                    "channel_id": self.livechat_channel.id,
+                    'anonymous_name': 'Visitor 22',
+                    'previous_operator_id': operator.partner_id.id,
+                    'channel_id': self.livechat_channel.id,
+                    'country_id': belgium.id,
                 },
-            )["store_data"]
+            )
         channel_info = data["discuss.channel"][0]
         self.assertEqual(channel_info['anonymous_name'], "Visitor 22")
-        self.assertEqual(channel_info["country_id"], belgium.id)
-        self.assertEqual(data["res.country"], [{"code": "BE", "id": belgium.id, "name": "Belgium"}])
+        self.assertEqual(channel_info['anonymous_country'], {'code': 'BE', 'id': belgium.id, 'name': 'Belgium'})
 
         # ensure persona info are hidden (in particular email and real name when livechat username is present)
         channel = self.env["discuss.channel"].browse(channel_info["id"])
@@ -52,13 +51,10 @@ class TestGetDiscussChannel(TestImLivechatCommon, MailCommon):
             data["mail.guest"],
             [
                 {
-                    "avatar_128_access_token": guest._get_avatar_128_access_token(),
-                    "country_id": belgium.id,
+                    "avatar_128_access_token": limited_field_access_token(guest, "avatar_128"),
                     "id": guest.id,
                     "im_status": "offline",
-                    "im_status_access_token": guest._get_im_status_access_token(),
                     "name": "Visitor",
-                    "offline_since": False,
                     "write_date": fields.Datetime.to_string(guest.write_date),
                 },
             ],
@@ -66,47 +62,45 @@ class TestGetDiscussChannel(TestImLivechatCommon, MailCommon):
         self.assertEqual(
             data["res.partner"],
             self._filter_partners_fields(
-              {
-                    "active": False,
-                    "avatar_128_access_token": self.partner_root._get_avatar_128_access_token(),
-                    "id": self.user_root.partner_id.id,
-                    "im_status": "bot",
-                    "im_status_access_token": self.partner_root._get_im_status_access_token(),
-                    "is_company": False,
-                    "main_user_id": self.user_root.id,
-                    "name": "OdooBot",
-                    "write_date": fields.Datetime.to_string(self.user_root.partner_id.write_date),
-                },
                 {
                     "active": True,
-                    "avatar_128_access_token": operator.partner_id._get_avatar_128_access_token(),
-                    "country_id": False,
+                    "avatar_128_access_token": limited_field_access_token(
+                        operator.partner_id, "avatar_128"
+                    ),
+                    "country": False,
                     "id": operator.partner_id.id,
-                    "im_status": "offline",
-                    "im_status_access_token": operator.partner_id._get_im_status_access_token(),
                     "is_public": False,
                     "user_livechat_username": "Michel Operator",
                     "write_date": fields.Datetime.to_string(operator.write_date),
                 },
+                {
+                    "active": False,
+                    "avatar_128_access_token": limited_field_access_token(
+                        self.partner_root, "avatar_128"
+                    ),
+                    "id": self.user_root.partner_id.id,
+                    "im_status": "bot",
+                    "isInternalUser": True,
+                    "is_company": False,
+                    "name": "OdooBot",
+                    "out_of_office_date_end": False,
+                    "userId": self.user_root.id,
+                    "write_date": fields.Datetime.to_string(self.user_root.partner_id.write_date),
+                },
             ),
         )
-        self.assertEqual(
-            data["res.users"],
-            self._filter_users_fields(
-                {"id": self.user_root.id, "share": False},
-            ),
-        )
+
         # ensure visitor info are correct with real user
         self.authenticate(test_user.login, self.password)
         data = self.make_jsonrpc_request('/im_livechat/get_session', {
             'anonymous_name': 'whatever',
             'previous_operator_id': operator.partner_id.id,
+            'user_id': test_user.id,
             'channel_id': self.livechat_channel.id,
-        })["store_data"]
+        })
         channel_info = data["discuss.channel"][0]
         self.assertFalse(channel_info['anonymous_name'])
-        self.assertEqual(channel_info["country_id"], belgium.id)
-        self.assertEqual(data["res.country"], [{"code": "BE", "id": belgium.id, "name": "Belgium"}])
+        self.assertEqual(channel_info['anonymous_country'], {'code': 'BE', 'id': belgium.id, 'name': 'Belgium'})
         operator_member_domain = [
             ('channel_id', '=', channel_info['id']),
             ('partner_id', '=', operator.partner_id.id),
@@ -121,55 +115,51 @@ class TestGetDiscussChannel(TestImLivechatCommon, MailCommon):
             data["res.partner"],
             self._filter_partners_fields(
                 {
-                    "active": False,
-                    "avatar_128_access_token": self.partner_root._get_avatar_128_access_token(),
-                    "email": "odoobot@example.com",
-                    "id": self.user_root.partner_id.id,
-                    "im_status": "bot",
-                    "im_status_access_token": self.partner_root._get_im_status_access_token(),
-                    "is_company": False,
-                    "main_user_id": self.user_root.id,
-                    "name": "OdooBot",
-                    "write_date": fields.Datetime.to_string(self.user_root.partner_id.write_date),
-                },
-                {
                     "active": True,
-                    "avatar_128_access_token": test_user.partner_id._get_avatar_128_access_token(),
-                    "country_id": belgium.id,
+                    "avatar_128_access_token": limited_field_access_token(
+                        test_user.partner_id, "avatar_128"
+                    ),
+                    "country": {
+                        "code": "BE",
+                        "id": belgium.id,
+                        "name": "Belgium",
+                    },
                     "id": test_user.partner_id.id,
-                    "im_status": "offline",
-                    "im_status_access_token": test_user.partner_id._get_im_status_access_token(),
+                    "isAdmin": False,
+                    "isInternalUser": True,
                     "is_public": False,
-                    "main_user_id": test_user.id,
                     "name": "Roger",
-                    "email": test_user.partner_id.email,
-                    "offline_since": False,
+                    "notification_preference": "email",
+                    "signature": str(test_user.signature),
+                    "userId": test_user.id,
                     "user_livechat_username": False,
                     "write_date": fields.Datetime.to_string(test_user.write_date),
                 },
-               {
+                {
                     "active": True,
-                    "avatar_128_access_token": operator.partner_id._get_avatar_128_access_token(),
-                    "country_id": False,
+                    "avatar_128_access_token": limited_field_access_token(
+                        operator.partner_id, "avatar_128"
+                    ),
+                    "country": False,
                     "id": operator.partner_id.id,
-                    "im_status": "offline",
-                    "im_status_access_token": operator.partner_id._get_im_status_access_token(),
                     "is_public": False,
                     "user_livechat_username": "Michel Operator",
                     "write_date": fields.Datetime.to_string(operator.write_date),
                 },
-            ),
-        )
-        self.assertEqual(
-            data["res.users"],
-            self._filter_users_fields(
-                {"id": self.user_root.id, "employee_ids": [], "share": False},
                 {
-                    "id": test_user.id,
-                    "is_admin": False,
-                    "notification_type": "email",
-                    "signature": ["markup", str(test_user.signature)],
-                    "share": False,
+                    "active": False,
+                    "avatar_128_access_token": limited_field_access_token(
+                        self.partner_root, "avatar_128"
+                    ),
+                    "email": "odoobot@example.com",
+                    "id": self.user_root.partner_id.id,
+                    "im_status": "bot",
+                    "isInternalUser": True,
+                    "is_company": False,
+                    "name": "OdooBot",
+                    "out_of_office_date_end": False,
+                    "userId": self.user_root.id,
+                    "write_date": fields.Datetime.to_string(self.user_root.partner_id.write_date),
                 },
             ),
         )
@@ -177,83 +167,87 @@ class TestGetDiscussChannel(TestImLivechatCommon, MailCommon):
             data["discuss.channel.member"],
             [
                 {
-                    "create_date": fields.Datetime.to_string(operator_member.create_date),
-                    "fetched_message_id": False,
-                    "id": operator_member.id,
-                    "livechat_member_type": "agent",
-                    "last_seen_dt": False,
-                    "partner_id": {"id": operator.partner_id.id, "type": "partner"},
-                    "seen_message_id": False,
-                    "channel_id": {"id": channel_info["id"], "model": "discuss.channel"},
-                },
-                {
                     "create_date": fields.Datetime.to_string(visitor_member.create_date),
-                    "custom_channel_name": False,
-                    "custom_notifications": False,
                     "fetched_message_id": False,
                     "id": visitor_member.id,
-                    "livechat_member_type": "visitor",
+                    "is_bot": False,
                     "last_interest_dt": fields.Datetime.to_string(visitor_member.last_interest_dt),
                     "last_seen_dt": False,
                     "message_unread_counter": 0,
                     "message_unread_counter_bus_id": self.env["bus.bus"]._bus_last_id() - 1,
-                    "mute_until_dt": False,
                     "new_message_separator": 0,
-                    "partner_id": {"id": test_user.partner_id.id, "type": "partner"},
+                    "persona": {"id": test_user.partner_id.id, "type": "partner"},
                     "seen_message_id": False,
-                    "channel_id": {"id": channel_info["id"], "model": "discuss.channel"},
+                    "thread": {"id": channel_info["id"], "model": "discuss.channel"},
+                },
+                {
+                    "create_date": fields.Datetime.to_string(operator_member.create_date),
+                    "fetched_message_id": False,
+                    "id": operator_member.id,
+                    "is_bot": False,
+                    "last_seen_dt": False,
+                    "persona": {"id": operator.partner_id.id, "type": "partner"},
+                    "seen_message_id": False,
+                    "thread": {"id": channel_info["id"], "model": "discuss.channel"},
                 },
             ],
         )
-        self.assertEqual(data["res.country"], [{"code": "BE", "id": belgium.id, "name": "Belgium"}])
+
         # ensure visitor info are correct when operator is testing themselves
         operator = self.operators[0]
         self.authenticate(operator.login, self.password)
         data = self.make_jsonrpc_request('/im_livechat/get_session', {
             'anonymous_name': 'whatever',
             'previous_operator_id': operator.partner_id.id,
+            'user_id': operator.id,
             'channel_id': self.livechat_channel.id,
-        })["store_data"]
+        })
         channel_info = data["discuss.channel"][0]
         operator_member_domain = [
             ('channel_id', '=', channel_info['id']),
             ('partner_id', '=', operator.partner_id.id),
         ]
         operator_member = self.env['discuss.channel.member'].search(operator_member_domain)
-        self.assertEqual(channel_info['livechat_operator_id'], {
+        self.assertEqual(channel_info['operator'], {
             "id": operator.partner_id.id,
             "type": "partner",
         })
         self.assertFalse(channel_info['anonymous_name'])
-        self.assertEqual(channel_info['country_id'], False)
+        self.assertEqual(channel_info['anonymous_country'], False)
         self.assertEqual(
             data["res.partner"],
             self._filter_partners_fields(
                 {
+                    "active": True,
+                    "avatar_128_access_token": limited_field_access_token(
+                        operator.partner_id, "avatar_128"
+                    ),
+                    "country": False,
+                    "id": operator.partner_id.id,
+                    "isAdmin": False,
+                    "isInternalUser": True,
+                    "is_public": False,
+                    "name": "Michel",
+                    "notification_preference": "email",
+                    "signature": str(operator.signature),
+                    "userId": operator.id,
+                    "user_livechat_username": "Michel Operator",
+                    "write_date": fields.Datetime.to_string(operator.partner_id.write_date),
+                },
+                {
                     "active": False,
-                    "avatar_128_access_token": self.partner_root._get_avatar_128_access_token(),
+                    "avatar_128_access_token": limited_field_access_token(
+                        self.partner_root, "avatar_128"
+                    ),
                     "email": "odoobot@example.com",
                     "id": self.user_root.partner_id.id,
                     "im_status": "bot",
-                    "im_status_access_token": self.partner_root._get_im_status_access_token(),
+                    "isInternalUser": True,
                     "is_company": False,
-                    "main_user_id": self.user_root.id,
                     "name": "OdooBot",
+                    "out_of_office_date_end": False,
+                    "userId": self.user_root.id,
                     "write_date": fields.Datetime.to_string(self.user_root.partner_id.write_date),
-                },
-                {
-                    "active": True,
-                    "avatar_128_access_token": operator.partner_id._get_avatar_128_access_token(),
-                    "country_id": False,
-                    "id": operator.partner_id.id,
-                    "im_status": "offline",
-                    "im_status_access_token": operator.partner_id._get_im_status_access_token(),
-                    "is_public": False,
-                    "main_user_id": operator.id,
-                    "name": "Michel",
-                    "email": operator.email,
-                    "user_livechat_username": "Michel Operator",
-                    "write_date": fields.Datetime.to_string(operator.partner_id.write_date),
                 },
             ),
         )
@@ -262,98 +256,129 @@ class TestGetDiscussChannel(TestImLivechatCommon, MailCommon):
             [
                 {
                     "create_date": fields.Datetime.to_string(operator_member.create_date),
-                    "custom_channel_name": False,
-                    "custom_notifications": False,
                     "fetched_message_id": False,
                     "id": operator_member.id,
-                    "livechat_member_type": "agent",
+                    "is_bot": False,
                     "last_interest_dt": fields.Datetime.to_string(operator_member.last_interest_dt),
                     "last_seen_dt": False,
                     "message_unread_counter": 0,
                     "message_unread_counter_bus_id": self.env["bus.bus"]._bus_last_id() - 1,
-                    "mute_until_dt": False,
                     "new_message_separator": 0,
-                    "partner_id": {"id": operator.partner_id.id, "type": "partner"},
+                    "persona": {"id": operator.partner_id.id, "type": "partner"},
                     "seen_message_id": False,
-                    "channel_id": {"id": channel_info["id"], "model": "discuss.channel"},
+                    "thread": {"id": channel_info["id"], "model": "discuss.channel"},
                 },
             ],
-        )
-        self.assertEqual(
-            data["res.users"],
-            self._filter_users_fields(
-                {"id": self.user_root.id, "employee_ids": [], "share": False},
-                {
-                    "id": operator.id,
-                    "is_admin": False,
-                    "notification_type": "email",
-                    "share": False,
-                    "signature": ["markup", str(operator.signature)],
-                },
-            ),
         )
 
     def _open_livechat_discuss_channel(self):
         discuss_channels = []
-        for _i in range(5):
-            data = self.make_jsonrpc_request(
-                "/im_livechat/get_session",
-                {"anonymous_name": "Anonymous", "channel_id": self.livechat_channel.id},
-            )
-            discuss_channels.append(data["store_data"]["discuss.channel"][0])
+        for i in range(5):
+            data = self.make_jsonrpc_request('/im_livechat/get_session', {'anonymous_name': 'Anonymous', 'channel_id': self.livechat_channel.id})
+            discuss_channels.append(data["discuss.channel"][0])
             # send a message to mark this channel as 'active'
-            self.env["discuss.channel"].browse(data["channel_id"]).message_post(body="cc")
+            self.env["discuss.channel"].browse(data["discuss.channel"][0]["id"]).message_post(
+                body="cc"
+            )
         return discuss_channels
 
     def test_channel_not_pinned_for_operator_before_first_message(self):
         operator = self.operators[0]
-        data = self.make_jsonrpc_request(
-            "/im_livechat/get_session",
-            {
-                "anonymous_name": "whatever",
-                "channel_id": self.livechat_channel.id,
-                "previous_operator_id": operator.partner_id.id,
-            },
-        )
-        channel = self.env["discuss.channel"].browse(data["channel_id"])
-        member = channel.with_user(operator).self_member_id
-        self.assertEqual(member.partner_id, operator.partner_id, "operator should be member of channel")
+        params = {
+            "anonymous_name": "whatever",
+            "channel_id": self.livechat_channel.id,
+            "previous_operator_id": operator.partner_id.id
+        }
+        channel_id = self.make_jsonrpc_request("/im_livechat/get_session", params)[
+            "discuss.channel"
+        ][0]["id"]
+        member_domain = [("channel_id", "=", channel_id), ("is_self", "=", True)]
+        member = self.env["discuss.channel.member"].with_user(operator).search(member_domain)
+        self.assertEqual(len(member), 1, "operator should be member of channel")
         self.assertFalse(member.is_pinned, "channel should not be pinned for operator initially")
-        channel.message_post(body="cc")
+        self.env["discuss.channel"].browse(channel_id).message_post(body="cc")
         self.assertTrue(member.is_pinned, "channel should be pinned for operator after visitor sent a message")
         self.authenticate(operator.login, self.password)
-        data = self.make_jsonrpc_request("/mail/data", {"fetch_params": ["channels_as_member"]})
-        channel_ids = [channel["id"] for channel in data["discuss.channel"]]
-        self.assertIn(channel.id, channel_ids, "channel should be fetched by operator on new page")
+        operator_channels = self.make_jsonrpc_request("/mail/data", {"channels_as_member": True})[
+            "discuss.channel"
+        ]
+        channel_ids = [channel["id"] for channel in operator_channels]
+        self.assertIn(channel_id, channel_ids, "channel should be fetched by operator on new page")
 
     def test_read_channel_unpined_for_operator_after_one_day(self):
         data = self.make_jsonrpc_request('/im_livechat/get_session', {'anonymous_name': 'visitor', 'channel_id': self.livechat_channel.id})
         member_of_operator = self.env["discuss.channel.member"].search(
             [
-                ("channel_id", "=", data["channel_id"]),
+                ("channel_id", "=", data["discuss.channel"][0]["id"]),
                 ("partner_id", "in", self.operators.partner_id.ids),
             ]
         )
-        message = self.env["discuss.channel"].browse(data["channel_id"]).message_post(body="cc")
+        message = (
+            self.env["discuss.channel"]
+            .browse(data["discuss.channel"][0]["id"])
+            .message_post(body="cc")
+        )
         member_of_operator._mark_as_read(message.id)
         with freeze_time(fields.Datetime.to_string(fields.Datetime.now() + timedelta(days=1))):
             member_of_operator._gc_unpin_livechat_sessions()
         self.assertFalse(member_of_operator.is_pinned, "read channel should be unpinned after one day")
-        self.assertTrue(member_of_operator.channel_id.livechat_end_dt)
 
     def test_unread_channel_not_unpined_for_operator_after_autovacuum(self):
         data = self.make_jsonrpc_request('/im_livechat/get_session', {'anonymous_name': 'visitor', 'channel_id': self.livechat_channel.id})
         member_of_operator = self.env["discuss.channel.member"].search(
             [
-                ("channel_id", "=", data["channel_id"]),
+                ("channel_id", "=", data["discuss.channel"][0]["id"]),
                 ("partner_id", "in", self.operators.partner_id.ids),
             ]
         )
-        self.env["discuss.channel"].browse(data["channel_id"]).message_post(body="cc")
+        self.env["discuss.channel"].browse(data["discuss.channel"][0]["id"]).message_post(body="cc")
         with freeze_time(fields.Datetime.to_string(fields.Datetime.now() + timedelta(days=1))):
             member_of_operator._gc_unpin_livechat_sessions()
         self.assertTrue(member_of_operator.is_pinned, "unread channel should not be unpinned after autovacuum")
-        self.assertFalse(member_of_operator.channel_id.livechat_end_dt)
+
+    def test_only_active_livechats_returned_by_init_messaging(self):
+        self.authenticate(None, None)
+        operator = new_test_user(self.env, login="John")
+        self.env["bus.presence"].create({"user_id": operator.id, "status": "online"})
+        livechat_channel = self.env["im_livechat.channel"].create(
+            {"name": "Customer Support", "user_ids": [operator.id]}
+        )
+        inactive_livechat = self.env["discuss.channel"].browse(
+            self.make_jsonrpc_request(
+                "/im_livechat/get_session",
+                {
+                    "anonymous_name": "Visitor",
+                    "channel_id": livechat_channel.id,
+                    "persisted": True,
+                },
+            )["discuss.channel"][0]["id"]
+        )
+        self.make_jsonrpc_request(
+            "/im_livechat/visitor_leave_session", {"channel_id": inactive_livechat.id}
+        )
+        guest = inactive_livechat.channel_member_ids.filtered(lambda m: m.guest_id).guest_id
+        non_livechat_channel = self.env['discuss.channel'].channel_create(name="General", group_id=None)
+        non_livechat_channel.add_members(guest_ids=guest.ids)
+        non_livechat_channel.channel_member_ids.fold_state = "open"
+        active_livechat = self.env["discuss.channel"].browse(
+            self.make_jsonrpc_request(
+                "/im_livechat/get_session",
+                {
+                    "anonymous_name": "Visitor",
+                    "channel_id": livechat_channel.id,
+                    "persisted": True,
+                },
+            )["discuss.channel"][0]["id"]
+        )
+        init_messaging_result = self.make_jsonrpc_request("/mail/action", {"init_messaging": {}})
+        self.assertEqual(len(init_messaging_result["discuss.channel"]), 2)
+        self.assertEqual(init_messaging_result["discuss.channel"][0]["channel_type"], "channel")
+        self.assertEqual(init_messaging_result["discuss.channel"][1]["channel_type"], "livechat")
+        init_messaging_result = self.make_jsonrpc_request("/mail/action", {"init_messaging": {
+            "channel_types": ["livechat"],
+        }})
+        self.assertEqual(len(init_messaging_result["discuss.channel"]), 1)
+        self.assertEqual(init_messaging_result["discuss.channel"][0]["id"], active_livechat.id)
 
     def test_livechat_manager_can_invite_anyone(self):
         channel = self.env["discuss.channel"].create(
@@ -363,28 +388,11 @@ class TestGetDiscussChannel(TestImLivechatCommon, MailCommon):
                 "name": "test",
             }
         )
-        other_member = channel.with_user(self.operators[0])._add_members(users=self.operators[1])
+        other_member = channel.with_user(self.operators[0]).add_members(
+            partner_ids=self.operators[1].partner_id.ids
+        )
         self.assertEqual(other_member.partner_id, self.operators[1].partner_id)
-        self_member = channel.with_user(self.operators[0])._add_members(users=self.operators[0])
+        self_member = channel.with_user(self.operators[0]).add_members(
+            partner_ids=self.operators[0].partner_id.ids
+        )
         self.assertEqual(self_member.partner_id, self.operators[0].partner_id)
-
-    def test_livechat_operator_can_see_all_livechat_conversations_and_members(self):
-        bob_user = new_test_user(
-            self.env, "bob_user", groups="base.group_user,im_livechat.im_livechat_group_user"
-        )
-        livechat_session = self.env["discuss.channel"].create(
-            {
-                "channel_type": "livechat",
-                "livechat_operator_id": self.operators[0].partner_id.id,
-                "name": "test",
-            }
-        )
-        livechat_session.with_user(self.operators[0])._add_members(users=self.operators[1])
-        self.assertEqual(
-            self.env["discuss.channel"].with_user(bob_user).search([("id", "=", livechat_session.id)]),
-            livechat_session
-        )
-        self.assertEqual(
-            self.env["discuss.channel.member"].with_user(bob_user).search([("channel_id", "=", livechat_session.id)]),
-            livechat_session.channel_member_ids
-        )

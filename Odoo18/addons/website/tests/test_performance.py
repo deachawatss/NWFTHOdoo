@@ -3,7 +3,7 @@
 import logging
 from odoo.addons.base.tests.common import HttpCaseWithUserPortal, HttpCaseWithUserDemo
 
-from contextlib import closing
+from contextlib import nullcontext
 
 from odoo.sql_db import categorize_query
 from odoo.tools import mute_logger
@@ -66,7 +66,7 @@ class UtilPerf(HttpCaseWithUserPortal, HttpCaseWithUserDemo):
             self.registry.get_sequences(self.cr)
             self.url_open(url)
 
-        profiler = nested_profiler._profiler__
+        profiler = nested_profiler.profiler
         self.assertEqual(len(profiler.sub_profilers), 1, "we expect to have only one accessed url") # if not adapt the code below
         route_profiler = profiler.sub_profilers[0]
         route_entries = route_profiler.collectors[0].entries
@@ -125,7 +125,7 @@ class TestStandardPerformance(UtilPerf):
         self.env['res.users'].sudo().browse(2).website_published = True
         url = '/web/image/res.users/2/image_256'
         select_tables_perf = {
-            'orm_signaling_registry': 1,
+            'base_registry_signaling': 1,
             'res_users': 2,
             'res_partner': 1,
             'ir_attachment': 2,
@@ -137,7 +137,7 @@ class TestStandardPerformance(UtilPerf):
     def test_20_perf_sql_img_controller_bis(self):
         url = '/web/image/website/1/favicon'
         select_tables_perf = {
-            'orm_signaling_registry': 1,
+            'base_registry_signaling': 1,
             'website': 2,
             # 1. `_find_record()` performs an access right check through
             #    `exists()` which perform a request on the website.
@@ -194,10 +194,9 @@ class TestWebsitePerformance(TestWebsitePerformanceCommon):
         # standard untracked website.page
         for readonly_enabled in (True, False):
             self.env.registry.test_readonly_enabled = readonly_enabled
-            self.set_registry_readonly_mode(readonly_enabled)
-            with self.subTest(readonly_enabled=readonly_enabled), closing(self.env.cr.savepoint()):
+            with self.subTest(readonly_enabled=readonly_enabled), self.env.cr.savepoint() as savepoint:
                 select_tables_perf = {
-                    'orm_signaling_registry': 1,
+                    'base_registry_signaling': 1,
                     'ir_attachment': 1,
                     # `_get_serve_attachment` dispatcher fallback
                     'website_page': 2,
@@ -214,14 +213,15 @@ class TestWebsitePerformance(TestWebsitePerformanceCommon):
                 self.menu.unlink()  # page being or not in menu shouldn't add queries
                 self._check_url_hot_query(self.page.url, expected_query_count, select_tables_perf)
                 self.assertEqual(self._get_url_hot_query(self.page.url, cache=False), 10)
+                savepoint.rollback()
 
     def test_15_perf_sql_queries_page(self):
         # standard tracked website.page
         for readonly_enabled in (True, False):
-            self.set_registry_readonly_mode(readonly_enabled)
-            with self.subTest(readonly_enabled=readonly_enabled), closing(self.env.cr.savepoint()):
+            self.env.registry.test_readonly_enabled = readonly_enabled
+            with self.subTest(readonly_enabled=readonly_enabled), self.env.cr.savepoint() as savepoint:
                 select_tables_perf = {
-                    'orm_signaling_registry': 1,
+                    'base_registry_signaling': 1,
                     'ir_attachment': 1,
                     # `_get_serve_attachment` dispatcher fallback
                     'website_page': 2,
@@ -247,14 +247,15 @@ class TestWebsitePerformance(TestWebsitePerformanceCommon):
                 self.menu.unlink()  # page being or not in menu shouldn't add queries
                 self._check_url_hot_query(self.page.url, expected_query_count, select_tables_perf, insert_tables_perf)
                 self.assertEqual(self._get_url_hot_query(self.page.url, cache=False), expected_query_count_no_cache)
+                savepoint.rollback()
 
     def test_20_perf_sql_queries_homepage(self):
         # homepage "/" has its own controller
         for readonly_enabled in (True, False):
-            self.set_registry_readonly_mode(readonly_enabled)
-            with self.subTest(readonly_enabled=readonly_enabled), closing(self.env.cr.savepoint()):
+            self.env.registry.test_readonly_enabled = readonly_enabled
+            with self.subTest(readonly=readonly_enabled), self.env.cr.savepoint() as savepoint:
                 select_tables_perf = {
-                    'orm_signaling_registry': 1,
+                    'base_registry_signaling': 1,
                     'website_menu': 1,
                     # homepage controller is prefetching all menus for perf in one go
                     'website_page': 2,
@@ -275,12 +276,13 @@ class TestWebsitePerformance(TestWebsitePerformanceCommon):
                     expected_query_count_no_cache += 1
                 self._check_url_hot_query('/', expected_query_count, select_tables_perf, insert_tables_perf)
                 self.assertEqual(self._get_url_hot_query('/', cache=False), expected_query_count_no_cache)
+                savepoint.rollback()
 
     def test_30_perf_sql_queries_page_no_layout(self):
         # untrack website.page with no call to layout templates
         self.page.arch = '<div>I am a blank page</div>'
         select_tables_perf = {
-            'orm_signaling_registry': 1,
+            'base_registry_signaling': 1,
             'ir_attachment': 1,
             # `_get_serve_attachment` dispatcher fallback
             'website_page': 2,
@@ -300,18 +302,12 @@ class TestWebsitePerformance(TestWebsitePerformanceCommon):
         _, menu_aa = self._create_page_with_menu('/aa')
         _, menu_b = self._create_page_with_menu('/b')
         _, menu_bb = self._create_page_with_menu('/bb')
-        _, menu_bbb = self._create_page_with_menu('/bbb')
-        _, menu_bbbb = self._create_page_with_menu('/bbbb')
-        _, menu_bbbbb = self._create_page_with_menu('/bbbbb')
         self._create_page_with_menu('c')
-        menu_bbbbb.parent_id = menu_bbbb
-        menu_bbbb.parent_id = menu_bbb
-        menu_bbb.parent_id = menu_bb
         menu_bb.parent_id = menu_b
         menu_aa.parent_id = menu_a
 
         select_tables_perf = {
-            'orm_signaling_registry': 1,
+            'base_registry_signaling': 1,
             'ir_attachment': 1,
             # `_get_serve_attachment` dispatcher fallback
             'website_page': 2,
@@ -332,7 +328,7 @@ class TestWebsitePerformancePost(UtilPerf):
         assets_url = self.env['ir.qweb']._get_asset_bundle('web.assets_frontend_lazy', css=False, js=True).get_links()[0]
         self.assertIn('web.assets_frontend_lazy.min.js', assets_url)
         select_tables_perf = {
-            'orm_signaling_registry': 1,
+            'base_registry_signaling': 1,
             'ir_attachment': 2,
             # All 2 coming from the /web/assets and ir.binary stack
             # 1. `search() the attachment`

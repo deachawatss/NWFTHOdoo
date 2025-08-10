@@ -60,7 +60,6 @@ const SERVER_STATE_VALUES = {
     lang: "en",
     multiLang: false,
     odoobotId: 418,
-    odoobotUid: 518,
     partnerId: 17,
     partnerName: "Mitchell Admin",
     publicPartnerId: 18,

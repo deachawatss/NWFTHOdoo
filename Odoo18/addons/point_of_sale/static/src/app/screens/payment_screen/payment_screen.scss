@@ -41,18 +41,14 @@
     }
 }
 
-.paymentline.selected {
-  background: $o-component-active-bg;
-  border: $border-width solid $o-component-active-border;
-  color: $o-component-active-color;
-}
+@for $size from 1 through length($o-colors) {
+  .btn.o_colorlist_item_color_transparent_#{$size - 1} {
+    &:hover {
+      filter: brightness(98%);
+    }
 
-@keyframes fadeInOut {
-  0% { opacity: 0; transform: translateY(30px); }
-  50% { opacity: 0.5; transform: translateY(0px); }
-  100% { opacity: 1; }
-}
-
-.fade-effect {
-  animation: fadeInOut 1000ms ease-in-out;
+    &:active {
+      border: $border-width solid nth($o-colors, $size);
+    }
+  }
 }

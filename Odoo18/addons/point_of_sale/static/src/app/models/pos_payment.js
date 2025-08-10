@@ -1,5 +1,9 @@
 import { registry } from "@web/core/registry";
 import { Base } from "./related_models";
+import { serializeDateTime } from "@web/core/l10n/dates";
+import { roundDecimals } from "@web/core/utils/numbers";
+import { uuidv4 } from "@point_of_sale/utils";
+
 const { DateTime } = luxon;
 
 export class PosPayment extends Base {
@@ -7,7 +11,8 @@ export class PosPayment extends Base {
 
     setup(vals) {
         super.setup(...arguments);
-        this.payment_date = DateTime.now();
+        this.payment_date = serializeDateTime(DateTime.now());
+        this.uuid = vals.uuid ? vals.uuid : uuidv4();
         this.amount = vals.amount || 0;
         this.ticket = vals.ticket || "";
     }
@@ -16,66 +21,73 @@ export class PosPayment extends Base {
         return this.pos_order_id?.uiState?.selected_paymentline_uuid === this.uuid;
     }
 
-    setAmount(value) {
-        this.pos_order_id.assertEditable();
-        this.amount = this.pos_order_id.currency.round(parseFloat(value) || 0);
+    set_amount(value) {
+        this.pos_order_id.assert_editable();
+        this.update({
+            amount: roundDecimals(
+                parseFloat(value) || 0,
+                this.pos_order_id.currency.decimal_places
+            ),
+        });
     }
 
-    getAmount() {
+    get_amount() {
         return this.amount || 0;
     }
 
-    getPaymentStatus() {
+    get_payment_status() {
         return this.payment_status;
     }
 
-    setPaymentStatus(value) {
-        this.payment_status = value;
+    set_payment_status(value) {
+        this.update({ payment_status: value });
     }
 
-    isDone() {
-        return this.getPaymentStatus()
-            ? this.getPaymentStatus() === "done" || this.getPaymentStatus() === "reversed"
+    is_done() {
+        return this.get_payment_status()
+            ? this.get_payment_status() === "done" || this.get_payment_status() === "reversed"
             : true;
     }
 
-    setCashierReceipt(value) {
+    set_cashier_receipt(value) {
         this.cashier_receipt = value;
     }
 
-    setReceiptInfo(value) {
+    set_receipt_info(value) {
         this.ticket += value;
     }
 
-    isElectronic() {
-        return Boolean(this.getPaymentStatus());
+    export_for_printing() {
+        return {
+            amount: this.get_amount(),
+            name: this.payment_method_id.name,
+            ticket: this.ticket,
+        };
+    }
+
+    is_electronic() {
+        return Boolean(this.get_payment_status());
     }
 
     async pay() {
-        this.setPaymentStatus("waiting");
+        this.set_payment_status("waiting");
 
-        return this.handlePaymentResponse(
-            await this.payment_method_id.payment_terminal.sendPaymentRequest(this.uuid)
+        return this.handle_payment_response(
+            await this.payment_method_id.payment_terminal.send_payment_request(this.uuid)
         );
     }
 
-    handlePaymentResponse(isPaymentSuccessful) {
+    handle_payment_response(isPaymentSuccessful) {
         if (isPaymentSuccessful) {
-            this.setPaymentStatus("done");
+            this.set_payment_status("done");
             if (this.payment_method_id.payment_method_type !== "qr_code") {
                 this.can_be_reversed = this.payment_method_id.payment_terminal.supports_reversals;
             }
         } else {
-            this.setPaymentStatus("retry");
+            this.set_payment_status("retry");
         }
         return isPaymentSuccessful;
     }
-
-    /**
-     * @param {object} - refundedPaymentLine
-     * Override in dependent modules to update the refund payment line with the refunded payment line
-     */
-    updateRefundPaymentLine(refundedPaymentLine) {}
 }
 
 registry.category("pos_available_models").add(PosPayment.pythonModel, PosPayment);

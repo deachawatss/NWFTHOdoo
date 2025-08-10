@@ -1,44 +1,6 @@
-import { waitFor } from "@odoo/hoot-dom";
-
 import { registry } from "@web/core/registry";
 
-import { stepUtils } from "@web_tour/tour_utils";
-
-function createChatbotSteps(...stepMessages) {
-    return [
-        {
-            trigger: "div[name='script_step_ids'] .o_field_x2many_list_row_add a",
-            run: "click",
-        },
-        ...stepMessages
-            .map((message) => [
-                {
-                    trigger: ".modal textarea#message_0",
-                    run: `edit ${message}`,
-                },
-                {
-                    trigger: `.modal textarea#message_0`,
-                    run: () => waitFor(`.modal textarea#message_0:value(${message})`),
-                },
-                {
-                    trigger: ".modal button:contains(Save & New)",
-                    run: "click",
-                },
-                {
-                    trigger: `tr:contains(${message})`,
-                },
-                {
-                    trigger: ".modal textarea#message_0",
-                    run: () => waitFor(".modal textarea#message_0:empty"),
-                },
-            ])
-            .flat(),
-        {
-            trigger: ".modal-footer button:contains(Discard)",
-            run: "click",
-        },
-    ];
-}
+import { stepUtils } from "@web_tour/tour_service/tour_utils";
 
 const commonSteps = [
     stepUtils.showAppsMenuItem(),
@@ -62,7 +24,36 @@ const commonSteps = [
         trigger: 'input[id="title_0"]',
         run: "edit Test Chatbot Sequence",
     },
-    ...createChatbotSteps("Step 1", "Step 2", "Step 3"),
+    {
+        trigger: 'div[name="script_step_ids"] .o_field_x2many_list_row_add a',
+        run: "click",
+    },
+    {
+        trigger: ".modal textarea#message_0",
+        run: "edit Step 1",
+    },
+    {
+        trigger: ".modal button:contains(Save & New):enabled",
+        run: "click",
+    },
+    {
+        trigger: 'tr:contains("Step 1")',
+    },
+    {
+        trigger: ".modal textarea#message_0",
+        run: "edit Step 2",
+    },
+    {
+        trigger: ".modal button:contains(Save & New):enabled",
+        run: "click",
+    },
+    {
+        trigger: 'tr:contains("Step 2")',
+    },
+    {
+        trigger: ".modal textarea#message_0",
+        run: "edit Step 3",
+    },
 ];
 
 /**
@@ -72,6 +63,10 @@ registry.category("web_tour.tours").add("im_livechat_chatbot_steps_sequence_tour
     url: "/odoo",
     steps: () => [
         ...commonSteps,
+        {
+            trigger: ".modal button:contains(Save & Close)",
+            run: "click",
+        },
         {
             trigger: "body.o_web_client:not(.modal-open)",
         },
@@ -85,7 +80,32 @@ registry.category("web_tour.tours").add("im_livechat_chatbot_steps_sequence_with
     url: "/odoo",
     steps: () => [
         ...commonSteps,
-        ...createChatbotSteps("Step 4", "Step 5"),
+        {
+            trigger: ".modal button:contains(Save & New)",
+            run: "click",
+        },
+        {
+            trigger: 'tr:contains("Step 3")',
+        },
+        {
+            trigger: ".modal textarea#message_0",
+            run: "edit Step 4",
+        },
+        {
+            trigger: 'button:contains("Save & New")',
+            run: "click",
+        },
+        {
+            trigger: 'tr:contains("Step 4")',
+        },
+        {
+            trigger: ".modal textarea#message_0",
+            run: "edit Step 5",
+        },
+        {
+            trigger: ".modal button:contains(Save & Close)",
+            run: "click",
+        },
         {
             trigger: "body.o_web_client:not(.modal-open)",
         },
@@ -93,7 +113,18 @@ registry.category("web_tour.tours").add("im_livechat_chatbot_steps_sequence_with
             trigger: 'div[name="script_step_ids"] tr:nth-child(5) .o_row_handle',
             run: 'drag_and_drop(div[name="script_step_ids"] tr:nth-child(2))',
         },
-        ...createChatbotSteps("Step 6"),
+        {
+            trigger: 'div[name="script_step_ids"] .o_field_x2many_list_row_add a',
+            run: "click",
+        },
+        {
+            trigger: ".modal textarea#message_0",
+            run: "edit Step 6",
+        },
+        {
+            trigger: ".modal button:contains(Save & Close)",
+            run: "click",
+        },
         {
             trigger: "body.o_web_client:not(.modal-open)",
         },

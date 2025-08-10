@@ -1,0 +1,55 @@
+{
+  "migration_summary": {
+    "timestamp": "2025-08-10T08:24:54.603782",
+    "source": "http://localhost:8070 - NWFTH-Odoo17-V0.1.0",
+    "destination": "http://localhost:8069 - NWFTH-Odoo18-TEST",
+    "company_migrated": true,
+    "departments_count": 2,
+    "employees_count": 5,
+    "time_off_types_count": 0
+  },
+  "migration_data": {
+    "company": {
+      "name": "Newly Weds Foods (Thailand)",
+      "location": "Thailand"
+    },
+    "departments": [
+      {
+        "name": "Administration"
+      },
+      {
+        "name": "ICT"
+      }
+    ],
+    "employees": [
+      {
+        "name": "Administrator",
+        "department": "Administration",
+        "job_title": "Administrator"
+      },
+      {
+        "name": "Deachawat Subkong",
+        "department": "ICT",
+        "job_title": "Software Developer",
+        "email": "deachawat@newlywedsfoods.co.th",
+        "phone": "02-315-9977"
+      },
+      {
+        "name": "HR Manager",
+        "department": "Administration",
+        "job_title": "HR Manager"
+      },
+      {
+        "name": "Jon Herbert",
+        "department": "ICT",
+        "job_title": "ICT Manager"
+      },
+      {
+        "name": "Win",
+        "department": "ICT",
+        "job_title": "Software Developer",
+        "email": "deachawat9937@gmail.com"
+      }
+    ]
+  }
+}

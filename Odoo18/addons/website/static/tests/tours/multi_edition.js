@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { clickOnSave, insertSnippet, registerWebsitePreviewTour } from '@website/js/tours/tour_utils';
 
 registerWebsitePreviewTour('website_multi_edition', {
@@ -16,10 +18,10 @@ registerWebsitePreviewTour('website_multi_edition', {
     }),
     // Edit another part in the page, like the footer
     {
-        trigger: ".o-website-builder_sidebar.o_builder_sidebar_open .o_snippet",
+        trigger: ".o_website_preview.editor_enable.editor_has_snippets",
     },
     {
-        trigger: `.o-snippets-menu .o_block_tab:not(.o_we_ongoing_insertion) .o_snippet[name="Separator"].o_draggable .o_snippet_thumbnail`,
+        trigger: `#oe_snippets .oe_snippet[name="Separator"].o_we_draggable .oe_snippet_thumbnail:not(.o_we_ongoing_insertion)`,
         content: "Drag the Separator building block and drop it at the bottom of the page.",
         run: "drag_and_drop :iframe .oe_drop_zone:last",
     },

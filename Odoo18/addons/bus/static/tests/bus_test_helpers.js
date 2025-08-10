@@ -2,41 +2,32 @@ import { after, expect, registerDebugInfo } from "@odoo/hoot";
 import { Deferred } from "@odoo/hoot-mock";
 import {
     MockServer,
-    asyncStep,
     defineModels,
-    getMockEnv,
-    getService,
     mockService,
     patchWithCleanup,
     webModels,
 } from "@web/../tests/web_test_helpers";
 import { BusBus } from "./mock_server/mock_models/bus_bus";
 import { IrWebSocket } from "./mock_server/mock_models/ir_websocket";
-import { getWebSocketWorker, onWebsocketEvent } from "./mock_websocket";
+import { onWebsocketEvent } from "./mock_websocket";
 
 import { busService } from "@bus/services/bus_service";
 import { WEBSOCKET_CLOSE_CODES } from "@bus/workers/websocket_worker";
-import { on, runAllTimers, waitUntil } from "@odoo/hoot-dom";
+import { on } from "@odoo/hoot-dom";
 import { registry } from "@web/core/registry";
-import { deepEqual } from "@web/core/utils/objects";
 import { patch } from "@web/core/utils/patch";
 
 /**
  * @typedef {[
- *  env?: OdooEnv,
- *  type: string,
- *  payload: NotificationPayload,
- *  options?: ExpectedNotificationOptions,
+ *  env: import("@web/env").OdooEnv,
+ *  notificationType: string,
+ *  notificationPayload: any,
+ *  options: ExpectedNotificationOptions,
  * ]} ExpectedNotification
  *
  * @typedef {{
  *  received?: boolean;
  * }} ExpectedNotificationOptions
- *
- * @typedef {Record<string, any>} NotificationPayload
- *
- * @typedef {import("@web/env").OdooEnv} OdooEnv
- * @typedef {import("@bus/workers/websocket_worker").WorkerAction} WorkerAction
  */
 
 //-----------------------------------------------------------------------------
@@ -60,45 +51,6 @@ patch(busService, {
         busNotifications.get(env).push({ id, type, payload });
     },
 });
-
-/**
- * @param {ExpectedNotification} notification
- * @param {boolean} [crashOnFail]
- */
-const expectNotification = ([env, type, payload, options], crashOnFail) => {
-    if (typeof env === "string") {
-        [env, type, payload, options] = [getMockEnv(), env, type, payload];
-    }
-    const shouldHaveReceived = Boolean(options?.received ?? true);
-    const envNotifications = busNotifications.get(env) || [];
-    const hasPayload = payload !== null && payload !== undefined;
-    const found = envNotifications.find(
-        (n) => n.type === type && (!hasPayload || matchPayload(n.payload, payload))
-    );
-    const message = (pass) =>
-        `Notification of type ${type} ${payload ? `with payload ${payload} ` : ""}${
-            pass && shouldHaveReceived ? "" : "not "
-        }received.`;
-    if (found) {
-        envNotifications.splice(envNotifications.indexOf(found), 1);
-        expect(payload).toEqual(payload, { message });
-    } else if (!shouldHaveReceived) {
-        expect(shouldHaveReceived).toBe(false, { message });
-    } else {
-        if (crashOnFail) {
-            throw new Error(message(false, String.raw).join(" "));
-        }
-        return false;
-    }
-    return true;
-};
-
-/**
- * @param {NotificationPayload} payload
- * @param {NotificationPayload | ((payload: NotificationPayload) => boolean)} matcher
- */
-const matchPayload = (payload, matcher) =>
-    typeof matcher === "function" ? matcher(payload) : deepEqual(payload, matcher);
 
 class LockedWebSocket extends WebSocket {
     constructor() {
@@ -212,13 +164,12 @@ export function waitUntilSubscribe() {
  * @param {string[]} channels
  * @param {object} [options={}]
  * @param {"add" | "delete"} [options.operation="add"]
- * @returns {Promise<void>}
+ * @returns {Deferred<void>}
  */
-export async function waitForChannels(channels, { operation = "add" } = {}) {
+export function waitForChannels(channels, { operation = "add" } = {}) {
     const { env } = MockServer;
     const def = new Deferred();
     let done = false;
-    let failTimeout;
 
     /**
      * @param {boolean} crashOnFail
@@ -246,20 +197,50 @@ export async function waitForChannels(channels, { operation = "add" } = {}) {
         if (success) {
             def.resolve();
         } else {
-            def.reject(new Error(message(false, String.raw).join(" ")));
+            def.reject(new Error(message(false)));
         }
         done = true;
     }
 
+    const failTimeout = setTimeout(() => check(true), TIMEOUT);
     after(() => check(true));
     const offWebsocketEvent = onWebsocketEvent("subscribe", () => check(false));
-
-    await runAllTimers();
-
-    failTimeout = setTimeout(() => check(true), TIMEOUT);
     check(false);
-
     return def;
+}
+
+/**
+ * Wait for a notification to be received/not received. Returns
+ * a deferred that resolves when the assertion is done.
+ *
+ * @param {ExpectedNotification} notification
+ * @returns {Deferred<void>}
+ */
+function _waitNotification(notification) {
+    const [env, type, payload, { received = true } = {}] = notification;
+    const notificationDeferred = new Deferred();
+    const failTimeout = setTimeout(() => {
+        expect(!received).toBe(true, {
+            message: `Notification of type "${type}" with payload ${payload} not received.`,
+        });
+        env.services["bus_service"].unsubscribe(type, callback);
+        notificationDeferred.resolve();
+    }, TIMEOUT);
+    const callback = (notifPayload) => {
+        if (payload === undefined || JSON.stringify(notifPayload) === JSON.stringify(payload)) {
+            expect(notifPayload).toEqual(payload, {
+                message: `Notification of type "${type}" with payload ${JSON.stringify(
+                    notifPayload
+                )} receveived.`,
+            });
+
+            notificationDeferred.resolve();
+            clearTimeout(failTimeout);
+            env.services["bus_service"].unsubscribe(type, callback);
+        }
+    };
+    env.services["bus_service"].subscribe(type, callback);
+    return notificationDeferred;
 }
 
 /**
@@ -267,62 +248,18 @@ export async function waitForChannels(channels, { operation = "add" } = {}) {
  * a deferred that resolves when the assertion is done.
  *
  * @param {ExpectedNotification[]} expectedNotifications
- * @returns {Promise<void>}
+ * @returns {Promise<void[]>}
  */
-export async function waitNotifications(...expectedNotifications) {
-    const remaining = new Set(expectedNotifications);
-
-    await waitUntil(
-        () => {
-            for (const notification of remaining) {
-                if (expectNotification(notification, false)) {
-                    remaining.delete(notification);
-                }
-            }
-            return remaining.size === 0;
-        },
-        { timeout: TIMEOUT }
-    )
-        .then(() => busNotifications.clear())
-        .catch(() => {
-            for (const notification of remaining) {
-                expectNotification(notification, true);
-            }
-        });
+export function waitNotifications(...expectedNotifications) {
+    return Promise.all(expectedNotifications.map(_waitNotification));
 }
 
 /**
- * Registers an asynchronous step on actions received by the websocket worker that
- * match the given list of target actions.
- *
- * @param {WorkerAction[]} targetActions
- */
-export function stepWorkerActions(targetActions) {
-    patchWithCleanup(getWebSocketWorker(), {
-        _onClientMessage(_, { action }) {
-            if (targetActions.includes(action)) {
-                asyncStep(action);
-            }
-            return super._onClientMessage(...arguments);
-        },
-    });
-}
-
-/**
- * Lock the websocket connection until the returned function is called. Useful
+ * Lock the websocket connection until the returned function is called. Usefull
  * to simulate server being unavailable.
  */
 export function lockWebsocketConnect() {
     return patchWithCleanup(window, { WebSocket: LockedWebSocket });
-}
-
-/**
- * @param {OdooEnv} [env]
- */
-export async function startBusService(env) {
-    const busService = env ? env.services.bus_service : getService("bus_service");
-    busService.start();
-    await runAllTimers();
 }
 
 export const busModels = { BusBus, IrWebSocket };

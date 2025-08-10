@@ -7,15 +7,8 @@
         display: none;
     }
 
-    .o_add_wishlist_dyn {
-        &.disabled i::before {
-            content: "\f004";
-        }
-
-        &.btn-lg {
-            aspect-ratio: 1/1;
-            height: calc(#{$btn-padding-y-lg} * 2 + #{$btn-font-size-lg} * #{$btn-line-height} + #{$btn-border-width} * 2);
-        }
+    .btn.o_add_wishlist_dyn.disabled i::before {
+        content: "\f004";
     }
 }
 

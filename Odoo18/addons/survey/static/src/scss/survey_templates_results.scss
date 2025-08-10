@@ -53,6 +53,9 @@
                 tr {
                   break-inside: avoid;  
                 }
+                tr.d-none {
+                    display: table-row !important;
+                }
             }
         }
     }

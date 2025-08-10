@@ -131,11 +131,6 @@
             --fc-today-bg-color: none;
         }
 
-        // Remove time indicator arrow
-        .fc-timegrid-now-indicator-arrow {
-            display: none;
-        }
-
         // ===  Adapt calendar table borders and general layout ===
         // ========================================================
         --fc-page-bg-color: #{$o-view-background-color};
@@ -179,6 +174,10 @@
                 max-height: 500px;
                 overflow: auto;
             }
+
+            &.o_calendar_disabled {
+                background-color: $gray-200;
+            }
         }
 
         .o_calendar_disabled {
@@ -192,16 +191,14 @@
         .fc-timeGridDay-view {
             .fc-col-header-cell {
                 text-align: left;
-                vertical-align: middle;
 
                 a {
                     gap: map-get($spacers, 1);
                     margin-left: map-get($spacers, 1);
+                    margin-bottom: map-get($spacers, 1);
                 }
                 .o_cw_day_number {
                     padding: map-get($spacers, 1);
-                    place-content: center;
-                    line-height: 1;
                 }
             }
         }
@@ -217,7 +214,7 @@
                 }
 
                 .o_cw_day_number {
-                    padding: map-get($spacers, 1);
+                    padding: map-get($spacers, 1) map-get($spacers, 2);
 
                     @include media-breakpoint-up(lg) {
                         font-size: 1.25rem;
@@ -229,9 +226,6 @@
         // ====== Both Day and Week agenda
         .fc-timeGridDay-view,
         .fc-timeGridWeek-view {
-            --o-cw-bg: #{$o-calendar-today-background-color};
-            --o-cw-color: #{$o-calendar-today-color};
-
             .fc-scrollgrid-section-body {
                 &:not(.fc-scrollgrid-section-liquid) .fc-scroller-harness {
                     background-color: $o-view-background-color;
@@ -248,11 +242,27 @@
                     align-items: center;
                 }
 
-                &.fc-day-today .o_cw_day_number {
-                    color: var(--o-cw-color);
-                    background-color: var(--o-cw-bg);
-                    border-radius: 50%;
-                    aspect-ratio: 1;
+                &.fc-day-today {
+                    --o-cw-color: #{color-contrast($o-cw-color-today-accent)};
+                    --o-cw-bg: #{$o-cw-color-today-accent};
+
+                    .o_cw_day_number {
+                        z-index: 0;
+                        position:relative;
+                        color: var(--o-cw-color);
+
+                        &:before {
+                            content: '';
+                            @include o-position-absolute($top: 50%, $left: 50%);
+                            transform: translate(-50%,-50%);
+                            z-index: -1;
+                            width: 100%;
+                            border-radius: $border-radius-pill;
+                            background: var(--o-cw-bg);
+                            aspect-ratio: 1;
+                            color: $o-view-background-color;
+                        }
+                    }
                 }
             }
 
@@ -355,38 +365,15 @@
             }
         }
 
-        .fc-timegrid-now-indicator-container {
-            pointer-events: none;
-            overflow: visible;
-            border: none;
-        }
-
         // ====== Week only
         .fc-timeGridWeek-view {
             // Reset position to keep the "nowIndicator" line visible
             @for $i from 1 through 7 {
-                .fc-timegrid-col:not(.fc-timegrid-axis):nth-child(#{$i + 1}) .o_calendar_time_indicator_now {
+                .fc-timegrid-col:not(.fc-timegrid-axis):nth-child(#{$i + 1}) .fc-timegrid-now-indicator-container {
                     $left: ($i - 1) * -100;
                     $right: (7 - $i) * -100;
                     left: #{$left + '%'};
                     right: #{$right + '%'};
-                    position: absolute;
-                    height: 1px;
-                    background-color: var(--o-cw-bg);
-                    opacity: 0.3;
-                    transform: translateY(-100%);
-                }
-
-                // Add a dot shape at the start of the "Now Indicator" line
-                .fc-timegrid-now-indicator-line::before {
-                    content: "";
-                    position: absolute;
-                    height: .75rem;
-                    width: .75rem;
-                    border: $border-width solid $o-view-background-color;
-                    border-radius: $border-radius-pill;
-                    background-color: var(--o-cw-bg);
-                    transform: translate(-50%, -50%);
                 }
             }
         }
@@ -461,20 +448,26 @@
                         }
                     }
 
-                    .fc-daygrid-day-number {
-                        $padding-size: map-get($spacers, 1);
-                        padding: $padding-size;
-                        line-height: calc(100% + #{$padding-size});
+                    .fc-daygrid-day-number:before {
+                        content: "";
+                        z-index: -1;
+                        display: none;
+                        @include o_position-absolute($top: 50%, $left: 50%);
+                        transform: translate(-50%, -50%);
                         aspect-ratio: 1/1;
-                        border-radius: 50%;
+                        height: 100%;
+                        border-radius: 100%;
                         background: var(--o-cw-bg, none);
-                        text-align: center;
+                        padding: var(--o-circle-padding);
                     }
 
                     &.fc-day-today {
-                        --o-cw-color: #{$o-calendar-today-color};
-                        --o-cw-bg: #{$o-calendar-today-background-color};
+                        --o-cw-color: #{color-contrast($o-cw-color-today-accent)};
+                        --o-cw-bg: #{$o-cw-color-today-accent};
 
+                        .fc-daygrid-day-number:before {
+                            display: block;
+                        }
                     }
                 }
             }
@@ -543,6 +536,10 @@
 
                             --o-cw-color: #{color-contrast($-bg)};
                             --o-cw-bg: #{$-bg};
+
+                            &:before {
+                                display: block;
+                            }
                         }
 
                         .fc-daygrid-day-number:before {
@@ -734,12 +731,5 @@
                 background-color: $color;
             }
         }
-    }
-}
-
-.fc-day.o-highlight {
-    background-color: var(--fc-highlight-color) !important;
-    &.fc-day-disabled {
-        background-image: repeating-linear-gradient(-45deg, transparent, var(--fc-neutral-bg-color) 25px, transparent 50px);
     }
 }

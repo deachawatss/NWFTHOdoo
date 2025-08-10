@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { _t } from "@web/core/l10n/translation";
 import { x2ManyCommands } from "@web/core/orm_service";
 import { Dialog } from '@web/core/dialog/dialog';
@@ -36,19 +38,10 @@ export class GenerateDialog extends Component {
             if (this.props.mode === 'generate') {
                 this.nextSerialCount.el.value = this.props.move.data.product_uom_qty || 2;
                 if (this.props.move.data.has_tracking === 'lot') {
-                    this.totalReceived.el.value = this.props.move.data.quantity;
+                    this.totalReceived.el.value = this.props.move.data.quantity || this.props.move.data.product_uom_qty;
                 }
             }
         });
-    }
-    async _onGenerateCustomSerial() {
-        const product = (await this.orm.searchRead("product.product", [["id", "=", this.props.move.data.product_id.id]], ["lot_sequence_id"]))[0];
-        this.sequence = product.lot_sequence_id;
-        if (product.lot_sequence_id) {
-            this.sequence = (await this.orm.searchRead("ir.sequence", [["id", "=", this.sequence[0]]], ["number_next_actual"]))[0];
-            this.nextCustomSerialNumber = await this.orm.call("ir.sequence", "next_by_id", [this.sequence.id]);
-            this.nextSerial.el.value = this.nextCustomSerialNumber;
-        }
     }
     async _onGenerate() {
         let count;
@@ -62,9 +55,9 @@ export class GenerateDialog extends Component {
         }
         const move_line_vals = await this.orm.call("stock.move", "action_generate_lot_line_vals", [{
                 ...this.props.move.context,
-                default_product_id: this.props.move.data.product_id.id,
-                default_location_dest_id: this.props.move.data.location_dest_id.id,
-                default_location_id: this.props.move.data.location_id.id,
+                default_product_id: this.props.move.data.product_id[0],
+                default_location_dest_id: this.props.move.data.location_dest_id[0],
+                default_location_id: this.props.move.data.location_id[0],
                 default_tracking: this.props.move.data.has_tracking,
                 default_quantity: qtyToProcess,
             },
@@ -100,9 +93,6 @@ export class GenerateDialog extends Component {
         ]));
         lines._currentIds.push(...newlines.map((record) => record._virtualId));
         await lines._onUpdate();
-        if (this.sequence && this.nextSerial.el.value === this.nextCustomSerialNumber) {
-            await this.orm.write("ir.sequence", [this.sequence.id], {number_next_actual: this.sequence.number_next_actual + newlines.length});
-        }
         this.props.close();
     }
 }

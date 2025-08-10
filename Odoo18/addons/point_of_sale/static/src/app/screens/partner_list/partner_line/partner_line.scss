@@ -1,4 +1,5 @@
 @include media-breakpoint-down(lg) {
+
     .partner-line {
         display: flex;
         flex-wrap: wrap;
@@ -17,22 +18,12 @@
     .partner-line-balance{
         order: 3;
     }
-
     .partner-line .pos-right-align{
         text-align: left ;
     }
-
     .edit-partner-button-cell {
         order: 4;
     }
-
-    .partner-info {
-        &.selected {
-            background-color: $o-component-active-bg;
-            color: $o-action;
-        }
-    }
-    
 }
 
 .partner-line {
@@ -43,7 +34,7 @@
     }
     &.selected {
         background-color: $o-component-active-bg;
-        color: $o-action;
+        border: $border-width solid $o-component-active-border;
     }
 
     &.selected .btn.btn-link:hover .fa-check {

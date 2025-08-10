@@ -28,12 +28,12 @@ class SaleReport(models.Model):
             -MIN(l.id) AS id,
             l.product_id AS product_id,
             NULL AS line_invoice_status,
-            t.uom_id AS product_uom_id,
+            t.uom_id AS product_uom,
             SUM(l.qty) AS product_uom_qty,
             SUM(l.qty_delivered) AS qty_delivered,
             SUM(l.qty - l.qty_delivered) AS qty_to_deliver,
-            CASE WHEN pos.account_move IS NOT NULL THEN SUM(l.qty) ELSE 0 END AS qty_invoiced,
-            CASE WHEN pos.account_move IS NULL THEN SUM(l.qty) ELSE 0 END AS qty_to_invoice,
+            CASE WHEN pos.state = 'invoiced' THEN SUM(l.qty) ELSE 0 END AS qty_invoiced,
+            CASE WHEN pos.state != 'invoiced' THEN SUM(l.qty) ELSE 0 END AS qty_to_invoice,
             AVG(l.price_unit)
                 / MIN({self._case_value_or_one('pos.currency_rate')})
                 * {self._case_value_or_one('account_currency_table.rate')}
@@ -46,11 +46,11 @@ class SaleReport(models.Model):
                 / MIN({self._case_value_or_one('pos.currency_rate')})
                 * {self._case_value_or_one('account_currency_table.rate')}
             AS price_subtotal,
-            (CASE WHEN pos.account_move IS NULL THEN SUM(l.price_subtotal) ELSE 0 END)
+            (CASE WHEN pos.state != 'invoiced' THEN SUM(l.price_subtotal) ELSE 0 END)
                 / MIN({self._case_value_or_one('pos.currency_rate')})
                 * {self._case_value_or_one('account_currency_table.rate')}
             AS amount_to_invoice,
-            (CASE WHEN pos.account_move IS NOT NULL THEN SUM(l.price_subtotal) ELSE 0 END)
+            (CASE WHEN pos.state = 'invoiced' THEN SUM(l.price_subtotal) ELSE 0 END)
                 / MIN({self._case_value_or_one('pos.currency_rate')})
                 * {self._case_value_or_one('account_currency_table.rate')}
             AS amount_invoiced,
@@ -81,7 +81,6 @@ class SaleReport(models.Model):
                 / {self._case_value_or_one('pos.currency_rate')}
                 * {self._case_value_or_one('account_currency_table.rate')}))
             AS discount_amount,
-            {self.env.company.currency_id.id} AS currency_id,
             concat('pos.order', ',', pos.id) AS order_reference"""
 
         additional_fields = self._select_additional_fields()
@@ -101,8 +100,8 @@ class SaleReport(models.Model):
     def _fill_pos_fields(self, additional_fields):
         """Hook to fill additional fields for the pos_sale.
 
-        :param additional_fields: Dictionary mapping fields with their values
-        :type additional_fields: dict[str, Any]
+        :param values: dictionary of values to fill
+        :type values: dict
         """
         filled_fields = {x: 'NULL' for x in additional_fields}
         for fname, value in self._available_additional_pos_fields().items():

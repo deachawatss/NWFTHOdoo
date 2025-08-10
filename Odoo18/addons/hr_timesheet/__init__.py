@@ -23,7 +23,7 @@ def create_internal_project(env):
     env['account.analytic.line'].create([{
         'name': env._("Analysis"),
         'user_id': admin.id,
-        'date': fields.Date.today(),
+        'date': fields.datetime.today(),
         'unit_amount': 0,
         'project_id': task.project_id.id,
         'task_id': task.id,
@@ -36,7 +36,7 @@ def _uninstall_hook(env):
     def update_action_window(xmlid):
         act_window = env.ref(xmlid, raise_if_not_found=False)
         if act_window and act_window.domain and 'is_internal_project' in act_window.domain:
-            act_window.domain = [("is_template", "=", False)]
+            act_window.domain = []
 
     update_action_window('project.open_view_project_all')
     update_action_window('project.open_view_project_all_group_stage')

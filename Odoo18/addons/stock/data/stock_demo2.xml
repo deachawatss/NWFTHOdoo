@@ -13,13 +13,14 @@
             <field name="name">Cable Management Box</field>
             <field name="is_storable" eval="True"/>
             <field name="weight">0.01</field>
-            <field name="categ_id" ref="product.product_category_office"/>
+            <field name="categ_id" ref="product.product_category_5"/>
             <field name="lst_price">100.0</field>
             <field name="standard_price">70.0</field>
             <field name="weight">1.0</field>
             <field name="tracking">lot</field>
             <field name="uom_id" ref="uom.product_uom_unit"/>
-            <field name="image_1920" type="base64" file="stock/static/img/cable_management.jpg"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
+            <field name="image_1920" type="base64" file="stock/static/img/cable_management.png"/>
         </record>
 
         <record id="lot_product_cable_management" model="stock.lot">
@@ -68,6 +69,7 @@
             <field name="location_dest_id" ref="stock.stock_location_customers"/>
             <field name="state">draft</field>
             <field name="move_ids" model="stock.move" eval="[(0, 0, {
+                'name': obj().env.ref('product.product_product_27').name,
                 'product_id': ref('product.product_product_27'),
                 'product_uom': ref('uom.product_uom_unit'),
                 'product_uom_qty': 15.0,
@@ -87,6 +89,7 @@
             <field name="location_dest_id" ref="stock.stock_location_customers"/>
             <field name="state">draft</field>
             <field name="move_ids" model="stock.move" eval="[(0, 0, {
+                'name': obj().env.ref('product.product_product_6').name,
                 'product_id': ref('product.product_product_6'),
                 'product_uom': ref('uom.product_uom_unit'),
                 'product_uom_qty': 180.0,
@@ -106,6 +109,7 @@
             <field name="location_dest_id" ref="stock.stock_location_customers"/>
             <field name="state">draft</field>
             <field name="move_ids" model="stock.move" eval="[(0, 0, {
+                'name': obj().env.ref('product.product_delivery_02').name,
                 'product_id': ref('product.product_delivery_02'),
                 'product_uom': ref('uom.product_uom_unit'),
                 'product_uom_qty': 45.0,
@@ -125,6 +129,7 @@
             <field name="location_dest_id" ref="stock.stock_location_customers"/>
             <field name="state">draft</field>
             <field name="move_ids" model="stock.move" eval="[(0, 0, {
+                'name': obj().env.ref('product.product_product_5').name,
                 'product_id': ref('product.product_product_5'),
                 'product_uom': ref('uom.product_uom_unit'),
                 'product_uom_qty': 75.0,
@@ -144,6 +149,7 @@
             <field name="location_dest_id" ref="stock.stock_location_customers"/>
             <field name="state">draft</field>
             <field name="move_ids" model="stock.move" eval="[(0, 0, {
+                'name': obj().env.ref('product.product_product_3').name,
                 'product_id': ref('product.product_product_3'),
                 'product_uom': ref('uom.product_uom_unit'),
                 'product_uom_qty': 16.0,
@@ -163,6 +169,7 @@
             <field name="location_dest_id" ref="stock.stock_location_customers"/>
             <field name="state">draft</field>
             <field name="move_ids" model="stock.move" eval="[(0, 0, {
+                'name': obj().env.ref('product.product_product_3').name,
                 'product_id': ref('product.product_product_3'),
                 'product_uom': ref('uom.product_uom_unit'),
                 'product_uom_qty': 40.0,
@@ -182,6 +189,7 @@
             <field name="location_dest_id" ref="stock.stock_location_customers"/>
             <field name="state">draft</field>
             <field name="move_ids" model="stock.move" eval="[(0, 0, {
+                'name': obj().env.ref('product.product_product_6').name,
                 'product_id': ref('product.product_product_6'),
                 'product_uom': ref('uom.product_uom_unit'),
                 'product_uom_qty': 50.0,
@@ -199,6 +207,7 @@
             <field name="location_dest_id" ref="stock.stock_location_stock"/>
             <field name="state">draft</field>
             <field name="move_ids" model="stock.move" eval="[(0, 0, {
+                'name': obj().env.ref('stock.product_cable_management_box').name,
                 'product_id': ref('stock.product_cable_management_box'),
                 'product_uom': ref('uom.product_uom_unit'),
                 'product_uom_qty': 50.0,
@@ -217,6 +226,7 @@
             <field name="location_dest_id" ref="stock.stock_location_stock"/>
             <field name="state">draft</field>
             <field name="move_ids" model="stock.move" eval="[(0, 0, {
+                'name': obj().env.ref('product.product_delivery_01').name,
                 'product_id': ref('product.product_delivery_01'),
                 'product_uom': ref('uom.product_uom_unit'),
                 'product_uom_qty': 35.0,
@@ -234,6 +244,7 @@
             <field name="location_dest_id" ref="stock.stock_location_stock"/>
             <field name="state">draft</field>
             <field name="move_ids" model="stock.move" eval="[(0, 0, {
+                'name': obj().env.ref('product.product_product_22').name,
                 'product_id': ref('product.product_product_22'),
                 'product_uom': ref('uom.product_uom_unit'),
                 'product_uom_qty': 125.0,
@@ -251,6 +262,7 @@
             <field name="location_dest_id" ref="stock.stock_location_stock"/>
             <field name="state">draft</field>
             <field name="move_ids" model="stock.move" eval="[(0, 0, {
+                'name': obj().env.ref('product.product_product_10').name,
                 'product_id': ref('product.product_product_10'),
                 'product_uom': ref('uom.product_uom_unit'),
                 'product_uom_qty': 120.0,
@@ -268,6 +280,7 @@
             <field name="location_dest_id" ref="stock.stock_location_stock"/>
             <field name="state">draft</field>
             <field name="move_ids" model="stock.move" eval="[(0, 0, {
+                'name': obj().env.ref('product.product_delivery_02').name,
                 'product_id': ref('product.product_delivery_02'),
                 'product_uom': ref('uom.product_uom_unit'),
                 'product_uom_qty': 50.0,

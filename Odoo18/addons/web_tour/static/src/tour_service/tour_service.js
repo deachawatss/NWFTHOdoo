@@ -1,6 +1,8 @@
-import { Component, markup, whenReady, validate, xml } from "@odoo/owl";
+/** @odoo-module **/
+
+import { markup, whenReady, validate } from "@odoo/owl";
 import { browser } from "@web/core/browser/browser";
-import { DropdownItem } from "@web/core/dropdown/dropdown_item";
+import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 import { session } from "@web/session";
 import { TourPointer } from "../tour_pointer/tour_pointer";
@@ -8,34 +10,13 @@ import { createPointerState } from "./tour_pointer_state";
 import { tourState } from "./tour_state";
 import { TourInteractive } from "./tour_interactive";
 import { TourAutomatic } from "./tour_automatic";
-import { callWithUnloadCheck } from "../tour_utils";
+import { callWithUnloadCheck } from "./tour_utils";
 import {
     TOUR_RECORDER_ACTIVE_LOCAL_STORAGE_KEY,
     TourRecorder,
 } from "@web_tour/tour_service/tour_recorder/tour_recorder";
 import { redirect } from "@web/core/utils/urls";
 import { tourRecorderState } from "@web_tour/tour_service/tour_recorder/tour_recorder_state";
-
-class OnboardingItem extends Component {
-    static components = { DropdownItem };
-    static template = xml`
-    <DropdownItem>
-        <div class="d-flex justify-content-between ps-3">
-            <div class="align-self-center">
-                <span class="form-check form-switch" t-on-click.stop.prevent="() => this.props.toggleItem()">
-                    <input type="checkbox" class="form-check-input" id="onboarding" t-att-checked="this.props.toursEnabled"/>
-                    <label class="form-check-label">Onboarding</label>
-                </span>
-            </div>
-        </div>
-    </DropdownItem>
-    `;
-    static props = {
-        toursEnabled: { type: Boolean },
-        toggleItem: { type: Function },
-    };
-    setup() {}
-}
 
 const StepSchema = {
     id: { type: [String], optional: true },
@@ -70,33 +51,29 @@ const TourSchema = {
 };
 
 registry.category("web_tour.tours").addValidation(TourSchema);
-const debugMenuRegistry = registry.category("debug").category("default");
+const userMenuRegistry = registry.category("user_menuitems");
 
 export const tourService = {
     // localization dependency to make sure translations used by tours are loaded
     dependencies: ["orm", "effect", "overlay", "localization"],
-    start: async (env, { orm, effect, overlay }) => {
+    start: async (_env, { orm, effect, overlay }) => {
         await whenReady();
         let toursEnabled = session?.tour_enabled;
         const tourRegistry = registry.category("web_tour.tours");
         const pointer = createPointerState();
         pointer.stop = () => {};
 
-        debugMenuRegistry.add("onboardingItem", () => ({
-            type: "component",
-            Component: OnboardingItem,
-            props: {
-                toursEnabled: toursEnabled || false,
-                toggleItem: async () => {
-                    tourState.clear();
-                    toursEnabled = await orm.call("res.users", "switch_tour_enabled", [
-                        !toursEnabled,
-                    ]);
-                    browser.location.reload();
-                },
+        userMenuRegistry.add("web_tour.tour_enabled", () => ({
+            type: "switch",
+            id: "web_tour.tour_enabled",
+            description: _t("Onboarding"),
+            callback: async () => {
+                tourState.clear();
+                toursEnabled = await orm.call("res.users", "switch_tour_enabled", [!toursEnabled]);
+                browser.location.reload();
             },
-            sequence: 500,
-            section: "testing",
+            isChecked: toursEnabled,
+            sequence: 30,
         }));
 
         function getTourFromRegistry(tourName) {

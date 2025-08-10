@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import options from "@web_editor/js/editor/snippets.options";
 
 options.registry.TableOfContent = options.Class.extend({
@@ -81,7 +83,7 @@ options.registry.TableOfContent = options.Class.extend({
      * @returns {Object}
      */
     _getTocAndHeadingId(headingEl) {
-        const match = /^table_of_content_heading_(\d+)_(\d+)$/.exec(headingEl.getAttribute("id"));
+        const match = /^table_of_content_heading_(\d+)_(\d+)$/.exec(headingEl && headingEl.getAttribute("id"));
         if (match) {
             return { tocId: parseInt(match[1]), headingId: parseInt(match[2]) };
         }

@@ -19,9 +19,9 @@
                     <div class="container o_wslides_lesson_header_container mt-5 mt-md-3 mt-xl-4">
                         <div class="row align-items-md-stretch">
                             <div t-attf-class="col-12 col-sm-9 d-flex flex-column #{'col-lg-6 offset-lg-3' if slide.channel_id.channel_type == 'training' else ''}">
-                                <h1 class="fw-medium w-100 text-truncate overflow-hidden h2">
+                                <h2 class="fw-medium w-100 text-truncate overflow-hidden">
                                     <a t-att-href="'/slides/%s' % (slug(slide.channel_id))" class="text-white text-decoration-none" t-field="slide.channel_id.name"/>
-                                </h1>
+                                </h2>
                                 <div t-if="slide.channel_id.channel_type == 'documentation'" class="mb-3 small">
                                     <span class="fw-normal">Last update:</span>
                                     <t t-esc="slide.date_published" t-options="{'widget': 'date'}"/>
@@ -293,7 +293,8 @@
             <a t-att-href="'/slides/%s/tag/%s' % (slug(slide.channel_id), slug(tag))" class="badge text-bg-info" t-esc="tag.name"/>
         </t>
     </div>
-    <div class="oe_structure oe_empty" id="oe_structure_website_slides_lesson_top_1" data-editor-message.translate="BUILDING BLOCKS DROPPED HERE WILL BE SHOWN ACROSS ALL LESSONS"/>
+    <t t-set="editor_message">BUILDING BLOCKS DROPPED HERE WILL BE SHOWN ACROSS ALL LESSONS</t>
+    <div class="oe_structure oe_empty" id="oe_structure_website_slides_lesson_top_1" t-att-data-editor-message="editor_message"/>
     <div t-if="slide.slide_category == 'infographic'" class="o_wslides_lesson_content_type" t-field='slide.image_1920' t-options="{'widget': 'image', 'style': 'width: 100%;'}"/>
     <div t-else="" class="o_wslides_lesson_content_type">
         <div t-if="slide.slide_category == 'document'" class="ratio ratio-4x3 embed-responsive-item mb8" style="height: 600px;">
@@ -379,7 +380,7 @@
                     <t t-set="display_rating" t-value="False"/>
                 </t>
             </div>
-            <div role="tabpanel" class="tab-pane fade" groups="base.group_user" id="statistic" t-att-slide-url="slide.website_absolute_url">
+            <div role="tabpanel" class="tab-pane fade" groups="base.group_user" id="statistic" t-att-slide-url="slide.website_url">
                 <div class="row">
                     <div class="col-md-6">
                         <table class="table table-sm">

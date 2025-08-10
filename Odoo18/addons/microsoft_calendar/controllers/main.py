@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import http
@@ -7,7 +8,7 @@ from odoo.addons.calendar.controllers.main import CalendarController
 
 class MicrosoftCalendarController(CalendarController):
 
-    @http.route('/microsoft_calendar/sync_data', type='jsonrpc', auth='user')
+    @http.route('/microsoft_calendar/sync_data', type='json', auth='user')
     def microsoft_calendar_sync_data(self, model, **kw):
         """ This route/function is called when we want to synchronize Odoo
             calendar with Microsoft Calendar.

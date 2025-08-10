@@ -1,6 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo.fields import Command
+from odoo import Command
 from odoo.tests import Form, tagged
 
 from odoo.addons.delivery.tests.common import DeliveryCommon
@@ -22,11 +22,7 @@ class TestDeliveryAvailability(DeliveryCommon, SaleCommon):
         })
 
         cls.non_restricted_carrier = cls._prepare_carrier(cls.carrier.product_id)
-
-        cls.product_line = cls.sale_order.order_line.filtered(
-            lambda sol: sol.product_id == cls.product,
-        )
-        cls.product_line.product_uom_qty = 1.0
+        cls.product2 = cls._prepare_carrier_product(name='Test Product 2')
 
     def test_00_order_with_heavy_product_simple(self):
         self.carrier.write({
@@ -35,6 +31,15 @@ class TestDeliveryAvailability(DeliveryCommon, SaleCommon):
 
         self.product.write({
             'weight': 11.0,
+        })
+
+        self.sale_order = self.env['sale.order'].create({
+            'partner_id': self.partner.id,
+            'partner_invoice_id': self.partner.id,
+            'order_line': [Command.create({
+                'product_id': self.product.id,
+                'product_uom_qty': 1,
+            })],
         })
 
         delivery_wizard = Form(self.env['choose.delivery.carrier'].with_context({
@@ -53,8 +58,14 @@ class TestDeliveryAvailability(DeliveryCommon, SaleCommon):
             'weight': 1.0,
         })
 
-        self.product_line.write({
-            'product_uom_id': self.uom_dozen.id,
+        self.sale_order = self.env['sale.order'].create({
+            'partner_id': self.partner.id,
+            'partner_invoice_id': self.partner.id,
+            'order_line': [Command.create({
+                'product_id': self.product.id,
+                'product_uom_qty': 1,
+                'product_uom': self.uom_dozen.id,
+            })],
         })
 
         delivery_wizard = Form(self.env['choose.delivery.carrier'].with_context({
@@ -73,6 +84,15 @@ class TestDeliveryAvailability(DeliveryCommon, SaleCommon):
             'volume': 11.0,
         })
 
+        self.sale_order = self.env['sale.order'].create({
+            'partner_id': self.partner.id,
+            'partner_invoice_id': self.partner.id,
+            'order_line': [Command.create({
+                'product_id': self.product.id,
+                'product_uom_qty': 1,
+            })],
+        })
+
         delivery_wizard = Form(self.env['choose.delivery.carrier'].with_context({
             'default_order_id': self.sale_order.id,
             'default_carrier_id': self.non_restricted_carrier.id,
@@ -89,8 +109,14 @@ class TestDeliveryAvailability(DeliveryCommon, SaleCommon):
             'volume': 1.0,
         })
 
-        self.product_line.write({
-            'product_uom_id': self.uom_dozen.id,
+        self.sale_order = self.env['sale.order'].create({
+            'partner_id': self.partner.id,
+            'partner_invoice_id': self.partner.id,
+            'order_line': [Command.create({
+                'product_id': self.product.id,
+                'product_uom_qty': 1,
+                'product_uom': self.uom_dozen.id,
+            })],
         })
 
         delivery_wizard = Form(self.env['choose.delivery.carrier'].with_context({
@@ -121,15 +147,20 @@ class TestDeliveryAvailability(DeliveryCommon, SaleCommon):
             'default_carrier_id': self.non_restricted_carrier.id,
         }))
         choose_delivery_carrier = delivery_wizard.save()
-        self.assertIn(
-            self.carrier,
-            choose_delivery_carrier.available_carrier_ids,
-            "Carrier should be available if at least one must-have tag is present in the products",
-        )
+        self.assertTrue(self.carrier.id in choose_delivery_carrier.available_carrier_ids.ids, "Carrier must have tag is set on one product in the order")
 
     def test_05_check_excluded_tag(self):
         self.carrier.write({
             'excluded_tag_ids': [self.exclude_tag.id],
+        })
+
+        self.sale_order = self.env['sale.order'].create({
+            'partner_id': self.partner.id,
+            'partner_invoice_id': self.partner.id,
+            'order_line': [Command.create({
+                'product_id': self.product.id,
+                'product_uom_qty': 1,
+            })],
         })
 
         delivery_wizard = Form(self.env['choose.delivery.carrier'].with_context({
@@ -153,6 +184,21 @@ class TestDeliveryAvailability(DeliveryCommon, SaleCommon):
         self.carrier.write({
             'must_have_tag_ids': [self.must_have_tag.id],
             'excluded_tag_ids': [self.exclude_tag.id],
+        })
+
+        self.sale_order = self.env['sale.order'].create({
+            'partner_id': self.partner.id,
+            'partner_invoice_id': self.partner.id,
+            'order_line': [
+                Command.create({
+                    'product_id': self.product.id,
+                    'product_uom_qty': 1,
+                }),
+                Command.create({
+                    'product_id': self.product2.id,
+                    'product_uom_qty': 1,
+                })
+            ],
         })
 
         delivery_wizard = Form(self.env['choose.delivery.carrier'].with_context({
@@ -185,7 +231,7 @@ class TestDeliveryAvailability(DeliveryCommon, SaleCommon):
         self.product.write({
             'product_tag_ids': [self.must_have_tag.id],
         })
-        self.service_product.write({
+        self.product2.write({
             'product_tag_ids': [self.exclude_tag.id],
         })
         delivery_wizard = Form(self.env['choose.delivery.carrier'].with_context({

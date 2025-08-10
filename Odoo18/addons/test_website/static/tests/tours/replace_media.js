@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { patch } from "@web/core/utils/patch";
 import { VideoSelector } from '@web_editor/components/media_dialog/video_selector';
 import {

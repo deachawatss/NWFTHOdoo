@@ -8,7 +8,6 @@ from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
 
-
 class ResUsersSettings(models.Model):
     _inherit = "res.users.settings"
 

@@ -208,8 +208,8 @@ class TestAllowedUsers(TestAccessRights):
         self.project_pigs.message_unsubscribe(partner_ids=[self.user.partner_id.id])
         self.assertIn(john.partner_id, self.task.message_partner_ids)
         self.assertNotIn(john.partner_id, task.message_partner_ids)
-        # Unsubscribing to a project should unsubscribing of existing tasks in the project.
-        self.assertNotIn(self.user.partner_id, task.message_partner_ids)
+        # Unsubscribing to a project should not cause unsubscription of existing tasks in the project.
+        self.assertIn(self.user.partner_id, task.message_partner_ids)
         self.assertNotIn(self.user.partner_id, self.task.message_partner_ids)
 
     def test_visibility_changed(self):
@@ -220,7 +220,7 @@ class TestAllowedUsers(TestAccessRights):
         self.assertNotIn(self.portal.partner_id, self.task.message_partner_ids, "Portal user should have been removed from allowed users")
 
     def test_write_task(self):
-        self.user.group_ids |= self.env.ref('project.group_project_user')
+        self.user.groups_id |= self.env.ref('project.group_project_user')
         self.assertNotIn(self.user.partner_id, self.project_pigs.message_partner_ids)
         self.task.message_subscribe(partner_ids=[self.user.partner_id.id])
         self.project_pigs.invalidate_model()
@@ -228,7 +228,7 @@ class TestAllowedUsers(TestAccessRights):
         self.task.with_user(self.user).name = "I can edit a task!"
 
     def test_no_write_project(self):
-        self.user.group_ids |= self.env.ref('project.group_project_user')
+        self.user.groups_id |= self.env.ref('project.group_project_user')
         self.assertNotIn(self.user.partner_id, self.project_pigs.message_partner_ids)
         with self.assertRaises(AccessError, msg="User should not be able to edit project"):
             self.project_pigs.with_user(self.user).name = "I can't edit a task!"
@@ -236,14 +236,14 @@ class TestAllowedUsers(TestAccessRights):
 class TestProjectPortalCommon(TestProjectCommon):
 
     def setUp(self):
-        super().setUp()
+        super(TestProjectPortalCommon, self).setUp()
         self.user_noone = self.env['res.users'].with_context({'no_reset_password': True, 'mail_create_nosubscribe': True}).create({
             'name': 'Noemie NoOne',
             'login': 'noemie',
             'email': 'n.n@example.com',
             'signature': '--\nNoemie',
             'notification_type': 'email',
-            'group_ids': [(6, 0, [])]})
+            'groups_id': [(6, 0, [])]})
 
         self.task_3 = self.env['project.task'].with_context({'mail_create_nolog': True}).create({
             'name': 'Test3', 'user_ids': self.user_portal, 'project_id': self.project_pigs.id})

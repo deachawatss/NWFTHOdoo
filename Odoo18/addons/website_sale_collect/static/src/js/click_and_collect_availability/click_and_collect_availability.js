@@ -1,4 +1,4 @@
-import { Component, onWillDestroy, useState } from '@odoo/owl';
+import { Component, useState, onWillDestroy } from '@odoo/owl';
 import { rpc } from '@web/core/network/rpc';
 import { registry } from '@web/core/registry';
 import { useService } from '@web/core/utils/hooks';
@@ -13,10 +13,8 @@ export class ClickAndCollectAvailability extends Component {
         productId: Number,
         active: {type: Boolean, optional: true},
         zipCode: { type: String, optional: true },
-        selectedLocationData: { type: Object, optional: true },
-        inStoreStockData: { type: Object, optional: true },
-        deliveryStockData: { type: Object, optional: true},
-        showSelectStoreButton: { type: Boolean, optional: true },
+        selectedWhLocation: { type: Object, optional: true },
+        inStoreStock: { type: Object, optional: true },
     }
     static defaultProps = {
         active: true,
@@ -26,9 +24,8 @@ export class ClickAndCollectAvailability extends Component {
         this.dialog = useService('dialog');
         this.state = useState({
             productId: this.props.productId,
-            selectedLocationData: this.props.selectedLocationData,
-            inStoreStockData: this.props.inStoreStockData,
-            deliveryStockData: this.props.deliveryStockData,
+            selectedWhLocation: this.props.selectedWhLocation,
+            inStoreStock: this.props.inStoreStock,
             active: this.props.active,
         });
         const updateState = this._updateStateWithCombinationInfo.bind(this);
@@ -45,8 +42,7 @@ export class ClickAndCollectAvailability extends Component {
      */
     _updateStateWithCombinationInfo (combinationInfo) {
         this.state.productId = combinationInfo.product_id;
-        this.state.inStoreStockData = combinationInfo.in_store_stock_data;
-        this.state.deliveryStockData = combinationInfo.delivery_stock_data;
+        this.state.inStoreStock = combinationInfo.in_store_stock;
         this.state.active = combinationInfo.is_combination_possible;
     }
 
@@ -56,7 +52,7 @@ export class ClickAndCollectAvailability extends Component {
      * @return {void}
      */
     async openLocationSelector() {
-        const { zip_code, id } = this.state.selectedLocationData;
+        const { zip_code, id } = this.state.selectedWhLocation;
         this.dialog.add(LocationSelectorDialog, {
             isProductPage: true,
             isFrontend: true,
@@ -64,8 +60,8 @@ export class ClickAndCollectAvailability extends Component {
             zipCode: zip_code || this.props.zipCode,
             selectedLocationId: String(id),
             save: async location => {
-                this.state.selectedLocationData = location;
-                this.state.inStoreStockData = location.additional_data.in_store_stock_data;
+                this.state.selectedWhLocation = location;
+                this.state.inStoreStock = location.additional_data.in_store_stock;
                 const jsonLocation = JSON.stringify(location);
                 // Set the in-store delivery method and the selected pickup location on the order.
                 await rpc(

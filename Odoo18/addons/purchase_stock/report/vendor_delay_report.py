@@ -1,12 +1,13 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import fields, models, tools
-from odoo.fields import Domain
+from odoo.osv import expression
 from odoo.tools import SQL
 
 
 class VendorDelayReport(models.Model):
-    _name = 'vendor.delay.report'
+    _name = "vendor.delay.report"
     _description = "Vendor Delay Report"
     _auto = False
 
@@ -30,7 +31,7 @@ SELECT m.id                     AS id,
        Min(po.partner_id)       AS partner_id,
        Min(m.product_qty)       AS qty_total,
        Sum(CASE
-             WHEN (m.state = 'done' and pol.date_planned::date >= m.date::date) THEN ((ml.quantity * ml_uom.factor) / pt_uom.factor)
+             WHEN (m.state = 'done' and pol.date_planned::date >= m.date::date) THEN (ml.quantity / ml_uom.factor * pt_uom.factor)
              ELSE 0
            END)                 AS qty_on_time
 FROM   stock_move m
@@ -66,5 +67,5 @@ GROUP  BY m.id
 
     def _read_group(self, domain, groupby=(), aggregates=(), having=(), offset=0, limit=None, order=None):
         if 'on_time_rate:sum' in aggregates:
-            having = Domain.AND([having, [('qty_total:sum', '>', '0')]])
+            having = expression.AND([having, [('qty_total:sum', '>', '0')]])
         return super()._read_group(domain, groupby, aggregates, having, offset, limit, order)

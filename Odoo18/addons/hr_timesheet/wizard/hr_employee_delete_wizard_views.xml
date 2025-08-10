@@ -9,9 +9,9 @@
                     <field name="has_timesheet" invisible="1"/>
                     <field name="has_active_employee" invisible="1"/>
                     <span invisible="not has_timesheet">
-                        Uh-oh! The employee you’re trying to delete still has some timesheets hanging around and can’t be deleted.
+                        You cannot delete employees who have timesheets.
                         <span invisible="not has_active_employee">
-                            So here are your two options: either delete those timesheets or consider archiving the employee instead.
+                            You can either archive these employees or first delete all of their timesheets.
                         </span>
                         <span invisible="has_active_employee" groups="hr_timesheet.group_hr_timesheet_approver">
                             Please first delete all of their timesheets.

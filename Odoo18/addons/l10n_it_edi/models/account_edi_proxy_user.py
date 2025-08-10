@@ -8,7 +8,7 @@ from odoo.exceptions import UserError
 _logger = logging.getLogger(__name__)
 
 
-class Account_Edi_Proxy_ClientUser(models.Model):
+class AccountEdiProxyClientUser(models.Model):
     _inherit = 'account_edi_proxy_client.user'
 
     proxy_type = fields.Selection(selection_add=[('l10n_it_edi', 'Italian EDI')], ondelete={'l10n_it_edi': 'cascade'})
@@ -29,20 +29,10 @@ class Account_Edi_Proxy_ClientUser(models.Model):
             return company.partner_id._l10n_it_edi_normalized_codice_fiscale()
         return super()._get_proxy_identification(company, proxy_type)
 
-    def _toggle_proxy_user_active(self):
-        """
-        Toggle the value of the ``active`` boolean field of the proxy_user,
-        and handle sending the reactivate/deactivate requests to the IAP side.
-        """
-        self.ensure_one()
-        server_url = self._get_proxy_urls()['l10n_it_edi'][self.edi_mode]
-
-        if self.active:
-            self._make_request(f"{server_url}/api/l10n_it_edi/1/deactivate_user")
-        else:
-            self._make_request(f"{server_url}/api/l10n_it_edi/1/reactivate_user")
-
-        self.active = not self.active
+    def _get_iap_params(self, company, proxy_type, private_key_sudo):
+        iap_params = super()._get_iap_params(company, proxy_type, private_key_sudo)
+        iap_params['l10n_it_vat'] = company.vat
+        return iap_params
 
     def _register_proxy_user(self, company, proxy_type, edi_mode):
         if proxy_type == 'l10n_it_edi':

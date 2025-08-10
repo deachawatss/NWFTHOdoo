@@ -35,7 +35,7 @@ test(`simple rendering`, async () => {
     });
 
     await toggleSearchBarMenu();
-    expect(`.o_group_by_menu option[disabled]`).toHaveText(`Custom Group`);
+    expect(`.o_group_by_menu option[disabled]`).toHaveText(`Add Custom Group`);
     expect(queryAllTexts`.o_add_custom_group_menu option:not([disabled])`).toEqual([
         "Birthday",
         "Created on",
@@ -46,7 +46,7 @@ test(`simple rendering`, async () => {
     ]);
 });
 
-test(`the ID field should not be proposed in "Custom Group" menu`, async () => {
+test(`the ID field should not be proposed in "Add Custom Group" menu`, async () => {
     await mountWithSearch(SearchBar, {
         resModel: "foo",
         searchMenuTypes: ["groupBy"],
@@ -61,7 +61,7 @@ test(`the ID field should not be proposed in "Custom Group" menu`, async () => {
     expect(queryAllTexts`.o_add_custom_group_menu option:not([disabled])`).toEqual(["Foo"]);
 });
 
-test(`stored many2many should be proposed in "Custom Group" menu`, async () => {
+test(`stored many2many should be proposed in "Add Custom Group" menu`, async () => {
     await mountWithSearch(SearchBar, {
         resModel: "foo",
         searchMenuTypes: ["groupBy"],
@@ -91,7 +91,7 @@ test(`stored many2many should be proposed in "Custom Group" menu`, async () => {
     ]);
 });
 
-test(`add a date field in "Custom Group" activate a groupby with global default option "month"`, async () => {
+test(`add a date field in "Add Custom Group" activate a groupby with global default option "month"`, async () => {
     const component = await mountWithSearch(SearchBar, {
         resModel: "foo",
         searchMenuTypes: ["groupBy"],
@@ -110,7 +110,7 @@ test(`add a date field in "Custom Group" activate a groupby with global default 
 
     await toggleSearchBarMenu();
     expect(component.env.searchModel.groupBy).toEqual([]);
-    expect(`.o_add_custom_group_menu`).toHaveCount(1); // Custom Group
+    expect(`.o_add_custom_group_menu`).toHaveCount(1); // Add Custom Group
 
     await selectGroup("date");
     expect(component.env.searchModel.groupBy).toEqual(["date:month"]);
@@ -138,14 +138,14 @@ test(`click on add custom group toggle group selector`, async () => {
     });
 
     await toggleSearchBarMenu();
-    expect(`.o_add_custom_group_menu option[disabled]`).toHaveText("Custom Group");
+    expect(`.o_add_custom_group_menu option[disabled]`).toHaveText("Add Custom Group");
 
     // Single select node with a single option
     expect(`.o_add_custom_group_menu option:not([disabled])`).toHaveCount(1);
     expect(`.o_add_custom_group_menu option:not([disabled])`).toHaveText("Super Date");
 });
 
-test(`select a field name in Custom Group menu properly trigger the corresponding field`, async () => {
+test(`select a field name in Add Custom Group menu properly trigger the corresponding field`, async () => {
     await mountWithSearch(SearchBar, {
         resModel: "foo",
         searchMenuTypes: ["groupBy"],

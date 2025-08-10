@@ -1,10 +1,7 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 from odoo import _
-from odoo.http import request
-
-from odoo.addons.account.controllers.portal import PortalAccount as CustomerPortal
+from odoo.addons.portal.controllers.portal import CustomerPortal
 from odoo.addons.account.models.company import PEPPOL_LIST
+from odoo.http import request
 
 
 class PortalAccount(CustomerPortal):
@@ -13,43 +10,53 @@ class PortalAccount(CustomerPortal):
     # My Account
     # ------------------------------------------------------------
 
-    def _prepare_my_account_rendering_values(self, *args, **kwargs):
-        rendering_values = super()._prepare_my_account_rendering_values(*args, **kwargs)
-        if request.env.company.peppol_can_send:
-            rendering_values['invoice_sending_methods'].update({'peppol': _("by Peppol")})
-            rendering_values.update({
-                'peppol_eas_list': dict(request.env['res.partner']._fields['peppol_eas'].selection),
+    def _prepare_portal_layout_values(self):
+        # EXTENDS 'portal'
+        portal_layout_values = super()._prepare_portal_layout_values()
+        can_send = request.env['account_edi_proxy_client.user']._get_can_send_domain()
+        if request.env.company.account_peppol_proxy_state in can_send:
+            partner = request.env.user.partner_id
+            portal_layout_values['invoice_sending_methods'].update({'peppol': _('by Peppol')})
+            portal_layout_values.update({
+                'peppol_eas_list': dict(partner._fields['peppol_eas'].selection),
             })
-        return rendering_values
+        return portal_layout_values
 
-    def _get_mandatory_billing_address_fields(self, country_sudo):
-        mandatory_fields = super()._get_mandatory_billing_address_fields(country_sudo)
+    def _get_mandatory_fields(self):
+        # EXTENDS 'portal'
+        mandatory_fields = super()._get_mandatory_fields()
 
         sending_method = request.params.get('invoice_sending_method')
         if sending_method == 'peppol':
-            mandatory_fields.update({'peppol_eas', 'peppol_endpoint', 'invoice_edi_format'})
+            mandatory_fields += ['peppol_eas', 'peppol_endpoint', 'invoice_edi_format']
 
         return mandatory_fields
 
-    def _validate_address_values(self, address_values, *args, **kwargs):
+    def _get_optional_fields(self):
         # EXTENDS 'portal'
-        invalid_fields, missing_fields, error_messages = super()._validate_address_values(
-            address_values, *args, **kwargs
-        )
+        optional_fields = super()._get_optional_fields()
 
-        if address_values.get('invoice_sending_method') == 'peppol':
-            peppol_eas = address_values.get('peppol_eas')
-            peppol_endpoint = address_values.get('peppol_endpoint')
-            edi_format = address_values.get('invoice_edi_format')
-            if request.env['res.country'].browse(int(address_values.get('country_id'))).code not in PEPPOL_LIST:
-                invalid_fields.add('country_id')
-                address_values['country_id'] = 'error'
-                error_messages.append(_("That country is not available for Peppol."))
+        sending_method = request.params.get('invoice_sending_method')
+        if sending_method and sending_method != 'peppol':
+            optional_fields += ['peppol_eas', 'peppol_endpoint']
+        return optional_fields
+
+    def details_form_validate(self, data, partner_creation=False):
+        # EXTENDS 'portal'
+        error, error_message = super().details_form_validate(data, partner_creation=False)
+
+        if data.get('invoice_sending_method') == 'peppol':
+            peppol_eas = data.get('peppol_eas')
+            peppol_endpoint = data.get('peppol_endpoint')
+            edi_format = data.get('invoice_edi_format')
+            if request.env['res.country'].browse(int(data.get('country_id'))).code not in PEPPOL_LIST:
+                error['country_id'] = 'error'
+                error_message.append(_('That country is not available for Peppol.'))
             if endpoint_error_message := request.env['res.partner']._build_error_peppol_endpoint(peppol_eas, peppol_endpoint):
-                invalid_fields.add('invalid_peppol_endpoint')
-                error_messages.append(endpoint_error_message)
+                error['invalid_peppol_endpoint'] = 'error'
+                error_message.append(endpoint_error_message)
             if request.env['res.partner']._get_peppol_verification_state(peppol_endpoint, peppol_eas, edi_format) != 'valid':
-                invalid_fields.add('invalid_peppol_config')
-                error_messages.append(_("If you want to be invoiced by Peppol, your configuration must be valid."))
+                error['invalid_peppol_config'] = 'error'
+                error_message.append(_('If you want to be invoiced by Peppol, your configuration must be valid.'))
 
-        return invalid_fields, missing_fields, error_messages
+        return error, error_message

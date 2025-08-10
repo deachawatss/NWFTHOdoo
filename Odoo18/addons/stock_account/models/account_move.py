@@ -28,7 +28,7 @@ class AccountMove(models.Model):
         # Don't keep anglo-saxon lines when copying a journal entry.
         vals_list = super().copy_data(default=default)
 
-        if not self.env.context.get('move_reverse_cancel'):
+        if not self._context.get('move_reverse_cancel'):
             for vals in vals_list:
                 if 'line_ids' in vals:
                     vals['line_ids'] = [line_vals for line_vals in vals['line_ids']
@@ -39,7 +39,7 @@ class AccountMove(models.Model):
         # OVERRIDE
 
         # Don't change anything on moves used to cancel another ones.
-        if self.env.context.get('move_reverse_cancel'):
+        if self._context.get('move_reverse_cancel'):
             return super()._post(soft)
 
         # Create additional COGS lines for customer invoices.
@@ -278,7 +278,7 @@ class AccountMoveLine(models.Model):
         return self.product_id.is_storable and self.product_id.valuation == 'real_time'
 
     def _get_gross_unit_price(self):
-        if self.product_uom_id.is_zero(self.quantity):
+        if float_is_zero(self.quantity, precision_rounding=self.product_uom_id.rounding):
             return self.price_unit
 
         if self.discount != 100:
@@ -287,7 +287,7 @@ class AccountMoveLine(models.Model):
             else:
                 price_unit = self.price_subtotal / self.quantity
         else:
-            price_unit = self.price_unit
+            price_unit = 0
 
         return -price_unit if self.move_id.move_type == 'in_refund' else price_unit
 

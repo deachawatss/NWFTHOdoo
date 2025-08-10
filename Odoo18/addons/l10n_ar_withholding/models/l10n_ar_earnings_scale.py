@@ -1,7 +1,7 @@
 from odoo import models, fields, api
 
 
-class L10n_ArEarningsScale(models.Model):
+class L10nArEarningsScale(models.Model):
     _name = 'l10n_ar.earnings.scale'
     _description = 'l10n_ar.earnings.scale'
 
@@ -9,7 +9,7 @@ class L10n_ArEarningsScale(models.Model):
     line_ids = fields.One2many('l10n_ar.earnings.scale.line', 'scale_id')
 
 
-class L10n_ArEarningsScaleLine(models.Model):
+class L10nArEarningsScaleLine(models.Model):
     _name = 'l10n_ar.earnings.scale.line'
     _description = 'l10n_ar.earnings.scale.line'
     _order = 'to_amount'

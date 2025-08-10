@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import slidesTourTools from '@website_slides/../tests/tours/slides_tour_tools';
 import { clickOnEditAndWaitEditMode, registerWebsitePreviewTour } from '@website/js/tours/tour_utils';
 import { waitForStable } from '@web/core/macro';
@@ -99,7 +101,7 @@ registerWebsitePreviewTour('course_publisher_standard', {
     run: "click",
 },
 {
-    trigger: ":iframe body[is-ready=true]:not(.editor_enable)",
+    trigger: "[is-ready=true]:iframe body:not(.editor_enable)",
 },
 {
     trigger:

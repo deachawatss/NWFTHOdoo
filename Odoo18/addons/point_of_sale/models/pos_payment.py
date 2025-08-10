@@ -1,7 +1,6 @@
 from odoo import api, fields, models, _
 from odoo.tools import formatLang, float_is_zero
 from odoo.exceptions import ValidationError
-from uuid import uuid4
 
 
 class PosPayment(models.Model):
@@ -12,7 +11,7 @@ class PosPayment(models.Model):
     `payment_method_id`.
     """
 
-    _name = 'pos.payment'
+    _name = "pos.payment"
     _description = "Point of Sale Payments"
     _order = "id desc"
     _inherit = ['pos.load.mixin']
@@ -41,11 +40,13 @@ class PosPayment(models.Model):
     ticket = fields.Char(string='Payment Receipt Info')
     is_change = fields.Boolean(string='Is this payment change?', default=False)
     account_move_id = fields.Many2one('account.move', index='btree_not_null')
-    uuid = fields.Char(string='Uuid', readonly=True, default=lambda self: str(uuid4()), copy=False)
+    uuid = fields.Char(string='Uuid', readonly=True, copy=False)
+
+    _sql_constraints = [('uuid_unique', 'unique (uuid)', "A payment with this uuid already exists")]
 
     @api.model
-    def _load_pos_data_domain(self, data, config):
-        return [('pos_order_id', 'in', [order['id'] for order in data['pos.order']])]
+    def _load_pos_data_domain(self, data):
+        return [('pos_order_id', 'in', [order['id'] for order in data['pos.order']['data']])]
 
     @api.depends('amount', 'currency_id')
     def _compute_display_name(self):
@@ -58,7 +59,7 @@ class PosPayment(models.Model):
     @api.constrains('amount')
     def _check_amount(self):
         for payment in self:
-            if payment.pos_order_id.state == 'done' or payment.pos_order_id.account_move:
+            if payment.pos_order_id.state in ['invoiced', 'done']:
                 raise ValidationError(_('You cannot edit a payment for a posted order.'))
 
     @api.constrains('payment_method_id')
@@ -69,6 +70,7 @@ class PosPayment(models.Model):
 
     def _create_payment_moves(self, is_reverse=False):
         result = self.env['account.move']
+        credit_line_ids = []
         change_payment = self.filtered(lambda p: p.is_change and p.payment_method_id.type == 'cash')
         payment_to_change = self.filtered(lambda p: not p.is_change and p.payment_method_id.type == 'cash')[:1]
         for payment in self - change_payment:
@@ -111,38 +113,10 @@ class PosPayment(models.Model):
                 'move_id': payment_move.id,
                 'partner_id': accounting_partner.id if is_split_transaction and is_reverse else False,
             }, amounts['amount'], amounts['amount_converted'])
-            self.env['account.move.line'].create([credit_line_vals, debit_line_vals])
+            lines = self.env['account.move.line'].create([credit_line_vals, debit_line_vals])
+            if amounts['amount_converted'] < 0:
+                credit_line_ids += lines.filtered(lambda l: l.debit).ids
+            else:
+                credit_line_ids += lines.filtered(lambda l: l.credit).ids
             payment_move._post()
-        return result
-
-    def _get_receivable_lines_for_invoice_reconciliation(self, receivable_account):
-        """
-        If this payment is linked to an account.move, this returns the corresponding receivable lines
-        that should be reconciled with the invoice's receivable lines.
-        The introduced heuristics here is important for cases where the pos receivable account is the same
-        as the receivable account of the customer.
-
-        - positive payment -> negative balance lines
-        - negative payment -> positive balance lines
-        """
-
-        result = self.env['account.move.line']
-        for payment in self:
-            if not payment.account_move_id:
-                continue
-
-            currency = payment.currency_id
-            is_positive_amount = currency.compare_amounts(payment.amount, 0) > 0
-
-            for line in payment.account_move_id.line_ids:
-                if currency.compare_amounts(line.balance, 0) == 0 or line.account_id != receivable_account or line.reconciled:
-                    continue
-
-                if is_positive_amount:
-                    if currency.compare_amounts(line.balance, 0) < 0:
-                        result |= line
-                else:
-                    if currency.compare_amounts(line.balance, 0) > 0:
-                        result |= line
-
-        return result
+        return result.with_context(credit_line_ids=credit_line_ids)

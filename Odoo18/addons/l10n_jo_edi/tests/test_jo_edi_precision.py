@@ -1,6 +1,6 @@
 from odoo import Command
 from odoo.tests import tagged
-from odoo.tools import float_compare, float_round
+from odoo.tools.float_utils import float_compare
 from odoo.addons.l10n_jo_edi.tests.jo_edi_common import JoEdiCommon
 from odoo.addons.l10n_jo_edi.models.account_edi_xml_ubl_21_jo import JO_MAX_DP
 
@@ -44,11 +44,8 @@ class TestJoEdiPrecision(JoEdiCommon):
 
         return defaults
 
-    def _round_max_dp(self, value):
-        return float_round(value, JO_MAX_DP)
-
     def _sum_max_dp(self, iterable):
-        return sum(self._round_max_dp(element) for element in iterable)
+        return self.env['account.edi.xml.ubl_21.jo']._sum_max_dp(iterable)
 
     def _validate_jo_edi_numbers(self, xml_string, invoice):
         """
@@ -78,13 +75,13 @@ class TestJoEdiPrecision(JoEdiCommon):
         root = self.get_xml_tree_from_string(xml_string)
         error_message = ""
 
-        total_discount = float(root.findtext('./{*}AllowanceCharge/{*}Amount') or 0.0)
+        total_discount = float(root.findtext('./{*}AllowanceCharge/{*}Amount'))
         total_tax = float(root.findtext('./{*}TaxTotal/{*}TaxAmount', default=0))
 
         tax_exclusive_amount = float(root.findtext('./{*}LegalMonetaryTotal/{*}TaxExclusiveAmount'))
         tax_inclusive_amount = float(root.findtext('./{*}LegalMonetaryTotal/{*}TaxInclusiveAmount'))
         self.assertEqual(float_compare(tax_inclusive_amount, invoice.amount_total, 2), 0, f'{tax_inclusive_amount} != {invoice.amount_total}')
-        monetary_values_discount = float(root.findtext('./{*}LegalMonetaryTotal/{*}AllowanceTotalAmount') or 0.0)
+        monetary_values_discount = float(root.findtext('./{*}LegalMonetaryTotal/{*}AllowanceTotalAmount'))
         payable_amount = float(root.findtext('./{*}LegalMonetaryTotal/{*}PayableAmount'))
 
         error_message += self._equality_check({  # They have to be exactly the same, no decimal difference is tolerated
@@ -116,7 +113,7 @@ class TestJoEdiPrecision(JoEdiCommon):
                         'total_tax_amount': 0,
                     }),
                 'price_unit': float(xml_line.findtext('{*}Price/{*}PriceAmount')),
-                'discount': float(xml_line.findtext('{*}Price/{*}AllowanceCharge/{*}Amount') or 0.0),
+                'discount': float(xml_line.findtext('{*}Price/{*}AllowanceCharge/{*}Amount')),
             }
             lines.append(line)
             line_errors = self._equality_check({
@@ -412,24 +409,3 @@ class TestJoEdiPrecision(JoEdiCommon):
         refund_file = self.env['account.edi.xml.ubl_21.jo']._export_invoice(refund)[0]
         for invoice_price_unit, refund_price_unit in zip(get_price_units(invoice_file), get_price_units(refund_file)):
             self.assertEqual(invoice_price_unit, refund_price_unit)
-
-    def test_jo_total_tax_and_lines_taxes_rounding_error(self):
-        """
-        The aim of this test is to ensure that the taxes amounts on lines are calculated using rounded base amounts
-        this would get broken if _add_tax_details_in_base_line uses round_globally
-        """
-        self.company.l10n_jo_edi_taxpayer_type = 'sales'
-        self.company.l10n_jo_edi_sequence_income_source = '16683693'
-
-        self._validate_invoice_vals_jo_edi_numbers({
-            'name': 'TestEIN022',
-            'date': '2023-11-12',
-            'invoice_line_ids': [
-                Command.create({
-                    'product_id': self.product_a.id,
-                    'quantity': 1,
-                    'price_unit': 109,
-                    'tax_ids': [Command.set(self.jo_general_tax_16_included.ids)],
-                }) for _ in range(20)
-            ],
-        })

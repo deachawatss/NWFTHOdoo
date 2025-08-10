@@ -9,14 +9,15 @@ export class ResPartner extends Base {
             "name",
             "barcode",
             "phone",
+            "mobile",
             "email",
             "vat",
             "parent_name",
-            "pos_contact_address",
+            "contact_address",
         ];
         return fields
             .map((field) => {
-                if (field === "phone" && this[field]) {
+                if ((field === "phone" || field === "mobile") && this[field]) {
                     return this[field].replace(/[+\s()-]/g, "");
                 }
                 return this[field] || "";

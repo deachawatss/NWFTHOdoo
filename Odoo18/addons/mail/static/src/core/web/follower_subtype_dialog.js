@@ -6,6 +6,13 @@ import { _t } from "@web/core/l10n/translation";
 import { useService } from "@web/core/utils/hooks";
 
 /**
+ * @typedef {Object} SubtypeData
+ * @property {boolean} followed
+ * @property {number} id
+ * @property {string} name
+ */
+
+/**
  * @typedef {Object} Props
  * @property {function} close
  * @property {import("models").Follower} follower
@@ -19,19 +26,15 @@ export class FollowerSubtypeDialog extends Component {
 
     setup() {
         super.setup();
-        this.store = useService("mail.store");
+        this.store = useState(useService("mail.store"));
         this.state = useState({
-            /** @type {import("models").MailMessageSubtype[]} */
+            /** @type {SubtypeData[]} */
             subtypes: [],
         });
         onWillStart(async () => {
-            const { store_data, subtype_ids } = await rpc("/mail/read_subscription_data", {
+            this.state.subtypes = await rpc("/mail/read_subscription_data", {
                 follower_id: this.props.follower.id,
             });
-            this.store.insert(store_data);
-            this.state.subtypes = subtype_ids.map((id) =>
-                this.store["mail.message.subtype"].get(id)
-            );
         });
     }
 
@@ -40,17 +43,12 @@ export class FollowerSubtypeDialog extends Component {
      * @param {SubtypeData} subtype
      */
     onChangeCheckbox(ev, subtype) {
-        if (ev.target.checked) {
-            this.props.follower.subtype_ids.add(subtype);
-        } else {
-            this.props.follower.subtype_ids.delete(subtype);
-        }
+        subtype.followed = ev.target.checked;
     }
 
     async onClickApply() {
-        const selectedSubtypes = this.state.subtypes.filter((s) =>
-            s.in(this.props.follower.subtype_ids)
-        );
+        const selectedSubtypes = this.state.subtypes.filter((s) => s.followed);
+        const thread = this.props.follower.thread;
         if (selectedSubtypes.length === 0) {
             await this.props.follower.remove();
         } else {
@@ -59,11 +57,11 @@ export class FollowerSubtypeDialog extends Component {
                 "message_subscribe",
                 [[this.props.follower.thread.id]],
                 {
-                    partner_ids: [this.props.follower.partner_id.id],
+                    partner_ids: [this.props.follower.partner.id],
                     subtype_ids: selectedSubtypes.map((subtype) => subtype.id),
                 }
             );
-            if (this.store.mt_comment.notIn(selectedSubtypes)) {
+            if (!selectedSubtypes.some((subtype) => subtype.id === this.store.mt_comment_id)) {
                 this.props.follower.removeRecipient();
             }
             this.env.services.notification.add(
@@ -71,11 +69,11 @@ export class FollowerSubtypeDialog extends Component {
                 { type: "success" }
             );
         }
-        this.props.onFollowerChanged();
+        this.props.onFollowerChanged(thread);
         this.props.close();
     }
 
     get title() {
-        return _t("Edit Subscription of %(name)s", { name: this.props.follower.partner_id.name });
+        return _t("Edit Subscription of %(name)s", { name: this.props.follower.partner.name });
     }
 }

@@ -18,6 +18,7 @@ import werkzeug.serving
 from . import release
 from . import sql_db
 from . import tools
+from .modules import module
 
 _logger = logging.getLogger(__name__)
 
@@ -78,11 +79,10 @@ class PostgreSQLHandler(logging.Handler):
             val = ('server', ct_db, record.name, levelname, msg, record.pathname, record.lineno, record.funcName)
 
             if self._support_metadata:
-                from . import modules
                 metadata = {}
-                if modules.module.current_test:
+                if module.current_test:
                     try:
-                        metadata['test'] = modules.module.current_test.get_log_metadata()
+                        metadata['test'] = module.current_test.get_log_metadata()
                     except:
                         pass
 
@@ -127,14 +127,14 @@ class PerfFilter(logging.Filter):
             query_count = threading.current_thread().query_count
             query_time = threading.current_thread().query_time
             perf_t0 = threading.current_thread().perf_t0
-            remaining_time = tools.real_time() - perf_t0 - query_time
+            remaining_time = time.time() - perf_t0 - query_time
             record.perf_info = '%s %s %s' % self.format_perf(query_count, query_time, remaining_time)
-            if tools.config['db_replica_host'] or 'replica' in tools.config['dev_mode']:
+            if tools.config['db_replica_host'] is not False:
                 cursor_mode = threading.current_thread().cursor_mode
                 record.perf_info = f'{record.perf_info} {self.format_cursor_mode(cursor_mode)}'
             delattr(threading.current_thread(), "query_count")
         else:
-            if tools.config['db_replica_host'] or 'replica' in tools.config['dev_mode']:
+            if tools.config['db_replica_host'] is not False:
                 record.perf_info = "- - - -"
             record.perf_info = "- - -"
         return True
@@ -199,6 +199,11 @@ def init_logger():
     warnings.simplefilter('default', category=DeprecationWarning)
     # https://github.com/urllib3/urllib3/issues/2680
     warnings.filterwarnings('ignore', r'^\'urllib3.contrib.pyopenssl\' module is deprecated.+', category=DeprecationWarning)
+    # ofxparse use an html parser to parse ofx xml files and triggers a warning since bs4 4.11.0
+    # https://github.com/jseutter/ofxparse/issues/170
+    with contextlib.suppress(ImportError):
+        from bs4 import XMLParsedAsHTMLWarning
+        warnings.filterwarnings('ignore', category=XMLParsedAsHTMLWarning)
     # ignore a bunch of warnings we can't really fix ourselves
     for module in [
         'babel.util', # deprecated parser module, no release yet
@@ -341,9 +346,6 @@ def showwarning_with_traceback(message, category, filename, lineno, file=None, l
     # find the stack frame matching (filename, lineno)
     filtered = []
     for frame in traceback.extract_stack():
-        if frame.name == '__call__' and frame.filename.endswith('/odoo/http.py'):
-            # we don't care about the frames above our wsgi entrypoint
-            filtered.clear()
         if 'importlib' not in frame.filename:
             filtered.append(frame)
         if frame.filename == filename and frame.lineno == lineno:

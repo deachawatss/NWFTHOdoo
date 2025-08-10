@@ -2,9 +2,8 @@
 
 import base64
 
-from odoo import _, api, fields, models
+from odoo import Command, _, api, fields, models
 from odoo.exceptions import ValidationError
-from odoo.fields import Command
 
 from odoo.addons.sale_pdf_quote_builder import utils
 
@@ -47,11 +46,6 @@ class QuotationDocument(models.Model):
         domain=[('document_type', '=', 'quotation_document')],
         compute='_compute_form_field_ids',
         store=True,
-    )
-    add_by_default = fields.Boolean(
-        string="Add By Default",
-        help="If checked, this header or footer will be added by default on new quotes.",
-        default=False,
     )
 
     # === CONSTRAINT METHODS ===#

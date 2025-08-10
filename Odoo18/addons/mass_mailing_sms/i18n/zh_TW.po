@@ -8,10 +8,10 @@
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~18.3\n"
+"Project-Id-Version: Odoo Server 18.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-05-06 09:28+0000\n"
-"PO-Revision-Date: 2025-05-06 12:03+0000\n"
+"POT-Creation-Date: 2025-05-14 20:47+0000\n"
+"PO-Revision-Date: 2024-09-25 09:41+0000\n"
 "Last-Translator: Tony Ng, 2025\n"
 "Language-Team: Chinese (Taiwan) (https://app.transifex.com/odoo/teams/41243/zh_TW/)\n"
 "MIME-Version: 1.0\n"
@@ -126,6 +126,11 @@ msgid "<span widget=\"statinfo\">Open Recipient</span>"
 msgstr "<span widget=\"statinfo\">開放收件人</span>"
 
 #. module: mass_mailing_sms
+#: model_terms:ir.ui.view,arch_db:mass_mailing_sms.mailing_list_view_kanban
+msgid "<span>Valid SMS Recipients</span>"
+msgstr "<span>有效短訊收件人</span>"
+
+#. module: mass_mailing_sms
 #: model_terms:ir.ui.view,arch_db:mass_mailing_sms.mailing_mailing_view_form_sms
 msgid ""
 "<strong>\n"
@@ -143,11 +148,6 @@ msgstr ""
 "<strong>\n"
 "                            你的短訊帳戶似乎未註冊。按一下此處以設置你的帳戶。\n"
 "                        </strong>"
-
-#. module: mass_mailing_sms
-#: model_terms:ir.ui.view,arch_db:mass_mailing_sms.blacklist_number
-msgid "<strong>Mailing List</strong>"
-msgstr "<strong>郵寄清單</strong>"
 
 #. module: mass_mailing_sms
 #: model_terms:ir.ui.view,arch_db:mass_mailing_sms.mailing_trace_view_form_sms
@@ -188,12 +188,6 @@ msgid "Action Needed"
 msgstr "需要採取行動"
 
 #. module: mass_mailing_sms
-#. odoo-python
-#: code:addons/mass_mailing_sms/wizard/mailing_sms_test.py:0
-msgid "An error occurred."
-msgstr "發生錯誤。"
-
-#. module: mass_mailing_sms
 #: model:ir.model.fields,field_description:mass_mailing_sms.field_mailing_contact__message_attachment_count
 msgid "Attachment Count"
 msgstr "附件數目"
@@ -228,6 +222,11 @@ msgstr "短訊推廣取消訂閱黑名單（郵寄清單識別碼：%(mailing_id
 #: model:ir.model.fields.selection,name:mass_mailing_sms.selection__mailing_trace__failure_type__sms_blacklist
 msgid "Blacklisted"
 msgstr "列入黑名單"
+
+#. module: mass_mailing_sms
+#: model:ir.model.fields,field_description:mass_mailing_sms.field_mailing_contact__mobile_blacklisted
+msgid "Blacklisted Phone Is Mobile"
+msgstr "列入黑名單的電話是手機"
 
 #. module: mass_mailing_sms
 #: model:ir.ui.menu,name:mass_mailing_sms.phone_blacklist_menu
@@ -337,17 +336,7 @@ msgid "Discard"
 msgstr "捨棄"
 
 #. module: mass_mailing_sms
-#: model:ir.model.fields,field_description:mass_mailing_sms.field_mailing_contact__display_name
-#: model:ir.model.fields,field_description:mass_mailing_sms.field_mailing_list__display_name
-#: model:ir.model.fields,field_description:mass_mailing_sms.field_mailing_mailing__display_name
 #: model:ir.model.fields,field_description:mass_mailing_sms.field_mailing_sms_test__display_name
-#: model:ir.model.fields,field_description:mass_mailing_sms.field_mailing_trace__display_name
-#: model:ir.model.fields,field_description:mass_mailing_sms.field_res_users__display_name
-#: model:ir.model.fields,field_description:mass_mailing_sms.field_sms_composer__display_name
-#: model:ir.model.fields,field_description:mass_mailing_sms.field_sms_sms__display_name
-#: model:ir.model.fields,field_description:mass_mailing_sms.field_sms_tracker__display_name
-#: model:ir.model.fields,field_description:mass_mailing_sms.field_utm_campaign__display_name
-#: model:ir.model.fields,field_description:mass_mailing_sms.field_utm_medium__display_name
 msgid "Display Name"
 msgstr "顯示名稱"
 
@@ -383,7 +372,7 @@ msgstr "失敗類型"
 msgid ""
 "Field used to store sanitized phone number. Helps speeding up searches and "
 "comparisons."
-msgstr "用於存儲已清理電話號碼的欄位。説明加快搜索和比較。"
+msgstr "此欄位用於儲存已清理格式的電話號碼，有助加快資料搜尋及比對。"
 
 #. module: mass_mailing_sms
 #: model:ir.model.fields,field_description:mass_mailing_sms.field_mailing_contact__message_follower_ids
@@ -424,17 +413,7 @@ msgid "Highest Click Rate"
 msgstr "最高點擊率"
 
 #. module: mass_mailing_sms
-#: model:ir.model.fields,field_description:mass_mailing_sms.field_mailing_contact__id
-#: model:ir.model.fields,field_description:mass_mailing_sms.field_mailing_list__id
-#: model:ir.model.fields,field_description:mass_mailing_sms.field_mailing_mailing__id
 #: model:ir.model.fields,field_description:mass_mailing_sms.field_mailing_sms_test__id
-#: model:ir.model.fields,field_description:mass_mailing_sms.field_mailing_trace__id
-#: model:ir.model.fields,field_description:mass_mailing_sms.field_res_users__id
-#: model:ir.model.fields,field_description:mass_mailing_sms.field_sms_composer__id
-#: model:ir.model.fields,field_description:mass_mailing_sms.field_sms_sms__id
-#: model:ir.model.fields,field_description:mass_mailing_sms.field_sms_tracker__id
-#: model:ir.model.fields,field_description:mass_mailing_sms.field_utm_campaign__id
-#: model:ir.model.fields,field_description:mass_mailing_sms.field_utm_medium__id
 msgid "ID"
 msgstr "識別號"
 
@@ -470,6 +449,14 @@ msgid "Include opt-out link"
 msgstr "包括取消訂閱連結"
 
 #. module: mass_mailing_sms
+#: model:ir.model.fields,help:mass_mailing_sms.field_mailing_contact__mobile_blacklisted
+msgid ""
+"Indicates if a blacklisted sanitized phone number is a mobile number. Helps "
+"distinguish which number is blacklisted             when there is both a "
+"mobile and phone field in a model."
+msgstr "指示列入黑名單的已清理電話號碼是否為手機號碼。當模型中同時存在手機和電話欄位時，有助於區分哪個號碼被列入黑名單。"
+
+#. module: mass_mailing_sms
 #: model:ir.model.fields,help:mass_mailing_sms.field_mailing_contact__phone_blacklisted
 msgid ""
 "Indicates if a blacklisted sanitized phone number is a phone number. Helps "
@@ -496,6 +483,12 @@ msgstr "點數不足"
 #: model:ir.model.fields.selection,name:mass_mailing_sms.selection__mailing_trace__failure_type__sms_invalid_destination
 msgid "Invalid Destination"
 msgstr "無效目的地"
+
+#. module: mass_mailing_sms
+#. odoo-python
+#: code:addons/mass_mailing_sms/controllers/main.py:0
+msgid "Invalid number %s"
+msgstr "無效號碼：%s"
 
 #. module: mass_mailing_sms
 #: model:ir.model.fields,field_description:mass_mailing_sms.field_mailing_contact__message_is_follower
@@ -644,8 +637,15 @@ msgstr "未送貨"
 
 #. module: mass_mailing_sms
 #: model:ir.model.fields,field_description:mass_mailing_sms.field_mailing_trace__sms_number
+#: model_terms:ir.ui.view,arch_db:mass_mailing_sms.blacklist_main
 msgid "Number"
 msgstr "號碼"
+
+#. module: mass_mailing_sms
+#. odoo-python
+#: code:addons/mass_mailing_sms/controllers/main.py:0
+msgid "Number %s not found"
+msgstr "電話號碼%s 未找到"
 
 #. module: mass_mailing_sms
 #: model:ir.model.fields,field_description:mass_mailing_sms.field_mailing_contact__message_needaction_counter
@@ -685,20 +685,6 @@ msgid ""
 msgstr "發送了這些文字訊息後，它們就會在所有收件人的口袋中隆重登場，引起哄動！"
 
 #. module: mass_mailing_sms
-#. odoo-python
-#: code:addons/mass_mailing_sms/controllers/main.py:0
-msgid "Oops! Number not found"
-msgstr "哎唷！找不到號碼"
-
-#. module: mass_mailing_sms
-#. odoo-python
-#: code:addons/mass_mailing_sms/controllers/main.py:0
-msgid ""
-"Oops! The phone number seems to be incorrect. Please make sure to include "
-"the country code."
-msgstr "哎唷！電話號碼似乎不正確，請確保號碼有國家代碼。"
-
-#. module: mass_mailing_sms
 #: model_terms:ir.ui.view,arch_db:mass_mailing_sms.mailing_trace_view_tree_sms
 msgid "Open Recipient"
 msgstr "開放收件人"
@@ -725,13 +711,13 @@ msgstr "電話黑名單"
 
 #. module: mass_mailing_sms
 #: model:ir.model.fields,field_description:mass_mailing_sms.field_mailing_contact__phone_mobile_search
-msgid "Phone Number"
-msgstr "電話號碼"
+msgid "Phone/Mobile"
+msgstr "電話/手機"
 
 #. module: mass_mailing_sms
 #: model_terms:ir.ui.view,arch_db:mass_mailing_sms.blacklist_main
-msgid "Please confirm your phone number to unsubscribe :"
-msgstr "請確認你的電話號碼，以取消訂閱："
+msgid "Please enter your phone number"
+msgstr "請輸入您的電話號碼"
 
 #. module: mass_mailing_sms
 #. odoo-python
@@ -810,7 +796,7 @@ msgstr "短訊識別碼"
 #: model:ir.ui.menu,name:mass_mailing_sms.mass_mailing_sms_menu_root
 #: model_terms:ir.ui.view,arch_db:mass_mailing_sms.mailing_mailing_view_tree_sms
 msgid "SMS Marketing"
-msgstr "簡訊行銷"
+msgstr "短訊推廣"
 
 #. module: mass_mailing_sms
 #: model:ir.actions.act_window,name:mass_mailing_sms.mailing_trace_report_action_sms
@@ -818,6 +804,7 @@ msgid "SMS Marketing Analysis"
 msgstr "簡訊行銷分析"
 
 #. module: mass_mailing_sms
+#: model_terms:ir.ui.view,arch_db:mass_mailing_sms.blacklist_main
 #: model_terms:ir.ui.view,arch_db:mass_mailing_sms.blacklist_number
 msgid "SMS Subscription"
 msgstr "簡訊訂閱"
@@ -927,16 +914,6 @@ msgid "Status"
 msgstr "狀態"
 
 #. module: mass_mailing_sms
-#: model:ir.model,website_form_label:mass_mailing_sms.model_mailing_contact
-msgid "Subscribe to Newsletter"
-msgstr "訂閱電子報"
-
-#. module: mass_mailing_sms
-#: model_terms:ir.ui.view,arch_db:mass_mailing_sms.mailing_trace_view_form_sms
-msgid "Test"
-msgstr "測試"
-
-#. module: mass_mailing_sms
 #. odoo-python
 #: code:addons/mass_mailing_sms/models/mailing_mailing.py:0
 #: model:ir.actions.act_window,name:mass_mailing_sms.mailing_sms_test_action
@@ -957,12 +934,6 @@ msgstr "測試簡訊未能發送至 %(destination)s：%(state)s"
 #. module: mass_mailing_sms
 #. odoo-python
 #: code:addons/mass_mailing_sms/wizard/mailing_sms_test.py:0
-msgid "Test SMS skipped those numbers as they appear invalid: %(numbers)s"
-msgstr "測試短訊已跳過以下號碼，因為它們看似無效：%(numbers)s"
-
-#. module: mass_mailing_sms
-#. odoo-python
-#: code:addons/mass_mailing_sms/wizard/mailing_sms_test.py:0
 msgid "Test SMS successfully sent to %s"
 msgstr "測試簡訊成功發送至 %s"
 
@@ -975,7 +946,13 @@ msgid ""
 msgstr "UTM 媒介「%s」不可刪除，因為它用於一些主要功能流程，例如簡訊行銷。"
 
 #. module: mass_mailing_sms
-#: model_terms:ir.ui.view,arch_db:mass_mailing_sms.blacklist_main
+#. odoo-python
+#: code:addons/mass_mailing_sms/wizard/mailing_sms_test.py:0
+msgid "The following numbers are not correctly encoded: %s"
+msgstr "以下號碼未正確編碼： %s"
+
+#. module: mass_mailing_sms
+#: model_terms:ir.ui.view,arch_db:mass_mailing_sms.blacklist_number
 msgid "There was an error when trying to unsubscribe"
 msgstr "嘗試取消訂閱時出錯"
 
@@ -1031,8 +1008,8 @@ msgstr "未註冊帳戶"
 
 #. module: mass_mailing_sms
 #: model_terms:ir.ui.view,arch_db:mass_mailing_sms.blacklist_main
-msgid "Unsubscribe"
-msgstr "取消訂閱"
+msgid "Unsubscribe me"
+msgstr "退訂"
 
 #. module: mass_mailing_sms
 #. odoo-python
@@ -1076,11 +1053,6 @@ msgstr "編寫吸引人的簡訊、定義收件人，並追蹤其結果。"
 #: model:ir.model.fields.selection,name:mass_mailing_sms.selection__mailing_trace__failure_type__sms_number_format
 msgid "Wrong Number Format"
 msgstr "錯誤的電話號碼格式"
-
-#. module: mass_mailing_sms
-#: model_terms:ir.ui.view,arch_db:mass_mailing_sms.blacklist_main
-msgid "e.g. \"+1 (555) 123-4567\""
-msgstr "例：+1 (555) 123-4567"
 
 #. module: mass_mailing_sms
 #: model_terms:ir.ui.view,arch_db:mass_mailing_sms.mailing_mailing_view_form_sms

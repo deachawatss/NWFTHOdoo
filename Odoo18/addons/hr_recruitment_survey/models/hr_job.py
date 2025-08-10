@@ -3,11 +3,11 @@
 from odoo import fields, models, _
 
 
-class HrJob(models.Model):
+class Job(models.Model):
     _inherit = "hr.job"
 
     survey_id = fields.Many2one(
-        'survey.survey', "Interview Form", index='btree_not_null',
+        'survey.survey', "Interview Form",
         help="Choose an interview form for this job position and you will be able to print/answer this interview from all applicants who apply for this job")
 
     def action_test_survey(self):

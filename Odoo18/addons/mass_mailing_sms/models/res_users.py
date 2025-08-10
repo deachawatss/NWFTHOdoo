@@ -6,8 +6,9 @@ import json
 from odoo import api, fields, models, modules, _
 
 
-class ResUsers(models.Model):
-    _inherit = 'res.users'
+class Users(models.Model):
+    _name = 'res.users'
+    _inherit = ['res.users']
 
     @api.model
     def _get_activity_groups(self):
@@ -36,17 +37,17 @@ class ResUsers(models.Model):
                     'user_id': self.env.uid,
                 })
                 activity_data = self.env.cr.dictfetchall()
-
+                
                 user_activities = {}
                 for act in activity_data:
                     if not user_activities.get(act['mailing_type']):
                         if act['mailing_type'] == 'sms':
-                            module_name = 'mass_mailing_sms'
+                            module = 'mass_mailing_sms'
                             name = _('SMS Marketing')
                         else:
-                            module_name = 'mass_mailing'
+                            module = 'mass_mailing'
                             name = _('Email Marketing')
-                        icon = modules.Manifest.for_addon(module_name).icon
+                        icon = module and modules.module.get_module_icon(module)
                         res_ids = set()
                         user_activities[act['mailing_type']] = {
                             'id': self.env['ir.model']._get('mailing.mailing').id,

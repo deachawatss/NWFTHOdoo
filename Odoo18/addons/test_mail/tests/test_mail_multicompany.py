@@ -8,7 +8,7 @@ from freezegun import freeze_time
 from unittest.mock import patch
 from werkzeug.urls import url_parse
 
-from odoo.addons.mail.models.mail_message import MailMessage
+from odoo.addons.mail.models.mail_message import Message
 from odoo.addons.mail.tests.common import MailCommon
 from odoo.addons.test_mail.models.test_mail_corner_case_models import MailTestMultiCompanyWithActivity
 from odoo.addons.test_mail.tests.common import TestRecipients
@@ -139,14 +139,14 @@ class TestMultiCompanySetup(TestMailMCCommon, HttpCase):
         # Other company (no access)
         # ------------------------------------------------------------
 
-        _original_car = MailMessage._check_access
-        with patch.object(MailMessage, '_check_access',
+        _original_car = Message._check_access
+        with patch.object(Message, '_check_access',
                           autospec=True, side_effect=_original_car) as mock_msg_car:
             with self.assertRaises(AccessError):
                 test_records_mc_c1.message_post(
                     body='<p>Hello</p>',
-                    force_record_name='CustomName',  # avoid ACL on display_name
                     message_type='comment',
+                    record_name='CustomName',  # avoid ACL on display_name
                     reply_to='custom.reply.to@test.example.com',  # avoid ACL in notify_get_reply_to
                     subtype_xmlid='mail.mt_comment',
                 )
@@ -173,9 +173,9 @@ class TestMultiCompanySetup(TestMailMCCommon, HttpCase):
         # now able to post as was notified of parent message
         test_records_mc_c1.message_post(
             body='<p>Hello</p>',
-            force_record_name='CustomName',  # avoid ACL on display_name
             message_type='comment',
             parent_id=initial_message.id,
+            record_name='CustomName',  # avoid ACL on display_name
             reply_to='custom.reply.to@test.example.com',  # avoid ACL in notify_get_reply_to
             subtype_xmlid='mail.mt_comment',
         )
@@ -214,8 +214,8 @@ class TestMultiCompanySetup(TestMailMCCommon, HttpCase):
             attachments=attachments_data,
             attachment_ids=attachments.ids,
             body='<p>Hello</p>',
-            force_record_name='CustomName',  # avoid ACL on display_name
             message_type='comment',
+            record_name='CustomName',  # avoid ACL on display_name
             reply_to='custom.reply.to@test.example.com',  # avoid ACL in notify_get_reply_to
             subtype_xmlid='mail.mt_comment',
         )
@@ -248,8 +248,8 @@ class TestMultiCompanySetup(TestMailMCCommon, HttpCase):
                 attachments=attachments_data,
                 attachment_ids=attachments.ids,
                 body='<p>Hello</p>',
-                force_record_name='CustomName',  # avoid ACL on display_name
                 message_type='comment',
+                record_name='CustomName',  # avoid ACL on display_name
                 reply_to='custom.reply.to@test.example.com',  # avoid ACL in notify_get_reply_to
                 subtype_xmlid='mail.mt_comment',
             )
@@ -278,9 +278,6 @@ class TestMultiCompanySetup(TestMailMCCommon, HttpCase):
         company_2_admin_only = self.company_2
         test_model_name = 'mail.test.multi.company.with.activity'
         activity_type_todo = 'test_mail.mail_act_test_todo_generic'
-
-        # remove potential demo data on admin, to make test deterministic
-        self.env['mail.activity'].search([('user_id', '=', user_admin.id)]).unlink()
 
         def _mock_check_access(records, operation):
             """ To avoid creating a new test model not accessible by employee user, we modify the access rules. """
@@ -349,13 +346,10 @@ class TestMultiCompanySetup(TestMailMCCommon, HttpCase):
                 self.authenticate(user.login, user.login)
                 with patch.object(MailTestMultiCompanyWithActivity, '_check_access', autospec=True,
                                   side_effect=_mock_check_access):
-                    activity_groups = self.make_jsonrpc_request(
-                        "/mail/data",
-                        {
-                            "fetch_params": ["systray_get_activities"],
-                            "context": {"allowed_company_ids": allowed_company_ids},
-                        },
-                    )["Store"]["activityGroups"]
+                    activity_groups = self.make_jsonrpc_request("/mail/data", {
+                        "systray_get_activities": True,
+                        "context": {"allowed_company_ids": allowed_company_ids}
+                    })["Store"]["activityGroups"]
                 activity_groups_by_model = {ag["model"]: ag for ag in activity_groups}
                 other_activities_model_name = 'mail.activity'
                 if expected_other_activities:
@@ -404,13 +398,10 @@ class TestMultiCompanySetup(TestMailMCCommon, HttpCase):
                           side_effect=lambda self, operation: (self, lambda: AccessError("Nope"))):
             for companies in (company_1_all, company_2_admin_only, company_1_all | company_2_admin_only):
                 with self.subTest(companies=companies):
-                    activity_groups = self.make_jsonrpc_request(
-                        "/mail/data",
-                        {
-                            "fetch_params": ["systray_get_activities"],
-                            "context": {"allowed_company_ids": companies.ids},
-                        },
-                    )["Store"]["activityGroups"]
+                    activity_groups = self.make_jsonrpc_request("/mail/data", {
+                        "systray_get_activities": True,
+                        "context": {"allowed_company_ids": companies.ids}
+                    })["Store"]["activityGroups"]
                     other_activity_group = next(ag for ag in activity_groups if ag['model'] == 'mail.activity')
                     self.assertEqual(other_activity_group["total_count"], 5)
 
@@ -486,7 +477,7 @@ class TestMultiCompanyRedirect(MailCommon, HttpCase):
             }
         ])
 
-        self.authenticate(self.user_admin.login, self.user_admin.login)
+        self.authenticate('admin', 'admin')
         companies = []
         for mc_record in mc_records:
             with self.subTest(mc_record=mc_record):
@@ -551,19 +542,12 @@ class TestMultiCompanyThreadData(MailCommon, HttpCase):
         self.assertFalse(partner_portal.with_user(self.user_employee_c2).has_access("read"))
         self.authenticate(self.user_employee_c2.login, self.user_employee_c2.login)
         data = self.make_jsonrpc_request(
-            "/mail/data",
+            "/mail/thread/data",
             {
-                "fetch_params": [
-                    [
-                        "mail.thread",
-                        {
-                            "thread_id": record.id,
-                            "thread_model": "mail.test.multi.company",
-                            "request_list": ["followers"],
-                        },
-                    ]
-                ]
+                "thread_id": record.id,
+                "thread_model": "mail.test.multi.company",
+                "request_list": ["followers"],
             },
         )
         self.assertEqual(len(data["mail.followers"]), 1)
-        self.assertEqual(data["mail.followers"][0]["partner_id"]["id"], partner_portal.id)
+        self.assertEqual(data["mail.followers"][0]["partner"]["id"], partner_portal.id)

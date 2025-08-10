@@ -3,15 +3,15 @@
 # 	* stock_account
 # 
 # Translators:
-# Wil Odoo, 2025
+# Wil Odoo, 2024
 # Tony Ng, 2025
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~18.3\n"
+"Project-Id-Version: Odoo Server 18.0+e\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-05-06 09:28+0000\n"
-"PO-Revision-Date: 2025-05-06 12:04+0000\n"
+"POT-Creation-Date: 2025-08-01 07:25+0000\n"
+"PO-Revision-Date: 2024-09-25 09:42+0000\n"
 "Last-Translator: Tony Ng, 2025\n"
 "Language-Team: Chinese (Taiwan) (https://app.transifex.com/odoo/teams/41243/zh_TW/)\n"
 "MIME-Version: 1.0\n"
@@ -32,6 +32,12 @@ msgstr ""
 
 #. module: stock_account
 #. odoo-python
+#: code:addons/stock_account/wizard/stock_valuation_layer_revaluation.py:0
+msgid " Product cost updated from %(previous)s to %(new_cost)s."
+msgstr " 產品成本從 %(previous)s 更新為 %(new_cost)s。"
+
+#. module: stock_account
+#. odoo-python
 #: code:addons/stock_account/models/stock_quant.py:0
 msgid " [Accounted on %s]"
 msgstr " [記賬至 %s]"
@@ -39,17 +45,8 @@ msgstr " [記賬至 %s]"
 #. module: stock_account
 #. odoo-python
 #: code:addons/stock_account/wizard/stock_valuation_layer_revaluation.py:0
-msgid ""
-"%(description_base)s Product cost updated from %(previous)s to %(new_cost)s."
-msgstr "%(description_base)s 的產品成本已更新，從 %(previous)s 改為 %(new_cost)s。"
-
-#. module: stock_account
-#. odoo-python
-#: code:addons/stock_account/wizard/stock_valuation_layer_revaluation.py:0
-msgid ""
-"%(description_base)s lot/serial number cost updated from %(previous)s to "
-"%(new_cost)s."
-msgstr "%(description_base)s 的批次/序號成本已更新，從 %(previous)s 改為 %(new_cost)s。"
+msgid " lot/serial number cost updated from %(previous)s to %(new_cost)s."
+msgstr " 批次/序號成本已從 %(previous)s 更新為 %(new_cost)s。"
 
 #. module: stock_account
 #. odoo-python
@@ -161,15 +158,9 @@ msgid "Added value"
 msgstr "價值調整"
 
 #. module: stock_account
-#: model:ir.actions.server,name:stock_account.action_stock_adjust_valuation
+#: model:ir.actions.act_window,name:stock_account.action_revalue_layers
 msgid "Adjust Valuation"
 msgstr "調整估值"
-
-#. module: stock_account
-#. odoo-python
-#: code:addons/stock_account/models/stock_valuation_layer.py:0
-msgid "Adjust Valuation - %s"
-msgstr "調整估值 - %s"
 
 #. module: stock_account
 #: model:ir.model.fields,help:stock_account.field_res_config_settings__module_stock_landed_costs
@@ -178,11 +169,6 @@ msgid ""
 "Affect landed costs on reception operations and split them among products to"
 " update their cost price."
 msgstr "影響接收操作的落地成本, 並在產品之間拆分以更新成本價。"
-
-#. module: stock_account
-#: model:ir.model.fields,help:stock_account.field_stock_valuation_layer_revaluation__lot_ids
-msgid "All concerned lot/serial number"
-msgstr "所有相關批次/序號"
 
 #. module: stock_account
 #: model:ir.model,name:stock_account.model_account_analytic_account
@@ -201,7 +187,6 @@ msgstr "分析計劃"
 
 #. module: stock_account
 #: model:ir.model.fields.selection,name:stock_account.selection__product_category__property_valuation__real_time
-#: model:ir.model.fields.selection,name:stock_account.selection__product_template__valuation__real_time
 msgid "Automated"
 msgstr "自動"
 
@@ -218,9 +203,6 @@ msgstr "平均價格"
 
 #. module: stock_account
 #: model:ir.model.fields.selection,name:stock_account.selection__product_category__property_cost_method__average
-#: model:ir.model.fields.selection,name:stock_account.selection__product_template__cost_method__average
-#: model:ir.model.fields.selection,name:stock_account.selection__res_company__cost_method__average
-#: model:ir.model.fields.selection,name:stock_account.selection__stock_quant__cost_method__average
 msgid "Average Cost (AVCO)"
 msgstr "平均成本(AVCO)"
 
@@ -311,15 +293,10 @@ msgid "Cost"
 msgstr "成本"
 
 #. module: stock_account
+#: model:ir.model.fields,field_description:stock_account.field_product_category__property_cost_method
 #: model:ir.model.fields,field_description:stock_account.field_product_product__cost_method
 #: model:ir.model.fields,field_description:stock_account.field_product_template__cost_method
-#: model:ir.model.fields,field_description:stock_account.field_res_company__cost_method
 #: model:ir.model.fields,field_description:stock_account.field_stock_quant__cost_method
-msgid "Cost Method"
-msgstr "成本計算方法"
-
-#. module: stock_account
-#: model:ir.model.fields,field_description:stock_account.field_product_category__property_cost_method
 msgid "Costing Method"
 msgstr "成本方法"
 
@@ -410,26 +387,6 @@ msgid "Display Lots & Serial Numbers on Invoices"
 msgstr "在發票上顯示批次和序號"
 
 #. module: stock_account
-#: model:ir.model.fields,field_description:stock_account.field_account_analytic_account__display_name
-#: model:ir.model.fields,field_description:stock_account.field_account_analytic_plan__display_name
-#: model:ir.model.fields,field_description:stock_account.field_account_chart_template__display_name
-#: model:ir.model.fields,field_description:stock_account.field_account_move__display_name
-#: model:ir.model.fields,field_description:stock_account.field_account_move_line__display_name
-#: model:ir.model.fields,field_description:stock_account.field_product_category__display_name
-#: model:ir.model.fields,field_description:stock_account.field_product_product__display_name
-#: model:ir.model.fields,field_description:stock_account.field_product_template__display_name
-#: model:ir.model.fields,field_description:stock_account.field_res_company__display_name
-#: model:ir.model.fields,field_description:stock_account.field_res_config_settings__display_name
-#: model:ir.model.fields,field_description:stock_account.field_stock_forecasted_product_product__display_name
-#: model:ir.model.fields,field_description:stock_account.field_stock_location__display_name
-#: model:ir.model.fields,field_description:stock_account.field_stock_lot__display_name
-#: model:ir.model.fields,field_description:stock_account.field_stock_move__display_name
-#: model:ir.model.fields,field_description:stock_account.field_stock_move_line__display_name
-#: model:ir.model.fields,field_description:stock_account.field_stock_picking__display_name
-#: model:ir.model.fields,field_description:stock_account.field_stock_quant__display_name
-#: model:ir.model.fields,field_description:stock_account.field_stock_quantity_history__display_name
-#: model:ir.model.fields,field_description:stock_account.field_stock_request_count__display_name
-#: model:ir.model.fields,field_description:stock_account.field_stock_return_picking_line__display_name
 #: model:ir.model.fields,field_description:stock_account.field_stock_valuation_layer__display_name
 #: model:ir.model.fields,field_description:stock_account.field_stock_valuation_layer_revaluation__display_name
 msgid "Display Name"
@@ -453,9 +410,6 @@ msgstr ""
 
 #. module: stock_account
 #: model:ir.model.fields.selection,name:stock_account.selection__product_category__property_cost_method__fifo
-#: model:ir.model.fields.selection,name:stock_account.selection__product_template__cost_method__fifo
-#: model:ir.model.fields.selection,name:stock_account.selection__res_company__cost_method__fifo
-#: model:ir.model.fields.selection,name:stock_account.selection__stock_quant__cost_method__fifo
 msgid "First In First Out (FIFO)"
 msgstr "先進先出(FIFO)"
 
@@ -470,26 +424,6 @@ msgid "Has Remaining Qty"
 msgstr "有剩餘數量"
 
 #. module: stock_account
-#: model:ir.model.fields,field_description:stock_account.field_account_analytic_account__id
-#: model:ir.model.fields,field_description:stock_account.field_account_analytic_plan__id
-#: model:ir.model.fields,field_description:stock_account.field_account_chart_template__id
-#: model:ir.model.fields,field_description:stock_account.field_account_move__id
-#: model:ir.model.fields,field_description:stock_account.field_account_move_line__id
-#: model:ir.model.fields,field_description:stock_account.field_product_category__id
-#: model:ir.model.fields,field_description:stock_account.field_product_product__id
-#: model:ir.model.fields,field_description:stock_account.field_product_template__id
-#: model:ir.model.fields,field_description:stock_account.field_res_company__id
-#: model:ir.model.fields,field_description:stock_account.field_res_config_settings__id
-#: model:ir.model.fields,field_description:stock_account.field_stock_forecasted_product_product__id
-#: model:ir.model.fields,field_description:stock_account.field_stock_location__id
-#: model:ir.model.fields,field_description:stock_account.field_stock_lot__id
-#: model:ir.model.fields,field_description:stock_account.field_stock_move__id
-#: model:ir.model.fields,field_description:stock_account.field_stock_move_line__id
-#: model:ir.model.fields,field_description:stock_account.field_stock_picking__id
-#: model:ir.model.fields,field_description:stock_account.field_stock_quant__id
-#: model:ir.model.fields,field_description:stock_account.field_stock_quantity_history__id
-#: model:ir.model.fields,field_description:stock_account.field_stock_request_count__id
-#: model:ir.model.fields,field_description:stock_account.field_stock_return_picking_line__id
 #: model:ir.model.fields,field_description:stock_account.field_stock_valuation_layer__id
 #: model:ir.model.fields,field_description:stock_account.field_stock_valuation_layer_revaluation__id
 msgid "ID"
@@ -498,9 +432,13 @@ msgstr "識別號"
 #. module: stock_account
 #: model:ir.model.fields,help:stock_account.field_product_product__lot_valuated
 #: model:ir.model.fields,help:stock_account.field_product_template__lot_valuated
-#: model:ir.model.fields,help:stock_account.field_stock_lot__lot_valuated
 msgid "If checked, the valuation will be specific by Lot/Serial number."
 msgstr "若勾選，估值將按個別批次/序號獨立進行。"
+
+#. module: stock_account
+#: model_terms:ir.ui.view,arch_db:stock_account.view_inventory_valuation_search
+msgid "Incoming"
+msgstr "入庫"
 
 #. module: stock_account
 #: model:ir.model,name:stock_account.model_stock_location
@@ -511,6 +449,9 @@ msgstr "盤點位置"
 #. odoo-python
 #: code:addons/stock_account/models/account_chart_template.py:0
 #: model:ir.model.fields,field_description:stock_account.field_product_category__property_valuation
+#: model:ir.model.fields,field_description:stock_account.field_product_product__valuation
+#: model:ir.model.fields,field_description:stock_account.field_product_template__valuation
+#: model:ir.model.fields,field_description:stock_account.field_stock_valuation_layer_revaluation__property_valuation
 #: model_terms:ir.ui.view,arch_db:stock_account.view_category_property_form_stock
 #: model_terms:ir.ui.view,arch_db:stock_account.view_inventory_valuation_search
 msgid "Inventory Valuation"
@@ -566,11 +507,6 @@ msgid "Linked To"
 msgstr "已連結至"
 
 #. module: stock_account
-#: model:ir.model.fields,field_description:stock_account.field_stock_valuation_layer_revaluation__lot_ids
-msgid "Lot"
-msgstr "批次"
-
-#. module: stock_account
 #. odoo-python
 #: code:addons/stock_account/models/product.py:0
 msgid ""
@@ -600,8 +536,8 @@ msgstr "批次/序列號碼"
 #. module: stock_account
 #. odoo-python
 #: code:addons/stock_account/models/stock_lot.py:0
-msgid "Lot/Serial number Revaluation - %s"
-msgstr "批次/序號重新估值 - %s"
+msgid "Lot/Serial number Revaluation"
+msgstr "批次/序號重新估值"
 
 #. module: stock_account
 #. odoo-python
@@ -615,13 +551,7 @@ msgid "Lots & Serial numbers will appear on the invoice"
 msgstr "發票將顯示批次及序號"
 
 #. module: stock_account
-#: model_terms:ir.ui.view,arch_db:stock_account.stock_valuation_layer_revaluation_form_view
-msgid "Lots/SN"
-msgstr "批次/序號"
-
-#. module: stock_account
 #: model:ir.model.fields.selection,name:stock_account.selection__product_category__property_valuation__manual_periodic
-#: model:ir.model.fields.selection,name:stock_account.selection__product_template__valuation__manual_periodic
 msgid "Manual"
 msgstr "手動"
 
@@ -633,6 +563,9 @@ msgstr "手動庫存估值：%s。"
 
 #. module: stock_account
 #: model:ir.model.fields,help:stock_account.field_product_category__property_valuation
+#: model:ir.model.fields,help:stock_account.field_product_product__valuation
+#: model:ir.model.fields,help:stock_account.field_product_template__valuation
+#: model:ir.model.fields,help:stock_account.field_stock_valuation_layer_revaluation__property_valuation
 msgid ""
 "Manual: The accounting entries to value the inventory are not posted automatically.\n"
 "        Automated: An accounting entry is automatically created to value the inventory when a product enters or leaves the company.\n"
@@ -640,11 +573,6 @@ msgid ""
 msgstr ""
 "手動：盤點存貨的會計傳票不會自動過帳。\n"
 "自動：當產品進入或離開公司時，自動建立一個會計傳票來評估庫存。"
-
-#. module: stock_account
-#: model:ir.model.fields,field_description:stock_account.field_stock_valuation_layer_revaluation__added_value_by_qty
-msgid "New adjusted value per unit"
-msgstr "調整後的新每單位價值"
 
 #. module: stock_account
 #: model:ir.model.fields,field_description:stock_account.field_stock_valuation_layer_revaluation__new_value
@@ -666,6 +594,11 @@ msgstr "未有提供原因"
 #: model_terms:ir.ui.view,arch_db:stock_account.stock_valuation_layer_form
 msgid "Other Info"
 msgstr "其他資訊"
+
+#. module: stock_account
+#: model_terms:ir.ui.view,arch_db:stock_account.view_inventory_valuation_search
+msgid "Outgoing"
+msgstr "出向"
 
 #. module: stock_account
 #: model:ir.model,name:stock_account.model_product_template
@@ -694,18 +627,14 @@ msgstr "產品分類"
 #. module: stock_account
 #: model:ir.model,name:stock_account.model_stock_move_line
 msgid "Product Moves (Stock Move Line)"
-msgstr "產品移動(移庫明細)"
-
-#. module: stock_account
-#: model_terms:ir.ui.view,arch_db:stock_account.stock_valuation_layer_revaluation_form_view
-msgid "Product Revaluation"
-msgstr "產品重估"
+msgstr "產品移動（庫存移動資料行）"
 
 #. module: stock_account
 #. odoo-python
 #: code:addons/stock_account/models/product.py:0
-msgid "Product Revaluation - %s"
-msgstr "產品重新估值 - %s"
+#: model_terms:ir.ui.view,arch_db:stock_account.stock_valuation_layer_revaluation_form_view
+msgid "Product Revaluation"
+msgstr "產品重估"
 
 #. module: stock_account
 #: model:ir.model.fields,field_description:stock_account.field_stock_valuation_layer__product_tmpl_id
@@ -772,6 +701,11 @@ msgid "Reference"
 msgstr "編號"
 
 #. module: stock_account
+#: model:ir.model.fields,field_description:stock_account.field_stock_valuation_layer_revaluation__lot_id
+msgid "Related lot/serial number"
+msgstr "相關批次/序號"
+
+#. module: stock_account
 #: model:ir.model.fields,field_description:stock_account.field_stock_valuation_layer_revaluation__product_id
 msgid "Related product"
 msgstr "相關產品"
@@ -810,14 +744,14 @@ msgstr "選擇要重新估值的現有批次/序號"
 
 #. module: stock_account
 #: model:ir.model.fields.selection,name:stock_account.selection__product_category__property_cost_method__standard
-#: model:ir.model.fields.selection,name:stock_account.selection__product_template__cost_method__standard
-#: model:ir.model.fields.selection,name:stock_account.selection__res_company__cost_method__standard
-#: model:ir.model.fields.selection,name:stock_account.selection__stock_quant__cost_method__standard
 msgid "Standard Price"
 msgstr "標準價格"
 
 #. module: stock_account
 #: model:ir.model.fields,help:stock_account.field_product_category__property_cost_method
+#: model:ir.model.fields,help:stock_account.field_product_product__cost_method
+#: model:ir.model.fields,help:stock_account.field_product_template__cost_method
+#: model:ir.model.fields,help:stock_account.field_stock_quant__cost_method
 msgid ""
 "Standard Price: The products are valued at their standard cost defined on the product.\n"
 "        Average Cost (AVCO): The products are valued at weighted average cost.\n"
@@ -1020,6 +954,14 @@ msgid ""
 msgstr "此產品按批次/序號估值。更改成本將更新庫存記錄中所有批次/序號的成本。"
 
 #. module: stock_account
+#. odoo-python
+#: code:addons/stock_account/models/stock_move_line.py:0
+msgid ""
+"This product is valuated by lot: an explicit Lot/Serial number is required "
+"when adding quantity"
+msgstr ""
+
+#. module: stock_account
 #: model_terms:ir.ui.view,arch_db:stock_account.stock_valuation_layer_tree
 msgid "Total Moved Quantity"
 msgstr "已移動總數"
@@ -1060,8 +1002,7 @@ msgid ""
 msgstr "觸發相關銷售訂單/採購訂單中已交貨/已收貨數量的減少"
 
 #. module: stock_account
-#: model:ir.model.fields,field_description:stock_account.field_stock_valuation_layer__uom_id
-#: model:ir.model.fields,field_description:stock_account.field_stock_valuation_layer_revaluation__product_uom_name
+#: model_terms:ir.ui.view,arch_db:stock_account.stock_valuation_layer_tree
 msgid "Unit"
 msgstr "單位"
 
@@ -1074,6 +1015,12 @@ msgstr "單位成本"
 #: model:ir.model.fields,field_description:stock_account.field_stock_valuation_layer__unit_cost
 msgid "Unit Value"
 msgstr "單位價值"
+
+#. module: stock_account
+#: model:ir.model.fields,field_description:stock_account.field_stock_valuation_layer__uom_id
+#: model:ir.model.fields,field_description:stock_account.field_stock_valuation_layer_revaluation__product_uom_name
+msgid "Unit of Measure"
+msgstr "量度單位"
 
 #. module: stock_account
 #: model:ir.model.fields,field_description:stock_account.field_stock_move__to_refund
@@ -1110,9 +1057,6 @@ msgstr ""
 "用於及時庫存計價。當設定在一個虛擬庫位（非內部類型）時，這項目將用於記錄從內部庫位調撥產品的值，而非替代此產品的一般出庫項目。它不影響內部庫位。"
 
 #. module: stock_account
-#: model:ir.model.fields,field_description:stock_account.field_product_product__valuation
-#: model:ir.model.fields,field_description:stock_account.field_product_template__valuation
-#: model:ir.model.fields,field_description:stock_account.field_stock_valuation_layer_revaluation__property_valuation
 #: model:ir.ui.menu,name:stock_account.menu_valuation
 #: model_terms:ir.ui.view,arch_db:stock_account.res_config_settings_view_form
 #: model_terms:ir.ui.view,arch_db:stock_account.stock_valuation_layer_form
@@ -1145,7 +1089,6 @@ msgstr "指定日期的估值"
 #. module: stock_account
 #: model:ir.model.fields,field_description:stock_account.field_product_product__lot_valuated
 #: model:ir.model.fields,field_description:stock_account.field_product_template__lot_valuated
-#: model:ir.model.fields,field_description:stock_account.field_stock_lot__lot_valuated
 msgid "Valuation by Lot/Serial number"
 msgstr "按批次/序號估值"
 
@@ -1269,7 +1212,6 @@ msgstr "您不能重估具有空庫存或負庫存的產品。"
 
 #. module: stock_account
 #. odoo-python
-#: code:addons/stock_account/models/stock_valuation_layer.py:0
 #: code:addons/stock_account/wizard/stock_valuation_layer_revaluation.py:0
 msgid "You cannot revalue multiple products at once"
 msgstr "一次過不可為多項產品重新估值"

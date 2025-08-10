@@ -62,13 +62,13 @@ class IrAttachment(models.Model):
     _inherit = 'ir.attachment'
     # https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules#microsoftstorage
     _cloud_storage_azure_url_pattern = re.compile(
-        r'^https://(?P<account_name>[a-z\d]{3,24})\.blob\.core\.windows\.net/(?P<container_name>[a-z\d][a-z\d-]{2,62})/(?P<blob_name>[^?]+)$',
+        r'https://(?P<account_name>[a-z\d]{3,24})\.blob\.core\.windows\.net/(?P<container_name>[a-z\d][a-z\d-]{2,62})/(?P<blob_name>[^?]+)',
     )
 
     def _get_cloud_storage_azure_info(self):
         match = self._cloud_storage_azure_url_pattern.match(self.url or '')
         if not match:
-            raise ValidationError(self.env._('%s is not a valid Azure Blob Storage URL.', self.url))
+            raise ValidationError(f'"{self.url}" is not a valid Azure Blob Storage URL.')
         return {
             'account_name': match['account_name'],
             'container_name': match['container_name'],

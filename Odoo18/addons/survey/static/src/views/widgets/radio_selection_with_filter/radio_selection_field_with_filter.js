@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { RadioField, radioField } from "@web/views/fields/radio/radio_field";
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
@@ -5,12 +7,13 @@ import { registry } from "@web/core/registry";
 export class RadioSelectionFieldWithFilter extends RadioField {
     static props = {
         ...RadioField.props,
-        allowedSelectionField: { type: String },
+        allowed_selection: { type: Array },
     };
 
     get items() {
-        const allowedItems = this.props.record.data[this.props.allowedSelectionField];
-        return super.items.filter(([value]) => allowedItems.includes(value));
+        return super.items.filter(([value, label]) => {
+            return this.props.allowed_selection.includes(value);
+        });
     }
 }
 
@@ -19,10 +22,10 @@ export const radioSelectionFieldWithFilter = {
     component: RadioSelectionFieldWithFilter,
     displayName: _t("Radio for Selection With Filter"),
     supportedTypes: ["selection"],
-    extractProps({ options }) {
+    extractProps({ options }, { context: { allowed_selection } }) {
         return {
             ...radioField.extractProps(...arguments),
-            allowedSelectionField: options.allowed_selection_field,
+            allowed_selection: allowed_selection,
         };
     },
 };

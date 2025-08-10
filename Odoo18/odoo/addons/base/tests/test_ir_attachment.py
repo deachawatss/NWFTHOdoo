@@ -4,13 +4,11 @@ import base64
 import hashlib
 import io
 import os
-import contextlib
 
 from PIL import Image
 
-from odoo.api import SUPERUSER_ID
-from odoo.exceptions import AccessError, ValidationError
-from odoo.addons.base.models.ir_attachment import IrAttachment
+import odoo
+from odoo.exceptions import AccessError
 from odoo.addons.base.tests.common import TransactionCaseWithUserDemo
 from odoo.tools import mute_logger
 from odoo.tools.image import image_to_base64
@@ -249,13 +247,14 @@ class TestIrAttachment(TransactionCaseWithUserDemo):
         self.assertFalse(os.path.isfile(store_path), 'file removed')
 
     def test_13_rollback(self):
+        savepoint = self.cr.savepoint()
         # the data needs to be unique so that no other attachment link
         # the file so that the gc removes it
         unique_blob = os.urandom(16)
-        with contextlib.closing(self.cr.savepoint()):
-            a1 = self.env['ir.attachment'].create({'name': 'a1', 'raw': unique_blob})
-            store_path = os.path.join(self.filestore, a1.store_fname)
-            self.assertTrue(os.path.isfile(store_path), 'file exists')
+        a1 = self.env['ir.attachment'].create({'name': 'a1', 'raw': unique_blob})
+        store_path = os.path.join(self.filestore, a1.store_fname)
+        self.assertTrue(os.path.isfile(store_path), 'file exists')
+        savepoint.rollback()
         self.env['ir.attachment']._gc_file_store_unsafe()
         self.assertFalse(os.path.isfile(store_path), 'file removed')
 
@@ -318,14 +317,14 @@ class TestPermissions(TransactionCaseWithUserDemo):
         # Check the user can access his own attachment
         attachment_user.datas
         # Create an attachment as superuser without res_model/res_id
-        attachment_admin = self.Attachments.with_user(SUPERUSER_ID).create({'name': 'foo'})
+        attachment_admin = self.Attachments.with_user(odoo.SUPERUSER_ID).create({'name': 'foo'})
         # Check the record cannot be accessed by a regular user
         with self.assertRaises(AccessError):
             attachment_admin.with_user(self.env.user).datas
         # Check the record can be accessed by an admin (other than superuser)
         admin_user = self.env.ref('base.user_admin')
         # Safety assert that base.user_admin is not the superuser, otherwise the test is useless
-        self.assertNotEqual(SUPERUSER_ID, admin_user.id)
+        self.assertNotEqual(odoo.SUPERUSER_ID, admin_user.id)
         attachment_admin.with_user(admin_user).datas
 
     @mute_logger("odoo.addons.base.models.ir_rule", "odoo.models")
@@ -404,27 +403,3 @@ class TestPermissions(TransactionCaseWithUserDemo):
         # even from a record with write permissions
         with self.assertRaises(AccessError):
             copied.copy({'res_model': unwritable._name, 'res_id': unwritable.id})
-
-    def test_write_error(self):
-        # try to write a file in a place where we have no access
-        # /proc is not writeable, check if we have an error raised
-        self.patch(IrAttachment, '_get_path', lambda self, binary, _checksum: (binary, '/proc/dummy_test'))
-        with self.assertRaises(OSError):
-            self.env['ir.attachment']._file_write(b'test', 'test')
-
-    def test_write_create_url_binary_attachment(self):
-        with self.assertRaisesRegex(ValidationError, r"Sorry, you are not allowed to write on this document"):
-            self.Attachments.create({'name': 'Py', 'url': '/blabla.js', 'raw': b'Something'})
-        with self.assertRaisesRegex(ValidationError, r"Sorry, you are not allowed to write on this document"):
-            self.Attachments.create({'name': 'Py', 'url': '/blabla.js', 'raw': b'Something'})
-        with self.assertRaisesRegex(ValidationError, r"Sorry, you are not allowed to write on this document"):
-            self.Attachments.with_context(default_url='/blabla.js').create({'name': 'Py', 'raw': b'Something'})
-
-        existing_attachment = self.Attachments.create({'name': 'aaa'})
-        with self.assertRaisesRegex(ValidationError, r"Sorry, you are not allowed to write on this document"):
-            existing_attachment.url = '/blabla.js'
-        existing_attachment.type = 'url'
-        existing_attachment.url = '/blabla.js'
-
-        with self.assertRaisesRegex(ValidationError, r"Sorry, you are not allowed to write on this document"):
-            existing_attachment.type = 'binary'

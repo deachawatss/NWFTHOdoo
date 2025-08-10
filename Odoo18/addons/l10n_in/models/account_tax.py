@@ -4,6 +4,7 @@ from odoo import api, fields, models
 from odoo.tools import frozendict
 
 
+
 class AccountTax(models.Model):
     _inherit = 'account.tax'
 
@@ -12,15 +13,6 @@ class AccountTax(models.Model):
         selection=[('igst', 'igst'), ('cgst', 'cgst'), ('sgst', 'sgst'), ('cess', 'cess')],
         compute='_compute_l10n_in_tax_type',
     )
-
-    # withholding related fields
-    l10n_in_tds_tax_type = fields.Selection([
-        ('sale', 'Sale'),
-        ('purchase', 'Purchase')
-    ], string="TDS Tax Type")
-    l10n_in_section_id = fields.Many2one('l10n_in.section.alert', string="Section")
-    l10n_in_tds_feature_enabled = fields.Boolean(related='company_id.l10n_in_tds_feature')
-    l10n_in_tcs_feature_enabled = fields.Boolean(related='company_id.l10n_in_tcs_feature')
 
     @api.depends('country_code', 'invoice_repartition_line_ids.tag_ids')
     def _compute_l10n_in_tax_type(self):

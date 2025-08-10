@@ -1,57 +1,43 @@
 import { withSequence } from "@html_editor/utils/resource";
 import { Plugin } from "../../plugin";
 import { _t } from "@web/core/l10n/translation";
-import { MediaDialog } from "./media_dialog/media_dialog";
 import { ColorSelector } from "../font/color_selector";
-import { isHtmlContentSupported } from "@html_editor/core/selection_plugin";
 
 export class IconPlugin extends Plugin {
     static id = "icon";
-    static dependencies = ["history", "selection", "color", "dialog"];
+    static dependencies = ["history", "selection", "color"];
     resources = {
         user_commands: [
             {
                 id: "resizeIcon1",
-                description: _t("Resize icon 1x"),
+                title: _t("Icon size 1x"),
                 run: () => this.resizeIcon({ size: "1" }),
-                isAvailable: isHtmlContentSupported,
             },
             {
                 id: "resizeIcon2",
-                description: _t("Resize icon 2x"),
+                title: _t("Icon size 2x"),
                 run: () => this.resizeIcon({ size: "2" }),
-                isAvailable: isHtmlContentSupported,
             },
             {
                 id: "resizeIcon3",
-                description: _t("Resize icon 3x"),
+                title: _t("Icon size 3x"),
                 run: () => this.resizeIcon({ size: "3" }),
-                isAvailable: isHtmlContentSupported,
             },
             {
                 id: "resizeIcon4",
-                description: _t("Resize icon 4x"),
+                title: _t("Icon size 4x"),
                 run: () => this.resizeIcon({ size: "4" }),
-                isAvailable: isHtmlContentSupported,
             },
             {
                 id: "resizeIcon5",
-                description: _t("Resize icon 5x"),
+                title: _t("Icon size 5x"),
                 run: () => this.resizeIcon({ size: "5" }),
-                isAvailable: isHtmlContentSupported,
             },
             {
                 id: "toggleSpinIcon",
-                description: _t("Toggle icon spin"),
+                title: _t("Toggle icon spin"),
                 icon: "fa-play",
                 run: this.toggleSpinIcon.bind(this),
-                isAvailable: isHtmlContentSupported,
-            },
-            {
-                id: "replaceIcon",
-                description: _t("Replace icon"),
-                run: this.openIconDialog.bind(this),
-                isAvailable: isHtmlContentSupported,
             },
         ],
         toolbar_namespaces: [
@@ -68,27 +54,30 @@ export class IconPlugin extends Plugin {
             },
         ],
         toolbar_groups: [
-            withSequence(1, { id: "icon_color", namespaces: ["icon"] }),
-            withSequence(1, { id: "icon_size", namespaces: ["icon"] }),
-            withSequence(3, { id: "icon_spin", namespaces: ["icon"] }),
-            withSequence(3, { id: "icon_replace", namespaces: ["icon"] }),
+            withSequence(1, {
+                id: "icon_color",
+                namespace: "icon",
+            }),
+            withSequence(1, {
+                id: "icon_size",
+                namespace: "icon",
+            }),
+            withSequence(3, { id: "icon_spin", namespace: "icon" }),
         ],
         toolbar_items: [
             {
                 id: "icon_forecolor",
                 groupId: "icon_color",
-                description: _t("Select Font Color"),
+                title: _t("Font Color"),
                 Component: ColorSelector,
                 props: this.dependencies.color.getPropsForColorSelector("foreground"),
-                isAvailable: isHtmlContentSupported,
             },
             {
                 id: "icon_backcolor",
                 groupId: "icon_color",
-                description: _t("Select Background Color"),
+                title: _t("Background Color"),
                 Component: ColorSelector,
                 props: this.dependencies.color.getPropsForColorSelector("background"),
-                isAvailable: isHtmlContentSupported,
             },
             {
                 id: "icon_size_1",
@@ -131,15 +120,16 @@ export class IconPlugin extends Plugin {
                 commandId: "toggleSpinIcon",
                 isActive: () => this.hasSpinIcon(),
             },
-            {
-                id: "icon_replace",
-                groupId: "icon_replace",
-                commandId: "replaceIcon",
-                text: _t("Replace"),
-            },
         ],
         color_apply_overrides: this.applyIconColor.bind(this),
     };
+
+    /**
+     * @deprecated
+     */
+    getSelectedIcon() {
+        return this.getTargetedIcon();
+    }
 
     getTargetedIcon() {
         const targetedNodes = this.dependencies.selection.getTargetedNodes();
@@ -198,26 +188,5 @@ export class IconPlugin extends Plugin {
         }
         this.dependencies.color.colorElement(selectedIcon, color, mode);
         return true;
-    }
-
-    openIconDialog() {
-        const selectedIcon = this.getTargetedIcon();
-        if (!selectedIcon) {
-            return;
-        }
-        this.dependencies.dialog.addDialog(MediaDialog, {
-            noVideos: true,
-            noImages: true,
-            noDocuments: true,
-            media: selectedIcon,
-            save: (el) => this.onSaveIcon(el, selectedIcon),
-        });
-    }
-
-    onSaveIcon(icon, prevIcon) {
-        for (const attribute of icon.attributes) {
-            prevIcon.setAttribute(attribute.nodeName, attribute.nodeValue);
-        }
-        this.dependencies.history.addStep();
     }
 }

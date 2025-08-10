@@ -6,23 +6,22 @@ import { ListRenderer } from "./list_renderer";
 
 export const listView = {
     type: "list",
-
     Controller: ListController,
     Renderer: ListRenderer,
     ArchParser: ListArchParser,
     Model: RelationalModel,
-
     buttonTemplate: "web.ListView.Buttons",
-
     canOrderByCount: true,
+
+    limit: 80,
 
     props: (genericProps, view) => {
         const { ArchParser } = view;
         const { arch, relatedModels, resModel } = genericProps;
         const archInfo = new ArchParser().parse(arch, relatedModels, resModel);
+
         return {
             ...genericProps,
-            readonly: genericProps.readonly || !archInfo.activeActions?.edit,
             Model: view.Model,
             Renderer: view.Renderer,
             buttonTemplate: view.buttonTemplate,

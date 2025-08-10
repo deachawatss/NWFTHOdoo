@@ -107,7 +107,10 @@ test("HandleField in a readonly one2many", async () => {
         resId: 1,
     });
 
-    expect(".o_row_handle.o_disabled").toHaveCount(3, {
-        message: "there should be 3 handles but they should be disabled from readonly",
+    expect(".o_row_handle").toHaveCount(3, {
+        message: "there should be 3 handles, one for each row",
+    });
+    expect(queryFirst("td span.o_row_handle")).not.toBeVisible({
+        message: "handle should be invisible",
     });
 });

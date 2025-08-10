@@ -4,7 +4,7 @@ from markupsafe import Markup
 
 from odoo.tests import common, tagged
 from odoo.tools.misc import file_open, mute_logger, file_path
-from odoo.tools.translate import TranslationModuleReader, TranslationRecordReader, code_translations, CodeTranslations, PYTHON_TRANSLATION_COMMENT, JAVASCRIPT_TRANSLATION_COMMENT, translation_file_reader
+from odoo.tools.translate import TranslationModuleReader, TranslationRecordReader, code_translations, CodeTranslations, PYTHON_TRANSLATION_COMMENT, JAVASCRIPT_TRANSLATION_COMMENT, TranslationFileReader
 from odoo import Command
 from odoo.addons.base.models.ir_fields import BOOLEAN_TRANSLATIONS
 
@@ -29,21 +29,6 @@ class TestImport(common.TransactionCase):
         self.assertEqual(
             record.with_context(lang='fr_FR').name,
             'Vaisselle'
-        )
-        record = self.env.ref('test_translation_import.test_translation_import_model1_record2')
-        self.assertEqual(
-            record.with_context(lang='fr_FR').name,
-            'Meuble'
-        )
-        record = self.env.ref('test_translation_import.test_translation_import_model1_record3')
-        self.assertEqual(
-            record.with_context(lang='fr_FR').name,
-            'Test de traduction CSV depuis PO'
-        )
-        record = self.env.ref('test_translation_import.test_translation_import_model1_record4')
-        self.assertEqual(
-            record.with_context(lang='fr_FR').name,
-            'Test de traduction CSV depuis les données'
         )
 
     def test_import_model_term_translation(self):
@@ -156,14 +141,14 @@ class TestImport(common.TransactionCase):
             "Code, Klingon",
             "The direct code translation was not applied"
         )
-        context = None  # noqa: F841
+        context = None
 
         # Comparison of lazy strings must be explicitely casted to string
         with self.assertRaises(NotImplementedError):
-            _ = TRANSLATED_TERM == "Code, English"
+            TRANSLATED_TERM == "Code, English"
         self.assertEqual(str(TRANSLATED_TERM), "Code Lazy, English", "The translation should not be applied yet")
 
-        context = {'lang': "tlh"}  # noqa: F841
+        context = {'lang': "tlh"}
         self.assertEqual(str(TRANSLATED_TERM), "Code Lazy, Klingon", "The lazy code translation was not applied")
 
         self.assertEqual("Do you speak " + TRANSLATED_TERM, "Do you speak Code Lazy, Klingon", "str + _lt concatenation failed")
@@ -172,9 +157,9 @@ class TestImport(common.TransactionCase):
 
         # test lazy translation in another module
         self.env['res.lang']._activate_lang('fr_FR')
-        context = {'lang': 'en_US'}  # noqa: F841
+        context = {'lang': 'en_US'}
         self.assertEqual(str(BOOLEAN_TRANSLATIONS[0]), 'yes')
-        context = {'lang': 'fr_FR'}  # noqa: F841
+        context = {'lang': 'fr_FR'}
         self.assertEqual(str(BOOLEAN_TRANSLATIONS[0]), 'oui')
 
     def test_import_from_csv_file(self):
@@ -218,13 +203,6 @@ class TestImport(common.TransactionCase):
             "Translation placeholders were not applied"
         )
 
-        # correctly format lists
-        self.assertEqual(
-            model_fr_BE.get_code_placeholder_translation(["1", "2", "3"]),
-            "Code, 1, 2 et 3, Français, Belgium",
-            "Translation placeholders were not applied"
-        )
-
         # source error: wrong arguments
         with self.assertRaises(TypeError):
             model_fr_BE.get_code_placeholder_translation(1, "🧀")
@@ -233,13 +211,6 @@ class TestImport(common.TransactionCase):
         self.assertEqual(
             model_fr_BE.get_code_named_placeholder_translation(num=2, symbol="🧀"),
             "Code, 2, 🧀, Français, Belgium",
-            "Translation placeholders were not applied"
-        )
-
-        # correctly format lists
-        self.assertEqual(
-            model_fr_BE.get_code_named_placeholder_translation(num=2, symbol=["1", "2", "3"]),
-            "Code, 2, 1, 2 et 3, Français, Belgium",
             "Translation placeholders were not applied"
         )
 
@@ -271,7 +242,7 @@ class TestTranslationFlow(common.TransactionCase):
 
         with io.BytesIO(base64.b64decode(pot_file_data)) as pot_file:
             pot_file.name = f'{module_name}.pot'
-            for line1, line2 in zip(translation_file_reader(pot_file, 'po'), translation_file_reader(file_path(f'{module_name}/i18n/{module_name}.pot'), 'po')):
+            for line1, line2 in zip(TranslationFileReader(pot_file, 'po'), TranslationFileReader(file_path(f'{module_name}/i18n/{module_name}.pot'), 'po')):
                 self.assertEqual(line1, line2)
 
     def test_export_import(self):
@@ -455,17 +426,13 @@ class TestTranslationFlow(common.TransactionCase):
             'lang_ids': [(6, 0, [self.env.ref('base.lang_fr').id])],
         }).lang_install()
 
-        model1_ids = [
-            self.env.ref('test_translation_import.test_translation_import_model1_record1').id,
-            self.env.ref('test_translation_import.test_translation_import_model1_record2').id,
-        ]
+        model1_ids = self.env.ref('test_translation_import.test_translation_import_model1_record1').ids
         po_reader = TranslationRecordReader(self.env.cr, 'test.translation.import.model1', model1_ids, lang='fr_FR')
         translations = {line[4]: line[5] for line in po_reader}
         self.assertDictEqual(
             translations,
             {
                 'Fork': 'Fourchette',
-                'Furniture': 'Meuble',
                 'Knife': 'Couteau',
                 'Spoon': 'Cuillère',
                 'Tableware': 'Vaisselle',

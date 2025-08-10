@@ -7,7 +7,8 @@
             <field name="company_id" ref="main_company"/>
             <field name="company_ids" eval="[Command.link(ref('main_company'))]"/>
             <field name="email">odoobot@example.com</field>
-            <field name="signature">System</field>
+            <field name="signature"><![CDATA[<span>-- <br/>
+System</span>]]></field>
         </record>
 
         <!-- user 2 is the human admin user -->
@@ -17,12 +18,20 @@
             <field name="partner_id" ref="base.partner_admin"/>
             <field name="company_id" ref="main_company"/>
             <field name="company_ids" eval="[Command.link(ref('main_company'))]"/>
-            <field name="group_ids" eval="[Command.set([])]"/>
-            <field name="signature">Administrator</field>
+            <field name="groups_id" eval="[Command.set([])]"/>
+            <field name="signature"><![CDATA[<span>-- <br/>
+Administrator</span>]]></field>
         </record>
 
         <record id="user_admin_settings" model="res.users.settings" forcecreate="0">
             <field name="user_id" ref="base.user_admin"/>
+        </record>
+
+        <!-- Default user with full access rights for newly created users -->
+        <record id="default_user" model="res.users">
+            <field name="name">Default User Template</field>
+            <field name="login">default</field>
+            <field name="active" eval="False"/>
         </record>
 
         <record id="public_user" model="res.users">
@@ -30,7 +39,7 @@
             <field name="login">public</field>
             <field name="password"></field>
             <!-- Avoid auto-including this demo user in any default group -->
-            <field name="group_ids" eval="[Command.set([])]"/>
+            <field name="groups_id" eval="[Command.set([])]"/>
             <field name="image_1920" type="base64" file="base/static/img/public_user-image.png"/>
             <field name="partner_id" ref="public_partner"/>
             <field name="active" eval="False"/>

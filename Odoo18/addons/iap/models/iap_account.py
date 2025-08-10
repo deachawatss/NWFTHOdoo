@@ -2,13 +2,13 @@
 
 import logging
 import secrets
+import threading
 import uuid
 import werkzeug.urls
 
 from odoo import api, fields, models, _
 from odoo.addons.iap.tools import iap_tools
 from odoo.exceptions import AccessError, UserError
-from odoo.modules import module
 from odoo.tools import get_lang
 
 _logger = logging.getLogger(__name__)
@@ -57,11 +57,11 @@ class IapAccount(models.Model):
     def web_save(self, *args, **kwargs):
         return super(IapAccount, self.with_context(disable_iap_fetch=True)).web_save(*args, **kwargs)
 
-    def write(self, vals):
-        res = super().write(vals)
+    def write(self, values):
+        res = super().write(values)
         if (
             not self.env.context.get('disable_iap_update')
-            and any(warning_attribute in vals for warning_attribute in ('warning_threshold', 'warning_user_ids'))
+            and any(warning_attribute in values for warning_attribute in ('warning_threshold', 'warning_user_ids'))
         ):
             route = '/iap/1/update-warning-email-alerts'
             endpoint = iap_tools.iap_get_endpoint(self.env)
@@ -81,9 +81,13 @@ class IapAccount(models.Model):
                     _logger.warning("Update of the warning email configuration has failed: %s", str(e))
         return res
 
+    @staticmethod
+    def is_running_test_suite():
+        return hasattr(threading.current_thread(), 'testing') and threading.current_thread().testing
+
     def _get_account_information_from_iap(self):
         # During testing, we don't want to call the iap server
-        if module.current_test:
+        if self.is_running_test_suite():
             return
         route = '/iap/1/get-accounts-information'
         endpoint = iap_tools.iap_get_endpoint(self.env)
@@ -158,8 +162,8 @@ class IapAccount(models.Model):
         if not accounts:
             service = self.env['iap.service'].search([('technical_name', '=', service_name)], limit=1)
             if not service:
-                raise UserError(self.env._("No service exists with the provided technical name"))
-            if module.current_test:
+                raise UserError("No service exists with the provided technical name")
+            if self.is_running_test_suite():
                 # During testing, we don't want to commit the creation of a new IAP account to the database
                 return self.sudo().create({'service_id': service.id})
 

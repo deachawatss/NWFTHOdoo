@@ -1,23 +1,10 @@
-const OPENING_TAG_REGEX = /<\s*([^\s/>]+)([^>]*?)(\/?)>/g;
-const ATTRIBUTES_REGEX = /([^\s=]+)(=(?:"[^"]*"|'[^']*'))?/g;
-
 /**
  * Unformat the given html in order to use it with `innerHTML`.
  */
 export function unformat(html) {
-    return (
-        html
-            // Trim whitespaces between attributes.
-            .replace(OPENING_TAG_REGEX, (match, tag, attrs, selfClosing) => {
-                // Isolate each attribute key/value pair.
-                const attributes = attrs.match(ATTRIBUTES_REGEX);
-                return `<${tag}${attributes ? " " + attributes.join(" ") : ""}${selfClosing}>`;
-            })
-            // Trim whitespace (except \ufeff) between > and <.
-            .replace(/>[^\S\uFEFF]+/g, ">")
-            .replace(/[^\S\uFEFF]+</g, "<")
-            .trim()
-    );
+    return html
+        .replace(/(^|[^ ])[^\S\ufeff]+([^<>]*?)</g, "$1$2<")
+        .replace(/>([^<>]*?)[^\S\ufeff]+([^ ]|$)/g, ">$1$2");
 }
 
 /**

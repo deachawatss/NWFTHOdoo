@@ -35,13 +35,7 @@ class Partner extends models.Model {
         { id: 5, foo: "blop" },
     ];
 }
-class User extends models.Model {
-    _name = "res.users";
-    has_group() {
-        return true;
-    }
-}
-defineModels([Partner, User]);
+defineModels([Partner]);
 
 test("PriorityField when not set", async () => {
     await mountView({
@@ -377,7 +371,7 @@ test("PriorityField with readonly attribute", async () => {
         arch: '<form><field name="selection" widget="priority" readonly="1"/></form>',
     });
 
-    expect("span.o_priority_star.fa.fa-star-o.o_disabled").toHaveCount(2, {
+    expect("span.o_priority_star.fa.fa-star-o").toHaveCount(2, {
         message: "stars of priority widget should rendered with span tag if readonly",
     });
     await hover(".o_priority_star.fa-star-o:last");
@@ -389,7 +383,7 @@ test("PriorityField with readonly attribute", async () => {
     await click(".o_priority_star.fa-star-o:last");
     await animationFrame();
     expect.step("click");
-    expect("span.o_priority_star.fa.fa-star-o.o_disabled").toHaveCount(2, {
+    expect("span.o_priority_star.fa.fa-star-o").toHaveCount(2, {
         message: "should still have two stars",
     });
     expect.verifySteps(["hover", "click"]);

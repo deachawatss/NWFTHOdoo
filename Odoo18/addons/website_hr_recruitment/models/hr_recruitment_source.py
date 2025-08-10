@@ -6,7 +6,7 @@ from werkzeug import urls
 from odoo import api, fields, models
 
 
-class HrRecruitmentSource(models.Model):
+class RecruitmentSource(models.Model):
     _inherit = 'hr.recruitment.source'
 
     url = fields.Char(compute='_compute_url', string='Tracker URL')

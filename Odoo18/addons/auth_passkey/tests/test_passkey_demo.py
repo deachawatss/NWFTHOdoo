@@ -5,6 +5,7 @@ from lxml import etree
 from unittest.mock import patch
 
 from odoo.http import request
+from odoo.tests import tagged
 from odoo.tools import SQL, mute_logger
 
 from odoo.addons.base.tests.common import HttpCaseWithUserDemo
@@ -195,9 +196,8 @@ class PasskeyTest(HttpCaseWithUserDemo):
             wizard_id = self.rpc('res.users', 'action_create_passkey', self.admin_user.id)['result']['res_id']
 
             # Adding a passkey triggers an identity check. Confirm using the password and run the check.
-            action = self.rpc('res.users.identitycheck', 'run_check', wizard_id,
-                context={'password': self.admin_user.login}
-            )['result']
+            self.rpc('res.users.identitycheck', 'write', wizard_id, {'password': self.admin_user.login})
+            action = self.rpc('res.users.identitycheck', 'run_check', wizard_id)['result']
 
             # Create the passkey creation wizard and set a name for the key
             wizard_id = self.rpc(action['res_model'], 'create', {'name': 'test-yubikey'})['result']
@@ -285,11 +285,11 @@ class PasskeyTest(HttpCaseWithUserDemo):
                 # It sets the webauthn challenge in the session
                 self.url_open('/auth/passkey/start-auth', '{}', headers={"Content-Type": "application/json"})
 
-                # 2. Call the check method with the webauthn response in the password,
-                # which if successful returns the action to run following the identity check
-                response = self.rpc('res.users.identitycheck', 'run_check', wizard_id,
-                    context={'password': json.dumps(webauthn_response)}
-                )
+                # 2. Set the webauthn response in the password field
+                self.rpc('res.users.identitycheck', 'write', wizard_id, {'password': json.dumps(webauthn_response)})
+
+                # 3. Call the check method, which if successful returns the action to run following the identity check
+                response = self.rpc('res.users.identitycheck', 'run_check', wizard_id)
 
                 # Assert the identity check is successful
                 self.assertTrue(response.get('result'))
@@ -300,11 +300,10 @@ class PasskeyTest(HttpCaseWithUserDemo):
                 else:
                     self.assertEqual(passkey['passkey'].sign_count, sign_count)
 
-                # 3. Attempt a replay attack, without reseting the challenge
+                # 4. Attempt a replay attack, without reseting the challenge
+                self.rpc('res.users.identitycheck', 'write', wizard_id, {'password': json.dumps(webauthn_response)})
                 with mute_logger('odoo.http'):
-                    response = self.rpc('res.users.identitycheck', 'run_check', wizard_id,
-                        context={'password': json.dumps(webauthn_response)}
-                    )
+                    response = self.rpc('res.users.identitycheck', 'run_check', wizard_id)
 
                 # Assert the authentication failed
                 self.assertFalse(response.get('result'))
@@ -317,16 +316,15 @@ class PasskeyTest(HttpCaseWithUserDemo):
                 # The authentication fail, hence the sign count doesn't increase
                 self.assertEqual(passkey['passkey'].sign_count, sign_count)
 
-                # 4. Do a second authentication with the same challenge and same response
+                # 5. Do a second authentication with the same challenge and same response
 
                 # Reset the challenge, which is forced to the same challenge with a mock patch above
                 self.url_open('/auth/passkey/start-auth', '{}', headers={"Content-Type": "application/json"})
 
                 # Write the same webauthn response
+                self.rpc('res.users.identitycheck', 'write', wizard_id, {'password': json.dumps(webauthn_response)})
                 with mute_logger('odoo.http'):
-                    response = self.rpc('res.users.identitycheck', 'run_check', wizard_id,
-                        context={'password': json.dumps(webauthn_response)}
-                    )
+                    response = self.rpc('res.users.identitycheck', 'run_check', wizard_id)
 
                 if passkey.get('supports_sign_count', True):
                     # If the passkey supports sign_count, a replay attack with the same challenge must fail
@@ -339,14 +337,13 @@ class PasskeyTest(HttpCaseWithUserDemo):
 
                 self.assertEqual(passkey['passkey'].sign_count, sign_count)
 
-            # 5. Do a third authentication, with another challenge but the same reponse
+            # 6. Do a third authentication, with another challenge but the same reponse
             # This block is outside the block `with self.patch_start_auth(webauthn_challenge):`
             # hence it will generate a random challenge.
             self.url_open('/auth/passkey/start-auth', '{}', headers={"Content-Type": "application/json"})
+            self.rpc('res.users.identitycheck', 'write', wizard_id, {'password': json.dumps(webauthn_response)})
             with mute_logger('odoo.http'):
-                response = self.rpc('res.users.identitycheck', 'run_check', wizard_id,
-                    context={'password': json.dumps(webauthn_response)}
-                )
+                response = self.rpc('res.users.identitycheck', 'run_check', wizard_id)
             self.assertFalse(response.get('result'))
             self.assertTrue(response.get('error'))
             self.assertEqual(passkey['passkey'].sign_count, sign_count)
@@ -440,3 +437,21 @@ class PasskeyTest(HttpCaseWithUserDemo):
 
             # Login successful, redirected to /odoo
             self.assertTrue(response.url.endswith('/odoo'))
+
+
+@tagged('post_install', '-at_install')
+class PasskeyTestTours(PasskeyTest):
+    def test_passkey_login(self):
+        self.env['ir.config_parameter'].sudo().set_param('web.base.url', self.passkeys['test-keepassxc']['host'])
+        with self.patch_start_auth(self.passkeys['test-keepassxc']['auth']['challenge']):
+            self.start_tour("/web/login?debug=tests", 'passkeys_tour_login')
+
+    def test_passkey_backend(self):
+        # All these tests rely on each other but had to be split up to patch different methods.
+        self.env['ir.config_parameter'].sudo().set_param('web.base.url', self.passkeys['test-yubikey']['host'])
+        self.admin_user.auth_passkey_key_ids.unlink()
+        with self.patch_start_registration(self.passkeys['test-yubikey']['registration']['challenge']):
+            self.start_tour("/odoo?debug=tests", 'passkeys_tour_registration', login="admin")
+        with self.patch_start_auth(self.passkeys['test-yubikey']['auth']['challenge']):
+            self.start_tour("/odoo?debug=tests", 'passkeys_tour_verify', login="admin")
+        self.start_tour("/odoo?debug=tests", 'passkeys_tour_delete', login="admin")

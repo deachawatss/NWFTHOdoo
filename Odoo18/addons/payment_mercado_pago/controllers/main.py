@@ -24,7 +24,9 @@ class MercadoPagoController(http.Controller):
         # Handle the notification data.
         _logger.info("Handling redirection from Mercado Pago with data:\n%s", pprint.pformat(data))
         if data.get('payment_id') != 'null':
-            self._verify_and_handle_notification_data(data)
+            request.env['payment.transaction'].sudo()._handle_notification_data(
+                'mercado_pago', data
+            )
         else:  # The customer cancelled the payment by clicking on the return button.
             pass  # Don't try to process this case because the payment id was not provided.
 
@@ -53,25 +55,10 @@ class MercadoPagoController(http.Controller):
         if data.get('action') in ('payment.created', 'payment.updated'):
             # Handle the notification data.
             try:
-                self._verify_and_handle_notification_data(
-                    {'external_reference': reference, 'payment_id': data.get('data', {}).get('id')}
+                payment_id = data.get('data', {}).get('id')
+                request.env['payment.transaction'].sudo()._handle_notification_data(
+                    'mercado_pago', {'external_reference': reference, 'payment_id': payment_id}
                 )  # Use 'external_reference' as the reference key like in the redirect data.
             except ValidationError:  # Acknowledge the notification to avoid getting spammed.
                 _logger.exception("Unable to handle the notification data; skipping to acknowledge")
         return ''  # Acknowledge the notification.
-
-    @staticmethod
-    def _verify_and_handle_notification_data(data):
-        """ Verify and process the notification data sent by Mercado Pago.
-
-        :param dict data: The notification data.
-        :return: None
-        """
-        tx_sudo = request.env['payment.transaction'].sudo()._get_tx_from_notification_data(
-            'mercado_pago', data
-        )
-        # Verify the notification data.
-        verified_data = tx_sudo.provider_id._mercado_pago_make_request(
-            f'/v1/payments/{data.get("payment_id")}', method='GET'
-        )
-        tx_sudo._handle_notification_data('mercado_pago', verified_data)

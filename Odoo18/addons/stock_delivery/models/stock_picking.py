@@ -20,8 +20,7 @@ class StockPicking(models.Model):
 
     carrier_price = fields.Float(string="Shipping Cost")
     delivery_type = fields.Selection(related='carrier_id.delivery_type', readonly=True)
-    allowed_carrier_ids = fields.Many2many('delivery.carrier', compute='_compute_allowed_carrier_ids')
-    carrier_id = fields.Many2one("delivery.carrier", string="Carrier", domain="[('id', 'in', allowed_carrier_ids)]", check_company=True)
+    carrier_id = fields.Many2one("delivery.carrier", string="Carrier", check_company=True)
     weight = fields.Float(compute='_cal_weight', digits='Stock Weight', store=True, help="Total weight of the products in the picking.", compute_sudo=True)
     carrier_tracking_ref = fields.Char(string='Tracking Reference', copy=False)
     carrier_tracking_url = fields.Char(string='Tracking URL', compute='_compute_carrier_tracking_url')
@@ -29,12 +28,6 @@ class StockPicking(models.Model):
     is_return_picking = fields.Boolean(compute='_compute_return_picking')
     return_label_ids = fields.One2many('ir.attachment', compute='_compute_return_label')
     destination_country_code = fields.Char(related='partner_id.country_id.code', string="Destination Country")
-
-    @api.depends('partner_id', 'carrier_id.max_weight', 'carrier_id.max_volume', 'carrier_id.must_have_tag_ids', 'carrier_id.excluded_tag_ids', 'move_ids.product_id.product_tag_ids', 'move_ids.product_id.weight', 'move_ids.product_id.volume')
-    def _compute_allowed_carrier_ids(self):
-        for picking in self:
-            carriers = self.env['delivery.carrier'].search(self.env['delivery.carrier']._check_company_domain(picking.company_id))
-            picking.allowed_carrier_ids = carriers.available_carriers(picking.partner_id, picking) if picking.partner_id else carriers
 
     @api.depends('carrier_id', 'carrier_tracking_ref')
     def _compute_carrier_tracking_url(self):
@@ -99,12 +92,56 @@ class StockPicking(models.Model):
                         'mail.mail_activity_data_warning',
                         date.today(),
                         note=pick._carrier_exception_note(exception_message),
-                        user_id=pick.user_id.id or self.env.uid,
+                        user_id=pick.user_id.id or self.env.user.id or SUPERUSER_ID,
                         )
                 else:
                     raise e
 
         return super(StockPicking, self)._send_confirmation_email()
+
+    def _pre_put_in_pack_hook(self, move_line_ids):
+        res = super(StockPicking, self)._pre_put_in_pack_hook(move_line_ids)
+        if not res:
+            if move_line_ids.carrier_id:
+                if len(move_line_ids.carrier_id) > 1 or any(not ml.carrier_id for ml in move_line_ids):
+                    # avoid (duplicate) costs for products
+                    raise UserError(_("You cannot pack products into the same package when they have different carriers (i.e. check that all of their transfers have a carrier assigned and are using the same carrier)."))
+                return self._set_delivery_package_type(batch_pack=len(move_line_ids.picking_id) > 1)
+        else:
+            return res
+
+    def _set_delivery_package_type(self, batch_pack=False):
+        """ This method returns an action allowing to set the package type and the shipping weight
+        on the stock.quant.package.
+        """
+        self.ensure_one()
+        view_id = self.env.ref('stock_delivery.choose_delivery_package_view_form').id
+        context = dict(
+            self.env.context,
+            current_package_carrier_type=self.carrier_id.delivery_type,
+            default_picking_id=self.id,
+            batch_pack=batch_pack,
+        )
+        # As we pass the `delivery_type` ('fixed' or 'base_on_rule' by default) in a key who
+        # correspond to the `package_carrier_type` ('none' to default), we make a conversion.
+        # No need conversion for other carriers as the `delivery_type` and
+        #`package_carrier_type` will be the same in these cases.
+        if context['current_package_carrier_type'] in ['fixed', 'base_on_rule']:
+            context['current_package_carrier_type'] = 'none'
+        # Update the context 'default_package_type_id' passed from JS
+        # to populate the scanned package type in the package wizard opened from the barcode.
+        if self.env.context.get('default_package_type_id'):
+            context['default_delivery_package_type_id'] = self.env.context.get('default_package_type_id')
+        return {
+            'name': _('Package Details'),
+            'type': 'ir.actions.act_window',
+            'view_mode': 'form',
+            'res_model': 'choose.delivery.package',
+            'view_id': view_id,
+            'views': [(view_id, 'form')],
+            'target': 'new',
+            'context': context,
+        }
 
     def send_to_shipper(self):
         self.ensure_one()
@@ -113,7 +150,7 @@ class StockPicking(models.Model):
             amount_without_delivery = self.sale_id._compute_amount_total_without_delivery()
             if self.carrier_id._compute_currency(self.sale_id, amount_without_delivery, 'pricelist_to_company') >= self.carrier_id.amount:
                 res['exact_price'] = 0.0
-        self.carrier_price = self.carrier_id._apply_margins(res['exact_price'], self.sale_id)
+        self.carrier_price = self.carrier_id.with_context(order=self.sale_id)._apply_margins(res['exact_price'])
         if res['tracking_number']:
             related_pickings = self.env['stock.picking'] if self.carrier_tracking_ref and res['tracking_number'] in self.carrier_tracking_ref else self
             accessed_moves = previous_moves = self.move_ids.move_orig_ids

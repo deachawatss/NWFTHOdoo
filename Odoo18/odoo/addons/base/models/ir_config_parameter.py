@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 """
 Store database-specific configuration parameters
@@ -6,7 +7,7 @@ Store database-specific configuration parameters
 import uuid
 import logging
 
-from odoo import api, fields, models
+from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 from odoo.tools import config, ormcache, mute_logger
 
@@ -25,7 +26,7 @@ _default_parameters = {
 }
 
 
-class IrConfig_Parameter(models.Model):
+class IrConfigParameter(models.Model):
     """Per-database storage of configuration key-value pairs."""
     _name = 'ir.config_parameter'
     _description = 'System Parameter'
@@ -36,10 +37,9 @@ class IrConfig_Parameter(models.Model):
     key = fields.Char(required=True)
     value = fields.Text(required=True)
 
-    _key_uniq = models.Constraint(
-        'unique (key)',
-        "Key must be unique.",
-    )
+    _sql_constraints = [
+        ('key_uniq', 'unique (key)', 'Key must be unique.')
+    ]
 
     @mute_logger('odoo.addons.base.models.ir_config_parameter')
     def init(self, force=False):
@@ -105,21 +105,21 @@ class IrConfig_Parameter(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         self.env.registry.clear_cache()
-        return super().create(vals_list)
+        return super(IrConfigParameter, self).create(vals_list)
 
     def write(self, vals):
         if 'key' in vals:
             illegal = _default_parameters.keys() & self.mapped('key')
             if illegal:
-                raise ValidationError(self.env._("You cannot rename config parameters with keys %s", ', '.join(illegal)))
+                raise ValidationError(_("You cannot rename config parameters with keys %s", ', '.join(illegal)))
         self.env.registry.clear_cache()
-        return super().write(vals)
+        return super(IrConfigParameter, self).write(vals)
 
     def unlink(self):
         self.env.registry.clear_cache()
-        return super().unlink()
+        return super(IrConfigParameter, self).unlink()
 
     @api.ondelete(at_uninstall=False)
     def unlink_default_parameters(self):
         for record in self.filtered(lambda p: p.key in _default_parameters.keys()):
-            raise ValidationError(self.env._("You cannot delete the %s record.", record.key))
+            raise ValidationError(_("You cannot delete the %s record.", record.key))

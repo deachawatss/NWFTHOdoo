@@ -3,7 +3,7 @@
 from odoo import fields, models
 
 
-class IrActionsAct_WindowView(models.Model):
+class ActWindowView(models.Model):
     _inherit = 'ir.actions.act_window.view'
 
     view_mode = fields.Selection(selection_add=[('hierarchy', 'Hierarchy')], ondelete={'hierarchy': 'cascade'})

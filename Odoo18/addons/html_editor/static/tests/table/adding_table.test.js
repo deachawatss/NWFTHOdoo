@@ -42,7 +42,7 @@ test("can add a table using the powerbox and keyboard", async () => {
         <table class="table table-bordered o_table">
             <tbody>
                 <tr>
-                    <td><p o-we-hint-text='Type "/" for commands' class="o-we-hint">[]<br></p></td>
+                    <td><p placeholder='Type "/" for commands' class="o-we-hint">[]<br></p></td>
                     <td><p><br></p></td>
                     <td><p><br></p></td>
                 </tr>
@@ -153,12 +153,12 @@ test("add table inside empty list", async () => {
     const { el, editor } = await setupEditor("<ul><li>[]<br></li></ul>");
 
     // open powerbox
-    await insertText(editor, "/");
+    insertText(editor, "/");
     await waitFor(".o-we-powerbox");
     await expectElementCount(".o-we-tablepicker", 0);
 
     // filter to get table command in first position
-    await insertText(editor, "table");
+    insertText(editor, "table");
     await animationFrame();
 
     // press enter to open tablepicker
@@ -179,7 +179,7 @@ test("add table inside empty list", async () => {
                 <table class="table table-bordered o_table">
                     <tbody>
                         <tr>
-                            <td><p o-we-hint-text='Type "/" for commands' class="o-we-hint">[]<br></p></td>
+                            <td><p placeholder='Type "/" for commands' class="o-we-hint">[]<br></p></td>
                             <td><p><br></p></td>
                             <td><p><br></p></td>
                         </tr>
@@ -206,12 +206,12 @@ test("add table inside non-empty list", async () => {
     const { el, editor } = await setupEditor("<ul><li>abc[]</li></ul>");
 
     // open powerbox
-    await insertText(editor, "/");
+    insertText(editor, "/");
     await waitFor(".o-we-powerbox");
     await expectElementCount(".o-we-tablepicker", 0);
 
     // filter to get table command in first position
-    await insertText(editor, "table");
+    insertText(editor, "table");
     await animationFrame();
 
     // press enter to open tablepicker
@@ -232,7 +232,7 @@ test("add table inside non-empty list", async () => {
                 <table class="table table-bordered o_table">
                     <tbody>
                         <tr>
-                            <td><p o-we-hint-text='Type "/" for commands' class="o-we-hint">[]<br></p></td>
+                            <td><p placeholder='Type "/" for commands' class="o-we-hint">[]<br></p></td>
                             <td><p><br></p></td>
                             <td><p><br></p></td>
                         </tr>

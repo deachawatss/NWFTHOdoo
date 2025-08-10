@@ -1,7 +1,8 @@
 import { normalizeCSSColor } from "@web/core/utils/colors";
 import { removeClass } from "./dom";
 import { isBold, isDirectionSwitched, isItalic, isStrikeThrough, isUnderline } from "./dom_info";
-import { closestElement } from "./dom_traversal";
+import { closestElement, closestPath, findNode } from "./dom_traversal";
+import { isBlock } from "./blocks";
 
 /**
  * Array of all the classes used by the editor to change the font size.
@@ -81,21 +82,9 @@ export const formatsSpecs = {
                 "line-through"
             ),
     },
-    fontFamily: {
-        isFormatted: (node) => !!closestElement(node, (el) => el.style["font-family"]),
-        hasStyle: (node) => node.style && node.style["font-family"],
-        addStyle: (node, props) => {
-            removeStyle(node, "font-family");
-            if (props.fontFamily) {
-                node.style["font-family"] = props.fontFamily;
-            }
-        },
-        removeStyle: (node) => removeStyle(node, "font-family"),
-    },
     fontSize: {
         isFormatted: (node) =>
-            closestElement(node)?.style["font-size"] ||
-            closestElement(node, "li")?.style["font-size"],
+            !!findNode(closestPath(node), (el) => el.style?.["font-size"], isBlock),
         hasStyle: (node) => node.style && node.style["font-size"],
         addStyle: (node, props) => {
             node.style["font-size"] = props.size;
@@ -105,10 +94,10 @@ export const formatsSpecs = {
     },
     setFontSizeClassName: {
         isFormatted: (node) =>
-            FONT_SIZE_CLASSES.find(
-                (cls) =>
-                    closestElement(node)?.classList?.contains(cls) ||
-                    closestElement(node, "LI")?.classList?.contains(cls)
+            !!findNode(
+                closestPath(node),
+                (el) => FONT_SIZE_CLASSES.find((cls) => el.classList?.contains(cls)),
+                isBlock
             ),
         hasStyle: (node, props) => FONT_SIZE_CLASSES.find((cls) => node.classList.contains(cls)),
         addStyle: (node, props) => {
@@ -257,20 +246,4 @@ export function getFontSizeDisplayValue(sel, document) {
     }
     const pxValue = remValue && convertNumericToUnit(remValue, "rem", "px", htmlStyle);
     return pxValue || parseFloat(getComputedStyle(closestStartContainerEl).fontSize);
-}
-
-export function getFontSizeOrClass(node) {
-    if (!node) {
-        return null;
-    }
-
-    if (node.style.fontSize) {
-        return { type: "font-size", value: node.style.fontSize };
-    }
-
-    const fontSizeClass = FONT_SIZE_CLASSES.find((cls) => node.classList.contains(cls));
-    if (fontSizeClass) {
-        return { type: "class", value: fontSizeClass };
-    }
-    return null;
 }

@@ -1,9 +1,11 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import pytz
 from dateutil.relativedelta import relativedelta
 
 from odoo import models, fields, api, exceptions, _
+from odoo.tools import float_round
 
 
 class HrEmployee(models.Model):
@@ -11,7 +13,6 @@ class HrEmployee(models.Model):
 
     attendance_manager_id = fields.Many2one(
         'res.users', store=True, readonly=False,
-        string="Attendance Approver",
         domain="[('share', '=', False), ('company_ids', 'in', company_id)]",
         groups="hr_attendance.group_hr_attendance_officer",
         help="The user set in Attendance will access the attendance of the employee through the dedicated app and will be able to edit them.")
@@ -30,7 +31,8 @@ class HrEmployee(models.Model):
         string="Attendance Status", compute='_compute_attendance_state',
         selection=[('checked_out', "Checked out"), ('checked_in', "Checked in")],
         groups="hr_attendance.group_hr_attendance_officer,hr.group_hr_user")
-    hours_last_month = fields.Float(compute='_compute_hours_last_month')
+    hours_last_month = fields.Float(
+        compute='_compute_hours_last_month', groups="hr_attendance.group_hr_attendance_officer,hr.group_hr_user")
     hours_today = fields.Float(
         compute='_compute_hours_today',
         groups="hr_attendance.group_hr_attendance_officer,hr.group_hr_user")
@@ -44,7 +46,8 @@ class HrEmployee(models.Model):
         compute='_compute_hours_last_month', groups="hr.group_hr_user")
     overtime_ids = fields.One2many(
         'hr.attendance.overtime', 'employee_id', groups="hr_attendance.group_hr_attendance_officer,hr.group_hr_user")
-    total_overtime = fields.Float(compute='_compute_total_overtime', compute_sudo=True)
+    total_overtime = fields.Float(
+        compute='_compute_total_overtime', compute_sudo=True, groups="hr_attendance.group_hr_attendance_officer,hr.group_hr_user")
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -54,21 +57,21 @@ class HrEmployee(models.Model):
             if officer_group and vals.get('attendance_manager_id'):
                 group_updates.append((4, vals['attendance_manager_id']))
         if group_updates:
-            officer_group.sudo().write({'user_ids': group_updates})
+            officer_group.sudo().write({'users': group_updates})
         return super().create(vals_list)
 
-    def write(self, vals):
+    def write(self, values):
         old_officers = self.env['res.users']
-        if 'attendance_manager_id' in vals:
+        if 'attendance_manager_id' in values:
             old_officers = self.attendance_manager_id
             # Officer was added
-            if vals['attendance_manager_id']:
-                officer = self.env['res.users'].browse(vals['attendance_manager_id'])
+            if values['attendance_manager_id']:
+                officer = self.env['res.users'].browse(values['attendance_manager_id'])
                 officers_group = self.env.ref('hr_attendance.group_hr_attendance_officer', raise_if_not_found=False)
                 if officers_group and not officer.has_group('hr_attendance.group_hr_attendance_officer'):
-                    officer.sudo().write({'group_ids': [(4, officers_group.id)]})
+                    officer.sudo().write({'groups_id': [(4, officers_group.id)]})
 
-        res = super().write(vals)
+        res = super(HrEmployee, self).write(values)
         old_officers.sudo()._clean_attendance_officers()
 
         return res
@@ -194,27 +197,6 @@ class HrEmployee(models.Model):
                 empl_name=self.sudo().name))
         return attendance
 
-    @api.model
-    def get_overtime_data(self, domain=None, employee_id=None):
-        domain = [] if domain is None else domain
-        validated_overtime = {
-            attendance[0].id: attendance[1]
-            for attendance in self.env["hr.attendance"]._read_group(
-                domain=domain,
-                groupby=['employee_id'],
-                aggregates=['validated_overtime_hours:sum']
-            )
-        }
-        overtime_adjustments = {
-            overtime[0].id: overtime[1]
-            for overtime in self.env["hr.attendance.overtime"]._read_group(
-                domain=[('employee_id', '=', employee_id), ('adjustment', '=', True)],
-                groupby=['employee_id'],
-                aggregates=['duration:sum']
-            )
-        }
-        return {"validated_overtime": validated_overtime, "overtime_adjustments": overtime_adjustments}
-
     def action_open_last_month_attendances(self):
         self.ensure_one()
         return {
@@ -223,55 +205,21 @@ class HrEmployee(models.Model):
             "res_model": "hr.attendance",
             "views": [[self.env.ref('hr_attendance.hr_attendance_employee_simple_tree_view').id, "list"]],
             "context": {
-                "create": 0,
-                "search_default_check_in_filter": 1,
+                "create": 0
             },
-            "domain": [('employee_id', '=', self.id)]
+            "domain": [('employee_id', '=', self.id),
+                       ('check_in', ">=", fields.datetime.today().replace(day=1, hour=0, minute=0))]
         }
 
-    def action_open_total_overtime(self):
+    def action_open_last_month_overtime(self):
         self.ensure_one()
         return {
             "type": "ir.actions.act_window",
-            "name": _("Extra Hours"),
+            "name": _("Attendances This Month"),
             "res_model": "hr.attendance",
             "views": [[self.env.ref('hr_attendance.hr_attendance_validated_hours_employee_simple_tree_view').id, "list"]],
             "context": {
-                "create": 0,
-                "employee_id": self.id,
-                "model": 'hr.employee',
+                "create": 0
             },
             "domain": [('employee_id', '=', self.id), ('overtime_status', '=', 'approved')]
-        }
-
-    @api.depends("user_id.im_status", "attendance_state")
-    def _compute_presence_state(self):
-        """
-        Override to include checkin/checkout in the presence state
-        Attendance has the second highest priority after login
-        """
-        super()._compute_presence_state()
-        employees = self.filtered(lambda e: e.hr_presence_state != "present")
-        employee_to_check_working = self.filtered(lambda e: e.attendance_state == "checked_out"
-                                                            and e.hr_presence_state == "out_of_working_hour")
-        working_now_list = employee_to_check_working._get_employee_working_now()
-        for employee in employees:
-            if employee.attendance_state == "checked_out" and employee.hr_presence_state == "out_of_working_hour" and \
-                    employee.id in working_now_list:
-                employee.hr_presence_state = "absent"
-            elif employee.attendance_state == "checked_in":
-                employee.hr_presence_state = "present"
-
-    def _compute_presence_icon(self):
-        res = super()._compute_presence_icon()
-        # All employee must chek in or check out. Everybody must have an icon
-        for employee in self:
-            employee.show_hr_icon_display = employee.company_id.hr_presence_control_attendance or bool(employee.user_id)
-        return res
-
-    def open_barcode_scanner(self):
-        return {
-            "type": "ir.actions.client",
-            "tag": "employee_barcode_scanner",
-            "name": "Badge Scanner"
         }

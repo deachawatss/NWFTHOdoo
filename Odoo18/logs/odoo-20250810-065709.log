@@ -1,0 +1,79 @@
+2025-08-09 23:57:10,653 38474 INFO ? odoo: Odoo version 18.0 
+2025-08-09 23:57:10,653 38474 INFO ? odoo: Using configuration file at /home/deachawat/dev/projects/Odoo/Odoo18/odoo-dev.conf 
+2025-08-09 23:57:10,653 38474 INFO ? odoo: addons paths: ['/home/deachawat/dev/projects/Odoo/Odoo18/odoo/addons', '/home/deachawat/dev/projects/Odoo/Odoo18/.local/share/Odoo/addons/18.0', '/home/deachawat/dev/projects/Odoo/Odoo18/addons', '/home/deachawat/dev/projects/Odoo/Odoo18/custom_addons'] 
+2025-08-09 23:57:10,653 38474 INFO ? odoo: database: admin@localhost:5432 
+2025-08-09 23:57:10,666 38474 CRITICAL ? odoo.modules.module: Couldn't load module base 
+2025-08-09 23:57:10,667 38474 ERROR ? odoo.service.server: Failed to load server-wide module `base`. 
+Traceback (most recent call last):
+  File "/home/deachawat/dev/projects/Odoo/Odoo18/odoo/service/server.py", line 1307, in load_server_wide_modules
+    odoo.modules.module.load_openerp_module(m)
+  File "/home/deachawat/dev/projects/Odoo/Odoo18/odoo/modules/module.py", line 384, in load_openerp_module
+    __import__(qualname)
+  File "/home/deachawat/dev/projects/Odoo/Odoo18/odoo/addons/base/__init__.py", line 5, in <module>
+    from . import models
+  File "/home/deachawat/dev/projects/Odoo/Odoo18/odoo/addons/base/models/__init__.py", line 3, in <module>
+    from . import assetsbundle
+  File "/home/deachawat/dev/projects/Odoo/Odoo18/odoo/addons/base/models/assetsbundle.py", line 21, in <module>
+    from rjsmin import jsmin as rjsmin
+ModuleNotFoundError: No module named 'rjsmin'
+2025-08-09 23:57:10,675 38474 CRITICAL ? odoo.modules.module: Couldn't load module web 
+2025-08-09 23:57:10,675 38474 ERROR ? odoo.service.server: Failed to load server-wide module `web`.
+The `web` module is provided by the addons found in the `openerp-web` project.
+Maybe you forgot to add those addons in your addons_path configuration. 
+Traceback (most recent call last):
+  File "/home/deachawat/dev/projects/Odoo/Odoo18/odoo/service/server.py", line 1307, in load_server_wide_modules
+    odoo.modules.module.load_openerp_module(m)
+  File "/home/deachawat/dev/projects/Odoo/Odoo18/odoo/modules/module.py", line 384, in load_openerp_module
+    __import__(qualname)
+  File "/home/deachawat/dev/projects/Odoo/Odoo18/addons/web/__init__.py", line 4, in <module>
+    from . import controllers
+  File "/home/deachawat/dev/projects/Odoo/Odoo18/addons/web/controllers/__init__.py", line 4, in <module>
+    from . import binary
+  File "/home/deachawat/dev/projects/Odoo/Odoo18/addons/web/controllers/binary.py", line 20, in <module>
+    from odoo.addons.base.models.assetsbundle import ANY_UNIQUE
+  File "/home/deachawat/dev/projects/Odoo/Odoo18/odoo/addons/base/__init__.py", line 5, in <module>
+    from . import models
+  File "/home/deachawat/dev/projects/Odoo/Odoo18/odoo/addons/base/models/__init__.py", line 3, in <module>
+    from . import assetsbundle
+  File "/home/deachawat/dev/projects/Odoo/Odoo18/odoo/addons/base/models/assetsbundle.py", line 21, in <module>
+    from rjsmin import jsmin as rjsmin
+ModuleNotFoundError: No module named 'rjsmin'
+2025-08-09 23:57:10,680 38474 WARNING ? odoo.service.server: 'inotify' module not installed. Code autoreload feature is disabled 
+2025-08-09 23:57:10,681 38474 INFO ? odoo.service.server: HTTP service (werkzeug) running on Wind.:8069 
+2025-08-09 23:57:17,107 38474 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:57:17] "GET / HTTP/1.1" 404 - 1 0.003 0.013
+2025-08-09 23:57:17,744 38474 ERROR ? odoo.http: Exception during request handling. 
+Traceback (most recent call last):
+  File "/home/deachawat/dev/projects/Odoo/Odoo18/odoo/modules/module.py", line 343, in load_manifest
+    manifest['version'] = adapt_version(manifest['version'])
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/deachawat/dev/projects/Odoo/Odoo18/odoo/modules/module.py", line 463, in adapt_version
+    raise ValueError(f"Invalid version {base_version!r}. Modules should have a version in format `x.y`, `x.y.z`,"
+ValueError: Invalid version '17.0.1.0.0'. Modules should have a version in format `x.y`, `x.y.z`, `18.0.x.y` or `18.0.x.y.z`.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/deachawat/dev/projects/Odoo/Odoo18/odoo/http.py", line 2528, in __call__
+    if self.get_static_file(httprequest.path):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/deachawat/dev/projects/Odoo/Odoo18/odoo/http.py", line 2427, in get_static_file
+    if (module not in self.statics or static != 'static' or not resource):
+                      ^^^^^^^^^^^^
+  File "/home/deachawat/dev/projects/Odoo/Odoo18/odoo/tools/func.py", line 42, in __get__
+    value = self.fget(obj)
+            ^^^^^^^^^^^^^^
+  File "/home/deachawat/dev/projects/Odoo/Odoo18/odoo/http.py", line 2397, in statics
+    manifest = get_manifest(module)
+               ^^^^^^^^^^^^^^^^^^^^
+  File "/home/deachawat/dev/projects/Odoo/Odoo18/odoo/modules/module.py", line 363, in get_manifest
+    return copy.deepcopy(_get_manifest_cached(module, mod_path))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/deachawat/dev/projects/Odoo/Odoo18/odoo/modules/module.py", line 367, in _get_manifest_cached
+    return load_manifest(module, mod_path)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/deachawat/dev/projects/Odoo/Odoo18/odoo/modules/module.py", line 346, in load_manifest
+    raise ValueError(f"Module {module}: invalid manifest") from e
+ValueError: Module hr_employee_id: invalid manifest
+2025-08-09 23:57:17,745 38474 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:57:17] "GET /web/database/manager HTTP/1.1" 500 - 1 0.002 0.141
+2025-08-09 23:57:18,412 38474 INFO ? odoo.service.server: Initiating shutdown 
+2025-08-09 23:57:18,412 38474 INFO ? odoo.service.server: Hit CTRL-C again or send a second signal to force the shutdown. 

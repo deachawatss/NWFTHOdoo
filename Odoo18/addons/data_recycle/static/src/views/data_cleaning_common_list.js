@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { ListController } from "@web/views/list/list_controller";
 import { useService } from "@web/core/utils/hooks";
 

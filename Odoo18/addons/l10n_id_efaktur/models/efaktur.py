@@ -7,8 +7,8 @@ from odoo.exceptions import UserError, ValidationError
 import re
 
 
-class L10n_Id_EfakturEfakturRange(models.Model):
-    _name = 'l10n_id_efaktur.efaktur.range'
+class Efaktur(models.Model):
+    _name = "l10n_id_efaktur.efaktur.range"
     _description = "Available E-faktur range"
     _rec_names_search = ["min", "max"]
 

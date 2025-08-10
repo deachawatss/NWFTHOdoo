@@ -4,7 +4,7 @@
 {
     'name': 'Manufacturing Expiry',
     'version': '1.0',
-    'category': 'Supply Chain/Manufacturing',
+    'category': 'Manufacturing/Manufacturing',
     'summary': 'Manufacturing Expiry',
     'description': """
 Technical module.
@@ -15,6 +15,5 @@ Technical module.
     ],
     'installable': True,
     'auto_install': True,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

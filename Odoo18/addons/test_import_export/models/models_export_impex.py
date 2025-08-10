@@ -1,5 +1,5 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.osv.expression import FALSE_DOMAIN
 
 
 def selection_fn(self):
@@ -37,27 +37,6 @@ MODELS = [
     ('reference', fields.Reference([('export.integer', 'integer')], 'export.reference')),
 ]
 
-
-def generic_compute_display_name(self):
-    for record in self:
-        record.display_name = f"{self._name}:{record.value}"
-
-
-def generic_search_display_name(self, operator, value):
-    if operator != 'in':
-        return NotImplemented
-    ids = [
-        int(id_str)
-        for v in value
-        if isinstance(v, str)
-        and (parts := v.split(':'))
-        and len(parts) == 2
-        and parts[0] == self._name
-        and (id_str := parts[1]).isdigit()
-    ]
-    return [('value', 'in', ids)]
-
-
 for name, field in MODELS:
 
     class NewModel(models.Model):
@@ -67,11 +46,18 @@ for name, field in MODELS:
         const = fields.Integer(default=4)
         value = field
 
-        _compute_display_name = generic_compute_display_name
-        _search_display_name = generic_search_display_name
+        def _compute_display_name(self):
+            for record in self:
+                record.display_name = f"{self._name}:{record.value}"
+
+        @api.model
+        def _search_display_name(self, operator, value):
+            if isinstance(value, str) and value.split(':')[0] == self._name:
+                return [('value', operator, int(value.split(':')[1]))]
+            return FALSE_DOMAIN
 
 
-class ExportOne2manyChild(models.Model):
+class One2ManyChild(models.Model):
     _name = 'export.one2many.child'
     _description = 'Export One to Many Child'
     # FIXME: orm.py:1161, fix to display_name on m2o field
@@ -82,11 +68,18 @@ class ExportOne2manyChild(models.Model):
     m2o = fields.Many2one('export.integer')
     value = fields.Integer()
 
-    _compute_display_name = generic_compute_display_name
-    _search_display_name = generic_search_display_name
+    def _compute_display_name(self):
+        for record in self:
+            record.display_name = f"{self._name}:{record.value}"
+
+    @api.model
+    def _search_display_name(self, operator, value):
+        if isinstance(value, str) and value.split(':')[0] == self._name:
+            return [('value', operator, int(value.split(':')[1]))]
+        return FALSE_DOMAIN
 
 
-class ExportOne2manyMultiple(models.Model):
+class One2ManyMultiple(models.Model):
     _name = 'export.one2many.multiple'
     _description = 'Export One To Many Multiple'
     _rec_name = 'parent_id'
@@ -97,10 +90,10 @@ class ExportOne2manyMultiple(models.Model):
     child2 = fields.One2many('export.one2many.child.2', 'parent_id')
 
 
-class ExportOne2manyMultipleChild(models.Model):
+class One2ManyChildMultiple(models.Model):
+    _name = 'export.one2many.multiple.child'
     # FIXME: orm.py:1161, fix to display_name on m2o field
     _rec_name = 'value'
-    _name = 'export.one2many.multiple.child'
     _description = 'Export One To Many Multiple Child'
 
     parent_id = fields.Many2one('export.one2many.multiple')
@@ -112,19 +105,19 @@ class ExportOne2manyMultipleChild(models.Model):
             record.display_name = f"{self._name}:{record.value}"
 
 
-class ExportOne2manyChild1(models.Model):
+class One2ManyChild1(models.Model):
     _name = 'export.one2many.child.1'
-    _inherit = ['export.one2many.multiple.child']
+    _inherit = 'export.one2many.multiple.child'
     _description = 'Export One to Many Child 1'
 
 
-class ExportOne2manyChild2(models.Model):
+class One2ManyChild2(models.Model):
     _name = 'export.one2many.child.2'
-    _inherit = ['export.one2many.multiple.child']
+    _inherit = 'export.one2many.multiple.child'
     _description = 'Export One To Many Child 2'
 
 
-class ExportMany2manyOther(models.Model):
+class Many2ManyChild(models.Model):
     _name = 'export.many2many.other'
     _description = 'Export Many to Many Other'
     # FIXME: orm.py:1161, fix to display_name on m2o field
@@ -133,11 +126,18 @@ class ExportMany2manyOther(models.Model):
     str = fields.Char()
     value = fields.Integer()
 
-    _compute_display_name = generic_compute_display_name
-    _search_display_name = generic_search_display_name
+    def _compute_display_name(self):
+        for record in self:
+            record.display_name = f"{self._name}:{record.value}"
+
+    @api.model
+    def _search_display_name(self, operator, value):
+        if isinstance(value, str) and value.split(':')[0] == self._name:
+            return [('value', operator, int(value.split(':')[1]))]
+        return FALSE_DOMAIN
 
 
-class ExportSelectionWithdefault(models.Model):
+class SelectionWithDefault(models.Model):
     _name = 'export.selection.withdefault'
     _description = 'Export Selection With Default'
 
@@ -145,7 +145,7 @@ class ExportSelectionWithdefault(models.Model):
     value = fields.Selection([('1', "Foo"), ('2', "Bar")], default='2')
 
 
-class ExportOne2manyRecursive(models.Model):
+class RecO2M(models.Model):
     _name = 'export.one2many.recursive'
     _description = 'Export One To Many Recursive'
     _rec_name = 'value'
@@ -154,7 +154,7 @@ class ExportOne2manyRecursive(models.Model):
     child = fields.One2many('export.one2many.multiple', 'parent_id')
 
 
-class ExportUnique(models.Model):
+class OnlyOne(models.Model):
     _name = 'export.unique'
     _description = 'Export Unique'
 
@@ -162,64 +162,46 @@ class ExportUnique(models.Model):
     value2 = fields.Integer()
     value3 = fields.Integer()
 
-    _value_unique = models.Constraint('unique (value)')
-    _pair_unique = models.Constraint('unique (value2, value3)')
+    _sql_constraints = [
+        ('value_unique', 'unique (value)', "The value must be unique"),
+        ('pair_unique', 'unique (value2, value3)', "The values must be unique"),
+    ]
 
 
-class ExportInheritsParent(models.Model):
-    _name = 'export.inherits.parent'
-    _description = 'export.inherits.parent'
+class InheritsParent(models.Model):
+    _name = _description = 'export.inherits.parent'
 
     value_parent = fields.Integer()
 
 
-class ExportInheritsChild(models.Model):
-    _name = 'export.inherits.child'
-    _description = 'export.inherits.child'
+class InheritsChild(models.Model):
+    _name = _description = 'export.inherits.child'
     _inherits = {'export.inherits.parent': 'parent_id'}
 
     parent_id = fields.Many2one('export.inherits.parent', required=True, ondelete='cascade')
     value = fields.Integer()
 
 
-class ExportM2oStr(models.Model):
-    _name = 'export.m2o.str'
-    _description = 'export.m2o.str'
+class Many2String(models.Model):
+    _name = _description = 'export.m2o.str'
 
     child_id = fields.Many2one('export.m2o.str.child')
 
 
-class ExportM2oStrChild(models.Model):
-    _name = 'export.m2o.str.child'
-    _description = 'export.m2o.str.child'
+class ChidToString(models.Model):
+    _name = _description = 'export.m2o.str.child'
 
     name = fields.Char()
 
 
-class ExportWithRequiredField(models.Model):
-    _name = 'export.with.required.field'
-    _description = 'export.with.required.field'
+class WithRequiredField(models.Model):
+    _name = _description = 'export.with.required.field'
 
     name = fields.Char()
     value = fields.Integer(required=True)
 
 
-class ExportMany2oneRequiredSubfield(models.Model):
-    _name = 'export.many2one.required.subfield'
-    _description = 'export.many2one.required.subfield'
+class Many2OneRequiredSubfield(models.Model):
+    _name = _description = 'export.many2one.required.subfield'
 
     name = fields.Many2one('export.with.required.field')
-
-
-class WithNonDemoConstraint(models.Model):
-    _name = 'export.with.non.demo.constraint'
-    _description = 'export.with.non.demo.constraint'
-
-    name = fields.Char()
-
-    @api.constrains('name')
-    def _check_name_starts_with_uppercase_except_demo_data(self):
-        if self.env.context.get('install_mode'):
-            return  # skipped on demo data
-        if any(rec.name and rec.name[0].islower() for rec in self):
-            raise ValidationError('Name must start with an uppercase letter')

@@ -1,38 +1,22 @@
-import { Component, useRef } from "@odoo/owl";
+import { Component, useState } from "@odoo/owl";
 
 import { isMobileOS } from "@web/core/browser/feature_detection";
-import { CallPopover } from "@mail/discuss/call/common/call_popover";
+import { Dropdown } from "@web/core/dropdown/dropdown";
+import { DropdownItem } from "@web/core/dropdown/dropdown_item";
 import { _t } from "@web/core/l10n/translation";
 import { useService } from "@web/core/utils/hooks";
-import { useCallActions } from "@mail/discuss/call/common/call_actions";
-import { CallActionButton } from "@mail/discuss/call/common/call_action_button";
-import { usePopover } from "@web/core/popover/popover_hook";
-import { Tooltip } from "@web/core/tooltip/tooltip";
-import { CALL_PROMOTE_FULLSCREEN } from "@mail/discuss/call/common/thread_model_patch";
+import { useCallActions } from "./call_actions";
 
 export class CallActionList extends Component {
-    static components = { CallPopover, CallActionButton };
-    static props = ["thread", "fullscreen?", "compact?"];
+    static components = { Dropdown, DropdownItem };
+    static props = ["thread", "fullscreen", "compact?"];
     static template = "discuss.CallActionList";
 
     setup() {
         super.setup();
-        this.store = useService("mail.store");
-        this.rtc = useService("discuss.rtc");
-        this.pipService = useService("discuss.pip_service");
+        this.store = useState(useService("mail.store"));
+        this.rtc = useState(useService("discuss.rtc"));
         this.callActions = useCallActions();
-        this.more = useRef("more");
-        this.root = useRef("root");
-        this.popover = usePopover(Tooltip, {
-            position: "top-middle",
-        });
-    }
-
-    get isPromotingFullscreen() {
-        return Boolean(
-            !this.env.pipWindow &&
-                this.props.thread.promoteFullscreen === CALL_PROMOTE_FULLSCREEN.ACTIVE
-        );
     }
 
     get MORE() {
@@ -40,11 +24,11 @@ export class CallActionList extends Component {
     }
 
     get isOfActiveCall() {
-        return Boolean(this.props.thread.eq(this.rtc.channel));
+        return Boolean(this.props.thread.eq(this.rtc.state?.channel));
     }
 
     get isSmall() {
-        return Boolean(this.props.compact && !this.props.fullscreen?.isActive);
+        return Boolean(this.props.compact && !this.props.fullscreen.isActive);
     }
 
     get isMobileOS() {
@@ -66,24 +50,5 @@ export class CallActionList extends Component {
      */
     async onClickToggleAudioCall(ev, { camera = false } = {}) {
         await this.rtc.toggleCall(this.props.thread, { camera, fullscreen: this.props.fullscreen });
-    }
-
-    onMouseenterMore() {
-        if (this.isPromotingFullscreen) {
-            this.popover.open(this.more.el, { tooltip: _t("Enter full screen!") });
-            this.props.thread.promoteFullscreen = CALL_PROMOTE_FULLSCREEN.DISCARDED;
-        }
-    }
-
-    onMouseleaveMore() {
-        if (this.popover.isOpen) {
-            this.popover.close();
-        }
-    }
-
-    onClickMore() {
-        if (this.popover.isOpen) {
-            this.popover.close();
-        }
     }
 }

@@ -5,7 +5,7 @@ from odoo import api, fields, models, _
 from odoo.tools import float_round
 
 
-class LunchCashmove(models.Model):
+class LunchCashMove(models.Model):
     """ Two types of cashmoves: payment (credit) or order (debit) """
     _name = 'lunch.cashmove'
     _description = 'Lunch Cashmove'
@@ -20,7 +20,7 @@ class LunchCashmove(models.Model):
 
     def _compute_display_name(self):
         for cashmove in self:
-            cashmove.display_name = '{} {}'.format(_('Lunch Cashmove'), '#%s' % (cashmove.id or "_"))
+            cashmove.display_name = '{} {}'.format(_('Lunch Cashmove'), '#%d' % cashmove.id)
 
     @api.model
     def get_wallet_balance(self, user, include_config=True):

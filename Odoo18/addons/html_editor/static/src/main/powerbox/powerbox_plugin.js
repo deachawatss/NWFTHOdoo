@@ -1,4 +1,5 @@
 import { Plugin } from "@html_editor/plugin";
+import { isEmptyBlock } from "@html_editor/utils/dom_info";
 import { reactive } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { rotate } from "@web/core/utils/arrays";
@@ -73,8 +74,23 @@ import { baseContainerGlobalSelector } from "@html_editor/utils/base_container";
  * @property {string} icon
  * @property {Function} run
  * @property {TranslatedString[]} [keywords]
- * @property { (selection: EditorSelection) => boolean } isAvailable
+ * @property { (selection: EditorSelection) => boolean  } [isAvailable]
  */
+
+/**
+ * @param {SelectionData} selectionData
+ */
+function target(selectionData) {
+    const node = selectionData.editableSelection.anchorNode;
+    const el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+    if (
+        selectionData.documentSelectionIsInEditable &&
+        el.matches(baseContainerGlobalSelector) &&
+        isEmptyBlock(el)
+    ) {
+        return el;
+    }
+}
 
 /**
  * @typedef { Object } PowerboxShared
@@ -108,13 +124,13 @@ export class PowerboxPlugin extends Plugin {
         ],
         power_buttons: withSequence(100, {
             commandId: "openPowerbox",
-            description: _t("More options"),
-            icon: "oi-ellipsis-v",
+            title: _t("More options"),
+            icon: "fa-ellipsis-v",
         }),
-        hints: withSequence(30, {
-            selector: baseContainerGlobalSelector,
+        hints: {
             text: _t('Type "/" for commands'),
-        }),
+            target,
+        },
     };
 
     setup() {
@@ -140,7 +156,9 @@ export class PowerboxPlugin extends Plugin {
      */
     getAvailablePowerboxCommands() {
         const selection = this.dependencies.selection.getEditableSelection();
-        return this.powerboxCommands.filter((cmd) => cmd.isAvailable(selection));
+        return this.powerboxCommands.filter(
+            (cmd) => cmd.isAvailable === undefined || cmd.isAvailable(selection)
+        );
     }
 
     /**
@@ -157,14 +175,10 @@ export class PowerboxPlugin extends Plugin {
         return powerboxItems.map((/** @type {PowerboxItem} */ item) => {
             const command = this.dependencies.userCommand.getCommand(item.commandId);
             return {
-                ...pick(command, "title", "description", "icon"),
+                ...pick(command, "title", "description", "icon", "isAvailable"),
                 ...omit(item, "commandId", "commandParams"),
                 categoryName: categoryDict[item.categoryId].name,
                 run: () => command.run(item.commandParams),
-                isAvailable: (selection) =>
-                    [command.isAvailable, item.isAvailable]
-                        .filter(Boolean)
-                        .every((predicate) => predicate(selection)),
             };
         });
     }
@@ -220,7 +234,6 @@ export class PowerboxPlugin extends Plugin {
         const key = ev.key;
         switch (key) {
             case "Escape":
-                ev.stopImmediatePropagation();
                 this.closePowerbox();
                 break;
             case "Enter":

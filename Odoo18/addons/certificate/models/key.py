@@ -31,7 +31,7 @@ def _int_to_bytes(value, byteorder='big'):
     return value.to_bytes((value.bit_length() + 7) // 8, byteorder=byteorder)
 
 
-class CertificateKey(models.Model):
+class Key(models.Model):
     _name = 'certificate.key'
     _description = 'Cryptographic Keys'
 
@@ -219,7 +219,7 @@ class CertificateKey(models.Model):
         if self.public:
             raise UserError(_("A private key is required to decrypt data."))
         if hashing_algorithm not in STR_TO_HASH:
-            raise UserError(f"Unsupported hashing algorithm '{hashing_algorithm}'. Currently supported: sha1 and sha256.")  # pylint: disable=missing-gettext
+            raise UserError(f"Unsupported hashing algorithm '{hashing_algorithm}'. Currently supported: sha1 and sha256.")
 
         private_key = serialization.load_pem_private_key(base64.b64decode(self.pem_key), None)
         if not isinstance(private_key, rsa.RSAPrivateKey):
@@ -258,7 +258,7 @@ class CertificateKey(models.Model):
             pwd = pwd.encode('utf-8')
 
         if hashing_algorithm not in STR_TO_HASH:
-            raise UserError(f"Unsupported hashing algorithm '{hashing_algorithm}'. Currently supported: sha1 and sha256.")  # pylint: disable=missing-gettext
+            raise UserError(f"Unsupported hashing algorithm '{hashing_algorithm}'. Currently supported: sha1 and sha256.")
 
         try:
             private_key = serialization.load_pem_private_key(base64.b64decode(pem_key), pwd)
@@ -326,7 +326,7 @@ class CertificateKey(models.Model):
         :rtype: certificate.key
         '''
         if curve not in STR_TO_CURVE:
-            raise UserError(f"Unsupported curve algorithm '{curve}'. Currently supported: SECP256R1.")  # pylint: disable=missing-gettext
+            raise UserError(f"Unsupported curve algorithm '{curve}'. Currently supported: SECP256R1.")
 
         private_key = ec.generate_private_key(STR_TO_CURVE[curve])
 

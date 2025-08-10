@@ -3,7 +3,6 @@
 import json
 import logging
 import re
-
 import requests
 
 from odoo import _, api, fields, models
@@ -11,7 +10,6 @@ from odoo.exceptions import ValidationError
 
 from odoo.addons.payment import utils as payment_utils
 from odoo.addons.payment_adyen import const
-
 
 _logger = logging.getLogger(__name__)
 
@@ -43,14 +41,14 @@ class PaymentProvider(models.Model):
     #=== CRUD METHODS ===#
 
     @api.model_create_multi
-    def create(self, vals_list):
-        for values in vals_list:
+    def create(self, values_list):
+        for values in values_list:
             self._adyen_extract_prefix_from_api_url(values)
-        return super().create(vals_list)
+        return super().create(values_list)
 
-    def write(self, vals):
-        self._adyen_extract_prefix_from_api_url(vals)
-        return super().write(vals)
+    def write(self, values):
+        self._adyen_extract_prefix_from_api_url(values)
+        return super().write(values)
 
     @api.model
     def _adyen_extract_prefix_from_api_url(self, values):

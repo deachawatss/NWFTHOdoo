@@ -47,13 +47,17 @@ class TestDeleteOrder(PurchaseTestCommon):
 
         partner = self.env['res.partner'].create({'name': 'My Partner'})
 
+        stock_location = self.env.ref('stock.warehouse0').out_type_id.default_location_src_id
+        cust_location = self.env.ref('stock.stock_location_customers')
+        picking_type_out = self.ref('stock.picking_type_out')
         move = self.env['stock.move'].create({
+            'name': self.product_2.name,
             'product_id': self.product_2.id,
             'product_uom_qty': 1,
             'product_uom': self.product_2.uom_id.id,
-            'location_id': self.stock_location.id,
-            'location_dest_id': self.customer_location.id,
-            'picking_type_id': self.picking_type_out.id,
+            'location_id': stock_location.id,
+            'location_dest_id': cust_location.id,
+            'picking_type_id': picking_type_out,
         })
         move._action_confirm()
         self.assertEqual(move.state, 'confirmed', 'Move should be confirmed as there is no quantity in stock')
@@ -64,7 +68,7 @@ class TestDeleteOrder(PurchaseTestCommon):
                 Command.create({
                     'product_id': self.product_2.id,
                     'product_qty': 1.0,
-                    'product_uom_id': self.product_2.uom_id.id,
+                    'product_uom': self.product_2.uom_id.id,
                     'propagate_cancel': False,
                 })],
         })

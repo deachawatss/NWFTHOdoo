@@ -18,17 +18,8 @@
             'website_mail_group/static/src/snippets/s_group/options.js',
         ],
         'web.assets_frontend': [
-            'website_mail_group/static/src/snippets/**/*.js',
-            ('remove', 'website_mail_group/static/src/**/*.edit.js'),
-            ('remove', 'website_mail_group/static/src/**/options.js'),
-        ],
-        'website.assets_edit_frontend': [
-            'website_mail_group/static/src/**/*.edit.js',
-        ],
-        'website.website_builder_assets': [
-            'website_mail_group/static/src/website_builder/**/*',
+            'website_mail_group/static/src/snippets/s_group/000.js',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

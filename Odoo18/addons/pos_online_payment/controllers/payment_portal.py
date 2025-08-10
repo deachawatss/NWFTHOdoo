@@ -36,7 +36,7 @@ class PaymentPortal(payment_portal.PaymentPortal):
 
     @staticmethod
     def _get_amount_to_pay(order_to_pay_sudo):
-        if order_to_pay_sudo.state in ('paid', 'done'):
+        if order_to_pay_sudo.state in ('paid', 'done', 'invoiced'):
             return 0.0
         amount = order_to_pay_sudo._get_checked_next_online_payment_amount()
         if amount and PaymentPortal._is_valid_amount(amount, order_to_pay_sudo.currency_id):
@@ -158,7 +158,7 @@ class PaymentPortal(payment_portal.PaymentPortal):
     def _render_pay(self, rendering_context):
         return request.render('pos_online_payment.pay', rendering_context)
 
-    @http.route('/pos/pay/transaction/<int:pos_order_id>', type='jsonrpc', auth='public', website=True, sitemap=False)
+    @http.route('/pos/pay/transaction/<int:pos_order_id>', type='json', auth='public', website=True, sitemap=False)
     def pos_order_pay_transaction(self, pos_order_id, access_token=None, **kwargs):
         """ Behaves like payment.PaymentPortal.payment_transaction but for POS online payment.
 
@@ -289,6 +289,8 @@ class PaymentPortal(payment_portal.PaymentPortal):
         tx_sudo._process_pos_online_payment()
 
         rendering_context['state'] = 'success'
+        if exit_route:
+            return request.redirect(exit_route)
         return self._render_pay_confirmation(rendering_context)
 
     def _render_pay_confirmation(self, rendering_context):

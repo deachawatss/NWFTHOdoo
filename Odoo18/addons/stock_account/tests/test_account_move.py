@@ -18,12 +18,11 @@ class TestAccountMoveStockCommon(AccountTestInvoicingCommon):
             cls.stock_output_account,
             cls.stock_valuation_account,
             cls.expense_account,
-            cls.income_account,
             cls.stock_journal,
         ) = _create_accounting_data(cls.env)
 
         # `all_categ` should not be altered, so we can test the `post_init` hook of `stock_account`
-        cls.all_categ = cls.env.ref('product.product_category_goods')
+        cls.all_categ = cls.env.ref('product.product_category_all')
 
         cls.auto_categ = cls.env['product.category'].create({
             'name': 'child_category',
@@ -237,6 +236,7 @@ class TestAccountMove(TestAccountMoveStockCommon):
             'picking_type_id': stock_location.warehouse_id.out_type_id.id,
         })
         sm = self.env['stock.move'].create({
+            'name': product.name,
             'product_id': product.id,
             'product_uom_qty': 1,
             'product_uom': product.uom_id.id,
@@ -296,6 +296,7 @@ class TestAccountMove(TestAccountMoveStockCommon):
         })
 
         sm = self.env['stock.move'].create({
+            'name': product.name,
             'product_id': product.id,
             'product_uom_qty': 1,
             'product_uom': product.uom_id.id,
@@ -375,14 +376,17 @@ class TestAccountMove(TestAccountMoveStockCommon):
         wizard = self.env['stock.inventory.adjustment.name'].create({'quant_ids': quants})
         wizard.action_apply()
         inv_adjustment_journal_items = self.env['account.move.line'].search([('product_id', 'in', products.ids)], order='id asc', limit=4)
-        prod_a_accounts = self.product_a.product_tmpl_id.get_product_accounts()
-        prod_b_accounts = self.product_b.product_tmpl_id.get_product_accounts()
+        stock_input_account, stock_valuation_account, stock_output_account = (
+            self.auto_categ.property_stock_account_input_categ_id,
+            self.auto_categ.property_stock_valuation_account_id,
+            self.auto_categ.property_stock_account_output_categ_id,
+        )
         self.assertRecordValues(
             inv_adjustment_journal_items,
             [
-                {'account_id': prod_a_accounts['income'].id, 'product_id': self.product_a.id},
-                {'account_id': prod_a_accounts['stock_valuation'].id, 'product_id': self.product_a.id},
-                {'account_id': prod_b_accounts['stock_valuation'].id, 'product_id': self.product_b.id},
-                {'account_id': prod_b_accounts['expense'].id, 'product_id': self.product_b.id},
+                {'account_id': stock_input_account.id, 'product_id': self.product_a.id},
+                {'account_id': stock_valuation_account.id, 'product_id': self.product_a.id},
+                {'account_id': stock_valuation_account.id, 'product_id': self.product_b.id},
+                {'account_id': stock_output_account.id, 'product_id': self.product_b.id},
             ]
         )

@@ -1,10 +1,11 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 from odoo import fields, models, api
+from odoo.osv import expression
 
 
-class L10n_LatamDocumentType(models.Model):
+class L10nLatamDocumentType(models.Model):
+
     _name = 'l10n_latam.document.type'
-
     _description = 'Latam Document Type'
     _order = 'sequence, id'
     _rec_names_search = ['name', 'code']

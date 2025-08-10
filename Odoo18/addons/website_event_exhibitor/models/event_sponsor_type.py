@@ -4,8 +4,8 @@
 from odoo import fields, models
 
 
-class EventSponsorType(models.Model):
-    _name = 'event.sponsor.type'
+class SponsorType(models.Model):
+    _name = "event.sponsor.type"
     _description = 'Event Sponsor Level'
     _order = "sequence"
 

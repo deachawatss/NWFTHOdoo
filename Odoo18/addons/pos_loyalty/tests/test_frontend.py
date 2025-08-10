@@ -7,7 +7,6 @@ from odoo.tests import tagged
 
 from odoo.addons.point_of_sale.tests.test_frontend import TestPointOfSaleHttpCommon
 from odoo.addons.point_of_sale.tests.common_setup_methods import setup_product_combo_items
-from odoo.addons.point_of_sale.tests.common import archive_products
 
 
 @tagged("post_install", "-at_install")
@@ -36,7 +35,7 @@ class TestUi(TestPointOfSaleHttpCommon):
                 'discount': 50,
                 'discount_mode': 'percent',
                 'discount_applicability': 'specific',
-                'discount_product_ids': cls.whiteboard_pen.product_variant_id | cls.magnetic_board.product_variant_id | cls.desk_organizer.product_variant_id,
+                'discount_product_ids': cls.whiteboard_pen | cls.magnetic_board | cls.desk_organizer,
             })],
         })
         cls.promo_programs |= cls.code_promo_program
@@ -84,13 +83,13 @@ class TestUi(TestPointOfSaleHttpCommon):
             'trigger': 'with_code',
             'applies_on': 'current',
             'rule_ids': [(0, 0, {
-                'product_ids': cls.desk_organizer.product_variant_ids.ids,
+                'product_ids': cls.desk_organizer,
                 'reward_point_mode': 'unit',
                 'minimum_qty': 3,
             })],
             'reward_ids': [(0, 0, {
                 'reward_type': 'product',
-                'reward_product_id': cls.desk_organizer.product_variant_id.id,
+                'reward_product_id': cls.desk_organizer.id,
                 'reward_product_qty': 1,
                 'required_points': 1.5,
             })],
@@ -117,7 +116,6 @@ class TestUi(TestPointOfSaleHttpCommon):
             'use_pricelist': False,
         })
         self.main_pos_config.with_user(self.pos_user).open_ui()
-        self.product_b.uom_id = 1
 
     def create_programs(self, details):
         """
@@ -141,7 +139,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         # that will be used in the second part of the tour.
         #
         self.pos_user.write({
-            'group_ids': [
+            'groups_id': [
                 (4, self.env.ref('stock.group_stock_user').id),
             ]
         })
@@ -202,7 +200,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         })
 
         self.pos_user.write({
-            'group_ids': [
+            'groups_id': [
                 (4, self.env.ref('stock.group_stock_user').id),
             ]
         })
@@ -224,13 +222,13 @@ class TestUi(TestPointOfSaleHttpCommon):
             'trigger': 'auto',
             'applies_on': 'current',
             'rule_ids': [(0, 0, {
-                'product_ids': self.desk_organizer.product_variant_id.ids,
+                'product_ids': self.desk_organizer,
                 'reward_point_mode': 'unit',
                 'minimum_qty': 0,
             })],
             'reward_ids': [(0, 0, {
                 'reward_type': 'product',
-                'reward_product_id': self.desk_organizer.product_variant_id.id,
+                'reward_product_id': self.desk_organizer.id,
                 'reward_product_qty': 1,
                 'required_points': 2,
             })],
@@ -241,13 +239,13 @@ class TestUi(TestPointOfSaleHttpCommon):
             'trigger': 'auto',
             'applies_on': 'current',
             'rule_ids': [(0, 0, {
-                'product_ids': self.magnetic_board.product_variant_ids.ids,
+                'product_ids': self.magnetic_board,
                 'reward_point_mode': 'unit',
                 'minimum_qty': 0,
             })],
             'reward_ids': [(0, 0, {
                 'reward_type': 'product',
-                'reward_product_id': self.whiteboard_pen.product_variant_id.id,
+                'reward_product_id': self.whiteboard_pen.id,
                 'reward_product_qty': 1,
                 'required_points': 3,
             })],
@@ -258,7 +256,7 @@ class TestUi(TestPointOfSaleHttpCommon):
             'trigger': 'auto',
             'applies_on': 'current',
             'rule_ids': [(0, 0, {
-                'product_ids': (self.wall_shelf.product_variant_id | self.small_shelf.product_variant_id).ids,
+                'product_ids': (self.wall_shelf | self.small_shelf).ids,
                 'reward_point_mode': 'unit',
                 'minimum_qty': 0,
             })],
@@ -266,7 +264,7 @@ class TestUi(TestPointOfSaleHttpCommon):
                 'reward_type': 'product',
                 'reward_product_tag_id': self.env['product.tag'].create({
                     'name': 'reward_product_tag',
-                    'product_product_ids': (self.desk_pad.product_variant_id | self.monitor_stand.product_variant_id).ids,
+                    'product_product_ids': (self.desk_pad | self.monitor_stand).ids,
                 }).id,
                 'reward_product_qty': 1,
                 'required_points': 2,
@@ -276,7 +274,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         (self.promo_programs | self.coupon_program).write({'active': False})
 
         self.pos_user.write({
-            'group_ids': [
+            'groups_id': [
                 (4, self.env.ref('stock.group_stock_user').id),
             ]
         })
@@ -300,7 +298,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         # In this program, each whiteboard pen gives 1 point.
         # 4 points can be used to get a free whiteboard pen.
         self.pos_user.write({
-            'group_ids': [
+            'groups_id': [
                 (4, self.env.ref('stock.group_stock_user').id),
             ]
         })
@@ -311,13 +309,13 @@ class TestUi(TestPointOfSaleHttpCommon):
             'trigger': 'auto',
             'applies_on': 'both',
             'rule_ids': [(0, 0, {
-                'product_ids': self.whiteboard_pen.product_variant_id.ids,
+                'product_ids': self.whiteboard_pen.ids,
                 'reward_point_mode': 'unit',
                 'minimum_qty': 1,
             })],
             'reward_ids': [(0, 0, {
                 'reward_type': 'product',
-                'reward_product_id': self.whiteboard_pen.product_variant_id.id,
+                'reward_product_id': self.whiteboard_pen.id,
                 'reward_product_qty': 1,
                 'required_points': 4,
             })],
@@ -361,7 +359,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         })
 
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config.id,
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
             "PosLoyaltyChangeRewardQty",
             login="pos_user",
         )
@@ -371,11 +369,11 @@ class TestUi(TestPointOfSaleHttpCommon):
         # 5 points can be used to get a free whiteboard pen.
         # and the whiteboard pen sale price is zero
         self.pos_user.write({
-            'group_ids': [
+            'groups_id': [
                 (4, self.env.ref('stock.group_stock_user').id),
             ]
         })
-        self.whiteboard_pen.product_variant_id.write({'lst_price': 1})
+        self.whiteboard_pen.write({'lst_price': 1})
 
         loyalty_program = self.env['loyalty.program'].create({
             'name': 'Loyalty Program',
@@ -389,7 +387,7 @@ class TestUi(TestPointOfSaleHttpCommon):
             })],
             'reward_ids': [(0, 0, {
                 'reward_type': 'product',
-                'reward_product_id': self.whiteboard_pen.product_variant_id.id,
+                'reward_product_id': self.whiteboard_pen.id,
                 'reward_product_qty': 1,
                 'required_points': 5,
             })],
@@ -409,18 +407,18 @@ class TestUi(TestPointOfSaleHttpCommon):
     def test_loyalty_free_product_rewards_2(self):
         free_product = self.env['loyalty.program'].create({
             'name': 'Buy 2 Take 1 desk_organizer',
-            'program_type': 'buy_x_get_y',
+            'program_type': 'promotion',
             'trigger': 'auto',
             'applies_on': 'current',
             'rule_ids': [(0, 0, {
-                'product_ids': self.desk_organizer.product_variant_id.ids,
+                'product_ids': self.desk_organizer,
                 'reward_point_amount': 1,
                 'reward_point_mode': 'order',
                 'minimum_qty': 2,
             })],
             'reward_ids': [(0, 0, {
                 'reward_type': 'product',
-                'reward_product_id': self.desk_organizer.product_variant_id.id,
+                'reward_product_id': self.desk_organizer.id,
                 'reward_product_qty': 1,
                 'required_points': 1,
             })],
@@ -428,7 +426,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         (self.promo_programs | self.coupon_program).write({'active': False})
 
         self.pos_user.write({
-            'group_ids': [
+            'groups_id': [
                 (4, self.env.ref('stock.group_stock_user').id),
             ]
         })
@@ -508,7 +506,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         Test for gift card program.
         """
         self.pos_user.write({
-            'group_ids': [
+            'groups_id': [
                 (4, self.env.ref('stock.group_stock_user').id),
             ]
         })
@@ -516,7 +514,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         # Deactivate all other programs to avoid interference
         (LoyaltyProgram.search([])).write({'pos_ok': False})
         # But activate the gift_card_product_50 because it's shared among new gift card programs.
-        self.env.ref('loyalty.gift_card_product_50').product_tmpl_id.write({'active': True})
+        self.env.ref('loyalty.gift_card_product_50').write({'active': True})
         # Create gift card program
         gift_card_program = self.create_programs([('arbitrary_name', 'gift_card')])['arbitrary_name']
         # Run the tour to create a gift card
@@ -528,7 +526,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         gift_card_program.coupon_ids.code = '044123456'
         # Run the tour to use the gift card
         self.start_pos_tour("GiftCardProgramTour2")
-        # Check that gift cards are used (Whiteboard Pen price is 1.20)
+        # Check that gift cards are used
         self.assertEqual(gift_card_program.coupon_ids.points, 46.8)
         loyalty_history = self.env['loyalty.history'].search([('card_id','=',gift_card_program.coupon_ids.id)])
         self.assertEqual(loyalty_history.used, 3.2)
@@ -543,7 +541,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         # Deactivate all other programs to avoid interference
         (LoyaltyProgram.search([])).write({'pos_ok': False})
         # But activate the ewallet_product_50 because it's shared among new ewallet programs.
-        self.env.ref('loyalty.ewallet_product_50').product_tmpl_id.write({'active': True})
+        self.env.ref('loyalty.ewallet_product_50').write({'active': True})
         # Create ewallet program
         ewallet_program = self.create_programs([('arbitrary_name', 'ewallet')])['arbitrary_name']
         # Create test partners
@@ -551,7 +549,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         partner_bbb = self.env['res.partner'].create({'name': 'BBBBBBB'})
 
         self.pos_user.write({
-            'group_ids': [
+            'groups_id': [
                 (4, self.env.ref('stock.group_stock_user').id),
             ]
         })
@@ -580,8 +578,8 @@ class TestUi(TestPointOfSaleHttpCommon):
         # Deactivate all other programs to avoid interference
         (LoyaltyProgram.search([])).write({'pos_ok': False})
         # But activate the gift_card_product_50 and ewallet_product_50 because they're shared among new programs.
-        self.env.ref('loyalty.gift_card_product_50').product_tmpl_id.write({'active': True})
-        self.env.ref('loyalty.ewallet_product_50').product_tmpl_id.write({'active': True})
+        self.env.ref('loyalty.gift_card_product_50').write({'active': True})
+        self.env.ref('loyalty.ewallet_product_50').write({'active': True})
         # Create programs
         programs = self.create_programs([
             ('gift_card_1', 'gift_card'),
@@ -593,7 +591,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         partner_aaa = self.env['res.partner'].create({'name': 'AAAAAAA'})
         partner_bbb = self.env['res.partner'].create({'name': 'BBBBBBB'})
         self.pos_user.write({
-            'group_ids': [
+            'groups_id': [
                 (4, self.env.ref('stock.group_stock_user').id),
             ]
         })
@@ -710,14 +708,14 @@ class TestUi(TestPointOfSaleHttpCommon):
         })
 
         self.pos_user.write({
-            'group_ids': [
+            'groups_id': [
                 (4, self.env.ref('stock.group_stock_user').id),
             ]
         })
 
         self.main_pos_config2.with_user(self.pos_user).open_ui()
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config2.id,
+            "/pos/web?config_id=%d" % self.main_pos_config2.id,
             "PosLoyaltyTour4",
             login="pos_user",
         )
@@ -870,7 +868,7 @@ class TestUi(TestPointOfSaleHttpCommon):
             })],
         })
 
-        partner = self.env['res.partner'].create({'name': 'Partner Test 1'})
+        partner = self.env['res.partner'].create({'name': 'Test Partner'})
         card = self.env['loyalty.card'].create({
             'partner_id': partner.id,
             'program_id': loyalty_program.id,
@@ -890,7 +888,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         # Deactivate all other programs to avoid interference
         (LoyaltyProgram.search([])).write({'pos_ok': False})
         # But activate the gift_card_product_50 because it's shared among new gift card programs.
-        self.env.ref('loyalty.gift_card_product_50').product_tmpl_id.write({'active': True})
+        self.env.ref('loyalty.gift_card_product_50').write({'active': True})
         # Create gift card program
         self.create_programs([('arbitrary_name', 'gift_card')])
         self.start_pos_tour("GiftCardWithRefundtTour")
@@ -1215,8 +1213,8 @@ class TestUi(TestPointOfSaleHttpCommon):
     def test_discount_with_reward_product_domain(self):
         self.env['loyalty.program'].search([]).write({'active': False})
 
-        product_category_base = self.env.ref('product.product_category_goods')
-        product_category_office = self.env['product.category'].create({
+        product_category_base = self.env.ref('product.product_category_1')
+        product_category_1 = self.env['product.category'].create({
             'name': 'Office furnitures',
             'parent_id': product_category_base.id
         })
@@ -1239,7 +1237,7 @@ class TestUi(TestPointOfSaleHttpCommon):
                 'list_price': 50,
                 'available_in_pos': True,
                 'taxes_id': False,
-                'categ_id': product_category_office.id,
+                'categ_id': product_category_1.id
             }
         )
 
@@ -1424,8 +1422,8 @@ class TestUi(TestPointOfSaleHttpCommon):
     def test_discount_specific_products(self):
         self.env['loyalty.program'].search([]).write({'active': False})
 
-        product_category_base = self.env.ref('product.product_category_goods')
-        product_category_office = self.env['product.category'].create({
+        product_category_base = self.env.ref('product.product_category_1')
+        product_category_1 = self.env['product.category'].create({
             'name': 'Office furnitures',
             'parent_id': product_category_base.id
         })
@@ -1448,7 +1446,7 @@ class TestUi(TestPointOfSaleHttpCommon):
                 'list_price': 50,
                 'available_in_pos': True,
                 'taxes_id': False,
-                'categ_id': product_category_office.id,
+                'categ_id': product_category_1.id
             }
         )
 
@@ -1467,7 +1465,7 @@ class TestUi(TestPointOfSaleHttpCommon):
                 'discount': 50,
                 'discount_mode': 'percent',
                 'discount_applicability': 'specific',
-                'discount_product_category_id': product_category_office.id,
+                'discount_product_category_id': product_category_1.id,
             })],
             'pos_config_ids': [Command.link(self.main_pos_config.id)],
         })
@@ -1477,29 +1475,26 @@ class TestUi(TestPointOfSaleHttpCommon):
 
     def test_promo_with_different_taxes(self):
         self.env['loyalty.program'].search([]).write({'active': False})
-        self.tax01 = self.env["account.tax"].create({
+        tax01 = self.env["account.tax"].create({
             "name": "C01 Tax",
             "amount": "10.00",
         })
-        self.product_a = self.env["product.product"].create(
+        self.env["product.product"].create([
             {
                 "name": "Product A",
                 "is_storable": True,
                 "list_price": 100,
                 "available_in_pos": True,
-                "taxes_id": [(6, 0, self.tax01.ids)],
-            }
-        )
-        self.product_b = self.env["product.product"].create(
-            {
+                "taxes_id": [(6, 0, tax01.ids)],
+            }, {
                 "name": "Product B",
                 "is_storable": True,
                 "list_price": 100,
                 "available_in_pos": True,
                 "taxes_id": False,
             }
-        )
-        self.free_product = self.env['loyalty.program'].create({
+        ])
+        self.env['loyalty.program'].create({
             'name': 'Free Product A',
             'program_type': 'loyalty',
             'trigger': 'auto',
@@ -1524,7 +1519,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         # Deactivate all other programs to avoid interference
         (LoyaltyProgram.search([])).write({'pos_ok': False})
         # But activate the ewallet_product_50 because it's shared among new ewallet programs.
-        self.env.ref('loyalty.ewallet_product_50').product_tmpl_id.write({'active': True})
+        self.env.ref('loyalty.ewallet_product_50').write({'active': True})
         # Create ewallet program
         ewallet_program = self.create_programs([('arbitrary_name', 'ewallet')])['arbitrary_name']
         # Create test partners
@@ -1631,7 +1626,7 @@ class TestUi(TestPointOfSaleHttpCommon):
 
         self.env['res.partner'].create({'name': 'AAA Partner'})
         self.pos_user.write({
-            'group_ids': [
+            'groups_id': [
                 (4, self.env.ref('stock.group_stock_user').id),
             ]
         })
@@ -1690,7 +1685,7 @@ class TestUi(TestPointOfSaleHttpCommon):
 
         self.main_pos_config.open_ui()
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config.id,
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
             "PosLoyaltyTour12",
             login="pos_user",
         )
@@ -1735,7 +1730,7 @@ class TestUi(TestPointOfSaleHttpCommon):
 
         self.main_pos_config.open_ui()
         self.start_tour(
-            '/pos/ui/%d' % self.main_pos_config.id,
+            '/pos/web?config_id=%d' % self.main_pos_config.id,
             'PosLoyaltyMinAmountAndSpecificProductTour',
             login='pos_user',
         )
@@ -1748,7 +1743,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         # Deactivate all other programs to avoid interference
         (LoyaltyProgram.search([])).write({'pos_ok': False})
         # But activate the gift_card_product_50 because it's shared among new gift card programs.
-        self.env.ref('loyalty.gift_card_product_50').product_tmpl_id.write({'active': True})
+        self.env.ref('loyalty.gift_card_product_50').write({'active': True})
 
         # Create gift card program
         gift_card_program = self.create_programs([('arbitrary_name', 'gift_card')])['arbitrary_name']
@@ -1769,7 +1764,7 @@ class TestUi(TestPointOfSaleHttpCommon):
 
         # Run the tour. It will use the gift card.
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config.id,
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
             "GiftCardProgramPriceNoTaxTour",
             login="pos_user"
         )
@@ -1781,14 +1776,14 @@ class TestUi(TestPointOfSaleHttpCommon):
         LoyaltyProgram = self.env['loyalty.program']
         # Deactivate all other programs to avoid interference and activate the gift_card_product_50
         LoyaltyProgram.search([]).write({'pos_ok': False})
-        self.env.ref('loyalty.gift_card_product_50').product_tmpl_id.write({'active': True})
+        self.env.ref('loyalty.gift_card_product_50').write({'active': True})
 
         # Create gift card program
         gift_card_program = self.create_programs([('arbitrary_name', 'gift_card')])['arbitrary_name']
 
         # Run the tour
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config.id,
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
             "PhysicalGiftCardProgramSaleTour",
             login="pos_user"
         )
@@ -1818,6 +1813,33 @@ class TestUi(TestPointOfSaleHttpCommon):
         total_points = sum(coupon.points for coupon in gift_card_program.coupon_ids)
         self.assertEqual(total_points, 475, "Total points should be 425")
 
+    def test_gift_card_code_links_to_correct_program(self):
+        """
+        Test that the manual gift card sold has been correctly generated
+        with the correct assigned code.
+        """
+        LoyaltyProgram = self.env['loyalty.program']
+        # Deactivate all other programs to avoid interference and activate the gift_card_product_50
+        LoyaltyProgram.search([]).write({'pos_ok': False})
+        self.env.ref('loyalty.gift_card_product_50').write({'active': True})
+
+        # Create gift card programs
+        program1 = self.create_programs([('Gift Cards1', 'gift_card')])['Gift Cards1']
+        program2 = self.create_programs([('Gift Cards2', 'gift_card')])['Gift Cards2']
+        program3 = self.create_programs([('Gift Cards3', 'gift_card')])['Gift Cards3']
+
+        # Run the tour
+        self.start_tour(
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
+            "MultiplePhysicalGiftCardProgramSaleTour",
+            login="pos_user"
+        )
+
+        self.assertTrue(len(program1.coupon_ids) == len(program2.coupon_ids) == len(program3.coupon_ids) == 1)
+        self.assertEqual(program1.coupon_ids.code, 'test-card-0000')
+        self.assertEqual(program2.coupon_ids.code, 'test-card-0001')
+        self.assertEqual(program3.coupon_ids.code, 'test-card-0002')
+
     def test_dont_grant_points_reward_order_lines(self):
         """
         Make sure that points granted per unit are only given
@@ -1844,17 +1866,17 @@ class TestUi(TestPointOfSaleHttpCommon):
             })],
         })
 
-        partner = self.env['res.partner'].create({'name': 'A Test Partner'})
+        partner = self.env['res.partner'].create({'name': 'Test Partner'})
 
         self.pos_user.write({
-            'group_ids': [
+            'groups_id': [
                 (4, self.env.ref('stock.group_stock_user').id),
             ]
         })
 
         self.main_pos_config.open_ui()
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config.id,
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
             "PosLoyaltyDontGrantPointsForRewardOrderLines",
             login="pos_user",
         )
@@ -1870,7 +1892,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         loyalty program applies on all product (no domain).
         """
         self.pos_user.write({
-            'group_ids': [
+            'groups_id': [
                 (4, self.env.ref('stock.group_stock_user').id),
             ]
         })
@@ -1895,7 +1917,7 @@ class TestUi(TestPointOfSaleHttpCommon):
 
         self.main_pos_config.open_ui()
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config.id,
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
             "PosLoyaltyPointsGlobalDiscountProgramNoDomain",
             login="pos_user",
         )
@@ -1907,7 +1929,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         loyalty program applies on all product (no domain).
         """
         self.pos_user.write({
-            'group_ids': [
+            'groups_id': [
                 (4, self.env.ref('stock.group_stock_user').id),
             ]
         })
@@ -1942,7 +1964,7 @@ class TestUi(TestPointOfSaleHttpCommon):
 
         self.main_pos_config.open_ui()
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config.id,
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
             "PosLoyaltyPointsDiscountNoDomainProgramNoDomain",
             login="pos_user",
         )
@@ -1956,12 +1978,14 @@ class TestUi(TestPointOfSaleHttpCommon):
         Expected behavior: The discount is not included in the computation of points
         """
         self.pos_user.write({
-            'group_ids': [
+            'groups_id': [
                 (4, self.env.ref('stock.group_stock_user').id),
             ]
         })
+        product_category_base = self.env.ref('product.product_category_1')
         product_category_food = self.env['product.category'].create({
             'name': 'Food',
+            'parent_id': product_category_base.id
         })
 
         self.env['loyalty.program'].search([]).write({'active': False})
@@ -1999,7 +2023,7 @@ class TestUi(TestPointOfSaleHttpCommon):
 
         self.main_pos_config.open_ui()
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config.id,
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
             "PosLoyaltyPointsDiscountNoDomainProgramDomain",
             login="pos_user",
         )
@@ -2013,12 +2037,14 @@ class TestUi(TestPointOfSaleHttpCommon):
         domain of the loyalty program.
         """
         self.pos_user.write({
-            'group_ids': [
+            'groups_id': [
                 (4, self.env.ref('stock.group_stock_user').id),
             ]
         })
+        product_category_base = self.env.ref('product.product_category_1')
         product_category_food = self.env['product.category'].create({
             'name': 'Food',
+            'parent_id': product_category_base.id
         })
 
         self.env['loyalty.program'].search([]).write({'active': False})
@@ -2061,7 +2087,7 @@ class TestUi(TestPointOfSaleHttpCommon):
 
         self.main_pos_config.open_ui()
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config.id,
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
             "PosLoyaltyPointsDiscountWithDomainProgramDomain",
             login="pos_user",
         )
@@ -2072,7 +2098,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         Check the calculation for point awarded when using ewallet
         """
         self.pos_user.write({
-            'group_ids': [
+            'groups_id': [
                 (4, self.env.ref('stock.group_stock_user').id),
             ]
         })
@@ -2118,7 +2144,7 @@ class TestUi(TestPointOfSaleHttpCommon):
 
         self.main_pos_config.open_ui()
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config.id,
+            "/pos/ui?config_id=%d" % self.main_pos_config.id,
             "PosLoyaltyPointsEwallet",
             login="pos_user",
         )
@@ -2129,14 +2155,14 @@ class TestUi(TestPointOfSaleHttpCommon):
         Check the calculation for point awarded when using a gift card
         """
         self.pos_user.write({
-            'group_ids': [
+            'groups_id': [
                 (4, self.env.ref('stock.group_stock_user').id),
             ]
         })
         self.env['loyalty.program'].search([]).write({'active': False})
-        self.env.ref('loyalty.gift_card_product_50').product_tmpl_id.write({'active': True})
+        self.env.ref('loyalty.gift_card_product_50').write({'active': True})
         # Create gift card program
-        self.create_programs([('arbitrary_name', 'gift_card')])['arbitrary_name']
+        gift_card_program = self.create_programs([('arbitrary_name', 'gift_card')])['arbitrary_name']
 
         self.product_a.write({
             'list_price': 100,
@@ -2155,7 +2181,7 @@ class TestUi(TestPointOfSaleHttpCommon):
 
         self.main_pos_config.open_ui()
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config.id,
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
             "PosLoyaltyPointsGiftcard",
             login="pos_user",
         )
@@ -2168,7 +2194,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         the case where at least one reward is  active.
         """
         self.pos_user.write({
-            'group_ids': [
+            'groups_id': [
                 (4, self.env.ref('stock.group_stock_user').id),
             ]
         })
@@ -2216,14 +2242,14 @@ class TestUi(TestPointOfSaleHttpCommon):
         product_c.active = False
 
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config.id,
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
             "PosLoyaltyArchivedRewardProductsInactive",
             login="pos_user",
         )
 
         product_c.active = True
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config.id,
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
             "PosLoyaltyArchivedRewardProductsActive",
             login="pos_user"
         )
@@ -2266,7 +2292,7 @@ class TestUi(TestPointOfSaleHttpCommon):
 
         self.main_pos_config.open_ui()
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config.id,
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
             "ChangeRewardValueWithLanguage",
             login="pos_user",
         )
@@ -2288,7 +2314,7 @@ class TestUi(TestPointOfSaleHttpCommon):
             'trigger': 'auto',
             'applies_on': 'current',
             'rule_ids': [(0, 0, {
-                'product_ids': self.desk_organizer.product_variant_ids,
+                'product_ids': self.desk_organizer,
                 'reward_point_mode': 'unit',
                 'minimum_qty': 2,
             })],
@@ -2303,7 +2329,7 @@ class TestUi(TestPointOfSaleHttpCommon):
 
         self.main_pos_config.open_ui()
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config.id,
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
             "PosLoyaltyRewardProductTag",
             login="pos_user",
         )
@@ -2313,7 +2339,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         Check the gift card value when the reward has taxes
         """
         self.env['loyalty.program'].search([]).write({'active': False})
-        self.env.ref('loyalty.gift_card_product_50').product_tmpl_id.write({'active': True})
+        self.env.ref('loyalty.gift_card_product_50').write({'active': True})
 
         gift_card_program = self.create_programs([('arbitrary_name', 'gift_card')])['arbitrary_name']
         self.product_a = self.env["product.product"].create({
@@ -2331,7 +2357,7 @@ class TestUi(TestPointOfSaleHttpCommon):
 
         self.main_pos_config.open_ui()
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config.id,
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
             "PosLoyaltyGiftCardTaxes",
             login="accountman",
         )
@@ -2360,7 +2386,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         })
 
         self.main_pos_config.open_ui()
-        self.start_tour("/pos/ui/%d" % self.main_pos_config.id, "CustomerLoyaltyPointsDisplayed", login="pos_user")
+        self.start_tour("/pos/ui?config_id=%d" % self.main_pos_config.id, "CustomerLoyaltyPointsDisplayed", login="pos_user")
 
     def test_cheapest_product_reward_pos_combo(self):
         self.env['product.product'].create({
@@ -2392,7 +2418,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         })
 
         self.main_pos_config.with_user(self.pos_user).open_ui()
-        self.start_tour(f"/pos/ui/{self.main_pos_config.id}", 'PosComboCheapestRewardProgram', login="pos_user")
+        self.start_tour(f"/pos/ui?config_id={self.main_pos_config.id}", 'PosComboCheapestRewardProgram', login="pos_user")
 
     def test_specific_product_reward_pos_combo(self):
         setup_product_combo_items(self)
@@ -2416,7 +2442,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         })
 
         self.main_pos_config.with_user(self.pos_user).open_ui()
-        self.start_tour(f"/pos/ui/{self.main_pos_config.id}", 'PosComboSpecificProductProgram', login="pos_user")
+        self.start_tour(f"/pos/ui?config_id={self.main_pos_config.id}", 'PosComboSpecificProductProgram', login="pos_user")
 
     def test_apply_reward_on_product_scan(self):
         """
@@ -2448,14 +2474,14 @@ class TestUi(TestPointOfSaleHttpCommon):
         })
         self.main_pos_config.with_user(self.pos_admin).open_ui()
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config.id,
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
             "PosRewardProductScan",
             login="pos_admin",
         )
         # check the same flow with gs1 nomenclature
         self.env.company.nomenclature_id = self.env.ref('barcodes_gs1_nomenclature.default_gs1_nomenclature')
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config.id,
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
             "PosRewardProductScanGS1",
             login="pos_admin",
         )
@@ -2509,7 +2535,7 @@ class TestUi(TestPointOfSaleHttpCommon):
 
         alt_pos_config.with_user(self.pos_admin).open_ui()
         self.start_tour(
-            "/pos/ui/%d" % alt_pos_config.id,
+            "/pos/web?config_id=%d" % alt_pos_config.id,
             "PosLoyaltyPromocodePricelist",
             login="pos_user",
         )
@@ -2519,20 +2545,20 @@ class TestUi(TestPointOfSaleHttpCommon):
         Test for gift card program when pos.config.gift_card_settings == 'create_set'.
         """
         self.pos_user.write({
-            'group_ids': [
+            'groups_id': [
                 (4, self.env.ref('stock.group_stock_user').id),
             ]
         })
         LoyaltyProgram = self.env['loyalty.program']
         (LoyaltyProgram.search([])).write({'pos_ok': False})
-        self.env.ref('loyalty.gift_card_product_50').product_tmpl_id.write({'active': True})
+        self.env.ref('loyalty.gift_card_product_50').write({'active': True})
 
         gift_card_program = self.create_programs([('arbitrary_name', 'gift_card')])['arbitrary_name']
-        self.env['res.partner'].create({'name': 'A Test Partner'})
+        self.env['res.partner'].create({'name': 'Test Partner'})
 
         self.main_pos_config.with_user(self.pos_user).open_ui()
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config.id,
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
             "GiftCardProgramInvoice",
             login="pos_user",
         )
@@ -2562,7 +2588,7 @@ class TestUi(TestPointOfSaleHttpCommon):
 
         self.main_pos_config.with_user(self.pos_user).open_ui()
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config.id,
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
             "RefundRulesProduct",
             login="pos_user",
         )
@@ -2598,7 +2624,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         })
 
         self.main_pos_config.with_user(self.pos_user).open_ui()
-        self.start_tour(f"/pos/ui/{self.main_pos_config.id}", 'PosCheapestProductTaxInclude', login="pos_user")
+        self.start_tour(f"/pos/ui?config_id={self.main_pos_config.id}", 'PosCheapestProductTaxInclude', login="pos_user")
 
     def test_next_order_coupon_program_expiration_date(self):
         self.env['loyalty.program'].search([]).write({'active': False})
@@ -2624,7 +2650,7 @@ class TestUi(TestPointOfSaleHttpCommon):
 
         self.main_pos_config.with_user(self.pos_user).open_ui()
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config.id,
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
             "PosLoyaltyNextOrderCouponExpirationDate",
             login="pos_user",
         )
@@ -2641,7 +2667,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         # Deactivate all other programs to avoid interference
         (LoyaltyProgram.search([])).write({'pos_ok': False})
         # But activate the ewallet_product_50 because it's shared among new ewallet programs.
-        self.env.ref('loyalty.ewallet_product_50').product_tmpl_id.write({'active': True})
+        self.env.ref('loyalty.ewallet_product_50').write({'active': True})
         # Create ewallet program
         ewallet_program = self.create_programs([('arbitrary_name', 'ewallet')])['arbitrary_name']
         # Create test partners
@@ -2677,7 +2703,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         )
 
         self.main_pos_config.with_user(self.pos_user).open_ui()
-        self.start_tour(f"/pos/ui/{self.main_pos_config.id}", 'test_loyalty_on_order_with_fixed_tax', login="pos_user")
+        self.start_tour(f"/pos/ui?config_id={self.main_pos_config.id}", 'test_loyalty_on_order_with_fixed_tax', login="pos_user")
 
     def test_gift_card_no_date(self):
         """
@@ -2686,7 +2712,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         LoyaltyProgram = self.env['loyalty.program']
         # Deactivate all other programs to avoid interference and activate the gift_card_product_50
         LoyaltyProgram.search([]).write({'pos_ok': False})
-        self.env.ref('loyalty.gift_card_product_50').product_tmpl_id.write({'active': True})
+        self.env.ref('loyalty.gift_card_product_50').write({'active': True})
 
         # Create gift card program
         self.create_programs([('name', 'gift_card')])
@@ -2730,7 +2756,7 @@ class TestUi(TestPointOfSaleHttpCommon):
             })],
             'reward_ids': [(0, 0, {
                 'reward_type': 'product',
-                'reward_product_id': self.whiteboard_pen.product_variant_id.id,
+                'reward_product_id': self.whiteboard_pen.id,
                 'reward_product_qty': 1,
                 'required_points': 5,
             })],
@@ -2763,7 +2789,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         LoyaltyProgram = self.env['loyalty.program']
         # Deactivate all other programs to avoid interference and activate the gift_card_product_50
         LoyaltyProgram.search([]).write({'pos_ok': False})
-        self.env.ref('loyalty.gift_card_product_50').product_tmpl_id.write({'active': True})
+        self.env.ref('loyalty.gift_card_product_50').write({'active': True})
         partner = self.env['res.partner'].create({'name': 'Test Partner'})
         # Create gift card program
         gift_card_program = self.create_programs([('arbitrary_name', 'gift_card')])['arbitrary_name']
@@ -2772,72 +2798,45 @@ class TestUi(TestPointOfSaleHttpCommon):
         self.start_tour(
             "/pos/web?config_id=%d" % self.main_pos_config.id,
             "test_physical_gift_card_invoiced",
-            login="pos_user",
+            login="pos_user"
         )
 
         self.assertEqual(len(gift_card_program.coupon_ids), 1, "Gift card not generated")
         self.assertEqual(gift_card_program.coupon_ids[0].code, "test-card-1234", "Gift card code not correct")
         self.assertEqual(gift_card_program.coupon_ids[0].partner_id, partner, "Gift card partner id not correct")
 
-    def test_empty_product_screen_when_no_regular_products(self):
+    def test_combo_product_dont_grant_point(self):
         """
-        Verify that the product screen remains empty when no regular products are available,
-        ensuring that special products are hidden.
+        Make sure that points granted per unit are only given
+        for the product that are not combo lines
         """
-        archive_products(self.env)
-        self.env.ref('loyalty.gift_card_product_50').product_tmpl_id.write({'active': True})
-        self.create_programs([('Special Gift Card Program', 'gift_card')])
-        self.main_pos_config.with_user(self.pos_user).open_ui()
-        self.start_pos_tour("EmptyProductScreenTour")
+        self.env['loyalty.program'].search([]).write({'active': False})
 
-    def test_two_variant_same_discount(self):
-        # test that if a product has two variants with the same discount, the selector widget does not appear (nor an error window in debug mode)
-        colors = ['red', 'blue']
-        prod_attr = self.env['product.attribute'].create({'name': 'Color', 'create_variant': 'dynamic'})
-        prod_attr_values = self.env['product.attribute.value'].create([{'name': color, 'attribute_id': prod_attr.id, 'sequence': 1} for color in colors])
-
-        product_template = self.env['product.template'].create({
-            'name': 'Sofa',
-            'available_in_pos': True,
-            'attribute_line_ids': [(0, 0, {
-                'attribute_id': prod_attr.id,
-                'value_ids': [(6, 0, prod_attr_values.ids)]
-            })]
-        })
-        prod_tmpl_attrs = self.env['product.template.attribute.value'].search([
-            ('attribute_line_id', '=', product_template.attribute_line_ids.id),
-            ('product_attribute_value_id', 'in', prod_attr_values.ids)
-        ])
-
-        product_1 = product_template._create_product_variant(prod_tmpl_attrs[0])
-        product_2 = product_template._create_product_variant(prod_tmpl_attrs[1])
-
-        self.env['loyalty.program'].create({
-            'name': 'Test Loyalty Program',
+        self.loyalty_program = self.env['loyalty.program'].create({
+            'name': 'Loyalty Program',
             'program_type': 'promotion',
-            'trigger': 'auto',
             'applies_on': 'current',
-            'rule_ids': [
-                (0, 0, {
-                    'reward_point_mode': 'money',
-                    'minimum_amount': 1,
-                    'reward_point_amount': 1,
-                    'product_ids': [product_1.id, product_2.id]
-                }),
-            ],
-            'reward_ids': [
-                (0, 0, {
-                    'reward_type': 'discount',
-                    'discount': 1,
-                    'required_points': 1000,
-                    'discount_mode': 'percent',
-                    'discount_applicability': 'order',
-                }),
-            ],
-
+            'trigger': 'auto',
+            'rule_ids': [(0, 0, {
+                'reward_point_amount': 1,
+                'reward_point_mode': 'unit',
+                'minimum_amount': 20,
+            })],
+            'reward_ids': [(0, 0, {
+                'reward_type': 'discount',
+                'discount': 100,
+                'discount_mode': 'percent',
+                'discount_applicability': 'cheapest',
+                'required_points': 2,
+            })],
         })
-        self.main_pos_config.with_user(self.pos_user).open_ui()
-        self.start_tour("/pos/ui?config_id=%d" % self.main_pos_config.id, 'test_two_variant_same_discount', login="pos_user")
+        setup_product_combo_items(self)
+        self.main_pos_config.open_ui()
+        self.start_tour(
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
+            "test_combo_product_dont_grant_point",
+            login="pos_user",
+        )
 
     def test_buy_x_get_y_reward_qty(self):
         self.env['loyalty.program'].search([]).write({'active': False})
@@ -2847,14 +2846,14 @@ class TestUi(TestPointOfSaleHttpCommon):
             'applies_on': 'current',
             'trigger': 'auto',
             'rule_ids': [(0, 0, {
-                'product_ids': self.whiteboard_pen.product_variant_ids.ids,
+                'product_ids': self.whiteboard_pen.ids,
                 'reward_point_mode': 'unit',
                 'minimum_qty': 10,
                 'reward_point_amount': 1,
             })],
             'reward_ids': [(0, 0, {
                 'reward_type': 'product',
-                'reward_product_id': self.whiteboard_pen.product_variant_id.id,
+                'reward_product_id': self.whiteboard_pen.id,
                 'reward_product_qty': 3,
                 'required_points': 10,
             })],
@@ -2865,105 +2864,131 @@ class TestUi(TestPointOfSaleHttpCommon):
             login="pos_user"
         )
 
-    def test_settle_dont_give_points_again(self):
-        """
-        Tests that when settling an order that has been partially paid, it does not give the loyalty
-        points again. All of them should be given during the first transaction.
-        """
-        if not self.env["ir.module.module"].search([("name", "=", "pos_settle_due"), ("state", "=", "installed")]):
-            self.skipTest("pos_settle_due module is required for this test")
-        if self.main_pos_config.current_session_id:
-            self.main_pos_config.current_session_id.action_pos_session_closing_control()
-        LoyaltyProgram = self.env['loyalty.program']
-        (LoyaltyProgram.search([])).write({'pos_ok': False})
-        self.loyalty_program = self.env['loyalty.program'].create({
-            'name': 'Loyalty Program Test',
-            'program_type': 'promotion',
-            'pos_ok': True,
-            'pos_config_ids': [Command.link(self.main_pos_config.id)],
-            'rule_ids': [Command.create({
-                'reward_point_mode': 'money',
-                'reward_point_amount': 1,
-                'minimum_qty': 0,
-            })],
-            'reward_ids': [Command.create({
-                'reward_type': 'discount',
-                'discount': 1,
-                'discount_mode': 'per_point',
-            })],
-        })
-        partner_aaa = self.env['res.partner'].create({'name': 'AAA Partner'})
-        self.customer_account_payment_method = self.env['pos.payment.method'].create({
-            'name': 'Customer Account',
-            'split_transactions': True,
-        })
-        self.main_pos_config.write({
-            'payment_method_ids': [(4, self.customer_account_payment_method.id, 0)],
-        })
-        self.main_pos_config.open_ui()
-        order = self.env['pos.order'].create({
-            'company_id': self.company.id,
-            'session_id': self.main_pos_config.current_session_id.id,
-            'partner_id': partner_aaa.id,
-            'lines': [Command.create({
-                'product_id': self.wall_shelf.product_variant_id.id,
-                'price_unit': 10,
-                'discount': 0,
-                'qty': 1,
-                'price_subtotal': 10,
-                'price_subtotal_incl': 10,
-            })],
-            'amount_paid': 10.0,
-            'amount_total': 10.0,
-            'amount_tax': 0.0,
-            'amount_return': 0.0,
-            'to_invoice': True,
-        })
-        payment_context = {"active_id": order.id, "active_ids": order.ids}
-        self.env['pos.make.payment'].with_context(**payment_context).create({
-            'amount': 10.0,
-            'payment_method_id': self.customer_account_payment_method.id,
-        }).check()
-        self.start_tour("/pos/ui?config_id=%d" % self.main_pos_config.id, 'test_settle_dont_give_points_again', login="accountman")
+    def test_scan_loyalty_card_select_customer(self):
+        self.env['loyalty.program'].search([]).write({'active': False})
+        self.test_partner = self.env['res.partner'].create({'name': 'Test Partner'})
 
-    def test_refund_does_not_decrease_points(self):
-        """
-        Tests that when refunding a product bought while spending points, it does not decrease the points a second time
-        """
-        LoyaltyProgram = self.env['loyalty.program']
-        (LoyaltyProgram.search([])).write({'pos_ok': False})
-        self.loyalty_program = self.env['loyalty.program'].create({
-            'name': 'Loyalty Program Test',
+        loyalty_program = self.env['loyalty.program'].create({
+            'name': 'Loyalty Program',
             'program_type': 'loyalty',
             'trigger': 'auto',
             'applies_on': 'both',
-            'pos_ok': True,
+            'rule_ids': [],
+            'reward_ids': [(0, 0, {
+                'reward_type': 'product',
+                'reward_product_id': self.whiteboard_pen.id,
+                'reward_product_qty': 1,
+                'required_points': 5,
+            })],
+        })
+        self.env['loyalty.card'].create({
+            'program_id': loyalty_program.id,
+            'partner_id': self.test_partner.id,
+            'points': 500,
+            'code': '0444-e050-4548',
+        })
+
+        self.main_pos_config.with_user(self.pos_user).open_ui()
+        self.start_tour(
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
+            "test_scan_loyalty_card_select_customer",
+            login="pos_user",
+        )
+
+    def test_loyalty_reward_with_variant(self):
+        self.env['loyalty.program'].search([]).write({'active': False})
+
+        product_tag = self.env['product.tag'].create({'name': 'Test Tag'})
+        product_test = self.env['product.product'].create({
+            'name': 'Test Product',
+            'list_price': 10,
+            'available_in_pos': True,
+            'taxes_id': False,
+            'product_tag_ids': [(4, product_tag.id)],
+        })
+        attribute = self.env['product.attribute'].create({
+            'name': 'Attribute 1',
+            'create_variant': 'always',
+        })
+        attribute_value_1 = self.env['product.attribute.value'].create({
+            'name': 'Value 1',
+            'attribute_id': attribute.id,
+        })
+        attribute_value_2 = self.env['product.attribute.value'].create({
+            'name': 'Value 2',
+            'attribute_id': attribute.id,
+        })
+        self.env['product.template.attribute.line'].create({
+            'product_tmpl_id': product_test.product_tmpl_id.id,
+            'attribute_id': attribute.id,
+            'value_ids': [(6, 0, [attribute_value_1.id, attribute_value_2.id])],
+        })
+
+        self.env['loyalty.program'].create({
+            'name': 'Buy 2 Take 1 with tag',
+            'program_type': 'buy_x_get_y',
+            'trigger': 'auto',
+            'applies_on': 'current',
+            'rule_ids': [(0, 0, {
+                'product_tag_id': product_tag.id,
+                'reward_point_mode': 'unit',
+                'minimum_qty': 2,
+            })],
+            'reward_ids': [(0, 0, {
+                'reward_type': 'product',
+                'reward_product_tag_id': product_tag.id,
+                'reward_product_qty': 1,
+                'required_points': 2,
+            })],
             'pos_config_ids': [Command.link(self.main_pos_config.id)],
-            'rule_ids': [Command.create({
+        })
+
+        self.main_pos_config.open_ui()
+        self.start_tour(
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
+            "test_loyalty_reward_with_variant",
+            login="pos_user",
+        )
+
+    def test_max_usage_partner_with_point(self):
+        """This test make sure that when the max usage limit is reached,
+        partners that already have points in the loyalty program cannot claim rewards anymore."""
+
+        self.env['loyalty.program'].search([]).write({'active': False})
+        test_partner = self.env['res.partner'].create({'name': 'Test Partner'})
+        self.env['res.partner'].create({'name': 'Test Partner 2'})
+
+        loyalty_program = self.env['loyalty.program'].create({
+            'name': 'Loyalty Program',
+            'program_type': 'loyalty',
+            'trigger': 'auto',
+            'applies_on': 'both',
+            'rule_ids': [(0, 0, {
+                'reward_point_amount': 1,
                 'reward_point_mode': 'money',
-                'reward_point_amount': 0.1,
-                'minimum_amount': 1,
+                'minimum_qty': 1,
+                'mode': 'auto',
             })],
-            'reward_ids': [Command.create({
+            'reward_ids': [(0, 0, {
                 'reward_type': 'discount',
-                'required_points': 100,
-                'discount': 1,
-                'discount_mode': 'per_point',
+                'discount': 100,
+                'discount_mode': 'percent',
+                'discount_applicability': 'order',
+                'required_points': 1,
             })],
+            'limit_usage': True,
+            'max_usage': 1,
         })
-        self.product_refund = self.env["product.product"].create({
-            "name": "Refund Product",
-            "is_storable": True,
-            "list_price": 300,
-            "available_in_pos": True,
-            "taxes_id": False,
-        })
-        partner_refunding = self.env['res.partner'].create({'name': 'Refunding Guy'})
-        card = self.env['loyalty.card'].create({
-            'partner_id': partner_refunding.id,
-            'program_id': self.loyalty_program.id,
+
+        self.env['loyalty.card'].create({
+            'program_id': loyalty_program.id,
+            'partner_id': test_partner.id,
             'points': 100,
         })
+
         self.main_pos_config.with_user(self.pos_user).open_ui()
-        self.start_tour("/pos/ui?config_id=%d" % self.main_pos_config.id, 'test_refund_does_not_decrease_points', login="pos_user")
-        self.assertEqual(card.points, 30)
+        self.start_tour(
+            "/pos/web?config_id=%d" % self.main_pos_config.id,
+            "test_max_usage_partner_with_point",
+            login="pos_user",
+        )

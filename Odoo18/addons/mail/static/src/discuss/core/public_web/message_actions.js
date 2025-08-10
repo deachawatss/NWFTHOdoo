@@ -5,11 +5,11 @@ messageActionsRegistry.add("create-or-view-thread", {
     condition: (component) =>
         component.message.thread?.eq(component.props.thread) &&
         component.message.thread.hasSubChannelFeature &&
-        component.store.self.main_user_id?.share === false,
+        component.store.self.isInternalUser,
     icon: "fa fa-comments-o",
     onClick: (component) => {
         if (component.message.linkedSubChannel) {
-            component.message.linkedSubChannel.open({ focus: true });
+            component.message.linkedSubChannel.open();
         } else {
             component.message.thread.createSubChannel({ initialMessage: component.message });
         }

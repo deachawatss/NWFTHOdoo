@@ -4,7 +4,7 @@ from werkzeug.exceptions import Unauthorized
 
 
 class PosSelfOrderControllerRazorpay(PosSelfOrderController):
-    @http.route("/pos-self-order/razorpay-fetch-payment-status/", auth="public", type="jsonrpc", website=True)
+    @http.route("/pos-self-order/razorpay-fetch-payment-status/", auth="public", type="json", website=True)
     def razorpay_payment_status(self, access_token, order_id, payment_data, payment_method_id):
         pos_config = self._verify_pos_config(access_token)
         order = pos_config.env['pos.order'].search([
@@ -43,7 +43,7 @@ class PosSelfOrderControllerRazorpay(PosSelfOrderController):
             self.call_bus_service(order, payment_result='fail')
         return razorpay_status_response
 
-    @http.route("/pos-self-order/razorpay-cancel-transaction/", auth="public", type="jsonrpc", website=True)
+    @http.route("/pos-self-order/razorpay-cancel-transaction/", auth="public", type="json", website=True)
     def razorpay_cancel_status(self, access_token, order_id, payment_data, payment_method_id):
         pos_config = self._verify_pos_config(access_token)
         order = pos_config.env['pos.order'].search([
@@ -64,7 +64,7 @@ class PosSelfOrderControllerRazorpay(PosSelfOrderController):
         order.config_id._notify('PAYMENT_STATUS', {
             'payment_result': payment_result,
             'data': {
-                'pos.order': order.read(order._load_pos_self_data_fields(order.config_id), load=False),
-                'pos.order.line': order.lines.read(order._load_pos_self_data_fields(order.config_id), load=False),
+                'pos.order': order.read(order._load_pos_self_data_fields(order.config_id.id), load=False),
+                'pos.order.line': order.lines.read(order._load_pos_self_data_fields(order.config_id.id), load=False),
             }
         })

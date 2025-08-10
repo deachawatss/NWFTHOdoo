@@ -66,9 +66,8 @@ $spacers: (
 // variable to compute some of their colors too). The background color behind
 // the box will be forced by an Odoo CSS rule instead of relying on Bootstrap
 // CSS rule (the <body> background color CSS rule) which uses `$body-bg`.
-// Note: lots of variables are using $body-bg directly, they should ideally use
-// var(--body-bg) instead, as the new bootstrap version intended, but it's not
-// really possible as we use those for computing other colors a lot.
+// TODO lots of variables are still using $body-bg directly, they should use
+// var(--body-bg) instead, as the new bootstrap version intended.
 // grep: BOXED_BODY_BG_ODOO
 $body-bg: o-color('o-cc1-bg') !default;
 $body-color: o-color('o-cc1-text') or color-contrast($body-bg) !default;
@@ -274,9 +273,6 @@ $form-check-input-border: ($input-border-width or 1px) solid $input-border-color
 //   (a disabled range should have its *active* part with a different color).
 $form-range-track-bg: $input-disabled-bg !default;
 
-// Dropdowns
-$dropdown-border-color: $border-color !default;
-
 // Breadcrumbs
 $breadcrumb-padding-y: .75rem !default;
 $breadcrumb-padding-x: 1rem !default;
@@ -390,9 +386,6 @@ $pagination-border-radius-sm: $pagination-border-radius !default;
 
 // Carousel
 $carousel-control-width: 10% !default;
-
-// Offcanvas
-$offcanvas-horizontal-width: $o-offcanvas-horizontal-width !default;
 
 // TODO adapt in master: fix the text columns web_editor feature to use standard
 // Bootstrap paddings and margins. See FIXED_TEXT_COLUMNS.

@@ -1,6 +1,5 @@
 import { EventBus } from "@odoo/owl";
 import { browser } from "../browser/browser";
-import { omit } from "../utils/objects";
 
 export const rpcBus = new EventBus();
 
@@ -42,21 +41,7 @@ export function makeErrorFromResponse(reponse) {
 }
 
 // -----------------------------------------------------------------------------
-// Cache RPC method
-// -----------------------------------------------------------------------------
-
-let rpcCache;
-
-rpc.setCache = function (cache) {
-    rpcCache = cache;
-};
-
-rpcBus.addEventListener("CLEAR-CACHES", (event) => {
-    rpcCache?.invalidate(event.detail);
-});
-
-// -----------------------------------------------------------------------------
-// Main RPC
+// Main RPC method
 // -----------------------------------------------------------------------------
 let rpcId = 0;
 export function rpc(url, params = {}, settings = {}) {
@@ -64,14 +49,6 @@ export function rpc(url, params = {}, settings = {}) {
 }
 // such that it can be overriden in tests
 rpc._rpc = function (url, params, settings) {
-    if (settings.cached && rpcCache) {
-        return rpcCache.read(
-            params?.method || url, // table
-            JSON.stringify({ url, params }), // key
-            () => rpc._rpc(url, params, omit(settings, "cached")),
-            typeof settings.cached === "boolean" ? {} : settings.cached // cached can be boolean or an object with options (or an empty object of course)
-        );
-    }
     const XHR = browser.XMLHttpRequest;
     const data = {
         id: rpcId++,
@@ -109,6 +86,7 @@ rpc._rpc = function (url, params, settings) {
                 return resolve(responseResult);
             }
             const error = makeErrorFromResponse(responseError);
+            error.id = data.id;
             error.model = data.params.model;
             rpcBus.trigger("RPC:RESPONSE", { data, settings, error });
             reject(error);
@@ -123,7 +101,7 @@ rpc._rpc = function (url, params, settings) {
         request.open("POST", url);
         const headers = settings.headers || {};
         headers["Content-Type"] = "application/json";
-        for (const [header, value] of Object.entries(headers)) {
+        for (let [header, value] of Object.entries(headers)) {
             request.setRequestHeader(header, value);
         }
         request.send(JSON.stringify(data));

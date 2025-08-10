@@ -1,9 +1,9 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo.fields import Command
-from odoo.tests.common import tagged
+from odoo import Command
 
 from odoo.addons.sale_loyalty.tests.common import TestSaleCouponCommon
+from odoo.tests.common import tagged
 
 
 @tagged('-at_install', 'post_install')
@@ -36,11 +36,13 @@ class TestUnlinkReward(TestSaleCouponCommon):
             Command.create({
                 'product_id': self.product_A.id,
                 'name': 'Ordinary Product A',
+                'product_uom': self.uom_unit.id,
                 'product_uom_qty': 1.0,
             }),
             Command.create({
                 'product_id': self.product_B.id,
                 'name': '2 Product B',
+                'product_uom': self.uom_unit.id,
                 'product_uom_qty': 1.0,
             }),
         ]})

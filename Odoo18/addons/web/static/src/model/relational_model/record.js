@@ -4,9 +4,8 @@ import { serializeDate, serializeDateTime } from "@web/core/l10n/dates";
 import { _t } from "@web/core/l10n/translation";
 import { x2ManyCommands } from "@web/core/orm_service";
 import { evaluateBooleanExpr } from "@web/core/py_js/py";
-import { htmlJoin } from "@web/core/utils/html";
+import { escape } from "@web/core/utils/strings";
 import { DataPoint } from "./datapoint";
-import { FetchRecordError } from "./errors";
 import {
     createPropertyActiveField,
     getBasicEvalContext,
@@ -14,37 +13,21 @@ import {
     getFieldsSpec,
     parseServerValue,
 } from "./utils";
+import { FetchRecordError } from "./errors";
 
-/**
- * Redefine default 'Record' type
- * TODO: rename 'Record' to 'RelationalRecord'?
- * @template {keyof any} K
- * @template T
- * @typedef {{ [P in K]: T }} RecordType
- */
-
-/**
- * @typedef {{
- *  currentValues?: RecordType<string, unknown>;
- *  orderBys?: RecordType<string, unknown>;
- *  withInvisible?: boolean;
- *  withReadonly?: boolean;
- * }} FieldSpecifications
- *
- * @typedef {"edit" | "readonly"} Mode
- */
 export class Record extends DataPoint {
     static type = "Record";
 
     /**
-     * @type {typeof DataPoint.prototype.setup<{
-     *  manuallyAdded?: boolean;
-     *  onUpdate?: () => unknown;
-     *  parentRecord?: Record;
-     *  virtualId?: string;
-     * }>}
+     * @param {import("./relational_model").Config} config
+     * @param {Object} data
+     * @param {Object} [options={}]
+     * @param {boolean} [options.manuallyAdded]
+     * @param {Function} [options.onUpdate]
+     * @param {Record} [options.parentRecord]
+     * @param {string} [options.virtualId]
      */
-    setup(_config, data, options = {}) {
+    setup(config, data, options = {}) {
         this._manuallyAdded = options.manuallyAdded === true;
         this._onUpdate = options.onUpdate || (() => {});
         this._parentRecord = options.parentRecord;
@@ -57,9 +40,7 @@ export class Record extends DataPoint {
         this.dirty = false;
         this.selected = false;
 
-        /** @type {Set<string>} */
         this._invalidFields = new Set();
-        /** @type {Set<string>} */
         this._unsetRequiredFields = markRaw(new Set());
         this._closeInvalidFieldsNotification = () => {};
 
@@ -90,20 +71,16 @@ export class Record extends DataPoint {
         this._setData(data);
     }
 
-    /**
-     * @param {RecordType<string, unknown>} data
-     * @param {FieldSpecifications} [params]
-     */
-    _setData(data, { orderBys } = {}) {
+    _setData(data) {
         this._isEvalContextReady = false;
         if (this.resId) {
-            this._values = this._parseServerValues(data, { orderBys });
+            this._values = this._parseServerValues(data);
             this._changes = markRaw({});
             Object.assign(this._textValues, this._getTextValues(data));
         } else {
             this._values = markRaw({});
             const allVals = { ...this._getDefaultValues(), ...data };
-            this._initialChanges = markRaw(this._parseServerValues(allVals, { orderBys }));
+            this._initialChanges = markRaw(this._parseServerValues(allVals));
             this._changes = markRaw({ ...this._initialChanges });
             Object.assign(this._textValues, this._getTextValues(allVals));
         }
@@ -113,9 +90,6 @@ export class Record extends DataPoint {
         this._initialTextValues = { ...this._textValues };
 
         this._invalidFields.clear();
-        if (!this.isNew && this.isInEdition && !this._parentRecord) {
-            this._checkValidity();
-        }
         this._savePoint = undefined;
     }
 
@@ -131,7 +105,6 @@ export class Record extends DataPoint {
         return true;
     }
 
-    /** @type {boolean} */
     get isActive() {
         if ("active" in this.activeFields) {
             return this.data.active;
@@ -230,14 +203,6 @@ export class Record extends DataPoint {
         });
     }
 
-    /**
-     * @param {FieldSpecifications} [params]
-     */
-    async getChanges({ withReadonly } = {}) {
-        await this.model._askChanges();
-        return this.model.mutex.exec(() => this._getChanges(this._changes, { withReadonly }));
-    }
-
     async isDirty() {
         await this.model._askChanges();
         return this.dirty;
@@ -257,33 +222,21 @@ export class Record extends DataPoint {
         return this.model.mutex.exec(() => this._load());
     }
 
-    /**
-     * @param {Parameters<Record["_save"]>[0]} options
-     */
     async save(options) {
         await this.model._askChanges();
         return this.model.mutex.exec(() => this._save(options));
     }
 
-    /**
-     * @param {string} fieldName
-     */
     async setInvalidField(fieldName) {
         this.dirty = true;
         return this._setInvalidField(fieldName);
     }
 
-    /**
-     * @param {string} fieldName
-     */
     async resetFieldValidity(fieldName) {
         this.dirty = true;
         return this._resetFieldValidity(fieldName);
     }
 
-    /**
-     * @param {Mode} mode
-     */
     switchMode(mode) {
         return this.model.mutex.exec(() => this._switchMode(mode));
     }
@@ -364,7 +317,7 @@ export class Record extends DataPoint {
         }
 
         // Apply server changes
-        const parsedChanges = this._parseServerValues(serverChanges, { currentValues: this.data });
+        const parsedChanges = this._parseServerValues(serverChanges, this.data);
         for (const fieldName in parsedChanges) {
             this._changes[fieldName] = parsedChanges[fieldName];
             this.data[fieldName] = parsedChanges[fieldName];
@@ -375,13 +328,15 @@ export class Record extends DataPoint {
 
         // mark changed fields as valid if they were not, and re-evaluate required attributes
         // for all fields, as some of them might still be unset but become valid with those changes
-        this._removeInvalidFields(...Object.keys(changes), ...Object.keys(serverChanges));
+        this._removeInvalidFields(Object.keys({ ...changes, ...serverChanges }));
         this._checkValidity({ removeInvalidOnly: true });
         return undoChanges;
     }
 
     _applyDefaultValues() {
-        const fieldNames = this.fieldNames.filter((fieldName) => !(fieldName in this.data));
+        const fieldNames = this.fieldNames.filter((fieldName) => {
+            return !(fieldName in this.data);
+        });
         const defaultValues = this._getDefaultValues(fieldNames);
         if (this.isNew) {
             this._applyChanges({}, defaultValues);
@@ -488,17 +443,16 @@ export class Record extends DataPoint {
             this._unsetRequiredFields.clear();
             for (const fieldName of unsetRequiredFields) {
                 this._unsetRequiredFields.add(fieldName);
-                this._invalidFields.add(fieldName);
+                this._setInvalidField(fieldName);
             }
         }
         const isValid = !this._invalidFields.size;
         if (!isValid && displayNotification) {
-            const items = [...this._invalidFields].map(
-                (fieldName) => markup`<li>${this.fields[fieldName].string || fieldName}</li>`,
-                this
-            );
+            const items = [...this._invalidFields].map((fieldName) => {
+                return `<li>${escape(this.fields[fieldName].string || fieldName)}</li>`;
+            }, this);
             this._closeInvalidFieldsNotification = this.model.notification.add(
-                markup`<ul>${htmlJoin(items)}</ul>`,
+                markup(`<ul>${items.join("")}</ul>`),
                 {
                     title: _t("Invalid fields: "),
                     type: "danger",
@@ -509,49 +463,35 @@ export class Record extends DataPoint {
     }
 
     /**
-     * Given a possibily incomplete value for a many2one field (i.e. a object { id, display_name } but
+     * Given a possibily incomplete value for a many2one field (i.e. a pair [id, display_name] but
      * with id and/or display_name being undefined), return the complete value as follows:
      *  - if a display_name is given but no id, perform a name_create to get an id
      *  - if an id is given but display_name is undefined, call web_read to get the display_name
      *  - if both id and display_name are given, return the value as is
      *  - in any other cases, return false
      *
-     * @param {{ id?: number; display_name?: string }} value
+     * @param {Array | false} value a (possibly incomplete) pair [id, display_name] or false
      * @param {string} fieldName
      * @param {string} resModel
-     * @returns {Promise<false | { id: number; display_name: string; }>} the completed record { id, display_name } or false
+     * @returns the completed pair [id, display_name] or false
      */
     async _completeMany2OneValue(value, fieldName, resModel) {
-        const resId = value.id;
-        const displayName = value.display_name;
+        const resId = value[0];
+        const displayName = value[1];
         if (!resId && !displayName) {
             return false;
         }
         const context = getFieldContext(this, fieldName);
         if (!resId && displayName !== undefined) {
-            const pair = await this.model.orm.call(resModel, "name_create", [displayName], {
-                context,
-            });
-            return pair && { id: pair[0], display_name: pair[1] };
+            return this.model.orm.call(resModel, "name_create", [displayName], { context });
         }
         if (resId && displayName === undefined) {
-            const fieldSpec = { display_name: {} };
-            if (this.activeFields[fieldName].related) {
-                Object.assign(
-                    fieldSpec,
-                    getFieldsSpec(
-                        this.activeFields[fieldName].related.activeFields,
-                        this.activeFields[fieldName].related.fields,
-                        getBasicEvalContext(this.config)
-                    )
-                );
-            }
             const kwargs = {
                 context,
-                specification: fieldSpec,
+                specification: { display_name: {} },
             };
             const records = await this.model.orm.webRead(resModel, [resId], kwargs);
-            return records[0];
+            return [resId, records[0].display_name];
         }
         return value;
     }
@@ -581,7 +521,7 @@ export class Record extends DataPoint {
             } else if (value && field.type === "datetime") {
                 dataContext[fieldName] = serializeDateTime(value);
             } else if (value && field.type === "many2one") {
-                dataContext[fieldName] = value.id;
+                dataContext[fieldName] = value[0];
             } else if (value && field.type === "reference") {
                 dataContext[fieldName] = `${value.resModel},${value.resId}`;
             } else if (field.type === "properties") {
@@ -599,12 +539,7 @@ export class Record extends DataPoint {
         };
     }
 
-    /**
-     * @param {RecordType<string, unknown>} data
-     * @param {string} fieldName
-     * @param {FieldSpecifications} [params]
-     */
-    _createStaticListDatapoint(data, fieldName, { orderBys } = {}) {
+    _createStaticListDatapoint(data, fieldName) {
         const { related, limit, defaultOrderBy } = this.activeFields[fieldName];
         const config = {
             resModel: this.fields[fieldName].relation,
@@ -613,8 +548,9 @@ export class Record extends DataPoint {
             relationField: this.fields[fieldName].relation_field || false,
             offset: 0,
             resIds: data.map((r) => r.id),
-            orderBy: orderBys?.[fieldName] || defaultOrderBy || [],
+            orderBy: defaultOrderBy || [],
             limit: limit || Number.MAX_SAFE_INTEGER,
+            currentCompanyId: this.currentCompanyId,
             context: {}, // will be set afterwards, see "_updateContext" in "_setEvalContext"
         };
         const options = {
@@ -644,9 +580,6 @@ export class Record extends DataPoint {
         this._savePoint = undefined;
         this._setEvalContext();
         this._invalidFields.clear();
-        if (!this.isNew) {
-            this._checkValidity();
-        }
         this._closeInvalidFieldsNotification();
         this._closeInvalidFieldsNotification = () => {};
         this._restoreActiveFields();
@@ -662,7 +595,7 @@ export class Record extends DataPoint {
         } else if (fieldType === "html") {
             return value && value.length ? value : false;
         } else if (fieldType === "many2one") {
-            return value ? value.id : false;
+            return value ? value[0] : false;
         } else if (fieldType === "many2one_reference") {
             return value ? value.resId : 0;
         } else if (fieldType === "reference") {
@@ -671,32 +604,27 @@ export class Record extends DataPoint {
                 : false;
         } else if (fieldType === "properties") {
             return value.map((property) => {
-                property = { ...property };
-                for (const key of ["value", "default"]) {
-                    let value;
-                    if (property.type === "many2one") {
-                        value = property[key] && [property[key].id, property[key].display_name];
-                    } else if (
-                        (property.type === "date" || property.type === "datetime") &&
-                        typeof property[key] === "string"
-                    ) {
-                        // TO REMOVE: need refactoring PropertyField to use the same format as the server
-                        value = property[key];
-                    } else if (property[key] !== undefined) {
-                        value = this._formatServerValue(property.type, property[key]);
-                    }
-                    property[key] = value;
+                let value;
+                if (property.type === "many2one") {
+                    value = property.value;
+                } else if (
+                    (property.type === "date" || property.type === "datetime") &&
+                    typeof property.value === "string"
+                ) {
+                    // TO REMOVE: need refactoring PropertyField to use the same format as the server
+                    value = property.value;
+                } else {
+                    value = this._formatServerValue(property.type, property.value);
                 }
-                return property;
+                return {
+                    ...property,
+                    value,
+                };
             });
         }
         return value;
     }
 
-    /**
-     * @param {RecordType<string, unknown>} [changes]
-     * @param {FieldSpecifications} [params]
-     */
     _getChanges(changes = this._changes, { withReadonly } = {}) {
         const result = {};
         for (const [fieldName, value] of Object.entries(changes)) {
@@ -748,9 +676,6 @@ export class Record extends DataPoint {
         return defaultValues;
     }
 
-    /**
-     * @param {RecordType<string, unknown>} values
-     */
     _getTextValues(values) {
         const textValues = {};
         for (const fieldName in values) {
@@ -764,25 +689,16 @@ export class Record extends DataPoint {
         return textValues;
     }
 
-    /**
-     * @param {string} fieldName
-     */
     _isInvisible(fieldName) {
         const invisible = this.activeFields[fieldName].invisible;
         return invisible ? evaluateBooleanExpr(invisible, this.evalContextWithVirtualIds) : false;
     }
 
-    /**
-     * @param {string} fieldName
-     */
     _isReadonly(fieldName) {
         const readonly = this.activeFields[fieldName].readonly;
         return readonly ? evaluateBooleanExpr(readonly, this.evalContextWithVirtualIds) : false;
     }
 
-    /**
-     * @param {string} fieldName
-     */
     _isRequired(fieldName) {
         const required = this.activeFields[fieldName].required;
         return required ? evaluateBooleanExpr(required, this.evalContextWithVirtualIds) : false;
@@ -804,7 +720,6 @@ export class Record extends DataPoint {
 
     /**
      * This function extracts all properties and adds them to fields and activeFields.
-     *
      * @param {Object[]} properties the list of properties to be extracted
      * @param {string} fieldName name of the field containing the properties
      * @param {Array} parent Array with ['id, 'display_name'], representing the record to which the definition of properties is linked
@@ -857,8 +772,8 @@ export class Record extends DataPoint {
                 data[propertyFieldName] = staticList;
             } else if (property.type === "many2one") {
                 data[propertyFieldName] =
-                    property.value && property.value.display_name === null
-                        ? { id: property.value.id, display_name: _t("No Access") }
+                    property.value.length && property.value[1] === null
+                        ? [property.value[0], _t("No Access")]
                         : property.value;
             } else {
                 data[propertyFieldName] = property.value ?? false;
@@ -868,11 +783,7 @@ export class Record extends DataPoint {
         return data;
     }
 
-    /**
-     * @param {RecordType<string, unknown>} serverValues
-     * @param {FieldSpecifications} [params]
-     */
-    _parseServerValues(serverValues, { currentValues, orderBys } = {}) {
+    _parseServerValues(serverValues, currentValues = {}) {
         const parsedValues = {};
         if (!serverValues) {
             return parsedValues;
@@ -884,16 +795,18 @@ export class Record extends DataPoint {
             }
             const field = this.fields[fieldName];
             if (field.type === "one2many" || field.type === "many2many") {
-                let staticList = currentValues?.[fieldName];
+                let staticList = currentValues[fieldName];
                 let valueIsCommandList = true;
                 // value can be a list of records or a list of commands (new record)
                 valueIsCommandList = value.length > 0 && Array.isArray(value[0]);
                 if (!staticList) {
                     let data = valueIsCommandList ? [] : value;
                     if (data.length > 0 && typeof data[0] === "number") {
-                        data = data.map((resId) => ({ id: resId }));
+                        data = data.map((resId) => {
+                            return { id: resId };
+                        });
                     }
-                    staticList = this._createStaticListDatapoint(data, fieldName, { orderBys });
+                    staticList = this._createStaticListDatapoint(data, fieldName);
                     if (valueIsCommandList) {
                         staticList._applyInitialCommands(value);
                     }
@@ -950,11 +863,11 @@ export class Record extends DataPoint {
                 } else {
                     const relation = this.data[this.fields[fieldName].model_field];
                     return this._completeMany2OneValue(
-                        { id: value.resId, display_name: value.displayName },
+                        [value.resId, value.displayName],
                         fieldName,
                         relation
                     ).then((v) => {
-                        changes[fieldName] = { resId: v.id, displayName: v.display_name };
+                        changes[fieldName] = { resId: v[0], displayName: v[1] };
                     });
                 }
             });
@@ -969,14 +882,14 @@ export class Record extends DataPoint {
                     changes[fieldName] = false;
                 } else {
                     return this._completeMany2OneValue(
-                        { id: value.resId, display_name: value.displayName },
+                        [value.resId, value.displayName],
                         fieldName,
                         value.resModel
                     ).then((v) => {
                         changes[fieldName] = {
-                            resId: v.id,
+                            resId: v[0],
                             resModel: value.resModel,
-                            displayName: v.display_name,
+                            displayName: v[1],
                         };
                     });
                 }
@@ -1044,10 +957,7 @@ export class Record extends DataPoint {
         }
     }
 
-    /**
-     * @param {...string} fieldNames
-     */
-    _removeInvalidFields(...fieldNames) {
+    _removeInvalidFields(fieldNames) {
         for (const fieldName of fieldNames) {
             this._invalidFields.delete(fieldName);
         }
@@ -1125,9 +1035,10 @@ export class Record extends DataPoint {
                 this.dirty = false;
             } else {
                 this.model._closeUrgentSaveNotification = this.model.notification.add(
-                    _t(
-                        `Heads up! Your recent changes are too large to save automatically. Please click the %(upload_icon)s button now to ensure your work is saved before you exit this tab.`,
-                        { upload_icon: markup`<i class="fa fa-cloud-upload fa-fw"></i>` }
+                    markup(
+                        _t(
+                            `Heads up! Your recent changes are too large to save automatically. Please click the <i class="fa fa-cloud-upload fa-fw"></i> button now to ensure your work is saved before you exit this tab.`
+                        )
                     ),
                     { sticky: true }
                 );
@@ -1138,22 +1049,12 @@ export class Record extends DataPoint {
         if (canProceed === false) {
             return false;
         }
-        // keep x2many orderBy if we stay on the same record
-        const orderBys = {};
-        if (!nextId) {
-            for (const fieldName of this.fieldNames) {
-                if (["one2many", "many2many"].includes(this.fields[fieldName].type)) {
-                    orderBys[fieldName] = this.data[fieldName].orderBy;
-                }
-            }
-        }
         let fieldSpec = {};
         if (reload) {
             fieldSpec = getFieldsSpec(
                 this.activeFields,
                 this.fields,
-                getBasicEvalContext(this.config),
-                { orderBys }
+                getBasicEvalContext(this.config)
             );
         }
         const kwargs = {
@@ -1171,10 +1072,7 @@ export class Record extends DataPoint {
             );
         } catch (e) {
             if (onError) {
-                return onError(e, {
-                    discard: () => this._discard(),
-                    retry: () => this._save(...arguments),
-                });
+                return onError(e, { discard: () => this._discard() });
             }
             if (!this.isInEdition) {
                 await this._load({});
@@ -1200,7 +1098,7 @@ export class Record extends DataPoint {
             if (this.config.isRoot) {
                 this.model.hooks.onWillLoadRoot(this.config);
             }
-            this._setData(records[0], { orderBys });
+            this._setData(records[0]);
         } else {
             this._values = markRaw({ ...this._values, ...this._changes });
             if ("id" in this.activeFields) {
@@ -1241,9 +1139,6 @@ export class Record extends DataPoint {
         }
     }
 
-    /**
-     * @param {string} fieldName
-     */
     async _setInvalidField(fieldName) {
         const canProceed = this.model.hooks.onWillSetInvalidField(this, fieldName);
         if (canProceed === false) {
@@ -1270,9 +1165,6 @@ export class Record extends DataPoint {
         this._invalidFields.delete(fieldName);
     }
 
-    /**
-     * @param {Mode} mode
-     */
     _switchMode(mode) {
         this.model._updateConfig(this.config, { mode }, { reload: false });
         if (mode === "readonly") {
@@ -1371,12 +1263,7 @@ export class Record extends DataPoint {
             if (this.fields[fieldName].type === "many2one") {
                 const curVal = toRaw(this.data[fieldName]);
                 const nextVal = changes[fieldName];
-                if (
-                    curVal &&
-                    nextVal &&
-                    curVal.id === nextVal.id &&
-                    curVal.display_name === nextVal.display_name
-                ) {
+                if (curVal && nextVal && curVal[0] === nextVal[0] && curVal[1] === nextVal[1]) {
                     delete changes[fieldName];
                 }
             }

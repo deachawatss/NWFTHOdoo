@@ -36,23 +36,15 @@ export class DashboardKanbanRecord extends KanbanRecord {
     }
 
     get recordDropSettings() {
-        const kanbanDashboard = JSON.parse(this.props.record.data.kanban_dashboard);
-        return {
-            image: kanbanDashboard.drag_drop_settings.image,
-            text: kanbanDashboard.drag_drop_settings.text,
-            company_name: kanbanDashboard.company_name,
-            show_company: kanbanDashboard.show_company
-        };
+        return JSON.parse(this.props.record.data.kanban_dashboard).drag_drop_settings;
     }
 
     get dropzoneProps() {
-        const recordDropSettings = this.recordDropSettings;
+        const {image, text} = this.recordDropSettings;
         return {
             visible: this.dropzoneState.visible,
-            dragIcon: recordDropSettings.image,
-            dragText: recordDropSettings.text,
-            dragCompany: recordDropSettings.company_name,
-            dragShowCompany: recordDropSettings.show_company,
+            dragIcon: image,
+            dragText: text,
             dragTitle: this.props.record.data.name,
             hideZone: () => { this.dropzoneState.visible = false; },
         }

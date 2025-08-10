@@ -3,15 +3,16 @@
 # 	* web_editor
 # 
 # Translators:
-# Wil Odoo, 2025
+# Martin Trigaux, 2024
+# Wil Odoo, 2024
 # Tony Ng, 2025
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~18.3\n"
+"Project-Id-Version: Odoo Server 18.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-05-23 18:36+0000\n"
-"PO-Revision-Date: 2025-05-06 12:04+0000\n"
+"POT-Creation-Date: 2025-05-14 20:48+0000\n"
+"PO-Revision-Date: 2024-09-25 09:42+0000\n"
 "Last-Translator: Tony Ng, 2025\n"
 "Language-Team: Chinese (Taiwan) (https://app.transifex.com/odoo/teams/41243/zh_TW/)\n"
 "MIME-Version: 1.0\n"
@@ -24,7 +25,7 @@ msgstr ""
 #. odoo-javascript
 #: code:addons/web_editor/static/src/js/editor/snippets.options.js:0
 msgid "%spx"
-msgstr "%s像素"
+msgstr "%spx"
 
 #. module: web_editor
 #. odoo-javascript
@@ -254,13 +255,13 @@ msgstr "加入"
 #. odoo-javascript
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 msgid "Add Column"
-msgstr "增加列"
+msgstr "加入直欄"
 
 #. module: web_editor
 #. odoo-javascript
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 msgid "Add Row"
-msgstr "新增一行"
+msgstr "加入列"
 
 #. module: web_editor
 #. odoo-javascript
@@ -306,8 +307,13 @@ msgstr "Aden"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
-msgid "Airy"
-msgstr ""
+msgid "Airy & Zigs"
+msgstr "輕逸、幼線"
+
+#. module: web_editor
+#: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
+msgid "Airy &amp; Zigs"
+msgstr "輕逸、幼線"
 
 #. module: web_editor
 #. odoo-javascript
@@ -360,12 +366,6 @@ msgid "Allow users to view and edit the field in HTML."
 msgstr "允許使用者以 HTML 檢視及編輯欄位。"
 
 #. module: web_editor
-#. odoo-javascript
-#: code:addons/web_editor/static/src/xml/add_snippet_dialog.xml:0
-msgid "Almost there! Snippets are incoming, grab a coffee and relax!"
-msgstr ""
-
-#. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Alt tag"
 msgstr "Alt 標籤"
@@ -380,11 +380,6 @@ msgstr "按輸入的網址讀取網頁時，發生錯誤。"
 #: model_terms:ir.ui.view,arch_db:web_editor.colorpicker
 msgid "Angle"
 msgstr "角度"
-
-#. module: web_editor
-#: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
-msgid "Angular"
-msgstr ""
 
 #. module: web_editor
 #. odoo-javascript
@@ -558,11 +553,6 @@ msgstr "大色塊、灑雨效果"
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
 msgid "Blur"
 msgstr "模糊"
-
-#. module: web_editor
-#: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
-msgid "Blurry"
-msgstr ""
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
@@ -758,16 +748,6 @@ msgid "Confirm"
 msgstr "確認"
 
 #. module: web_editor
-#: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
-msgid "Connections"
-msgstr "連線"
-
-#. module: web_editor
-#: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
-msgid "Containers"
-msgstr ""
-
-#. module: web_editor
 #. odoo-javascript
 #: code:addons/web_editor/static/src/js/wysiwyg/conflict_dialog.xml:0
 msgid "Content conflict"
@@ -949,7 +929,7 @@ msgstr "刪除 %s"
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Description"
-msgstr "說明"
+msgstr "描述"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
@@ -1006,27 +986,6 @@ msgid "Display 4"
 msgstr "展示 4"
 
 #. module: web_editor
-#: model:ir.model.fields,field_description:web_editor.field_html_field_history_mixin__display_name
-#: model:ir.model.fields,field_description:web_editor.field_ir_http__display_name
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb__display_name
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field__display_name
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_contact__display_name
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_date__display_name
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_datetime__display_name
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_duration__display_name
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_float__display_name
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_html__display_name
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_image__display_name
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_integer__display_name
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_many2one__display_name
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_monetary__display_name
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_qweb__display_name
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_relative__display_name
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_selection__display_name
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_text__display_name
-#: model:ir.model.fields,field_description:web_editor.field_ir_ui_view__display_name
-#: model:ir.model.fields,field_description:web_editor.field_ir_websocket__display_name
-#: model:ir.model.fields,field_description:web_editor.field_web_editor_assets__display_name
 #: model:ir.model.fields,field_description:web_editor.field_web_editor_converter_test_sub__display_name
 msgid "Display Name"
 msgstr "顯示名稱"
@@ -1098,7 +1057,7 @@ msgstr "編輯圖片"
 #. odoo-javascript
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 msgid "Edit media description"
-msgstr "編輯媒體說明"
+msgstr "編輯媒體描述"
 
 #. module: web_editor
 #. odoo-javascript
@@ -1231,6 +1190,11 @@ msgid "Flip Vertical"
 msgstr "垂直翻轉"
 
 #. module: web_editor
+#: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
+msgid "Floating Shapes"
+msgstr "浮動形狀"
+
+#. module: web_editor
 #. odoo-javascript
 #: code:addons/web_editor/static/src/js/backend/html_field.js:0
 msgid "Focus"
@@ -1323,11 +1287,6 @@ msgstr "幾何圖形圓角"
 #: code:addons/web_editor/static/src/xml/snippets.xml:0
 msgid "Gradient"
 msgstr "漸變"
-
-#. module: web_editor
-#: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
-msgid "Grids"
-msgstr ""
 
 #. module: web_editor
 #: model:ir.model,name:web_editor.model_ir_http
@@ -1489,27 +1448,6 @@ msgid "Html"
 msgstr "Html"
 
 #. module: web_editor
-#: model:ir.model.fields,field_description:web_editor.field_html_field_history_mixin__id
-#: model:ir.model.fields,field_description:web_editor.field_ir_http__id
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb__id
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field__id
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_contact__id
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_date__id
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_datetime__id
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_duration__id
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_float__id
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_html__id
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_image__id
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_integer__id
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_many2one__id
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_monetary__id
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_qweb__id
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_relative__id
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_selection__id
-#: model:ir.model.fields,field_description:web_editor.field_ir_qweb_field_text__id
-#: model:ir.model.fields,field_description:web_editor.field_ir_ui_view__id
-#: model:ir.model.fields,field_description:web_editor.field_ir_websocket__id
-#: model:ir.model.fields,field_description:web_editor.field_web_editor_assets__id
 #: model:ir.model.fields,field_description:web_editor.field_web_editor_converter_test_sub__id
 msgid "ID"
 msgstr "識別號"
@@ -1594,7 +1532,7 @@ msgstr "圖片格式"
 #. odoo-javascript
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 msgid "Image padding"
-msgstr "圖片填充"
+msgstr "圖片內間距"
 
 #. module: web_editor
 #. odoo-javascript
@@ -1812,7 +1750,7 @@ msgstr "左"
 #. odoo-javascript
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 msgid "Light"
-msgstr "Light"
+msgstr "淺色"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.colorpicker
@@ -1881,6 +1819,7 @@ msgstr "載入更多⋯"
 #: code:addons/web_editor/static/src/js/wysiwyg/widgets/chatgpt_alternatives_dialog.xml:0
 #: code:addons/web_editor/static/src/js/wysiwyg/widgets/chatgpt_prompt_dialog.xml:0
 #: code:addons/web_editor/static/src/js/wysiwyg/widgets/chatgpt_translate_dialog.xml:0
+#: code:addons/web_editor/static/src/xml/add_snippet_dialog.xml:0
 msgid "Loading..."
 msgstr "載入中⋯"
 
@@ -1937,11 +1876,6 @@ msgstr "中等字號章節標題。"
 #: code:addons/web_editor/static/src/js/backend/html_field.js:0
 msgid "Min height"
 msgstr "最低高度"
-
-#. module: web_editor
-#: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
-msgid "Miscellaneous"
-msgstr "雜項"
 
 #. module: web_editor
 #. odoo-javascript
@@ -2030,12 +1964,6 @@ msgstr "找不到象形圖示。"
 
 #. module: web_editor
 #. odoo-javascript
-#: code:addons/web_editor/static/src/xml/add_snippet_dialog.xml:0
-msgid "No snippets found"
-msgstr ""
-
-#. module: web_editor
-#. odoo-javascript
 #: code:addons/web_editor/static/src/js/backend/html_field.js:0
 msgid "No videos"
 msgstr "沒有影片"
@@ -2070,12 +1998,6 @@ msgstr "Odoo 編輯工具測試"
 
 #. module: web_editor
 #. odoo-javascript
-#: code:addons/web_editor/static/src/xml/add_snippet_dialog.xml:0
-msgid "Oops! No snippets found."
-msgstr ""
-
-#. module: web_editor
-#. odoo-javascript
 #: code:addons/web_editor/static/src/xml/wysiwyg.xml:0
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Open in New Window"
@@ -2092,6 +2014,11 @@ msgstr "在新頁面中打開"
 #: code:addons/web_editor/static/src/components/media_dialog/image_selector.xml:0
 msgid "Optimized"
 msgstr "優化"
+
+#. module: web_editor
+#: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
+msgid "Origins"
+msgstr "基本幾何圖形"
 
 #. module: web_editor
 #. odoo-javascript
@@ -2141,7 +2068,6 @@ msgstr "貼上為網址"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
-#: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_background_options
 msgid "Patterns"
 msgstr "型式"
 
@@ -2297,7 +2223,7 @@ msgstr "用戶點按媒體時，重新導向至其他地方。"
 #. odoo-javascript
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 msgid "Remove (DELETE)"
-msgstr "刪除（刪除）"
+msgstr "移除（刪除）"
 
 #. module: web_editor
 #. odoo-javascript
@@ -2309,7 +2235,7 @@ msgstr "移除區塊"
 #. odoo-javascript
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 msgid "Remove Current"
-msgstr "刪除所選"
+msgstr "移除目前項目"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.colorpicker
@@ -2327,7 +2253,7 @@ msgstr "移除分欄"
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #: code:addons/web_editor/static/src/xml/snippets.xml:0
 msgid "Remove format"
-msgstr "刪除格式"
+msgstr "移除格式"
 
 #. module: web_editor
 #. odoo-javascript
@@ -2463,7 +2389,7 @@ msgstr "向右旋轉"
 #. odoo-javascript
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 msgid "Row"
-msgstr "橫行"
+msgstr "橫列"
 
 #. module: web_editor
 #. odoo-javascript
@@ -2594,7 +2520,7 @@ msgstr "圖形"
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Shape: Circle"
-msgstr "形狀：Circle"
+msgstr "形狀：圓形"
 
 #. module: web_editor
 #. odoo-javascript
@@ -2608,7 +2534,7 @@ msgstr "形狀：圓角"
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
 msgid "Shape: Thumbnail"
-msgstr "形狀：Thumbnail"
+msgstr "形狀：縮圖"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options
@@ -2786,12 +2712,6 @@ msgstr "表格"
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 msgid "Table Options"
 msgstr "表格選項"
-
-#. module: web_editor
-#. odoo-javascript
-#: code:addons/web_editor/static/src/xml/add_snippet_dialog.xml:0
-msgid "Take a look at the search bar, there might be a small typo!"
-msgstr ""
 
 #. module: web_editor
 #. odoo-javascript
@@ -3051,7 +2971,7 @@ msgstr "變換圖片"
 #. odoo-javascript
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 msgid "Transform the picture (click twice to reset transformation)"
-msgstr "轉換圖片（雙擊可重設）"
+msgstr "圖片變形（按兩下重設）"
 
 #. module: web_editor
 #. odoo-javascript
@@ -3071,7 +2991,7 @@ msgstr "AI 翻譯"
 #. odoo-javascript
 #: code:addons/web_editor/static/src/js/wysiwyg/widgets/chatgpt_translate_dialog.xml:0
 msgid "Translating..."
-msgstr ""
+msgstr "翻譯中⋯"
 
 #. module: web_editor
 #. odoo-javascript
@@ -3118,6 +3038,12 @@ msgstr "上傳文件"
 #: code:addons/web_editor/static/src/components/media_dialog/image_selector.js:0
 msgid "Upload an image"
 msgstr "上載圖片"
+
+#. module: web_editor
+#. odoo-javascript
+#: code:addons/web_editor/static/src/components/media_dialog/image_selector.js:0
+msgid "Uploaded image's format is not supported. Try with: "
+msgstr "圖片格式未支援。請使用 "
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
@@ -3237,7 +3163,7 @@ msgstr "寫些東西⋯"
 #. odoo-javascript
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 msgid "XL"
-msgstr "XL"
+msgstr "特大"
 
 #. module: web_editor
 #: model_terms:ir.ui.view,arch_db:web_editor.snippet_options_image_optimization_widgets
@@ -3383,7 +3309,7 @@ msgstr "螢幕"
 #. odoo-javascript
 #: code:addons/web_editor/static/src/xml/editor.xml:0
 msgid "to"
-msgstr "到"
+msgstr "至"
 
 #. module: web_editor
 #. odoo-javascript

@@ -31,6 +31,7 @@ class L10nHuEdiTestCommon(AccountTestInvoicingCommon):
             'name': 'Consultancy Service',
             'type': 'service',
             'uom_id': cls.env.ref('uom.product_uom_hour').id,
+            'uom_po_id': cls.env.ref('uom.product_uom_hour').id,
             'property_account_income_id': cls.company_data['default_account_revenue'].id,
             'property_account_expense_id': cls.company_data['default_account_expense'].id,
         })
@@ -234,7 +235,7 @@ class L10nHuEdiTestCommon(AccountTestInvoicingCommon):
                     'product_id': self.product_a.id,
                     'product_uom_qty': 1,
                     'price_unit': 10000.0,
-                    'tax_ids': [Command.set(self.tax_vat.ids)],
+                    'tax_id': [Command.set(self.tax_vat.ids)],
                 })
             ]
         })

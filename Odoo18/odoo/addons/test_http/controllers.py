@@ -7,7 +7,7 @@ from psycopg2.errorcodes import SERIALIZATION_FAILURE
 from psycopg2.errors import SerializationFailure
 
 from odoo import http
-from odoo.exceptions import AccessError, ConcurrencyError, UserError
+from odoo.exceptions import AccessError, UserError
 from odoo.http import request
 from odoo.tools import replace_exceptions, str2bool
 
@@ -20,12 +20,12 @@ CT_JSON = {'Content-Type': 'application/json; charset=utf-8'}
 WSGI_SAFE_KEYS = {'PATH_INFO', 'QUERY_STRING', 'RAW_URI', 'SCRIPT_NAME', 'wsgi.url_scheme'}
 
 
-# Force concurrency errors. Patched in some tests.
+# Force serialization errors. Patched in some tests.
 should_fail = None
 
 
 class TestHttp(http.Controller):
-    def _readonly(self, rule, args):
+    def _readonly(self):
         return str2bool(request.httprequest.args.get('readonly', True))
 
     def _max_content_length_1kiB(self):
@@ -41,21 +41,21 @@ class TestHttp(http.Controller):
 
     @http.route('/test_http/greeting-public', type='http', auth='public', readonly=_readonly)
     def greeting_public(self, readonly=True):
-        assert self.env.user, "ORM should be initialized"
-        assert self.env.cr.readonly == str2bool(readonly)
+        assert request.env.user, "ORM should be initialized"
+        assert request.env.cr.readonly == str2bool(readonly)
         return "Tek'ma'te"
 
     @http.route('/test_http/greeting-user', type='http', auth='user', readonly=_readonly)
     def greeting_user(self, readonly=True):
-        assert self.env.user, "ORM should be initialized"
-        assert self.env.cr.readonly == str2bool(readonly)
+        assert request.env.user, "ORM should be initialized"
+        assert request.env.cr.readonly == str2bool(readonly)
         return "Tek'ma'te"
 
     @http.route('/test_http/greeting-bearer', type='http', auth='bearer', readonly=_readonly)
     def greeting_bearer(self, readonly=True):
-        assert self.env.user, "ORM should be initialized"
-        assert self.env.cr.readonly == str2bool(readonly)
-        return f"Tek'ma'te; user={self.env.user.login}"
+        assert request.env.user, "ORM should be initialized"
+        assert request.env.cr.readonly == str2bool(readonly)
+        return f"Tek'ma'te; user={request.env.user.login}"
 
     @http.route('/test_http/wsgi_environ', type='http', auth='none')
     def wsgi_environ(self):
@@ -91,15 +91,15 @@ class TestHttp(http.Controller):
 
     @http.route('/test_http/echo-http-context-lang', type='http', auth='public', methods=['GET'], csrf=False)
     def echo_http_context_lang(self, **kwargs):
-        return self.env.context.get('lang', '')
+        return request.env.context.get('lang', '')
 
-    @http.route('/test_http/echo-json', type='jsonrpc', auth='none', methods=['POST'], csrf=False)
+    @http.route('/test_http/echo-json', type='json', auth='none', methods=['POST'], csrf=False)
     def echo_json(self, **kwargs):
         return kwargs
 
-    @http.route('/test_http/echo-json-context', type='jsonrpc', auth='user', methods=['POST'], csrf=False, readonly=True)
+    @http.route('/test_http/echo-json-context', type='json', auth='user', methods=['POST'], csrf=False, readonly=True)
     def echo_json_context(self, **kwargs):
-        return self.env.context
+        return request.env.context
 
     @http.route('/test_http/echo-json-over-http', type='http', auth='none', methods=['POST'], csrf=False)
     def echo_json_over_http(self):
@@ -151,7 +151,7 @@ class TestHttp(http.Controller):
     def cors_http_verbs(self, **kwargs):
         return "Hello"
 
-    @http.route('/test_http/cors_json', type='jsonrpc', auth='none', cors='*')
+    @http.route('/test_http/cors_json', type='json', auth='none', cors='*')
     def cors_json(self, **kwargs):
         return {}
 
@@ -195,7 +195,7 @@ class TestHttp(http.Controller):
         )
         raise request.not_found()
 
-    @http.route('/test_http/json_value_error', type='jsonrpc', auth='none')
+    @http.route('/test_http/json_value_error', type='json', auth='none')
     def json_value_error(self):
         raise ValueError('Unknown destination')
 
@@ -229,20 +229,6 @@ class TestHttp(http.Controller):
             raise sf
 
         return data.decode()
-
-    @http.route('/test_http/concurrency_error', type='http', auth='none')
-    def concurrency_error(self):
-        global should_fail  # noqa: PLW0603
-        if should_fail is None:
-            e = "should_fail must be set."
-            raise ValueError(e)
-
-        if should_fail:
-            should_fail = False  # Fail once
-            e = "A dummy concurrency error occurred"
-            raise ConcurrencyError(e)
-
-        return ''
 
     # =====================================================
     # Security

@@ -5,6 +5,7 @@ from odoo import fields, models
 
 class ProductAttribute(models.Model):
     _inherit = 'product.attribute'
+    _order = 'category_id, sequence, id'
 
     category_id = fields.Many2one(
         comodel_name='product.attribute.category',

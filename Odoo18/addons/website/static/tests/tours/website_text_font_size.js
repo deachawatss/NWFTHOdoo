@@ -1,8 +1,9 @@
+/** @odoo-module **/
+
 import {
     insertSnippet,
     goToTheme,
     registerWebsitePreviewTour,
-    clickToolbarButton,
 } from '@website/js/tours/tour_utils';
 import {FONT_SIZE_CLASSES} from '@web_editor/js/editor/odoo-editor/src/utils/utils';
 
@@ -40,48 +41,48 @@ function checkComputedFontSize(fontSizeClass, stage) {
 function getFontSizeTestSteps(fontSizeClass) {
     return [
         ...insertSnippet({id: "s_text_block", name: "Text", groupName: "Text"}),
-        ...clickToolbarButton(
-            `text block first paragraph [${fontSizeClass}]`,
-            ".s_text_block p",
-            "Select font size"
-        ),
         {
+            content: `[${fontSizeClass}] Click on the text block first paragraph (to auto select)`,
+            trigger: ":iframe .s_text_block p",
+            run: "click",
+        }, {
+            content: `Open the font size dropdown to select ${fontSizeClass}`,
+            trigger: "#font-size button",
+            run: "click",
+        }, {
             content: `Select ${fontSizeClass} in the dropdown`,
-            trigger: `.o_font_size_selector_menu span:contains(${classNameInfo.get(fontSizeClass).start})`,
+            trigger: `a[data-apply-class="${fontSizeClass}"]:contains(${classNameInfo.get(fontSizeClass).start})`,
             run: "click",
         },
         checkComputedFontSize(fontSizeClass, "start"),
         ...goToTheme(),
         {
             content: `Open the collapse to see the font size of ${fontSizeClass}`,
-            trigger: `.we-bg-options-container:has([data-action-param="${classNameInfo.get(fontSizeClass).scssVariableName}"]) [data-label="Font Size"] .o_hb_collapse_toggler`,
+            trigger: `we-collapse:has(we-input[data-variable="` +
+            `${classNameInfo.get(fontSizeClass).scssVariableName}"]) we-toggler`,
             run: "click",
         }, {
             content: `Check that the setting for ${fontSizeClass} is correct`,
-            trigger: `[data-action-param="${classNameInfo.get(fontSizeClass).scssVariableName}"]`+ ` input:value("${classNameInfo.get(fontSizeClass).start}")`,
+            trigger: `we-input[data-variable="${classNameInfo.get(fontSizeClass).scssVariableName}"]`
+                + ` input:value("${classNameInfo.get(fontSizeClass).start}")`,
         }, {
             content: `Change the setting value of ${fontSizeClass}`,
-            trigger: `[data-action-param="${classNameInfo.get(fontSizeClass).scssVariableName}"] input`,
+            trigger: `[data-variable="${classNameInfo.get(fontSizeClass).scssVariableName}"] input`,
             // TODO: Remove "&& click body"
             run: `edit ${classNameInfo.get(fontSizeClass).end} && click body`,
         }, {
             content: `[${fontSizeClass}] Go to blocks tab`,
-            trigger: "[data-name='blocks']",
+            trigger: ".o_we_add_snippet_btn",
             run: "click",
         }, {
             content: `[${fontSizeClass}] Wait to be in blocks tab`,
-            trigger: "[data-name='blocks'].active",
+            trigger: ".o_we_add_snippet_btn.active",
             run: "click",
         },
         ...goToTheme(),
         {
-            content: `Open the collapse to see the font size of ${fontSizeClass}`,
-            trigger: `.we-bg-options-container:has([data-action-param="${classNameInfo.get(fontSizeClass).scssVariableName}"]) [data-label="Font Size"] .o_hb_collapse_toggler`,
-            run: "click",
-        },
-        {
             content: `Check that the setting of ${fontSizeClass} has been updated`,
-            trigger: `[data-action-param="${classNameInfo.get(fontSizeClass).scssVariableName}"]`
+            trigger: `we-input[data-variable="${classNameInfo.get(fontSizeClass).scssVariableName}"]`
                 + ` input:value("${classNameInfo.get(fontSizeClass).end}")`,
         },
         {
@@ -89,7 +90,8 @@ function getFontSizeTestSteps(fontSizeClass) {
         },
         {
             content: `Close the collapse to hide the font size of ${fontSizeClass}`,
-            trigger: `.we-bg-options-container:has([data-action-param="${classNameInfo.get(fontSizeClass).scssVariableName}"]) [data-label="Font Size"] .o_hb_collapse_toggler`,
+            trigger: `we-collapse:has(we-input[data-variable=` +
+                `"${classNameInfo.get(fontSizeClass).scssVariableName}"]) we-toggler`,
             run: "click",
         },
         checkComputedFontSize(fontSizeClass, "end"),
@@ -112,8 +114,8 @@ function getFontSizeTestSteps(fontSizeClass) {
 function getAllFontSizesTestSteps() {
     const steps = [];
     const fontSizeClassesToSkip = [
-        // This option is hidden by default because same value as h6-fs.
-        "base-fs",
+        // This option is hidden by default because same value as base-fs.
+        "h6-fs",
         // There is nothing related to these classes in the UI to test anymore.
         "small",
         "o_small_twelve-fs",

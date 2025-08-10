@@ -8,10 +8,10 @@
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~18.3\n"
+"Project-Id-Version: Odoo Server 18.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-05-06 09:28+0000\n"
-"PO-Revision-Date: 2025-05-06 12:03+0000\n"
+"POT-Creation-Date: 2025-06-20 18:39+0000\n"
+"PO-Revision-Date: 2024-09-25 09:41+0000\n"
 "Last-Translator: Tony Ng, 2025\n"
 "Language-Team: Chinese (Taiwan) (https://app.transifex.com/odoo/teams/41243/zh_TW/)\n"
 "MIME-Version: 1.0\n"
@@ -133,12 +133,6 @@ msgid "Absence Management"
 msgstr "缺勤管理"
 
 #. module: hr_attendance
-#. odoo-javascript
-#: code:addons/hr_attendance/static/src/components/manual_selection/manual_selection.xml:0
-msgid "Absent"
-msgstr "病假"
-
-#. module: hr_attendance
 #: model:ir.model.fields,field_description:hr_attendance.field_hr_attendance__message_needaction
 msgid "Action Needed"
 msgstr "需要採取行動"
@@ -250,22 +244,20 @@ msgstr "附件數目"
 #: model:ir.model.fields,field_description:hr_attendance.field_hr_employee__attendance_ids
 #: model_terms:ir.ui.view,arch_db:hr_attendance.hr_user_view_form
 #: model_terms:ir.ui.view,arch_db:hr_attendance.view_employee_form_inherit_hr_attendance
+#: model_terms:ir.ui.view,arch_db:hr_attendance.view_employee_tree_inherit_leave
 msgid "Attendance"
 msgstr "出勤"
-
-#. module: hr_attendance
-#: model:ir.model.fields,field_description:hr_attendance.field_hr_employee__attendance_manager_id
-#: model:ir.model.fields,field_description:hr_attendance.field_hr_employee_public__attendance_manager_id
-#: model:ir.model.fields,field_description:hr_attendance.field_res_users__attendance_manager_id
-#: model_terms:ir.ui.view,arch_db:hr_attendance.hr_employee_search_view
-msgid "Attendance Approver"
-msgstr "考勤批核人"
 
 #. module: hr_attendance
 #: model:ir.model.fields,field_description:hr_attendance.field_res_company__attendance_from_systray
 #: model:ir.model.fields,field_description:hr_attendance.field_res_config_settings__attendance_from_systray
 msgid "Attendance From Systray"
 msgstr "系統匣出勤情況"
+
+#. module: hr_attendance
+#: model:ir.actions.client,name:hr_attendance.hr_attendance_action_install_kiosk_pwa
+msgid "Attendance Kiosk"
+msgstr "自助考勤機"
 
 #. module: hr_attendance
 #: model:ir.model.fields,field_description:hr_attendance.field_res_company__attendance_kiosk_delay
@@ -283,6 +275,13 @@ msgstr "自助考勤終端密鑰"
 #: model:ir.model.fields,field_description:hr_attendance.field_res_config_settings__attendance_kiosk_url
 msgid "Attendance Kiosk Url"
 msgstr "自助考勤終端網址"
+
+#. module: hr_attendance
+#: model:ir.model.fields,field_description:hr_attendance.field_hr_employee__attendance_manager_id
+#: model:ir.model.fields,field_description:hr_attendance.field_hr_employee_public__attendance_manager_id
+#: model:ir.model.fields,field_description:hr_attendance.field_res_users__attendance_manager_id
+msgid "Attendance Manager"
+msgstr "考勤管理員"
 
 #. module: hr_attendance
 #: model:ir.model.fields,field_description:hr_attendance.field_res_company__attendance_kiosk_mode
@@ -322,7 +321,6 @@ msgstr "考勤：偵測員工缺勤"
 #: model:ir.actions.act_window,name:hr_attendance.hr_attendance_action
 #: model:ir.actions.act_window,name:hr_attendance.hr_attendance_reporting
 #: model:ir.ui.menu,name:hr_attendance.menu_hr_attendance_root
-#: model:res.groups.privilege,name:hr_attendance.res_groups_privilege_attendances
 #: model_terms:ir.ui.view,arch_db:hr_attendance.hr_department_view_kanban
 #: model_terms:ir.ui.view,arch_db:hr_attendance.res_config_settings_view_form
 msgid "Attendances"
@@ -699,13 +697,6 @@ msgstr "顯示加班時數。"
 #. module: hr_attendance
 #: model:ir.model.fields,field_description:hr_attendance.field_hr_attendance__display_name
 #: model:ir.model.fields,field_description:hr_attendance.field_hr_attendance_overtime__display_name
-#: model:ir.model.fields,field_description:hr_attendance.field_hr_employee__display_name
-#: model:ir.model.fields,field_description:hr_attendance.field_hr_employee_base__display_name
-#: model:ir.model.fields,field_description:hr_attendance.field_hr_employee_public__display_name
-#: model:ir.model.fields,field_description:hr_attendance.field_ir_http__display_name
-#: model:ir.model.fields,field_description:hr_attendance.field_res_company__display_name
-#: model:ir.model.fields,field_description:hr_attendance.field_res_config_settings__display_name
-#: model:ir.model.fields,field_description:hr_attendance.field_res_users__display_name
 msgid "Display Name"
 msgstr "顯示名稱"
 
@@ -742,7 +733,7 @@ msgstr "員工頭像"
 #: model:ir.model.fields,field_description:hr_attendance.field_res_company__attendance_kiosk_use_pin
 #: model:ir.model.fields,field_description:hr_attendance.field_res_config_settings__attendance_kiosk_use_pin
 msgid "Employee PIN Identification"
-msgstr "員工個人識別密碼"
+msgstr "員工個人密碼驗證身份"
 
 #. module: hr_attendance
 #: model_terms:ir.ui.view,arch_db:hr_attendance.hr_attendance_view_form
@@ -777,6 +768,7 @@ msgstr "預期工時"
 #: model:ir.model.fields,field_description:hr_attendance.field_hr_attendance__validated_overtime_hours
 #: model:ir.model.fields,field_description:hr_attendance.field_hr_attendance_overtime__duration
 #: model_terms:ir.ui.view,arch_db:hr_attendance.hr_attendance_validated_hours_employee_simple_tree_view
+#: model_terms:ir.ui.view,arch_db:hr_attendance.hr_attendance_view_form
 #: model_terms:ir.ui.view,arch_db:hr_attendance.res_config_settings_view_form
 #: model_terms:ir.ui.view,arch_db:hr_attendance.view_attendance_tree
 #: model_terms:ir.ui.view,arch_db:hr_attendance.view_attendance_tree_management
@@ -860,11 +852,6 @@ msgid "Group By"
 msgstr "分組依據"
 
 #. module: hr_attendance
-#: model:ir.model,name:hr_attendance.model_ir_http
-msgid "HTTP Routing"
-msgstr "http路由"
-
-#. module: hr_attendance
 #: model:ir.model.fields,field_description:hr_attendance.field_hr_attendance__has_message
 msgid "Has Message"
 msgstr "有訊息"
@@ -918,13 +905,6 @@ msgstr "人力資源考勤搜尋"
 #. module: hr_attendance
 #: model:ir.model.fields,field_description:hr_attendance.field_hr_attendance__id
 #: model:ir.model.fields,field_description:hr_attendance.field_hr_attendance_overtime__id
-#: model:ir.model.fields,field_description:hr_attendance.field_hr_employee__id
-#: model:ir.model.fields,field_description:hr_attendance.field_hr_employee_base__id
-#: model:ir.model.fields,field_description:hr_attendance.field_hr_employee_public__id
-#: model:ir.model.fields,field_description:hr_attendance.field_ir_http__id
-#: model:ir.model.fields,field_description:hr_attendance.field_res_company__id
-#: model:ir.model.fields,field_description:hr_attendance.field_res_config_settings__id
-#: model:ir.model.fields,field_description:hr_attendance.field_res_users__id
 msgid "ID"
 msgstr "識別號"
 
@@ -984,11 +964,6 @@ msgstr "無效請求"
 #: model:ir.model.fields,field_description:hr_attendance.field_hr_attendance__message_is_follower
 msgid "Is Follower"
 msgstr "是關注者"
-
-#. module: hr_attendance
-#: model:ir.model.fields,field_description:hr_attendance.field_hr_attendance__is_manager
-msgid "Is Manager"
-msgstr "是經理"
 
 #. module: hr_attendance
 #: model:ir.model.fields.selection,name:hr_attendance.selection__hr_attendance__in_mode__kiosk
@@ -1238,18 +1213,6 @@ msgid "Officer: Manage attendances"
 msgstr "主管:管理出勤"
 
 #. module: hr_attendance
-#. odoo-javascript
-#: code:addons/hr_attendance/static/src/components/manual_selection/manual_selection.xml:0
-msgid "On site"
-msgstr "到場"
-
-#. module: hr_attendance
-#. odoo-javascript
-#: code:addons/hr_attendance/static/src/components/manual_selection/manual_selection.xml:0
-msgid "Online"
-msgstr "網上進行"
-
-#. module: hr_attendance
 #: model:ir.actions.server,name:hr_attendance.open_kiosk_url
 msgid "Open Kiosk Url"
 msgstr "開啟自助考勤終端網址"
@@ -1467,7 +1430,6 @@ msgid "The overtime records of your employees will be displayed here."
 msgstr "你的員工超時工作記錄將顯示在此處。"
 
 #. module: hr_attendance
-#: model:ir.model.fields,help:hr_attendance.field_hr_attendance__attendance_manager_id
 #: model:ir.model.fields,help:hr_attendance.field_hr_employee__attendance_manager_id
 #: model:ir.model.fields,help:hr_attendance.field_hr_employee_public__attendance_manager_id
 #: model:ir.model.fields,help:hr_attendance.field_res_users__attendance_manager_id

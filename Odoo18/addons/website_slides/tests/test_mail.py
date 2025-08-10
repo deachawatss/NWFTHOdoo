@@ -11,7 +11,6 @@ class TestSlidesMail(SlidesCase):
             'email_from': '{{ object.user_id.email_formatted or user.email_formatted or "" }}',
             'subject': 'Test {{ object.name }}'
         }
-        cls.user_manager.group_ids += cls.env.ref('mail.group_mail_template_editor')
         cls.test_template_slides = cls.env['mail.template'].with_user(cls.user_manager).create({
             **common_vals,
             'model_id': cls.env['ir.model']._get_id('slide.slide'),
@@ -32,12 +31,12 @@ class TestSlidesMail(SlidesCase):
     def test_slide_channel_get_default_recipients(self):
         channel = self.channel.with_user(self.user_manager)
         default_recipients = channel._message_get_default_recipients()
-        self.assertDictEqual(default_recipients[channel.id], {'email_cc': '', 'email_to': '', 'partner_ids': []})
+        self.assertDictEqual(default_recipients[channel.id], {'email_cc': False, 'email_to': False, 'partner_ids': []})
 
     def test_slide_slide_get_default_recipients(self):
         slide = self.slide.with_user(self.user_manager)
         default_recipients = slide._message_get_default_recipients()
-        self.assertDictEqual(default_recipients[slide.id], {'email_cc': '', 'email_to': '', 'partner_ids': []})
+        self.assertDictEqual(default_recipients[slide.id], {'email_cc': False, 'email_to': False, 'partner_ids': []})
 
     def test_slide_channel_get_suggested_recipients(self):
         channel = self.channel.with_user(self.user_manager)
@@ -46,8 +45,8 @@ class TestSlidesMail(SlidesCase):
         self.assertDictEqual(
             suggested_recipient,
             {
-                'email': user_id.email, 'name': user_id.name,
-                'partner_id': user_id.partner_id.id, 'create_values': {}
+                'lang': None, 'email': user_id.email, 'name': user_id.name,
+                'partner_id': user_id.partner_id.id, 'reason': 'Responsible'
             }
         )
 
@@ -62,9 +61,9 @@ class TestSlidesMail(SlidesCase):
             self.test_template_channel.with_user(self.user_manager),
             self.test_template_slides.with_user(self.user_manager),
         ]
-        expected_values = [values[0].user_id.partner_id, values[1].user_id.partner_id]
+        expected_values = [self.env['res.partner'], values[1].user_id.partner_id]
         error_messages = [
-            "auto subscribe => only channel's user_id is notified",
+            'No auto subscribe => no notified partner_ids',
             "auto subscribe => only slide's user_id is subscribed + notified",
         ]
         for channel_or_slide, template, expected_value, error_message in zip(values, templates, expected_values, error_messages):

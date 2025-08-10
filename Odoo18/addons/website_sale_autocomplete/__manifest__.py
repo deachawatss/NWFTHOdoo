@@ -1,3 +1,4 @@
+# -*- encoding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 {
@@ -7,8 +8,7 @@
     'version': '1.0',
     'description': "Assist your users with automatic completion & suggestions when filling their address during checkout",
     'depends': [
-        'website_sale',
-        'google_address_autocomplete',
+        'website_sale'
     ],
     'data': [
         'views/templates.xml',
@@ -16,8 +16,7 @@
     ],
     'assets': {
         'web.assets_frontend': [
-            'google_address_autocomplete/static/src/google_places_session.js',
-            'website_sale_autocomplete/static/src/interactions/address_form.js',
+            'website_sale_autocomplete/static/src/js/address_form.js',
             'website_sale_autocomplete/static/src/xml/autocomplete.xml',
         ],
         'web.assets_tests': [
@@ -26,6 +25,5 @@
     },
     'auto_install': True,
     'installable': True,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

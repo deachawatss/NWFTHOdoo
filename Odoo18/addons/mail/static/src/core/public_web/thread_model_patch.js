@@ -1,10 +1,26 @@
 import { patch } from "@web/core/utils/patch";
 import { Thread } from "@mail/core/common/thread_model";
+import { Record } from "@mail/core/common/record";
 import { router } from "@web/core/browser/router";
-import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
-import { _t } from "@web/core/l10n/translation";
 
 patch(Thread.prototype, {
+    setup() {
+        super.setup(...arguments);
+        this.discussAppCategory = Record.one("DiscussAppCategory", {
+            compute() {
+                return this._computeDiscussAppCategory();
+            },
+        });
+    },
+
+    _computeDiscussAppCategory() {
+        if (["group", "chat"].includes(this.channel_type)) {
+            return this.store.discuss.chats;
+        }
+        if (this.channel_type === "channel" && !this.parent_channel_id) {
+            return this.store.discuss.channels;
+        }
+    },
     /**
      * Handle the notification of a new message based on the notification setting of the user.
      * Thread on mute:
@@ -17,26 +33,24 @@ patch(Thread.prototype, {
      *
      * @param {import("models").Message} message
      */
-    async notifyMessageToUser(message) {
+    notifyMessageToUser(message) {
         const channel_notifications =
-            this.selfMember?.custom_notifications || this.store.settings.channel_notifications;
+            this.custom_notifications || this.store.settings.channel_notifications;
         if (
-            !this.selfMember?.mute_until_dt &&
-            !this.store.self.im_status.includes("busy") &&
+            !this.mute_until_dt &&
+            !this.store.settings.mute_until_dt &&
             (this.channel_type !== "channel" ||
                 (this.channel_type === "channel" &&
                     (channel_notifications === "all" ||
                         (channel_notifications === "mentions" &&
-                            message.partner_ids?.includes(this.store.self)))))
+                            message.recipients?.includes(this.store.self)))))
         ) {
-            if (this.model === "discuss.channel") {
-                await this.store.chatHub.initPromise;
+            if (this.model === "discuss.channel" && this.inChathubOnNewMessage) {
                 let chatWindow = this.store.ChatWindow.get({ thread: this });
                 if (!chatWindow) {
                     chatWindow = this.store.ChatWindow.insert({ thread: this });
                     if (
                         this.autoOpenChatWindowOnNewMessage &&
-                        !this.store.discuss.isActive &&
                         this.store.chatHub.opened.length < this.store.chatHub.maxOpened
                     ) {
                         chatWindow.open();
@@ -47,6 +61,10 @@ patch(Thread.prototype, {
             }
             this.store.env.services["mail.out_of_focus"].notify(message, this);
         }
+    },
+    /** Condition for whether the conversation should become present in chat hub on new message */
+    get inChathubOnNewMessage() {
+        return !this.store.discuss.isActive;
     },
     get autoOpenChatWindowOnNewMessage() {
         return false;
@@ -71,7 +89,7 @@ patch(Thread.prototype, {
             this.model !== "mail.box" &&
             !this.store.shouldDisplayWelcomeViewInitially
         ) {
-            this.open({ focus: true });
+            this.open();
         }
     },
 
@@ -101,23 +119,12 @@ patch(Thread.prototype, {
             router.replaceState({ active_id: undefined });
         }
         if (this.model === "discuss.channel" && this.is_pinned) {
-            await this.store.env.services.orm.silent.call(
+            return this.store.env.services.orm.silent.call(
                 "discuss.channel",
                 "channel_pin",
                 [this.id],
                 { pinned: false }
             );
         }
-    },
-    /** @param {string} body */
-    async askLeaveConfirmation(body) {
-        await new Promise((resolve) => {
-            this.store.env.services.dialog.add(ConfirmationDialog, {
-                body: body,
-                confirmLabel: _t("Leave Conversation"),
-                confirm: resolve,
-                cancel: () => {},
-            });
-        });
     },
 });

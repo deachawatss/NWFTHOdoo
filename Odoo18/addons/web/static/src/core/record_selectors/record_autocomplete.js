@@ -20,7 +20,6 @@ export class RecordAutocomplete extends Component {
         className: { type: String, optional: true },
         fieldString: { type: String, optional: true },
         placeholder: { type: String, optional: true },
-        slots: { optional: true },
     };
     static components = { AutoComplete };
     static template = "web.RecordAutocomplete";
@@ -33,7 +32,6 @@ export class RecordAutocomplete extends Component {
             {
                 placeholder: _t("Loading..."),
                 options: this.loadOptionsSource.bind(this),
-                optionSlot: this.props.slots?.autoCompleteItem ? "option" : undefined,
             },
         ];
     }
@@ -52,27 +50,18 @@ export class RecordAutocomplete extends Component {
             this.lastProm.abort(false);
         }
         this.lastProm = this.search(name, SEARCH_LIMIT + 1);
-        const nameGets = (await this.lastProm).map(([id, label]) => [
-            id,
-            label ? label.split("\n")[0] : _t("Unnamed"),
-        ]);
+        const nameGets = (await this.lastProm).map(([id, label]) => ([id, label ? label.split("\n")[0] : _t("Unnamed")]));
         this.addNames(nameGets);
-        const options = nameGets.map(([id, label]) => ({
-            data: {
-                record: { id, display_name: label },
-            },
-            label,
-            onSelect: () => this.props.update([id]),
-        }));
+        const options = nameGets.map(([value, label]) => ({value, label}));
         if (SEARCH_LIMIT < nameGets.length) {
             options.push({
-                cssClass: "o_m2o_dropdown_option",
                 label: _t("Search More..."),
-                onSelect: this.onSearchMore.bind(this, name),
+                action: this.onSearchMore.bind(this, name),
+                classList: "o_m2o_dropdown_option",
             });
         }
         if (options.length === 0) {
-            options.push({ label: _t("(no result)") });
+            options.push({ label: _t("(no result)"), unselectable: true });
         }
         return options;
     }
@@ -123,11 +112,18 @@ export class RecordAutocomplete extends Component {
         return domainIds.toList();
     }
 
+    onSelect({ value: resId, action }, params) {
+        if (action) {
+            return action(params);
+        }
+        this.props.update([resId]);
+    }
+
     search(name, limit) {
         const domain = this.getDomain();
         return this.orm.call(this.props.resModel, "name_search", [], {
             name,
-            domain: domain,
+            args: domain,
             limit,
             context: this.props.context || {},
         });

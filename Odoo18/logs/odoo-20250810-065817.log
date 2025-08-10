@@ -1,0 +1,53 @@
+2025-08-09 23:58:17,945 39643 INFO ? odoo: Odoo version 18.0 
+2025-08-09 23:58:17,945 39643 INFO ? odoo: Using configuration file at /home/deachawat/dev/projects/Odoo/Odoo18/odoo-dev.conf 
+2025-08-09 23:58:17,945 39643 INFO ? odoo: addons paths: ['/home/deachawat/dev/projects/Odoo/Odoo18/odoo/addons', '/home/deachawat/dev/projects/Odoo/Odoo18/.local/share/Odoo/addons/18.0', '/home/deachawat/dev/projects/Odoo/Odoo18/addons', '/home/deachawat/dev/projects/Odoo/Odoo18/custom_addons'] 
+2025-08-09 23:58:17,945 39643 INFO ? odoo: database: admin@localhost:5432 
+2025-08-09 23:58:18,116 39643 INFO ? odoo.addons.base.models.ir_actions_report: You need Wkhtmltopdf to print a pdf version of the reports. 
+2025-08-09 23:58:18,176 39643 INFO ? odoo.addons.base.models.ir_actions_report: You need Wkhtmltoimage to generate images from html. 
+2025-08-09 23:58:18,445 39643 INFO ? odoo.service.server: Watching addons folder /home/deachawat/dev/projects/Odoo/Odoo18/odoo/addons 
+2025-08-09 23:58:18,445 39643 INFO ? odoo.service.server: Watching addons folder /home/deachawat/dev/projects/Odoo/Odoo18/.local/share/Odoo/addons/18.0 
+2025-08-09 23:58:18,445 39643 INFO ? odoo.service.server: Watching addons folder /home/deachawat/dev/projects/Odoo/Odoo18/addons 
+2025-08-09 23:58:18,445 39643 INFO ? odoo.service.server: Watching addons folder /home/deachawat/dev/projects/Odoo/Odoo18/custom_addons 
+2025-08-09 23:58:18,622 39643 INFO ? odoo.service.server: AutoReload watcher running with watchdog 
+2025-08-09 23:58:18,626 39643 INFO ? odoo.service.server: HTTP service (werkzeug) running on Wind.:8069 
+2025-08-09 23:58:24,683 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:24] "GET / HTTP/1.1" 303 - 1 0.001 0.026
+2025-08-09 23:58:24,705 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:24] "GET /odoo HTTP/1.1" 303 - 2 0.003 0.017
+2025-08-09 23:58:25,428 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:25] "GET /web/database/selector HTTP/1.1" 200 - 2 0.002 0.717
+2025-08-09 23:58:25,493 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:25] "GET /web/static/src/libs/fontawesome/css/font-awesome.css HTTP/1.1" 200 - 1 0.001 0.055
+2025-08-09 23:58:25,496 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:25] "GET /web/static/lib/bootstrap/dist/css/bootstrap.css HTTP/1.1" 200 - 1 0.002 0.056
+2025-08-09 23:58:25,497 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:25] "GET /web/static/lib/bootstrap/js/dist/util/index.js HTTP/1.1" 200 - 1 0.001 0.057
+2025-08-09 23:58:25,497 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:25] "GET /web/static/lib/bootstrap/js/dist/dom/event-handler.js HTTP/1.1" 200 - 1 0.003 0.055
+2025-08-09 23:58:25,501 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:25] "GET /web/static/lib/bootstrap/js/dist/dom/manipulator.js HTTP/1.1" 200 - 1 0.001 0.061
+2025-08-09 23:58:25,502 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:25] "GET /web/static/lib/bootstrap/js/dist/dom/data.js HTTP/1.1" 200 - 1 0.005 0.057
+2025-08-09 23:58:25,562 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:25] "GET /web/static/lib/bootstrap/js/dist/dom/selector-engine.js HTTP/1.1" 200 - 1 0.002 0.059
+2025-08-09 23:58:25,567 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:25] "GET /web/static/lib/bootstrap/js/dist/util/config.js HTTP/1.1" 200 - 1 0.001 0.060
+2025-08-09 23:58:25,569 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:25] "GET /web/static/lib/bootstrap/js/dist/util/component-functions.js HTTP/1.1" 200 - 1 0.001 0.061
+2025-08-09 23:58:25,572 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:25] "GET /web/static/lib/bootstrap/js/dist/util/focustrap.js HTTP/1.1" 200 - 1 0.001 0.059
+2025-08-09 23:58:25,572 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:25] "GET /web/static/lib/bootstrap/js/dist/util/backdrop.js HTTP/1.1" 200 - 1 0.001 0.061
+2025-08-09 23:58:25,575 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:25] "GET /web/static/lib/bootstrap/js/dist/util/scrollbar.js HTTP/1.1" 200 - 1 0.003 0.058
+2025-08-09 23:58:25,608 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:25] "GET /web/static/lib/bootstrap/js/dist/base-component.js HTTP/1.1" 200 - 1 0.001 0.042
+2025-08-09 23:58:25,608 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:25] "GET /web/static/lib/bootstrap/js/dist/modal.js HTTP/1.1" 200 - 1 0.002 0.037
+2025-08-09 23:58:25,609 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:25] "GET /web/static/src/public/database_manager.js HTTP/1.1" 200 - 1 0.001 0.034
+2025-08-09 23:58:25,610 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:25] "GET /web/static/img/logo2.png HTTP/1.1" 200 - 1 0.002 0.032
+2025-08-09 23:58:25,703 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:25] "GET /web/static/src/libs/fontawesome/fonts/fontawesome-webfont.woff2?v=4.7.0 HTTP/1.1" 200 - 1 0.002 0.012
+2025-08-09 23:58:27,094 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:27] "GET /web/database/manager HTTP/1.1" 200 - 2 0.003 0.374
+2025-08-09 23:58:27,151 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:27] "GET /web/static/lib/bootstrap/js/dist/dom/data.js HTTP/1.1" 200 - 1 0.001 0.045
+2025-08-09 23:58:27,151 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:27] "GET /web/static/lib/bootstrap/js/dist/util/index.js HTTP/1.1" 200 - 1 0.001 0.045
+2025-08-09 23:58:27,155 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:27] "GET /web/static/lib/bootstrap/dist/css/bootstrap.css HTTP/1.1" 200 - 1 0.002 0.049
+2025-08-09 23:58:27,158 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:27] "GET /web/static/lib/bootstrap/js/dist/dom/event-handler.js HTTP/1.1" 200 - 1 0.003 0.049
+2025-08-09 23:58:27,160 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:27] "GET /web/static/lib/bootstrap/js/dist/dom/manipulator.js HTTP/1.1" 200 - 1 0.001 0.053
+2025-08-09 23:58:27,163 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:27] "GET /web/static/src/libs/fontawesome/css/font-awesome.css HTTP/1.1" 200 - 1 0.001 0.058
+2025-08-09 23:58:27,217 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:27] "GET /web/static/lib/bootstrap/js/dist/dom/selector-engine.js HTTP/1.1" 200 - 1 0.001 0.056
+2025-08-09 23:58:27,222 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:27] "GET /web/static/lib/bootstrap/js/dist/util/component-functions.js HTTP/1.1" 200 - 1 0.001 0.060
+2025-08-09 23:58:27,224 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:27] "GET /web/static/lib/bootstrap/js/dist/util/config.js HTTP/1.1" 200 - 1 0.002 0.061
+2025-08-09 23:58:27,228 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:27] "GET /web/static/lib/bootstrap/js/dist/util/backdrop.js HTTP/1.1" 200 - 1 0.001 0.062
+2025-08-09 23:58:27,229 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:27] "GET /web/static/lib/bootstrap/js/dist/util/focustrap.js HTTP/1.1" 200 - 1 0.001 0.061
+2025-08-09 23:58:27,231 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:27] "GET /web/static/lib/bootstrap/js/dist/util/scrollbar.js HTTP/1.1" 200 - 1 0.002 0.060
+2025-08-09 23:58:27,258 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:27] "GET /web/static/lib/bootstrap/js/dist/modal.js HTTP/1.1" 200 - 1 0.001 0.028
+2025-08-09 23:58:27,259 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:27] "GET /web/static/lib/bootstrap/js/dist/base-component.js HTTP/1.1" 200 - 1 0.001 0.034
+2025-08-09 23:58:27,261 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:27] "GET /web/static/src/public/database_manager.js HTTP/1.1" 200 - 1 0.001 0.030
+2025-08-09 23:58:27,264 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:27] "GET /web/static/img/logo2.png HTTP/1.1" 200 - 1 0.003 0.028
+2025-08-09 23:58:27,314 39643 INFO ? werkzeug: 127.0.0.1 - - [09/Aug/2025 23:58:27] "GET /web/static/src/libs/fontawesome/fonts/fontawesome-webfont.woff2?v=4.7.0 HTTP/1.1" 200 - 1 0.001 0.010
+2025-08-09 23:58:27,950 39643 INFO ? odoo.service.server: Initiating shutdown 
+2025-08-09 23:58:27,950 39643 INFO ? odoo.service.server: Hit CTRL-C again or send a second signal to force the shutdown. 
+2025-08-09 23:58:28,304 39643 INFO ? odoo.sql_db: ConnectionPool(read/write;used=0/count=0/max=64): Closed 1 connections  

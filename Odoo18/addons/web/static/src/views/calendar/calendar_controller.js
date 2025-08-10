@@ -8,19 +8,17 @@ import { Layout } from "@web/search/layout";
 import { useModelWithSampleData } from "@web/model/model";
 import { FormViewDialog } from "@web/views/view_dialogs/form_view_dialog";
 import { useSetupAction } from "@web/search/action_hook";
+import { DateTimePicker } from "@web/core/datetime/datetime_picker";
+import { CalendarFilterPanel } from "./filter_panel/calendar_filter_panel";
 import { CalendarMobileFilterPanel } from "./mobile_filter_panel/calendar_mobile_filter_panel";
 import { CalendarQuickCreate } from "./quick_create/calendar_quick_create";
-import {
-    CalendarSidePanel,
-    SIDE_PANEL_MODES,
-} from "@web/views/calendar/calendar_side_panel/calendar_side_panel";
 import { SearchBar } from "@web/search/search_bar/search_bar";
 import { useSearchBarToggler } from "@web/search/search_bar/search_bar_toggler";
 import { ViewScaleSelector } from "@web/views/view_components/view_scale_selector";
 import { CogMenu } from "@web/search/cog_menu/cog_menu";
 import { browser } from "@web/core/browser/browser";
 import { standardViewProps } from "@web/views/standard_view_props";
-import { getLocalYearAndWeek } from "@web/core/l10n/dates";
+import { getLocalWeekNumber } from "@web/core/l10n/dates";
 
 import { Component, useState } from "@odoo/owl";
 
@@ -46,6 +44,8 @@ function useUniqueDialog() {
 
 export class CalendarController extends Component {
     static components = {
+        DatePicker: DateTimePicker,
+        FilterPanel: CalendarFilterPanel,
         MobileFilterPanel: CalendarMobileFilterPanel,
         QuickCreate: CalendarQuickCreate,
         QuickCreateFormView: FormViewDialog,
@@ -53,7 +53,6 @@ export class CalendarController extends Component {
         SearchBar,
         ViewScaleSelector,
         CogMenu,
-        CalendarSidePanel,
     };
     static template = "web.CalendarController";
     static props = {
@@ -62,6 +61,7 @@ export class CalendarController extends Component {
         Renderer: Function,
         archInfo: Object,
         buttonTemplate: String,
+        session: { type: Object, optional: true },
         itemCalendarProps: { type: Object, optional: true },
     };
 
@@ -70,7 +70,20 @@ export class CalendarController extends Component {
         this.orm = useService("orm");
         this.displayDialog = useUniqueDialog();
 
-        this.model = useModelWithSampleData(this.props.Model, this.modelParams);
+        this.model = useModelWithSampleData(
+            this.props.Model,
+            {
+                ...this.props.archInfo,
+                resModel: this.props.resModel,
+                domain: this.props.domain,
+                fields: this.props.fields,
+                allFilter: this.props.state?.allFilter ?? {},
+                date: this.props.state?.date,
+            },
+            {
+                onWillStart: this.onWillStartModel.bind(this),
+            }
+        );
 
         useSetupAction({
             getLocalState: () => this.model.exportedState,
@@ -85,35 +98,9 @@ export class CalendarController extends Component {
             showSideBar:
                 !this.env.isSmall &&
                 Boolean(sessionShowSidebar != null ? JSON.parse(sessionShowSidebar) : true),
-            sidePanelMode: this.model.hasMultiCreate
-                ? SIDE_PANEL_MODES.add
-                : SIDE_PANEL_MODES.filter,
         });
 
         this.searchBarToggler = useSearchBarToggler();
-
-        this._baseRendererProps = {
-            createRecord: this.createRecord.bind(this),
-            deleteRecord: this.deleteRecord.bind(this),
-            editRecord: this.editRecord.bind(this),
-            setDate: this.setDate.bind(this),
-            async multiCreateRecords(dates) {
-                await this.model.multiCreateRecords(dates);
-            },
-            async multiDeleteRecords(ids) {
-                await this.model.unlinkRecords(ids);
-            },
-        };
-    }
-
-    get modelParams() {
-        return {
-            ...this.props.archInfo,
-            resModel: this.props.resModel,
-            domain: this.props.domain,
-            fields: this.props.fields,
-            state: this.props.state,
-        };
     }
 
     get currentDate() {
@@ -174,40 +161,68 @@ export class CalendarController extends Component {
     }
 
     get currentWeek() {
-        return getLocalYearAndWeek(this.model.rangeStart).week;
+        return getLocalWeekNumber(this.model.rangeStart);
     }
 
     get rendererProps() {
         return {
-            ...this._baseRendererProps,
             model: this.model,
             isWeekendVisible: this.model.scale === "day" || this.state.isWeekendVisible,
-            sidePanelMode: this.state.sidePanelMode,
+            createRecord: this.createRecord.bind(this),
+            deleteRecord: this.deleteRecord.bind(this),
+            editRecord: this.editRecord.bind(this),
+            setDate: this.setDate.bind(this),
         };
     }
+    get containerProps() {
+        return {
+            model: this.model,
+        };
+    }
+    get datePickerProps() {
+        return {
+            type: "date",
+            showWeekNumbers: false,
+            maxPrecision: "days",
+            daysOfWeekFormat: "narrow",
+            onSelect: (date) => {
+                let scale = "week";
 
+                if (this.model.date.hasSame(date, "day")) {
+                    const scales = ["month", "week", "day"];
+                    scale = scales[(scales.indexOf(this.model.scale) + 1) % scales.length];
+                } else {
+                    // Check if dates are on the same week
+                    // As a.hasSame(b, "week") does not depend on locale and week always starts on Monday,
+                    // we are comparing derivated dates instead to take this into account.
+                    const currentDate =
+                        this.model.date.weekday === 7
+                            ? this.model.date.plus({ day: 1 })
+                            : this.model.date;
+                    const pickedDate = date.weekday === 7 ? date.plus({ day: 1 }) : date;
+
+                    // a.hasSame(b, "week") does not depend on locale and week alway starts on Monday
+                    if (currentDate.hasSame(pickedDate, "week")) {
+                        scale = "day";
+                    }
+                }
+
+                this.model.load({ scale, date });
+            },
+            value: this.model.date,
+        };
+    }
+    get filterPanelProps() {
+        return {
+            model: this.model,
+        };
+    }
     get mobileFilterPanelProps() {
         return {
             model: this.model,
             sideBarShown: this.state.showSideBar,
             toggleSideBar: () => {
                 this.state.showSideBar = !this.state.showSideBar;
-            },
-        };
-    }
-
-    get sidePanelProps() {
-        return {
-            model: this.model,
-            context: this.props.context,
-            mode: this.state.sidePanelMode,
-            setMode: (mode) => {
-                if (Object.values(SIDE_PANEL_MODES).includes(mode)) {
-                    this.state.sidePanelMode = mode;
-                }
-            },
-            setMultiCreateTimeRange: async (dates) => {
-                await this.model.setMultiCreateTimeRange(dates);
             },
         };
     }
@@ -219,10 +234,6 @@ export class CalendarController extends Component {
 
     get showCalendar() {
         return !this.env.isSmall || !this.state.showSideBar;
-    }
-
-    get hasSideBar() {
-        return this.model.showDatePicker || this.model.filterSections.length > 0;
     }
 
     get showSideBar() {
@@ -287,7 +298,7 @@ export class CalendarController extends Component {
             return this.editRecordInCreation(record);
         }
     }
-    async editRecord(record, context = {}) {
+    async editRecord(record, context = {}, shouldFetchFormViewId = true) {
         if (this.model.hasEditDialog) {
             return new Promise((resolve) => {
                 this.displayDialog(
@@ -306,10 +317,19 @@ export class CalendarController extends Component {
                 );
             });
         } else {
+            let formViewId = this.model.formViewId;
+            if (shouldFetchFormViewId) {
+                formViewId = await this.orm.call(
+                    this.model.resModel,
+                    "get_formview_id",
+                    [[record.id]],
+                    context
+                );
+            }
             const action = {
                 type: "ir.actions.act_window",
                 res_model: this.model.resModel,
-                views: [[this.model.formViewId || false, "form"]],
+                views: [[formViewId || false, "form"]],
                 target: "current",
                 context,
             };
@@ -322,7 +342,7 @@ export class CalendarController extends Component {
     editRecordInCreation(record) {
         const rawRecord = this.model.buildRawRecord(record);
         const context = this.model.makeContextDefaults(rawRecord);
-        return this.editRecord(record, context);
+        return this.editRecord(record, context, false);
     }
 
     deleteConfirmationDialogProps(record) {
@@ -344,6 +364,8 @@ export class CalendarController extends Component {
     deleteRecord(record) {
         this.displayDialog(ConfirmationDialog, this.deleteConfirmationDialogProps(record));
     }
+
+    onWillStartModel() {}
 
     async setDate(move) {
         let date = null;
@@ -372,6 +394,7 @@ export class CalendarController extends Component {
 
     async setScale(scale) {
         await this.model.load({ scale });
+        browser.sessionStorage.setItem("calendar-scale", this.model.scale);
     }
 
     toggleWeekendVisibility() {

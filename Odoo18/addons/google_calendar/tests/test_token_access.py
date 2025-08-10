@@ -1,5 +1,3 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 from odoo import fields, Command
 from odoo.exceptions import AccessError
 from odoo.tests.common import TransactionCase
@@ -29,7 +27,7 @@ class TestTokenAccess(TransactionCase):
             'name': 'system_user',
             'login': 'system_user',
             'email': 'system_user@odoo.com',
-            'group_ids': [Command.link(cls.env.ref('base.group_system').id)],
+            'groups_id': [Command.link(cls.env.ref('base.group_system').id)],
         })
 
     def test_normal_user_should_be_able_to_reset_his_own_token(self):

@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { patch } from "@web/core/utils/patch";
 
 import { HrPresenceStatus, hrPresenceStatus } from "@hr/components/hr_presence_status/hr_presence_status";

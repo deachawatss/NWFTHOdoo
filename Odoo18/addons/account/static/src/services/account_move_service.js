@@ -1,4 +1,6 @@
 import { _t } from "@web/core/l10n/translation";
+import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
+import { escape } from "@web/core/utils/strings";
 import { markup } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 
@@ -14,20 +16,23 @@ export class AccountMoveService {
         this.orm = services.orm;
     }
 
-    async getDeletionDialogBody(body, moveIds) {
+    async addDeletionDialog(component, moveIds) {
         const isMoveEndOfChain = await this.orm.call("account.move", "check_move_sequence_chain", [moveIds]);
         if (!isMoveEndOfChain) {
             const message = _t("This operation will create a gap in the sequence.");
-            return markup`<div class="text-danger">${message}</div>${body}`;
+            const confirmationDialogProps = component.deleteConfirmationDialogProps;
+            confirmationDialogProps.body = markup(`<div class="text-danger">${escape(message)}</div>${escape(confirmationDialogProps.body)}`);
+            this.dialog.add(ConfirmationDialog, confirmationDialogProps);
+            return true;
         }
-        return body;
+        return false;
     }
 
-    async downloadPdf(accountMoveId, target = "download") {
+    async downloadPdf(accountMoveId) {
         const downloadAction = await this.orm.call(
             "account.move",
             "action_invoice_download_pdf",
-            [accountMoveId, target]
+            [accountMoveId]
         );
         await this.action.doAction(downloadAction);
     }

@@ -1,14 +1,15 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo.fields import Command
-from odoo.tests import tagged
+from odoo import Command
+from odoo.addons.account.tests.common import AccountTestInvoicingCommon
+from odoo.tests import common
+
 from odoo.tools import html2plaintext
 
-from odoo.addons.sale.tests.common import TestSaleCommon
 
-
-@tagged('post_install', '-at_install')
-class TestSaleMrpInvoices(TestSaleCommon):
+@common.tagged('post_install', '-at_install')
+class TestSaleMrpInvoices(AccountTestInvoicingCommon):
 
     @classmethod
     def setUpClass(cls):
@@ -39,6 +40,7 @@ class TestSaleMrpInvoices(TestSaleCommon):
                 'product_qty': 1,
             })]
         })
+        cls.partner = cls.env['res.partner'].create({'name': 'Test Partner'})
 
     def test_deliver_and_invoice_tracked_components(self):
         """
@@ -48,7 +50,7 @@ class TestSaleMrpInvoices(TestSaleCommon):
         """
         display_lots = self.env.ref('stock_account.group_lot_on_invoice')
         display_uom = self.env.ref('uom.group_uom')
-        self.env.user.write({'group_ids': [(4, display_lots.id), (4, display_uom.id)]})
+        self.env.user.write({'groups_id': [(4, display_lots.id), (4, display_uom.id)]})
 
         so = self.env['sale.order'].create({
             'partner_id': self.partner.id,
@@ -100,6 +102,7 @@ class TestSaleMrpInvoices(TestSaleCommon):
                     'name': product.name,
                     'product_id': product.id,
                     'product_uom_qty': 8.0,
+                    'product_uom': product.uom_id.id,
                     'price_unit': product.list_price,
                 })]
             },
@@ -109,6 +112,7 @@ class TestSaleMrpInvoices(TestSaleCommon):
                     'name': product.name,
                     'product_id': product.id,
                     'product_uom_qty': 7.0,
+                    'product_uom': product.uom_id.id,
                     'price_unit': product.list_price,
                 })]
             },

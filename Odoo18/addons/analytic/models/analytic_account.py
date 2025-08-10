@@ -39,7 +39,6 @@ class AccountAnalyticAccount(models.Model):
         'account.analytic.plan',
         string='Plan',
         required=True,
-        index=True,
     )
     root_plan_id = fields.Many2one(
         'account.analytic.plan',
@@ -71,7 +70,6 @@ class AccountAnalyticAccount(models.Model):
         auto_join=True,
         tracking=True,
         check_company=True,
-        index='btree_not_null',
     )
 
     balance = fields.Monetary(
@@ -99,7 +97,7 @@ class AccountAnalyticAccount(models.Model):
                 ('auto_account_id', 'in', [account.id for account in accounts]),
                 '!', ('company_id', 'child_of', company.id),
             ], limit=1):
-                raise UserError(_("You can't change the company of an analytic account that already has analytic items! It's a recipe for an analytical disaster!"))
+                raise UserError(_("You can't set a different company on your analytic account since there are some analytic items linked to it."))
 
     @api.depends('code', 'partner_id')
     def _compute_display_name(self):
@@ -150,15 +148,12 @@ class AccountAnalyticAccount(models.Model):
             )
 
         domain = [('company_id', 'in', [False] + self.env.companies.ids)]
-        if self.env.context.get('from_date', False):
-            domain.append(('date', '>=', self.env.context['from_date']))
-        if self.env.context.get('to_date', False):
-            domain.append(('date', '<=', self.env.context['to_date']))
+        if self._context.get('from_date', False):
+            domain.append(('date', '>=', self._context['from_date']))
+        if self._context.get('to_date', False):
+            domain.append(('date', '<=', self._context['to_date']))
 
         for plan, accounts in self.grouped('plan_id').items():
-            if not plan:
-                accounts.debit = accounts.credit = accounts.balance = 0
-                continue
             credit_groups = self.env['account.analytic.line']._read_group(
                 domain=domain + [(plan._column_name(), 'in', self.ids), ('amount', '>=', 0.0)],
                 groupby=[plan._column_name(), 'currency_id'],

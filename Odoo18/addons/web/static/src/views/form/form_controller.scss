@@ -1,59 +1,59 @@
 // Define left and right padding according to screen resolution
 @mixin o-form-sheet-inner-left-padding {
     padding-left: $o-horizontal-padding;
-    @include media-breakpoint-up(lg) {
+    @include media-breakpoint-up(lg, $o-extra-grid-breakpoints) {
         padding-left: $o-horizontal-padding*2;
     }
 }
 @mixin o-form-sheet-inner-right-padding {
     padding-right: $o-horizontal-padding;
-    @include media-breakpoint-up(lg) {
+    @include media-breakpoint-up(lg, $o-extra-grid-breakpoints) {
         padding-right: $o-horizontal-padding*2;
     }
 }
 
 // Form view rules to break the default table layout
-@mixin form-break-table() {
+@mixin form-break-table($-is-editable: false) {
     --fieldWidget-margin-bottom: 0;
 
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: 1fr;
     margin-bottom: $o-form-spacing-unit * 4;
+    row-gap: 0;
 
-    .o_cell {
-        max-width: 100%;
-
-        &.o_wrap_label {
-            line-height: $o-label-font-size-factor;
-        }
-
-        .o_field_widget {
-            &:not(.o_field_boolean){
-                width: 100%;
-            }
-
-            &.o_field_boolean {
-                margin-right: 0;
-            }
-        }
-
-        .o_input_dropdown {
-            width: auto;
+    .o_wrap_field {
+        .o_cell {
             max-width: 100%;
+
+            &.o_wrap_label {
+                line-height: $o-label-font-size-factor;
+            }
+
+            .o_field_widget {
+                &:not(.o_field_boolean){
+                    width: 100%;
+                }
+
+                &.o_field_boolean {
+                    margin-right: 0;
+                }
+            }
+
+            .o_input_dropdown {
+                width: auto;
+                max-width: 100%;
+            }
         }
-
     }
-}
 
-
-@mixin editable-form-break-table() {
-    .o_address_type, .o_address_format {
-        --fieldWidget-margin-bottom: #{$o-form-spacing-unit * 2};
+    @if $-is-editable {
+        .o_address_type, .o_address_format {
+            --fieldWidget-margin-bottom: #{$o-form-spacing-unit * 2};
+        }
     }
 }
 
 .o_form_view {
     --fieldWidget-margin-bottom: #{$o-form-spacing-unit};
-    --Ribbon-z-index: 1;
 
     @include media-breakpoint-up(md) {
         display: flex;
@@ -62,6 +62,18 @@
     }
 
     // Utility classes
+    .oe_form_box_info {
+        @include o-webclient-padding($top: 5px, $bottom: 5px);
+        > p {
+            margin: auto;
+        }
+    }
+    .oe_text_center {
+        text-align: center;
+    }
+    .oe_grey {
+        opacity: 0.5;
+    }
     .oe_inline, .o_field_widget.oe_inline > * {
         width: auto!important;
     }
@@ -162,14 +174,17 @@
                     width: auto!important;
                 }
             }
-            .o_many2one {
+            .o_field_many2one_selection {
                 width: 100% !important;
+            }
+            .fb-mincontent {
+                flex-basis: min-content !important;
             }
         }
     }
 
     &, & .o_form_editable {
-        // FIXME: those specific rules shouldn't be necessary but require a more
+        // FIXME: those specific rules shouldn't be necessary but require a more 
         // global cleanup of the fields + .o_row styling to be removed in master.
         .o_field_reference .o_row > * {
             flex: 1 1 auto;
@@ -182,12 +197,6 @@
         flex-flow: column nowrap;
         height: 100%;
         flex: 1 1 auto;
-    }
-
-    // rules for fields borders: only on hover/focus by default
-    // except when used with o_field_highlight (on parent or on the field)
-    .o_input {
-        padding: $o-input-padding-y $o-input-padding-x;
     }
 
     &:not(.o_field_highlight) .o_field_widget:not(.o_field_invalid):not(.o_field_highlight) .o_input:not(:hover):not(:focus) {
@@ -239,15 +248,12 @@
             --formView-sheetBg-padding-x: #{map-get($spacers, 3)};
         }
 
+        padding-top: map-get($spacers, 2);
         padding-left: var(--formView-sheetBg-padding-x);
         padding-right: var(--formView-sheetBg-padding-right, var(--formView-sheetBg-padding-x));
         width: 100%;
         max-width: $o-form-view-sheet-max-width;
         margin-right: auto; // Always align to le left
-
-        &:not(:has(.o_form_statusbar)) {
-            padding-top: map-get($spacers, 2);
-        }
     }
 
     // Sheet
@@ -275,7 +281,7 @@
             --formView-sheet-padding-x: var(--formView-sheet-padding-x-lg, #{map-get($spacers, 4)});
         }
 
-        @include media-breakpoint-up(xxl) {
+        @include media-breakpoint-up(xxl, $o-extra-grid-breakpoints) {
             --formView-sheet-padding-y: var(--formView-sheet-padding-y-xxl, #{map-get($spacers, 3)});
             --formView-sheet-padding-x: var(--formView-sheet-padding-x-xxl, #{map-get($spacers, 3)});
         }
@@ -305,17 +311,18 @@
 
     // Statusbar
     .o_form_statusbar {
-        position: relative;
-        z-index: 0;
+        > .o_statusbar_status {
+            display: flex;
+            align-items: center;
+            align-content: space-around;
 
-        @include media-breakpoint-up(md) {
-            position: sticky;
-            top: 0;
-            z-index: $zindex-sticky;
+            > .o_arrow_button {
+                font-weight: $font-weight-bold;
 
-            &:not(.modal .o_form_statusbar) {
-                background-color: $body-bg;
-                box-shadow: 0 0.3rem 0.25rem -0.25rem rgba(0, 0, 0, 0.075);
+                // Last element at the right should respect overall padding
+                &:first-of-type {
+                    padding-right: $o-horizontal-padding;
+                }
             }
         }
 
@@ -329,12 +336,6 @@
                     width: 100%;
                 }
             }
-        }
-    }
-
-    @include media-breakpoint-up(md) {
-        .o_list_renderer .o_list_table thead {
-            z-index: 0;
         }
     }
 
@@ -408,7 +409,7 @@
             }
         }
 
-        @include media-breakpoint-up(sm) {
+        @include media-breakpoint-up(vsm, $o-extra-grid-breakpoints) {
             .o_field_widget {
                 &.o_text_overflow {
                     width: 1px!important; // hack to make the table layout believe it is a small element (so that the table does not grow too much) ...
@@ -437,24 +438,16 @@
 
     .o_inner_group {
         --columns: 1;
-        @include media-breakpoint-down(md) {
-            --inner-group-row-gap: 0;
-        }
-        gap: var(--inner-group-row-gap, map-get($spacers, 2)) $o-horizontal-padding;
+        gap: map-get($spacers, 2) $o-horizontal-padding;
         margin-bottom: map-get($spacers, 2);
+
+        .o_cell:first-child:last-child {
+            grid-column: span 2;
+        }
 
         span, .o_field_boolean, .oe_avatar, .o_form_uri {
             &.o_field_widget {
                 width: auto;
-            }
-        }
-    }
-
-    & .o_form_renderer:not(.o_kanban_quick_create_form) .o_inner_group {
-        @include media-breakpoint-up(sm) {
-            .o_cell:first-child:last-child,
-            .o_cell:not(.o_wrap_label):not(.o_wrap_input):not(.o_cell_custom) {
-                grid-column: span 2;
             }
         }
     }
@@ -464,10 +457,6 @@
             grid-template-columns: fit-content(150px) minmax(0, 1fr);
             &.o_form_fw_labels {
                 grid-template-columns: 150px 1fr;
-            }
-
-            .o_cell_custom {
-                grid-column: span var(--o-grid-column-span, 1);
             }
         }
     }
@@ -517,8 +506,8 @@
 
     // Notebooks
     .o_notebook {
-        --Notebook-margin-x: calc(var(--formView-sheet-padding-x) * -1);
-        --Notebook-padding-x: var(--formView-sheet-padding-x);
+        --notebook-margin-x: calc(var(--formView-sheet-padding-x) * -1);
+        --notebook-padding-x: var(--formView-sheet-padding-x);
 
         clear: both; // For the notebook not to have alongside floating elements
         margin-top: $o-form-spacing-unit * 2;
@@ -567,15 +556,15 @@
                     &:not(.o_group), &.o_invisible_modifier {
                         .o_field_x2many.o_field_x2many_list .o_list_renderer {
                             @include media-only(screen) {
-                                --ListRenderer-margin-x: var(--Notebook-margin-x);
-                                --ListRenderer-table-padding-x: var(--Notebook-padding-x);
+                                --ListRenderer-margin-x: var(--notebook-margin-x);
+                                --ListRenderer-table-padding-x: var(--notebook-padding-x);
 
                                 margin-top: -$o-horizontal-padding;
                             }
 
                             @include media-only(print) {
                                 --ListRenderer-margin-x: 0;
-                                --ListRenderer-table-padding-x: var(--Notebook-padding-x);
+                                --ListRenderer-table-padding-x: var(--notebook-padding-x);
 
                                 margin-top: -$o-horizontal-padding * 0.5;
                             }
@@ -662,7 +651,7 @@
         .o_field_translate:not(.o_field_input_buttons):not(.btn) {
             display: none;
         }
-
+        
         .o_field_translate.btn {
             // hide language button for current language
             visibility: hidden !important;
@@ -684,7 +673,7 @@
     // Text field with oe_inline class
     .o_field_text.oe_inline {
         width: 100%!important;
-        @include media-breakpoint-up(sm) {
+        @include media-breakpoint-up(vsm, $o-extra-grid-breakpoints) {
             width: 45%!important;
         }
     }
@@ -727,7 +716,7 @@
         }
     }
 
-    .o_field_field_selector.oe_inline {
+    .o_field_DynamicModelFieldSelectorChar.oe_inline {
         min-width: 7rem;
     }
 
@@ -777,6 +766,9 @@
             }
         }
 
+        .o_wrap_field:first-child > .o_cell {
+            padding-top: 4px;
+        }
         .oe_subtotal_footer_separator {
             width: 100%;
             text-align: right;
@@ -911,6 +903,7 @@
     // One2Many List views
     .o_field_widget .o_list_renderer {
         --ListRenderer-thead-bg-color: #{$o-view-background-color};
+        --ListRenderer-thead-bg-active-color: #{$o-form-lightsecondary};
         --ListRenderer-tfoot-bg-color: #{$o-view-background-color};
 
         margin-bottom: 10px;
@@ -919,6 +912,12 @@
             padding: 3px;
             color: $o-main-text-color;
         }
+    }
+    .o_form_readonly .o_field_widget .o_list_renderer .o_row_handle {
+        display: none;  // Hide the handler in non-edit mode
+    }
+    .o_field_widget.o_readonly_modifier .o_list_renderer .o_row_handle {
+        display: none;  // Hide the handler on readonly fields
     }
 
     &.oe_form_configuration .o_form_renderer {
@@ -954,9 +953,6 @@
 
             .o_inner_group {
                 margin-bottom: 0 !important;
-                &:last-child {
-                    margin-bottom: map-get($spacers, 3) !important;
-                }
 
                 div[name="carrier_selection"] {
                     > div:not(.alert) {
@@ -1043,8 +1039,8 @@
     }
 
     .o_notebook {
-        --Notebook-margin-x: calc(var(--formView-sheetBg-padding-x) * -1);
-        --Notebook-padding-x: var(--formView-sheetBg-padding-x);
+        --notebook-margin-x: calc(var(--formView-sheetBg-padding-x) * -1);
+        --notebook-padding-x: var(--formView-sheetBg-padding-x);
     }
 
     &.o_onboarding_payment_provider_wizard .o_form_renderer {
@@ -1069,11 +1065,10 @@
     &.modal-sm .o_form_view {
         .o_inner_group {
             @include form-break-table;
-            row-gap: 0;
         }
 
         .o_form_editable .o_inner_group {
-            @include editable-form-break-table();
+            @include form-break-table($-is-editable: true);
         }
     }
 }
@@ -1097,6 +1092,12 @@
     }
 }
 
+// Buttons in ControlPanel
+.o_control_panel .o_form_buttons_view > button:first-child {
+    float: left; // Unfortunately needed for the bounce effect
+    margin-right: 4px;
+}
+
 .o_form_view.o_xxl_form_view {
     flex-flow: row nowrap !important;
 
@@ -1117,6 +1118,14 @@
         .o_inner_group {
             margin-bottom: $o-form-spacing-unit * 4;
 
+            // Target XXS form view on mobile devices in portrait mode
+            @include media-breakpoint-down(md) {
+                &:not(.oe_subtotal_footer) > .o_cell {
+                    > .o_field_widget {
+                        --fieldWidget-margin-bottom: #{$o-form-spacing-unit * 4};
+                    }
+                }
+            }
         }
 
         .o_form_label {
@@ -1133,7 +1142,7 @@
     }
 
     .o_form_editable .o_inner_group {
-        @include editable-form-break-table();
+        @include form-break-table($-is-editable: true);
     }
 }
 
@@ -1147,6 +1156,9 @@
 
     .o_form_label.o_light_label, .o_light_label .o_form_label {
         font-weight: $font-weight-normal;
+    }
+    .o_setting_box:visible:nth-child(odd) {
+        clear: left;
     }
 }
 

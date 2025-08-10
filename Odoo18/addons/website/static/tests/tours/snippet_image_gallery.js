@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import {
     addMedia,
     changeOption,
@@ -5,8 +7,7 @@ import {
     clickOnSnippet,
     insertSnippet,
     registerWebsitePreviewTour,
-    changeOptionInPopover,
-} from "@website/js/tours/tour_utils";
+} from '@website/js/tours/tour_utils';
 
 registerWebsitePreviewTour('snippet_image_gallery', {
     url: '/',
@@ -39,7 +40,7 @@ registerWebsitePreviewTour("snippet_image_gallery_remove", {
     name: 'Image Gallery',
 }), {
     content: "Click on Remove all",
-    trigger: "button[data-action-id='removeAllImages']",
+    trigger: "we-button:has(div:contains('Remove all'))",
     run: "click",
 }, {
     content: "Click on Add Images",
@@ -51,7 +52,7 @@ registerWebsitePreviewTour("snippet_image_gallery_remove", {
     run: "click",
 }, {
     content: "Click on the second new image",
-    trigger: ".o_select_media_dialog img[title='s_default_image2.webp']",
+    trigger: ".o_select_media_dialog img[title='s_default_image2.jpg']",
     run: "click",
 },
     addMedia(),
@@ -61,10 +62,10 @@ registerWebsitePreviewTour("snippet_image_gallery_remove", {
     run: "click",
 }, {
     content: "Check that the Snippet Editor of the clicked image has been loaded",
-    trigger: ".o-tab-content [data-container-title='Image Gallery']",
+    trigger: "we-customizeblock-options span:contains('Image'):not(:contains('Image Gallery'))",
 }, {
     content: "Click on Remove Block",
-    trigger: ".o_customize_tab .options-container[data-container-title='Image Gallery'] .oe_snippet_remove",
+    trigger: ".o_we_customize_panel we-title:has(span:contains('Image Gallery')) we-button[title='Remove Block']",
     run: "click",
 }, {
     content: "Check that the Image Gallery snippet has been removed",
@@ -85,13 +86,16 @@ registerWebsitePreviewTour("snippet_image_gallery_reorder", {
     trigger: ":iframe .s_image_gallery .carousel-item.active img",
     run: "click",
 },
-    ...changeOptionInPopover("Image", "Filter", "Blur"),
+    changeOption('ImageTools', 'we-select:contains("Filter") we-toggler'),
+    changeOption('ImageTools', '[data-gl-filter="blur"]'),
 {
     content: "Check that the image has the correct filter",
-    trigger: ".o_customize_tab [data-container-title='Image'] [data-label='Filter'] .o-dropdown:contains('Blur')",
-},
-changeOption("Image", "[data-label='Re-order'] button[data-action-value='next']"),
-{
+    trigger: ".snippet-option-ImageTools we-select:contains('Filter') we-toggler:contains('Blur')",
+}, {
+    content: "Click on move to next",
+    trigger: ".snippet-option-GalleryElement we-button[data-position='next']",
+    run: "click",
+}, {
     content: "Check that the image has been moved",
     trigger: ":iframe .s_image_gallery .carousel-item.active img[data-index='1']",
 }, {
@@ -100,28 +104,28 @@ changeOption("Image", "[data-label='Re-order'] button[data-action-value='next']"
     run: "click",
 }, {
     content: "Check that the footer options have been loaded",
-    trigger:".o-tab-content [data-container-title='Footer']",
+    trigger: ".snippet-option-HideFooter we-button:contains('Page Visibility')",
 }, {
     content: "Click on the moved image",
-    trigger: ":iframe .s_image_gallery .carousel-item.active img",
+    trigger: ":iframe .s_image_gallery .carousel-item.active img[data-index='1'][data-gl-filter='blur']",
     run: "click",
 }, {
     content: "Check that the image still has the correct filter",
-    trigger: ".o_customize_tab [data-container-title='Image'] [data-label='Filter'] .o-dropdown:contains('Blur')",
+    trigger: ".snippet-option-ImageTools we-select:contains('Filter') we-toggler:contains('Blur')",
 }, {
     content: "Click to access next image",
     trigger: ":iframe .s_image_gallery .carousel-control-next",
     run: "click",
 }, {
     content: "Check that the option has changed",
-    trigger: ".o_customize_tab [data-container-title='Image'] [data-label='Filter'] .o-dropdown:contains('None')",
+    trigger: ".snippet-option-ImageTools we-select:contains('Filter') we-toggler:not(:contains('Blur'))",
 }, {
     content: "Click to access previous image",
     trigger: ":iframe .s_image_gallery .carousel-control-prev",
     run: "click",
 }, {
     content: "Check that the option is restored",
-    trigger: ".o_customize_tab [data-container-title='Image'] [data-label='Filter'] .o-dropdown:contains('Blur')",
+    trigger: ".snippet-option-ImageTools we-select:contains('Filter') we-toggler:contains('Blur')",
 }]);
 
 registerWebsitePreviewTour("snippet_image_gallery_thumbnail_update", {
@@ -137,7 +141,7 @@ registerWebsitePreviewTour("snippet_image_gallery_thumbnail_update", {
         id: "s_image_gallery",
         name: "Image Gallery",
     }),
-    changeOption("Image Gallery", "addImage"),
+    changeOption("GalleryImageList", "we-button[data-add-images]"),
 {
     content: "Click on the default image",
     trigger: ".o_select_media_dialog img[title='s_default_image.jpg']",

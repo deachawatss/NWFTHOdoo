@@ -14,7 +14,7 @@ class TestAuditTrail(AccountTestInvoicingCommon):
             mail_create_nolog=False,
             mail_notrack=False,
         ).env
-        cls.env.company.restrictive_audit_trail = False
+        cls.env.company.check_account_audit_trail = True
         cls.move = cls.create_move()
 
     @classmethod
@@ -33,52 +33,47 @@ class TestAuditTrail(AccountTestInvoicingCommon):
             ],
         })
 
-    def get_trail(self, record):
+    def get_trail(self, move):
         self.env.cr.precommit.run()
         return self.env['mail.message'].search([
-            ('model', '=', record._name),
-            ('res_id', '=', record.id),
+            ('model', '=', 'account.move'),
+            ('res_id', '=', move.id),
         ])
 
     def assertTrail(self, trail, expected):
         self.assertEqual(len(trail), len(expected))
-        for message, expected_needle in zip(trail, expected[::-1]):
-            self.assertIn(expected_needle, message.account_audit_log_preview)
+        for message, expected in zip(trail, expected[::-1]):
+            self.assertIn(expected, message.account_audit_log_preview)
 
     def test_can_unlink_draft(self):
-        self.env.company.restrictive_audit_trail = True
         self.move.unlink()
 
     def test_cant_unlink_posted(self):
-        self.env.company.restrictive_audit_trail = True
         self.move.action_post()
         self.move.button_draft()
-        with self.assertRaisesRegex(UserError, "remove parts of a restricted audit trail"):
+        with self.assertRaisesRegex(UserError, "remove parts of the audit trail"):
             self.move.unlink()
 
     def test_cant_unlink_message(self):
-        self.env.company.restrictive_audit_trail = True
         self.move.action_post()
         audit_trail = self.get_trail(self.move)
-        with self.assertRaisesRegex(UserError, "remove parts of a restricted audit trail"):
+        with self.assertRaisesRegex(UserError, "remove parts of the audit trail"):
             audit_trail.unlink()
 
     def test_cant_unown_message(self):
-        self.env.company.restrictive_audit_trail = True
         self.move.action_post()
         audit_trail = self.get_trail(self.move)
-        with self.assertRaisesRegex(UserError, "remove parts of a restricted audit trail"):
+        with self.assertRaisesRegex(UserError, "remove parts of the audit trail"):
             audit_trail.res_id = 0
 
     def test_cant_unlink_tracking_value(self):
-        self.env.company.restrictive_audit_trail = True
         self.move.action_post()
         self.env.cr.precommit.run()
         self.move.name = 'track this!'
         audit_trail = self.get_trail(self.move)
         trackings = audit_trail.tracking_value_ids.sudo()
         self.assertTrue(trackings)
-        with self.assertRaisesRegex(UserError, "remove parts of a restricted audit trail"):
+        with self.assertRaisesRegex(UserError, "remove parts of the audit trail"):
             trackings.unlink()
 
     def test_content(self):
@@ -86,12 +81,11 @@ class TestAuditTrail(AccountTestInvoicingCommon):
         self.assertTrail(self.get_trail(self.move), messages)
 
         self.move.action_post()
-        messages.append("Updated\nFalse ⇨ True (Reviewed)\nFalse ⇨ MISC/2021/04/0001 (Number)\nDraft ⇨ Posted (Status)")
+        messages.append("Updated\nFalse ⇨ True (Checked)\nFalse ⇨ MISC/2021/04/0001 (Number)\nDraft ⇨ Posted (Status)")
         self.assertTrail(self.get_trail(self.move), messages)
 
         self.move.button_draft()
-        messages.append("Updated\nTrue ⇨ False (Reviewed)\nPosted ⇨ Draft (Status)")
-        messages.append("Updated\nTrue ⇨ False (Reviewed)")
+        messages.append("Updated\nPosted ⇨ Draft (Status)")
         self.assertTrail(self.get_trail(self.move), messages)
 
         self.move.name = "nawak"
@@ -130,10 +124,6 @@ class TestAuditTrail(AccountTestInvoicingCommon):
         ])
         self.assertTrail(self.get_trail(self.move), messages)
 
-        self.env.company.restrictive_audit_trail = True
-        messages_company = ["Updated\nFalse ⇨ True (Restrictive Audit Trail)"]
-        self.assertTrail(self.get_trail(self.company), messages_company)
-
     def test_partner_notif(self):
         """Audit trail should not block partner notification."""
         user = new_test_user(
@@ -141,8 +131,7 @@ class TestAuditTrail(AccountTestInvoicingCommon):
             notification_type='email',
         )
         # identify that user as being a customer
-        user.partner_id.sudo().customer_rank += 1
-        self.assertGreater(user.partner_id.customer_rank, 0)
+        user.partner_id._increase_rank('customer_rank', 1)
         user.partner_id.message_post(body='Test', partner_ids=user.partner_id.ids)
 
     def test_partner_unlink(self):

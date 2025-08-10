@@ -1,5 +1,5 @@
 import { registry } from "@web/core/registry";
-import { stepUtils } from "@web_tour/tour_utils";
+import { stepUtils } from "@web_tour/tour_service/tour_utils";
 
 registry.category("web_tour.tours").add('project_create_sol_tour', {
     url: "/odoo",
@@ -44,20 +44,6 @@ registry.category("web_tour.tours").add('project_create_sol_tour', {
         run: "click",
     },
     {
-        trigger: "div[name='product_id'] input",
-        content: "Select the product for the Sales Order Item",
-        run: "click",
-    }, {
-        trigger: ".ui-autocomplete > li > a:not(:has(i.fa))",
-        content: "Select the product in the autocomplete dropdown",
-        run: "click",
-    }, 
-    {
-        trigger: ".modal button:contains(save)",
-        content: "Save the Sales Order Item",
-        run: "click",
-    },
-    {
         trigger: "body:not(:has(.modal))",
     },
     {
@@ -70,4 +56,3 @@ registry.category("web_tour.tours").add('project_create_sol_tour', {
     ...stepUtils.toggleHomeMenu(),
     ...stepUtils.goToAppSteps("project.menu_main_pm", 'Go to the Project app.'),
 ]});
-

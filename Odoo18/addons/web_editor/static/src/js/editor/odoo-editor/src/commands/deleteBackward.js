@@ -1,3 +1,4 @@
+/** @odoo-module **/
 import { UNBREAKABLE_ROLLBACK_CODE, UNREMOVABLE_ROLLBACK_CODE, REGEX_BOOTSTRAP_COLUMN } from '../utils/constants.js';
 import {deleteText} from './deleteForward.js';
 import {

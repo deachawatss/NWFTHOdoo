@@ -46,7 +46,7 @@ class TestMailPluginController(TestMailPluginControllerCommon):
         mocked_request_enrich = Mock()
 
         with patch(
-            "odoo.addons.iap.models.iap_enrich_api.IapEnrichApi"
+            "odoo.addons.iap.models.iap_enrich_api.IapEnrichAPI"
             "._request_enrich",
             new=mocked_request_enrich,
         ):

@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 import { X2ManyField, x2ManyField } from "@web/views/fields/x2many/x2many_field";
@@ -43,10 +45,10 @@ export class SMLX2ManyField extends X2ManyField {
             search_default_on_hand: true,
             search_default_in_stock: true,
         };
-        const productName = this.props.record.data.product_id.display_name;
+        const productName = this.props.record.data.product_id[1];
         const title = _t("Add line: %s", productName);
         let domain = [
-            ["product_id", "=", this.props.record.data.product_id.id],
+            ["product_id", "=", this.props.record.data.product_id[0]],
             ["location_id", "child_of", this.props.context.default_location_id],
         ];
         if (this.dirtyQuantsData.size) {
@@ -73,11 +75,11 @@ export class SMLX2ManyField extends X2ManyField {
         // Since changes of move line quantities will not affect the available quantity of the quant before
         // the record has been saved, it is necessary to determine the offset of the DB quant data.
         this.dirtyQuantsData.clear();
-        const dirtyQuantityMoveLines = this._move_line_ids.filter(
+        const dirtyQuantityMoveLines = this.props.record.data.move_line_ids.records.filter(
             (ml) => !ml.data.quant_id && ml._values.quantity - ml._changes.quantity
         );
-        const dirtyQuantMoveLines = this._move_line_ids.filter(
-            (ml) => ml.data.quant_id.id
+        const dirtyQuantMoveLines = this.props.record.data.move_line_ids.records.filter(
+            (ml) => ml.data.quant_id[0]
         );
         const dirtyMoveLines = [...dirtyQuantityMoveLines, ...dirtyQuantMoveLines];
         if (!dirtyMoveLines.length) {
@@ -87,12 +89,12 @@ export class SMLX2ManyField extends X2ManyField {
             "stock.move.line",
             "get_move_line_quant_match",
             [
-                this._move_line_ids
+                this.props.record.data.move_line_ids.records
                     .filter((rec) => rec.resId)
                     .map((rec) => rec.resId),
                 this.props.record.resId,
                 dirtyMoveLines.filter((rec) => rec.resId).map((rec) => rec.resId),
-                dirtyQuantMoveLines.map((ml) => ml.data.quant_id.id),
+                dirtyQuantMoveLines.map((ml) => ml.data.quant_id[0]),
             ],
             {}
         );
@@ -106,7 +108,7 @@ export class SMLX2ManyField extends X2ManyField {
         }
         const offsetByQuant = new Map();
         for (const ml of dirtyQuantMoveLines) {
-            const quantId = ml.data.quant_id.id;
+            const quantId = ml.data.quant_id[0];
             offsetByQuant.set(quantId, (offsetByQuant.get(quantId) || 0) - ml.data.quantity);
             const dbQuantId = dbMoveLinesData.get(ml.resId)?.quantId;
             if (dbQuantId && quantId != dbQuantId) {
@@ -134,7 +136,7 @@ export class SMLX2ManyField extends X2ManyField {
     async selectRecord(res_ids) {
         const demand =
             this.props.record.data.product_uom_qty -
-            this._move_line_ids
+            this.props.record.data.move_line_ids.records
                 .map((ml) => ml.data.quantity)
                 .reduce((val, sum) => val + sum, 0);
         const params = {
@@ -169,10 +171,6 @@ export class SMLX2ManyField extends X2ManyField {
                 }
             },
         });
-    }
-
-    get _move_line_ids() {
-        return this.props.record.data.move_line_ids.records;
     }
 }
 

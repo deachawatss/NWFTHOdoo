@@ -48,14 +48,8 @@ class TestSelfAccessProfile(TestHrCommon):
         form = Form(james, view=view)
         for field in employee_related_fields:
             with self.assertRaises(AssertionError, msg="Field '%s' should be readonly in the employee profile when self editing is not allowed." % field):
-                form[field] = 'some value'
+                form.__setattr__(field, 'some value')
 
-        self.env['ir.config_parameter'].sudo().set_param('hr.hr_employee_self_edit', True)
-        hr_settings_fields = ['employee_type', 'pin', 'barcode']
-        form = Form(james, view=view)
-        for field in hr_settings_fields:
-            with self.assertRaises(AssertionError, msg="HR field '%s' should be readonly when self editing is allowed." % field):
-                form[field] = 'some value'
 
     def test_profile_view_fields(self):
         """ A simple user should see all fields in profile view, even if they are protected by groups """
@@ -72,7 +66,7 @@ class TestSelfAccessProfile(TestHrCommon):
         for xml_id in all_groups_xml_ids:
             all_groups |= self.env.ref(xml_id.strip())
         user_all_groups = new_test_user(self.env, groups='base.group_user', login='hel', name='God')
-        user_all_groups.write({'group_ids': [(4, group.id, False) for group in all_groups]})
+        user_all_groups.write({'groups_id': [(4, group.id, False) for group in all_groups]})
         view_infos = self.env['res.users'].with_user(user_all_groups).get_view(view.id)
         full_fields = [el.get('name') for el in etree.fromstring(view_infos['arch']).xpath('//field[not(ancestor::field)]')]
 
@@ -173,7 +167,7 @@ class TestSelfAccessRights(TestHrCommon):
 
     # Write res.users #
     def testWriteSelfUserEmployeeSettingFalse(self):
-        for f in self.self_protected_fields_user:
+        for f, v in self.self_protected_fields_user.items():
             with self.assertRaises(AccessError):
                 self.richard.with_user(self.richard).write({f: 'dummy'})
 
@@ -194,7 +188,6 @@ class TestSelfAccessRights(TestHrCommon):
         vals = [
             {'tz': "Australia/Sydney"},
             {'email': "new@example.com"},
-            {'phone': "2154545"},
             {'signature': "<p>I'm Richard!</p>"},
             {'notification_type': "email"},
         ]
@@ -215,6 +208,12 @@ class TestSelfAccessRights(TestHrCommon):
         for v in vals:
             with self.assertRaises(AccessError):
                 self.hubert.with_user(self.richard).write(v)
+
+    def testWriteSelfPhoneEmployee(self):
+        # phone is a related from res.partner (from base) but added in SELF_READABLE_FIELDS
+        self.env['ir.config_parameter'].set_param('hr.hr_employee_self_edit', False)
+        with self.assertRaises(AccessError):
+            self.richard.with_user(self.richard).write({'phone': '2154545'})
 
     def testWriteOtherUserEmployee(self):
         for f in self.self_protected_fields_user:

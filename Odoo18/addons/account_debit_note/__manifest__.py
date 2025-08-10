@@ -20,6 +20,5 @@ The wizard used is similar as the one for the credit note.
         'security/ir.model.access.csv',
     ],
     'installable': True,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

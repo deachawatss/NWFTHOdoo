@@ -3,7 +3,6 @@ from lxml import html
 from odoo.tools import mute_logger
 from odoo.exceptions import AccessError
 from odoo.tests import HttpCase, tagged
-import unittest
 
 from odoo.addons.website.controllers.model_page import ModelPageController
 
@@ -73,7 +72,7 @@ class TestWebsiteControllerPage(HttpCase):
 
         with self.assertRaises(AccessError) as cm:
             self.env["website.controller.page"].with_user(2).create({
-                "name": "Exposed Model Read",
+                "name": "Exposed Model",
                 "website_id": False,
                 "view_id": self.single_view.id,
                 "record_domain": "[('name', '=ilike', 'test_partner_%')]",

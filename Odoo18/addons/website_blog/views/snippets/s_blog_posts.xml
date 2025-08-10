@@ -5,7 +5,6 @@
     <t t-call="website.s_dynamic_snippet_template">
         <t t-set="snippet_name" t-value="'s_blog_posts'"/>
         <t t-set="snippet_classes" t-value="'s_dynamic_snippet_blog_posts s_blog_post_big_picture s_blog_posts_effect_marley s_blog_posts_post_picture_size_default'"/>
-        <t t-set="main_page_url" t-value="'/blog'"/>
         <t t-set="custom_template_data" t-valuef='{"blog_posts_post_author_active":true, "blog_posts_post_teaser_active":true, "blog_posts_post_date_active":true}'/>
         <t t-call="website_blog.s_dynamic_snippet_blog_posts_preview_data"/>
     </t>
@@ -120,6 +119,8 @@
 <template id="website_blog.s_dynamic_snippet_template_author" name="Blog Post Author">
     <div t-if="blog_posts_post_author_active" class="s_blog_posts_post_author d-inline-flex align-items-center">
         <img class="o_avatar me-2 rounded-pill" t-attf-src="data:image/png;base64,{{record.author_avatar}}"/>
+        <!-- t-if to remove in MASTER -->
+        <span t-if="False" t-field="record.author_id.name"/>
         <span t-field="record.author_name"/>
     </div>
 </template>
@@ -208,6 +209,12 @@
     <field name="name">Blog posts 000 SCSS</field>
     <field name="bundle">web.assets_frontend</field>
     <field name="path">website_blog/static/src/snippets/s_blog_posts/000.scss</field>
+</record>
+
+<record id="website_blog.s_blog_posts_000_js" model="ir.asset">
+    <field name="name">Blog posts 000 JS</field>
+    <field name="bundle">web.assets_frontend</field>
+    <field name="path">website_blog/static/src/snippets/s_blog_posts/000.js</field>
 </record>
 
 </odoo>

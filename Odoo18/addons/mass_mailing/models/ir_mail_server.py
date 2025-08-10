@@ -5,8 +5,9 @@ from odoo import _, fields, models
 from odoo.tools.misc import format_date
 
 
-class IrMail_Server(models.Model):
-    _inherit = 'ir.mail_server'
+class IrMailServer(models.Model):
+    _name = 'ir.mail_server'
+    _inherit = ['ir.mail_server']
 
     active_mailing_ids = fields.One2many(
         comodel_name='mailing.mailing',
@@ -23,7 +24,7 @@ class IrMail_Server(models.Model):
             details = _('(scheduled for %s)', format_date(self.env, mailing_id.schedule_date))
             return f'{base} {details}'
 
-        usages_super = super()._active_usages_compute()
+        usages_super = super(IrMailServer, self)._active_usages_compute()
         default_mail_server_id = self.env['mailing.mailing']._get_default_mail_server_id()
         for record in self:
             usages = []

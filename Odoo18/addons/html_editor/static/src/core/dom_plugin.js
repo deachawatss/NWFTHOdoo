@@ -1,3 +1,4 @@
+import { _t } from "@web/core/l10n/translation";
 import { Plugin } from "../plugin";
 import { closestBlock, isBlock } from "../utils/blocks";
 import {
@@ -26,6 +27,8 @@ import {
     isTangible,
     isUnprotecting,
     listElementSelector,
+    paragraphRelatedElementsSelector,
+    isEditorTab,
 } from "../utils/dom_info";
 import {
     childNodes,
@@ -39,7 +42,6 @@ import { FONT_SIZE_CLASSES, TEXT_STYLE_CLASSES } from "../utils/formatting";
 import { DIRECTIONS, childNodeIndex, nodeSize, rightPos } from "../utils/position";
 import { normalizeCursorPosition } from "@html_editor/utils/selection";
 import { baseContainerGlobalSelector } from "@html_editor/utils/base_container";
-import { isHtmlContentSupported } from "@html_editor/core/selection_plugin";
 
 /**
  * Get distinct connected parents of nodes
@@ -61,8 +63,6 @@ function getConnectedParents(nodes) {
  * @typedef {Object} DomShared
  * @property { DomPlugin['insert'] } insert
  * @property { DomPlugin['copyAttributes'] } copyAttributes
- * @property { DomPlugin['setTag'] } setTag
- * @property { DomPlugin['setTagName'] } setTagName
  */
 
 export class DomPlugin extends Plugin {
@@ -71,22 +71,30 @@ export class DomPlugin extends Plugin {
     static shared = ["insert", "copyAttributes", "setTag", "setTagName"];
     resources = {
         user_commands: [
+            { id: "insertFontAwesome", run: this.insertFontAwesome.bind(this) },
+            { id: "setTag", run: this.setTag.bind(this) },
             {
-                id: "insertFontAwesome",
-                run: this.insertFontAwesome.bind(this),
-                isAvailable: isHtmlContentSupported,
-            },
-            {
-                id: "setTag",
-                run: this.setTag.bind(this),
-                isAvailable: isHtmlContentSupported,
+                id: "insertSeparator",
+                title: _t("Separator"),
+                description: _t("Insert a horizontal rule separator"),
+                icon: "fa-minus",
+                run: this.insertSeparator.bind(this),
             },
         ],
+        powerbox_items: {
+            categoryId: "structure",
+            commandId: "insertSeparator",
+        },
         /** Handlers */
+        clean_handlers: this.removeEmptyClassAndStyleAttributes.bind(this),
         clean_for_save_handlers: ({ root }) => {
             this.removeEmptyClassAndStyleAttributes(root);
+            for (const el of root.querySelectorAll("hr[contenteditable]")) {
+                el.removeAttribute("contenteditable");
+            }
         },
-        clipboard_content_processors: this.removeEmptyClassAndStyleAttributes.bind(this),
+        normalize_handlers: this.normalize.bind(this),
+        functional_empty_node_predicates: [isSelfClosingElement, isEditorTab],
     };
     contentEditableToRemove = new Set();
 
@@ -100,14 +108,22 @@ export class DomPlugin extends Plugin {
             return;
         }
         let selection = this.dependencies.selection.getEditableSelection();
+        let startNode;
+        let insertBefore = false;
         if (!selection.isCollapsed) {
             this.dependencies.delete.deleteSelection();
             selection = this.dependencies.selection.getEditableSelection();
+        }
+        if (selection.startContainer.nodeType === Node.TEXT_NODE) {
+            insertBefore = !selection.startOffset;
+            splitTextNode(selection.startContainer, selection.startOffset, DIRECTIONS.LEFT);
+            startNode = selection.startContainer;
         }
 
         let container = this.document.createElement("fake-element");
         const containerFirstChild = this.document.createElement("fake-element-fc");
         const containerLastChild = this.document.createElement("fake-element-lc");
+
         if (typeof content === "string") {
             container.textContent = content;
         } else {
@@ -125,17 +141,9 @@ export class DomPlugin extends Plugin {
         for (const cb of this.getResource("before_insert_processors")) {
             container = cb(container, block);
         }
-        selection = this.dependencies.selection.getEditableSelection();
-
-        let startNode;
-        let insertBefore = false;
-        if (selection.startContainer.nodeType === Node.TEXT_NODE) {
-            insertBefore = !selection.startOffset;
-            splitTextNode(selection.startContainer, selection.startOffset, DIRECTIONS.LEFT);
-            startNode = selection.startContainer;
-        }
 
         const allInsertedNodes = [];
+
         // In case the html inserted starts with a list and will be inserted within
         // a list, unwrap the list elements from the list.
         const hasSingleChild = nodeSize(container) === 1;
@@ -366,7 +374,6 @@ export class DomPlugin extends Plugin {
             currentNode = nodeToInsert;
         }
         allInsertedNodes.push(...lastInsertedNodes);
-        this.getResource("after_insert_handlers").forEach((handler) => handler(allInsertedNodes));
         let insertedNodesParents = getConnectedParents(allInsertedNodes);
         for (const parent of insertedNodesParents) {
             if (
@@ -466,13 +473,15 @@ export class DomPlugin extends Plugin {
      * @param {HTMLElement} target
      */
     copyAttributes(source, target) {
+        this.dispatchTo("clean_handlers", source);
         if (source?.nodeType !== Node.ELEMENT_NODE || target?.nodeType !== Node.ELEMENT_NODE) {
             return;
         }
-        const ignoredAttrs = new Set(this.getResource("system_attributes"));
+        // TODO: provide a resource to ignore some attributes.
+        const ignoredAttrs = new Set();
         const ignoredClasses = new Set(this.getResource("system_classes"));
         for (const attr of source.attributes) {
-            if (ignoredAttrs.has(attr.name)) {
+            if (ignoredAttrs.has(attr)) {
                 continue;
             }
             if (attr.name !== "class" || ignoredClasses.size === 0) {
@@ -548,6 +557,11 @@ export class DomPlugin extends Plugin {
             this.copyAttributes(newCandidate, baseContainer);
             newCandidate = baseContainer;
         }
+        const { commonAncestorContainer } = this.dependencies.selection.getEditableSelection();
+        // Clean before preserving cursors otherwise the saved cursors might
+        // reference a node that will be removed when setTagName eventually
+        // calls clean of its own.
+        this.dispatchTo("clean_handlers", closestElement(commonAncestorContainer));
         const cursors = this.dependencies.selection.preserveSelection();
         const targetedBlocks = [...this.dependencies.selection.getTargetedBlocks()];
         const deepestTargetedBlocks = targetedBlocks.filter(
@@ -556,7 +570,11 @@ export class DomPlugin extends Plugin {
                 block.isContentEditable
         );
         for (const block of deepestTargetedBlocks) {
-            if (isParagraphRelatedElement(block) || isListItemElement(block)) {
+            if (
+                isParagraphRelatedElement(block) ||
+                block.nodeName === "PRE" || // TODO remove: PRE should be a paragraphRelatedElement
+                isListItemElement(block)
+            ) {
                 if (newCandidate.matches(baseContainerGlobalSelector) && isListItemElement(block)) {
                     continue;
                 }
@@ -573,9 +591,6 @@ export class DomPlugin extends Plugin {
                 if (extraClass) {
                     newEl.classList.add(extraClass);
                 }
-                if (block.nodeName === "LI") {
-                    this.delegateTo("set_tag_overrides", block, newEl);
-                }
             } else {
                 // eg do not change a <div> into a h1: insert the h1
                 // into it instead.
@@ -588,6 +603,28 @@ export class DomPlugin extends Plugin {
         this.dependencies.history.addStep();
     }
 
+    insertSeparator() {
+        const selection = this.dependencies.selection.getEditableSelection();
+        const sep = this.document.createElement("hr");
+        const block = closestBlock(selection.startContainer);
+        const element =
+            closestElement(selection.startContainer, paragraphRelatedElementsSelector) ||
+            (block && !isListItemElement(block) ? block : null);
+
+        if (element && element !== this.editable) {
+            if (isEmptyBlock(element)) {
+                element.before(sep);
+            } else {
+                element.after(sep);
+                const baseContainer = this.dependencies.baseContainer.createBaseContainer();
+                fillEmpty(baseContainer);
+                sep.after(baseContainer);
+                this.dependencies.selection.setCursorStart(baseContainer);
+            }
+        }
+        this.dependencies.history.addStep();
+    }
+
     removeEmptyClassAndStyleAttributes(root) {
         for (const node of [root, ...descendants(root)]) {
             if (node.classList && !node.classList.length) {
@@ -595,6 +632,24 @@ export class DomPlugin extends Plugin {
             }
             if (node.style && !node.style.length) {
                 node.removeAttribute("style");
+            }
+        }
+    }
+
+    normalize(el) {
+        if (el.tagName === "HR") {
+            el.setAttribute(
+                "contenteditable",
+                el.hasAttribute("contenteditable") ? el.getAttribute("contenteditable") : "false"
+            );
+        } else {
+            for (const separator of el.querySelectorAll("hr")) {
+                separator.setAttribute(
+                    "contenteditable",
+                    separator.hasAttribute("contenteditable")
+                        ? separator.getAttribute("contenteditable")
+                        : "false"
+                );
             }
         }
     }

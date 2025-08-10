@@ -97,7 +97,7 @@
 
     <xpath expr="//div" position="after">
         <!-- Form -->
-        <div data-js="WebsiteFormEditor" data-selector=".s_website_form" data-target="form" data-drop-exclude-ancestor="form">
+        <div data-js="WebsiteFormEditor" data-selector=".s_website_form" data-target="form">
             <we-select string="Marked Fields" data-name="field_mark_select">
                 <we-button data-select-class="">None</we-button>
                 <we-button data-select-class="o_mark_required" data-name="form_required_opt">Required</we-button>
@@ -208,16 +208,17 @@
             <we-input string="Placeholder" class="o_we_large"
                 data-select-attribute="" data-attribute-name="placeholder"
                 data-apply-to="input[type='text'], input[type='email'], input[type='number'], input[type='tel'], input[type='url'], textarea"/>
-            <we-input string.translate="Default Value" class="o_we_large" data-select-textarea-value="" data-apply-to="textarea"/>
-            <we-checkbox string.translate="Default Value" data-select-attribute="checked" data-attribute-name="checked"
+            <t t-set="default_value_label">Default Value</t>
+            <we-input t-att-string="default_value_label" class="o_we_large" data-select-textarea-value="" data-apply-to="textarea"/>
+            <we-checkbox t-att-string="default_value_label" data-select-attribute="checked" data-attribute-name="checked"
                       data-apply-to=".col-sm > * > input[type='checkbox']" data-no-preview="true"/>
-            <we-input string.translate="Default Value" class="o_we_large" data-select-attribute="" data-attribute-name="value" data-select-property=""
+            <we-input t-att-string="default_value_label" class="o_we_large" data-select-attribute="" data-attribute-name="value" data-select-property=""
                       data-property-name="value" data-apply-to="input[type='text']:not(.datetimepicker-input), input[type='email'], input[type='tel'], input[type='url']"/>
-            <we-input string.translate="Default Value" class="o_we_large" data-select-attribute="" data-attribute-name="value" data-select-property=""
+            <we-input t-att-string="default_value_label" class="o_we_large" data-select-attribute="" data-attribute-name="value" data-select-property=""
                       data-step="1" data-property-name="value" data-apply-to="input[type='number']"/>
-            <we-datetimepicker string.translate="Default Value" data-select-attribute="" data-attribute-name="value" data-select-value-property=""
+            <we-datetimepicker t-att-string="default_value_label" data-select-attribute="" data-attribute-name="value" data-select-value-property=""
                                data-apply-to=".s_website_form_datetime input"/>
-            <we-datepicker string.translate="Default Value" data-select-attribute="" data-attribute-name="value" data-select-value-property=""
+            <we-datepicker t-att-string="default_value_label" data-select-attribute="" data-attribute-name="value" data-select-value-property=""
                            data-apply-to=".s_website_form_date input"/>
             <we-checkbox string="Required" data-name="required_opt" data-no-preview="true"
                 data-toggle-required="s_website_form_required"/>
@@ -337,6 +338,12 @@
     <field name="name">Website form 001 SCSS</field>
     <field name="bundle">web.assets_frontend</field>
     <field name="path">website/static/src/snippets/s_website_form/001.scss</field>
+</record>
+
+<record id="website.s_website_form_000_js" model="ir.asset">
+    <field name="name">Website form 000 JS</field>
+    <field name="bundle">web.assets_frontend</field>
+    <field name="path">website/static/src/snippets/s_website_form/000.js</field>
 </record>
 
 <record id="website.s_website_form_xml" model="ir.asset">

@@ -1,8 +1,9 @@
+/** @odoo-module */
 /* global Stripe */
 
-import paymentForm from '@payment/js/payment_form';
-import { StripeOptions } from '@payment_stripe/js/stripe_options';
 import { _t } from '@web/core/l10n/translation';
+import { StripeOptions } from '@payment_stripe/js/stripe_options';
+import paymentForm from '@payment/js/payment_form';
 
 paymentForm.include({
 

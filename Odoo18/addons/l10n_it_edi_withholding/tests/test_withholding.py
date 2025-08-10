@@ -37,7 +37,7 @@ class TestWithholdingAndPensionFundTaxes(TestItEdi):
             'amount': 0.0,
             'amount_type': 'percent',
             'l10n_it_exempt_reason': 'N2.2',
-            'invoice_legal_notes': 'Fatture emesse o ricevute da contribuenti forfettari o minimi',
+            'l10n_it_law_reference': 'Fatture emesse o ricevute da contribuenti forfettari o minimi',
         })
 
         cls.withholding_sale_line = {

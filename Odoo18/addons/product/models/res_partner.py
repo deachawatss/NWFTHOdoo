@@ -19,8 +19,7 @@ class ResPartner(models.Model):
         inverse="_inverse_product_pricelist",
         company_dependent=False,  # behave like company dependent field but is not company_dependent
         domain=lambda self: [('company_id', 'in', (self.env.company.id, False))],
-        help="Used for sales to the current partner",
-    )
+        help="This pricelist will be used, instead of the default one, for sales to the current partner")
 
     # the specific pricelist to compute property_product_pricelist
     # this company dependent field shouldn't have any fallback in ir.default
@@ -48,8 +47,8 @@ class ResPartner(models.Model):
             if partner.property_product_pricelist or (actual and default_for_country and default_for_country.id != actual.id):
                 partner.specific_property_product_pricelist = False if partner.property_product_pricelist.id == default_for_country.id else partner.property_product_pricelist.id
 
-    def _synced_commercial_fields(self):
-        return super()._synced_commercial_fields() + ['property_product_pricelist']
+    def _commercial_fields(self):
+        return super()._commercial_fields() + ['property_product_pricelist']
 
     def _company_dependent_commercial_fields(self):
         return [

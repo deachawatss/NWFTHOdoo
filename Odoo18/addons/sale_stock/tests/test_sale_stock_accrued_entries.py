@@ -1,34 +1,35 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
-from odoo import fields
+# -*- coding: utf-8 -*-
+from odoo import fields, Command
+from odoo.addons.account.tests.common import AccountTestInvoicingCommon
+from odoo.tests import tagged, Form
 from odoo.exceptions import UserError
-from odoo.fields import Command
-from odoo.tests import Form, tagged
-
-from odoo.addons.sale.tests.common import TestSaleCommon
 
 
 @tagged('post_install', '-at_install')
-class TestAccruedStockSaleOrders(TestSaleCommon):
+class TestAccruedStockSaleOrders(AccountTestInvoicingCommon):
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-
-        product = cls.env['product.product'].create({
+        uom_unit = cls.env.ref('uom.product_uom_unit')
+        cls.product_order = cls.env['product.product'].create({
             'name': "Product",
             'list_price': 30.0,
             'type': 'consu',
-            'uom_id': cls.uom_unit.id,
+            'uom_id': uom_unit.id,
+            'uom_po_id': uom_unit.id,
             'invoice_policy': 'delivery',
         })
         cls.sale_order = cls.env['sale.order'].with_context(tracking_disable=True).create({
             'partner_id': cls.partner_a.id,
             'order_line': [
                 Command.create({
-                    'product_id': product.id,
+                    'name': cls.product_order.name,
+                    'product_id': cls.product_order.id,
                     'product_uom_qty': 10.0,
-                    'tax_ids': False,
+                    'product_uom': cls.product_order.uom_id.id,
+                    'price_unit': cls.product_order.list_price,
+                    'tax_id': False,
                 })
             ]
         })

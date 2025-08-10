@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from collections import defaultdict
@@ -6,12 +7,12 @@ from pytz import timezone
 
 from odoo import api, fields, models
 from odoo.addons.base.models.res_partner import _tz_get
-from odoo.tools.intervals import Intervals
-from odoo.tools.date_utils import localized, to_timezone
+
+from .utils import timezone_datetime, make_aware, Intervals
 
 
 class ResourceResource(models.Model):
-    _name = 'resource.resource'
+    _name = "resource.resource"
     _description = "Resources"
     _order = "name"
 
@@ -32,7 +33,7 @@ class ResourceResource(models.Model):
         ('user', 'Human'),
         ('material', 'Material')], string='Type',
         default='user', required=True)
-    user_id = fields.Many2one('res.users', string='User', index='btree_not_null', help='Related user name for the resource to manage its access.')
+    user_id = fields.Many2one('res.users', string='User', help='Related user name for the resource to manage its access.')
     avatar_128 = fields.Image(compute='_compute_avatar_128')
     share = fields.Boolean(related='user_id.share')
     email = fields.Char(related='user_id.email')
@@ -48,12 +49,11 @@ class ResourceResource(models.Model):
         help="Define the working schedule of the resource. If not set, the resource will have fully flexible working hours.")
     tz = fields.Selection(
         _tz_get, string='Timezone', required=True,
-        default=lambda self: self.env.context.get('tz') or self.env.user.tz or 'UTC')
+        default=lambda self: self._context.get('tz') or self.env.user.tz or 'UTC')
 
-    _check_time_efficiency = models.Constraint(
-        'CHECK(time_efficiency>0)',
-        'Time efficiency must be strictly positive',
-    )
+    _sql_constraints = [
+        ('check_time_efficiency', 'CHECK(time_efficiency>0)', 'Time efficiency must be strictly positive'),
+    ]
 
     @api.depends('user_id')
     def _compute_avatar_128(self):
@@ -77,16 +77,16 @@ class ResourceResource(models.Model):
         vals_list = super().copy_data(default=default)
         return [dict(vals, name=self.env._("%s (copy)", resource.name)) for resource, vals in zip(self, vals_list)]
 
-    def write(self, vals):
+    def write(self, values):
         if self.env.context.get('check_idempotence') and len(self) == 1:
-            vals = {
+            values = {
                 fname: value
-                for fname, value in vals.items()
+                for fname, value in values.items()
                 if self._fields[fname].convert_to_write(self[fname], self) != value
             }
-        if not vals:
+        if not values:
             return True
-        return super().write(vals)
+        return super().write(values)
 
     @api.onchange('company_id')
     def _onchange_company_id(self):
@@ -114,10 +114,8 @@ class ResourceResource(models.Model):
         :return: Closest matching start and end of working periods for each resource
         :rtype: dict(resource, tuple(datetime | None, datetime | None))
         """
-        revert_start_tz = to_timezone(start.tzinfo)
-        revert_end_tz = to_timezone(end.tzinfo)
-        start = localized(start)
-        end = localized(end)
+        start, revert_start_tz = make_aware(start)
+        end, revert_end_tz = make_aware(end)
         result = {}
         for resource in self:
             resource_tz = timezone(resource.tz)
@@ -144,8 +142,8 @@ class ResourceResource(models.Model):
             Note: this method is used in enterprise (forecast and planning)
 
         """
-        start_datetime = localized(start)
-        end_datetime = localized(end)
+        start_datetime = timezone_datetime(start)
+        end_datetime = timezone_datetime(end)
         resource_mapping = {}
         calendar_mapping = defaultdict(lambda: self.env['resource.resource'])
         for resource in self:

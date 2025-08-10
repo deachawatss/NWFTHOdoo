@@ -1,8 +1,8 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, fields, models
-from odoo.fields import Domain
-
+from odoo.osv import expression
 
 class ProductTag(models.Model):
     _name = 'product.tag'
@@ -35,17 +35,10 @@ class ProductTag(models.Model):
         'product.product', string='All Product Variants using this Tag',
         compute='_compute_product_ids', search='_search_product_ids'
     )
-    visible_to_customers = fields.Boolean(
-        string="Visible to customers",
-        help="Whether the tag is displayed to customers.",
-        default=True,
-    )
-    image = fields.Image(string="Image", max_width=200, max_height=200)
 
-    _name_uniq = models.Constraint(
-        'unique (name)',
-        'Tag name already exists!',
-    )
+    _sql_constraints = [
+        ('name_uniq', 'unique (name)', "Tag name already exists!"),
+    ]
 
     @api.depends('product_template_ids', 'product_product_ids')
     def _compute_product_ids(self):
@@ -57,6 +50,6 @@ class ProductTag(models.Model):
         return [dict(vals, name=self.env._("%s (copy)", tag.name)) for tag, vals in zip(self, vals_list)]
 
     def _search_product_ids(self, operator, operand):
-        if Domain.is_negative_operator(operator):
-            return NotImplemented
+        if operator in expression.NEGATIVE_TERM_OPERATORS:
+            return [('product_template_ids.product_variant_ids', operator, operand), ('product_product_ids', operator, operand)]
         return ['|', ('product_template_ids.product_variant_ids', operator, operand), ('product_product_ids', operator, operand)]

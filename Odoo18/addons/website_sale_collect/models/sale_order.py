@@ -2,7 +2,7 @@
 
 import json
 
-from odoo import models
+from odoo import _, models
 from odoo.exceptions import ValidationError
 from odoo.http import request
 
@@ -22,19 +22,6 @@ class SaleOrder(models.Model):
         for order in in_store_orders_with_pickup_data:
             order.warehouse_id = order.pickup_location_data['id']
 
-    def _compute_fiscal_position_id(self):
-        """Override of `sale` to set the fiscal position matching the selected pickup location
-        for pickup in-store orders."""
-        in_store_orders = self.filtered(
-            lambda so: so.carrier_id.delivery_type == 'in_store' and so.pickup_location_data
-        )
-        AccountFiscalPosition = self.env['account.fiscal.position'].sudo()
-        for order in in_store_orders:
-            order.fiscal_position_id = AccountFiscalPosition._get_fiscal_position(
-                order.partner_id, delivery=order.warehouse_id.partner_id
-            )
-        super(SaleOrder, self - in_store_orders)._compute_fiscal_position_id()
-
     def set_delivery_line(self, carrier, amount):
         """ Override of `website_sale` to recompute warehouse and fiscal position when a new
         delivery method is not in-store anymore. """
@@ -53,14 +40,17 @@ class SaleOrder(models.Model):
         Set account fiscal position depending on selected pickup location to correctly calculate
         taxes.
         """
-        super()._set_pickup_location(pickup_location_data)
+        res = super()._set_pickup_location(pickup_location_data)
         if self.carrier_id.delivery_type != 'in_store':
-            return
+            return res
 
         self.pickup_location_data = json.loads(pickup_location_data)
         if self.pickup_location_data:
             self.warehouse_id = self.pickup_location_data['id']
-            self._compute_fiscal_position_id()
+            AccountFiscalPosition = self.env['account.fiscal.position'].sudo()
+            self.fiscal_position_id = AccountFiscalPosition._get_fiscal_position(
+                self.partner_id, delivery=self.warehouse_id.partner_id
+            )
         else:
             self._compute_warehouse_id()
 
@@ -82,12 +72,19 @@ class SaleOrder(models.Model):
                 zip_code = None  # Reset the zip code to skip the `assert` in the `super` call.
         return super()._get_pickup_locations(zip_code=zip_code, country=country, **kwargs)
 
-    def _get_shop_warehouse_id(self):
-        """Override of `website_sale_stock` to consider the chosen warehouse."""
-        self.ensure_one()
+    def _get_cart_and_free_qty(self, product, line=None):
+        """ Override of `website_sale_stock` to get free_qty of the product from the warehouse that
+        was chosen rather than website's one.
+
+        :param product.product product: The product
+        :param sale.order.line line: The optional line
+        """
+        cart_qty, free_qty = super()._get_cart_and_free_qty(product, line=line)
         if self.carrier_id.delivery_type == 'in_store':
-            return self.warehouse_id.id
-        return super()._get_shop_warehouse_id()
+            free_qty = (product or line.product_id).with_context(
+                warehouse_id=self.warehouse_id.id
+            ).free_qty
+        return cart_qty, free_qty
 
     def _check_cart_is_ready_to_be_paid(self):
         """ Override of `website_sale` to check if all products are in stock in the selected
@@ -97,33 +94,10 @@ class SaleOrder(models.Model):
             and self.carrier_id.delivery_type == 'in_store'
             and not self._is_in_stock(self.warehouse_id.id)
         ):
-            raise ValidationError(self.env._(
-                "Some products are not available in the selected store."
-            ))
+            raise ValidationError(_("Some products are not available in the selected store."))
         return super()._check_cart_is_ready_to_be_paid()
 
     # === TOOLING ===#
-
-    def _prepare_in_store_default_location_data(self):
-        """ Prepare the default pickup location values for each in-store delivery method available
-        for the order. """
-        default_pickup_locations = {}
-        for dm in self._get_delivery_methods():
-            if (
-                dm.delivery_type == 'in_store'
-                and dm.id != self.carrier_id.id
-                and len(dm.warehouse_ids) == 1
-            ):
-                pickup_location_data = dm.warehouse_ids[0]._prepare_pickup_location_data()
-                if pickup_location_data:
-                    default_pickup_locations[dm.id] = {
-                        'pickup_location_data': pickup_location_data,
-                        'unavailable_order_lines': self._get_unavailable_order_lines(
-                            pickup_location_data['id']
-                        ),
-                    }
-
-        return {'default_pickup_locations': default_pickup_locations}
 
     def _is_in_stock(self, wh_id):
         """ Check whether all storable products of the cart are in stock in the given warehouse.
@@ -144,17 +118,18 @@ class SaleOrder(models.Model):
         unavailable_order_lines = self.env['sale.order.line']
         for ol in self.order_line:
             if ol.is_storable:
-                product = ol.product_id
-                cart_qty = self._get_cart_qty(product.id)
-                free_qty = product.with_context(warehouse_id=wh_id).free_qty
-                if cart_qty > free_qty:
-                    ol._set_shop_warning_stock(cart_qty, max(free_qty, 0))
+                product_free_qty = ol.product_id.with_context(warehouse_id=wh_id).free_qty
+                if ol.product_uom_qty > product_free_qty:
+                    ol.shop_warning = _(
+                        'Only %(new_qty)s available', new_qty=int(max(product_free_qty, 0))
+                    )
                     unavailable_order_lines |= ol
         return unavailable_order_lines
 
-    def _verify_updated_quantity(self, order_line, product_id, new_qty, uom_id, **kwargs):
+    def _verify_updated_quantity(self, order_line, product_id, new_qty, **kwargs):
         """ Override of `website_sale_stock` to skip the verification when click and collect
         is activated. The quantity is verified later. """
+        self.ensure_one()
         product = self.env['product.product'].browse(product_id)
         if (
             product.is_storable
@@ -162,4 +137,4 @@ class SaleOrder(models.Model):
             and self.website_id.in_store_dm_id
         ):
             return new_qty, ''
-        return super()._verify_updated_quantity(order_line, product_id, new_qty, uom_id, **kwargs)
+        return super()._verify_updated_quantity(order_line, product_id, new_qty, **kwargs)

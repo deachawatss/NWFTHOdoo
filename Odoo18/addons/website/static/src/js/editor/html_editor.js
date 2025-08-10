@@ -39,6 +39,56 @@ export class AutoCompleteInLinkPopover extends AutoComplete {
     }
 
     /**
+     * @param option
+     * @return {boolean}
+     */
+    isCategory(option) {
+        return !!option?.separator;
+    }
+
+    getOption(indices) {
+        const [sourceIndex, optionIndex] = indices;
+        return this.sources[sourceIndex]?.options[optionIndex];
+    }
+
+    /**
+     * @override
+     */
+    onOptionMouseEnter(indices) {
+        if (!this.isCategory(this.getOption(indices))) {
+            return super.onOptionMouseEnter(...arguments);
+        }
+    }
+
+    /**
+     * @override
+     */
+    onOptionMouseLeave(indices) {
+        if (!this.isCategory(this.getOption(indices))) {
+            return super.onOptionMouseLeave(...arguments);
+        }
+    }
+
+    isActiveSourceOption(indices) {
+        if (!this.isCategory(this.getOption(indices))) {
+            return super.isActiveSourceOption(...arguments);
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * @override
+     */
+    selectOption(option) {
+        if (!this.isCategory(option)) {
+            const { value } = Object.getPrototypeOf(option);
+            this.targetDropdown.value = value;
+            return super.selectOption(...arguments);
+        }
+    }
+
+    /**
      * @override
      */
     onInput() {
@@ -75,59 +125,49 @@ patch(LinkPopover.prototype, {
         return {
             placeholder: _t("Loading..."),
             options: this.loadOptionsSource.bind(this),
-            optionSlot: "urlOption",
+            optionTemplate: "website.AutoCompleteItem",
+        };
+    },
+
+    mapItemToSuggestion(item) {
+        return {
+            ...item,
+            classList: item.separator ? "ui-autocomplete-category" : "ui-autocomplete-item",
         };
     },
 
     async loadOptionsSource(term) {
-        const makeItem = (item) => ({
-            cssClass: "ui-autocomplete-item",
-            label: item.label,
-            onSelect: this.onSelect.bind(this, item.value),
-            data: { icon: item.icon || false, isCategory: false },
-        });
-
         if (term[0] === "#") {
-            const anchors = await wUtils.loadAnchors(
-                term,
-                this.props.linkElement.ownerDocument.body
+            const anchors = await wUtils.loadAnchors(term, this.props.linkEl.ownerDocument.body);
+            return anchors.map((anchor) =>
+                this.mapItemToSuggestion({ label: anchor, value: anchor })
             );
-            return anchors.map((anchor) => makeItem({ label: anchor, value: anchor }), this);
         } else if (term.startsWith("http") || term.length === 0) {
             // avoid useless call to /website/get_suggested_links
             return [];
         }
-
         const res = await rpc("/website/get_suggested_links", {
             needle: term,
             limit: 15,
         });
-        const choices = [];
-        for (const page of res.matching_pages) {
-            choices.push(makeItem(page));
-        }
-        for (const other of res.others) {
+        let choices = res.matching_pages;
+        res.others.forEach((other) => {
             if (other.values.length) {
-                choices.push({
-                    cssClass: "ui-autocomplete-category",
-                    label: other.title,
-                    data: { icon: false, isCategory: true },
-                });
-                for (const page of other.values) {
-                    choices.push(makeItem(page));
-                }
+                choices = choices.concat(
+                    [{ separator: other.title, label: other.title }],
+                    other.values
+                );
             }
-        }
-        return choices;
+        });
+        return choices.map(this.mapItemToSuggestion);
     },
 
-    onSelect(value) {
+    onSelect(selectedSubjection) {
+        const { value } = Object.getPrototypeOf(selectedSubjection);
         this.state.url = value;
-        this.onChange();
     },
 
     updateValue(val) {
         this.state.url = val;
-        this.onChange();
     },
 });

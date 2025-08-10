@@ -9,8 +9,18 @@ class SaleOrder(models.Model):
 
     l10n_in_reseller_partner_id = fields.Many2one('res.partner',
         string='Reseller', domain="[('vat', '!=', False), '|', ('company_id', '=', False), ('company_id', '=', company_id)]", readonly=False)
+    l10n_in_gst_treatment = fields.Selection([
+            ('regular', 'Registered Business - Regular'),
+            ('composition', 'Registered Business - Composition'),
+            ('unregistered', 'Unregistered Business'),
+            ('consumer', 'Consumer'),
+            ('overseas', 'Overseas'),
+            ('special_economic_zone', 'Special Economic Zone'),
+            ('deemed_export', 'Deemed Export'),
+            ('uin_holders', 'UIN Holders'),
+        ], string="GST Treatment", readonly=False, compute="_compute_l10n_in_gst_treatment", store=True, precompute=True)
 
-    @api.depends('partner_id', 'partner_shipping_id')
+    @api.depends('partner_id', 'partner_shipping_id', 'l10n_in_gst_treatment')
     def _compute_fiscal_position_id(self):
 
         def _get_fiscal_state(order, foreign_state):
@@ -26,21 +36,21 @@ class SaleOrder(models.Model):
                 or order.partner_id.property_account_position_id
             ):
                 return False
-            elif order.partner_shipping_id.l10n_in_gst_treatment == 'special_economic_zone':
+            elif order.l10n_in_gst_treatment == 'special_economic_zone':
                 # Special Economic Zone
                 return foreign_state
-            
+
             # Computing Place of Supply for particular order
-            partner_state = (
+            partner = (
                 order.partner_id.commercial_partner_id == order.partner_shipping_id.commercial_partner_id
-                and order.partner_shipping_id.state_id
-                or order.partner_id.state_id
+                and order.partner_shipping_id
+                or order.partner_id
             )
-            if not partner_state:
-                partner_state = order.partner_id.commercial_partner_id.state_id or order.company_id.state_id
-            if partner_state.country_id.code != 'IN':
-                partner_state = foreign_state
-            return partner_state
+            if partner.country_id and partner.country_id.code != 'IN':
+                return foreign_state
+            partner_state = partner.state_id or order.partner_id.commercial_partner_id.state_id or order.company_id.state_id
+            country_code = partner_state.country_id.code or order.country_code
+            return partner_state if country_code == 'IN' else foreign_state
 
         FiscalPosition = self.env['account.fiscal.position']
         foreign_state = self.env['res.country.state'].search([('code', '!=', 'IN')], limit=1)
@@ -58,8 +68,22 @@ class SaleOrder(models.Model):
             else:
                 super(SaleOrder, orders)._compute_fiscal_position_id()
 
+    @api.depends('partner_id')
+    def _compute_l10n_in_gst_treatment(self):
+        for order in self:
+            # set default value as False so CacheMiss error never occurs for this field.
+            order.l10n_in_gst_treatment = False
+            if order.country_code == 'IN':
+                l10n_in_gst_treatment = order.partner_id.l10n_in_gst_treatment
+                if not l10n_in_gst_treatment and order.partner_id.country_id and order.partner_id.country_id.code != 'IN':
+                    l10n_in_gst_treatment = 'overseas'
+                if not l10n_in_gst_treatment:
+                    l10n_in_gst_treatment = order.partner_id.vat and 'regular' or 'consumer'
+                order.l10n_in_gst_treatment = l10n_in_gst_treatment
+
     def _prepare_invoice(self):
         invoice_vals = super(SaleOrder, self)._prepare_invoice()
         if self.country_code == 'IN':
             invoice_vals['l10n_in_reseller_partner_id'] = self.l10n_in_reseller_partner_id.id
+            invoice_vals['l10n_in_gst_treatment'] = self.l10n_in_gst_treatment
         return invoice_vals

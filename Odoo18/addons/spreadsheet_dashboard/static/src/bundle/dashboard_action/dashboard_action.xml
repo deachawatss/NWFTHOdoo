@@ -4,21 +4,20 @@
         <ControlPanel display="controlPanelDisplay">
             <t t-set-slot="layout-actions" t-if="!state.activeDashboard?.isSample">
                 <t t-set="status" t-value="state.activeDashboard and state.activeDashboard.status"/>
-                <div class="d-flex flex-wrap">
-                    <DashboardSearchBar t-if="status === Status.Loaded and state.activeDashboard.model.getters.getGlobalFilters().length"
-                                        t-key="activeDashboardId"
-                                        model="state.activeDashboard.model"
+                <div t-if="status === Status.Loaded"
+                    class="o_filter_value_container"
+                    t-foreach="filters"
+                    t-key="activeDashboardId + '_' + filter.id"
+                    t-as="filter">
+                    <FilterValue
+                        filter="filter"
+                        model="state.activeDashboard.model"
+                        showTitle="true"
                     />
                 </div>
             </t>
             <t t-set-slot="control-panel-navigation-additional" t-if="!state.activeDashboard?.isSample">
                 <SpreadsheetShareButton t-key="activeDashboardId" model="state.activeDashboard?.model" onSpreadsheetShared.bind="shareSpreadsheet" togglerClass="'btn-light'"/>
-                <a
-                    t-if="state.activeDashboard"
-                    title="Toggle favorite"
-                    t-on-click="toggleFavorite"
-                    t-attf-class="o_dashboard_star fa fa-lg fa-star{{!state.activeDashboard.isFavorite ? '-o' : ' favorite_button_enabled'}}"
-                />
             </t>
         </ControlPanel>
         <t t-set="dashboard" t-value="state.activeDashboard"/>
@@ -43,7 +42,8 @@
                     An error occured while loading the dashboard
                 </div>
                 <t t-else="">
-                    <div class="o_renderer" t-att-class="{'o-sample-dashboard': dashboard.isSample}">
+                    <MobileFigureContainer t-if="env.isSmall" spreadsheetModel="dashboard.model" t-key="dashboard.id"/>
+                    <div t-else="" class="o_renderer" t-att-class="{'o-sample-dashboard': dashboard.isSample}">
                         <SpreadsheetComponent
                             model="dashboard.model"
                             t-key="dashboard.id"/>

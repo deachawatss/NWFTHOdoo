@@ -3,27 +3,26 @@
 
 from odoo import _, api, fields, models, tools
 from odoo.exceptions import UserError
-from odoo.fields import Domain
+from odoo.osv import expression
 
 
-class MailingContact(models.Model):
+class MassMailingContact(models.Model):
     """Model of a contact. This model is different from the partner model
     because it holds only some basic information: name, email. The purpose is to
     be able to deal with large contact list to email without bloating the partner
     base."""
     _name = 'mailing.contact'
-    _inherit = ['mail.thread.blacklist', 'properties.base.definition.mixin']
+    _inherit = ['mail.thread.blacklist']
     _description = 'Mailing Contact'
     _order = 'name ASC, id DESC'
     _mailing_enabled = True
 
-    @api.model
-    def default_get(self, fields):
+    def default_get(self, fields_list):
         """ When coming from a mailing list we may have a default_list_ids context
         key. We should use it to create subscription_ids default value that
         are displayed to the user as list_ids is not displayed on form view. """
-        res = super().default_get(fields)
-        if 'subscription_ids' in fields and not res.get('subscription_ids'):
+        res = super(MassMailingContact, self).default_get(fields_list)
+        if 'subscription_ids' in fields_list and not res.get('subscription_ids'):
             list_ids = self.env.context.get('default_list_ids')
             if 'default_list_ids' not in res and list_ids and isinstance(list_ids, (list, tuple)):
                 res['subscription_ids'] = [
@@ -34,6 +33,7 @@ class MailingContact(models.Model):
     first_name = fields.Char('First Name')
     last_name = fields.Char('Last Name')
     company_name = fields.Char(string='Company Name')
+    title_id = fields.Many2one('res.partner.title', string='Title')
     email = fields.Char('Email')
     list_ids = fields.Many2many(
         'mailing.list', 'mailing_subscription',
@@ -61,17 +61,18 @@ class MailingContact(models.Model):
 
     @api.model
     def _search_opt_out(self, operator, value):
-        if operator != 'in':
-            return NotImplemented
+        # Assumes operator is '=' or '!=' and value is True or False
+        if operator != '=':
+            if operator == '!=' and isinstance(value, bool):
+                value = not value
+            else:
+                raise NotImplementedError()
 
-        if 'default_list_ids' in self.env.context and isinstance(self.env.context['default_list_ids'], (list, tuple)) and len(self.env.context['default_list_ids']) == 1:
-            [active_list_id] = self.env.context['default_list_ids']
-            subscriptions = self.env['mailing.subscription']._search([
-                ('list_id', '=', active_list_id),
-                ('opt_out', '=', True),
-            ])
-            return [('id', 'in', subscriptions.subselect('contact_id'))]
-        return Domain.FALSE
+        if 'default_list_ids' in self._context and isinstance(self._context['default_list_ids'], (list, tuple)) and len(self._context['default_list_ids']) == 1:
+            [active_list_id] = self._context['default_list_ids']
+            contacts = self.env['mailing.subscription'].search([('list_id', '=', active_list_id)])
+            return [('id', 'in', [record.contact_id.id for record in contacts if record.opt_out == value])]
+        return expression.FALSE_DOMAIN if value else expression.TRUE_DOMAIN
 
     @api.depends('first_name', 'last_name')
     def _compute_name(self):
@@ -82,8 +83,8 @@ class MailingContact(models.Model):
     @api.depends('subscription_ids')
     @api.depends_context('default_list_ids')
     def _compute_opt_out(self):
-        if 'default_list_ids' in self.env.context and isinstance(self.env.context['default_list_ids'], (list, tuple)) and len(self.env.context['default_list_ids']) == 1:
-            [active_list_id] = self.env.context['default_list_ids']
+        if 'default_list_ids' in self._context and isinstance(self._context['default_list_ids'], (list, tuple)) and len(self._context['default_list_ids']) == 1:
+            [active_list_id] = self._context['default_list_ids']
             for record in self:
                 active_subscription_list = record.subscription_ids.filtered(lambda l: l.list_id.id == active_list_id)
                 record.opt_out = active_subscription_list.opt_out
@@ -104,7 +105,7 @@ class MailingContact(models.Model):
         This is a bit hackish but is due to default_list_ids key being
         used to compute oupt_out field. This should be cleaned in master but here
         we simply try to limit issues while keeping current behavior. """
-        default_list_ids = self.env.context.get('default_list_ids')
+        default_list_ids = self._context.get('default_list_ids')
         default_list_ids = default_list_ids if isinstance(default_list_ids, (list, tuple)) else []
 
         for vals in vals_list:
@@ -124,17 +125,7 @@ class MailingContact(models.Model):
                     subscription_ids.append((0, 0, {'list_id': list_id}))
                 vals['subscription_ids'] = subscription_ids
 
-        records = super(MailingContact, self.with_context(default_list_ids=False)).create(vals_list)
-
-        # We need to invalidate list_ids or subscription_ids because list_ids is a many2many
-        # using a real model as table ('mailing.subscription') and the ORM doesn't automatically
-        # update/invalidate the `list_ids`/`subscription_ids` cache correctly.
-        for record in records:
-            if record.list_ids:
-                record.invalidate_recordset(['subscription_ids'])
-            elif record.subscription_ids:
-                record.invalidate_recordset(['list_ids'])
-        return records
+        return super(MassMailingContact, self.with_context(default_list_ids=False)).create(vals_list)
 
     def copy(self, default=None):
         """ Cleans the default_list_ids while duplicating mailing contact in context of
@@ -155,6 +146,15 @@ class MailingContact(models.Model):
         name, email = tools.parse_contact_from_email(name)
         contact = self.create({'name': name, 'email': email, 'list_ids': [(4, list_id)]})
         return contact.id, contact.display_name
+
+    def _message_get_default_recipients(self):
+        return {
+            r.id: {
+                'partner_ids': [],
+                'email_to': ','.join(tools.email_normalize_all(r.email)) or r.email,
+                'email_cc': False,
+            } for r in self
+        }
 
     def action_import(self):
         action = self.env["ir.actions.actions"]._for_xml_id("mass_mailing.mailing_contact_import_action")

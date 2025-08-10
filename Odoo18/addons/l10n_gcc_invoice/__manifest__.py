@@ -7,7 +7,6 @@
     'description': """
 Arabic/English for GCC
 """,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
     'depends': ['account'],
     'data': [

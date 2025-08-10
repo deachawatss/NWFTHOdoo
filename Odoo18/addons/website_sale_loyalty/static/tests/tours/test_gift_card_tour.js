@@ -1,5 +1,7 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
-import * as tourUtils from "@website_sale/js/tours/tour_utils";
+import * as tourUtils from '@website_sale/js/tours/tour_utils';
 
 registry.category("web_tour.tours").add('shop_sale_gift_card', {
     url: '/shop',
@@ -20,30 +22,37 @@ registry.category("web_tour.tours").add('shop_sale_gift_card', {
         },
         {
             content: 'check gift card line',
-            trigger: "#cart_products div>h6:contains(PAY WITH GIFT CARD)",
+            trigger: 'div>strong:contains("PAY WITH GIFT CARD")',
+            run: "click",
         },
         {
-            content: "Insert promo",
+            trigger: 'form[name="coupon_code"]',
+        },
+        {
+            content: 'insert gift card code',
             trigger: 'form[name="coupon_code"] input[name="promo"]',
             run: "edit 10PERCENT",
         },
         {
-            content: "Validate the promo",
+            content: 'validate the gift card',
             trigger: 'form[name="coupon_code"] .a-submit',
             run: "click",
             expectUnloadPage: true,
         },
         {
-            content: "Check promo",
-            trigger: "#cart_products div>h6:contains(10% on your order)",
+            content: 'check gift card amount',
+            trigger: '.oe_website_sale .oe_cart:contains(10% on your order)',
         },
         {
-            content: "Click on Continue Shopping",
-            trigger: "div.card-body a:contains(Continue shopping)",
+            trigger: "a:contains(continue shopping)",
             run: "click",
             expectUnloadPage: true,
         },
         ...tourUtils.addToCart({ productName: "TEST - Gift Card", expectUnloadPage: true }),
         tourUtils.goToCart({quantity: 2}),
+        {
+            content: 'check gift card amount',
+            trigger: '.oe_website_sale .oe_cart',
+        },
     ],
 });

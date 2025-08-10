@@ -5,7 +5,7 @@ import { accountTaxHelpers } from "@account/helpers/account_tax";
  * For example if the original price is 50. It will compute a new price so that if you apply the tax_ids
  * the price would still be 50.
  */
-export const computePriceForcePriceInclude = (
+export const compute_price_force_price_include = (
     tax_ids,
     price,
     product,
@@ -44,7 +44,10 @@ export const getTaxesValues = (
     const baseLine = accountTaxHelpers.prepare_base_line_for_taxes_computation(
         {},
         {
-            product_id: product,
+            product_id: accountTaxHelpers.eval_taxes_computation_prepare_product_values(
+                productDefaultValues,
+                product
+            ),
             tax_ids: taxes,
             price_unit: priceUnit,
             quantity: quantity,
@@ -57,7 +60,7 @@ export const getTaxesValues = (
 
     const results = baseLine.tax_details;
     for (const taxData of results.taxes_data) {
-        Object.assign(taxData, taxData.tax.raw);
+        Object.assign(taxData, taxData.tax);
     }
     return results;
 };

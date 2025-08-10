@@ -36,20 +36,16 @@ class DeliveryCarrier(models.Model):
         ''' Send the package to the service provider
 
         :param pickings: A recordset of pickings
-        :returns: A list of dictionaries (one per picking) containing of
-            the form::
-
+        :return list: A list of dictionaries (one per picking) containing of the form::
                          { 'exact_price': price,
                            'tracking_number': number }
-        :rtype: list[dict] | None
+                           # TODO missing labels per package
+                           # TODO missing currency
+                           # TODO missing success, error, warnings
         '''
-        # TODO missing labels per package
-        # TODO missing currency
-        # TODO missing success, error, warnings
         self.ensure_one()
         if hasattr(self, '%s_send_shipping' % self.delivery_type):
             return getattr(self, '%s_send_shipping' % self.delivery_type)(pickings)
-        return None
 
     def get_return_label(self, pickings, tracking_number=None, origin_date=None):
         self.ensure_one()
@@ -74,13 +70,11 @@ class DeliveryCarrier(models.Model):
         ''' Ask the tracking link to the service provider
 
         :param picking: record of stock.picking
-        :returns: an URL containing the tracking link or None
-        :rtype: str | None
+        :return str: an URL containing the tracking link or False
         '''
         self.ensure_one()
         if hasattr(self, '%s_get_tracking_link' % self.delivery_type):
             return getattr(self, '%s_get_tracking_link' % self.delivery_type)(picking)
-        return None
 
     def cancel_shipment(self, pickings):
         ''' Cancel a shipment
@@ -208,7 +202,7 @@ class DeliveryCarrier(models.Model):
         commodities = []
 
         for line in order.order_line.filtered(lambda line: not line.is_delivery and not line.display_type and line.product_id.type == 'consu'):
-            unit_quantity = line.product_uom_id._compute_quantity(line.product_uom_qty, line.product_id.uom_id)
+            unit_quantity = line.product_uom._compute_quantity(line.product_uom_qty, line.product_id.uom_id)
             rounded_qty = max(1, float_round(unit_quantity, precision_digits=0))
             country_of_origin = line.product_id.country_of_origin.code or order.warehouse_id.partner_id.country_id.code
             commodities.append(DeliveryCommodity(

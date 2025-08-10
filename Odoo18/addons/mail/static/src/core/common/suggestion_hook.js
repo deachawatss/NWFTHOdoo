@@ -3,12 +3,10 @@ import { ConnectionAbortedError } from "@web/core/network/rpc";
 import { useService } from "@web/core/utils/hooks";
 import { useDebounced } from "@web/core/utils/timing";
 
-export const DELAY_FETCH = 250;
-
-class UseSuggestion {
+export class UseSuggestion {
     constructor(comp) {
         this.comp = comp;
-        this.fetchSuggestions = useDebounced(this.fetchSuggestions.bind(this), DELAY_FETCH);
+        this.fetchSuggestions = useDebounced(this.fetchSuggestions.bind(this), 250);
         useEffect(
             () => {
                 this.update();
@@ -62,7 +60,6 @@ class UseSuggestion {
     clearRawMentions() {
         this.composer.mentionedChannels.length = 0;
         this.composer.mentionedPartners.length = 0;
-        this.composer.mentionedRoles.length = 0;
     }
     clearCannedResponses() {
         this.composer.cannedResponses = [];
@@ -108,25 +105,14 @@ class UseSuggestion {
             if (candidatePosition < 0 || candidatePosition >= text.length) {
                 continue;
             }
-
-            const findAppropriateDelimiter = () => {
-                let goodCandidate;
-                for (const [delimiter, allowedPosition, minCharCountAfter] of supportedDelimiters) {
-                    if (
-                        text.substring(candidatePosition).startsWith(delimiter) && // delimiter is used
-                        (allowedPosition === undefined || allowedPosition === candidatePosition) && // delimiter is allowed position
-                        (minCharCountAfter === undefined ||
-                            start - candidatePosition - delimiter.length + 1 > minCharCountAfter) && // delimiter is allowed (enough custom char typed after)
-                        (!goodCandidate || delimiter.length > goodCandidate) // delimiter is more specific
-                    ) {
-                        goodCandidate = delimiter;
-                    }
-                }
-                return goodCandidate;
-            };
-
-            const candidateDelimiter = findAppropriateDelimiter();
-            if (!candidateDelimiter) {
+            const candidateChar = text[candidatePosition];
+            if (
+                !supportedDelimiters.find(
+                    ([delimiter, allowedPosition]) =>
+                        delimiter === candidateChar &&
+                        (allowedPosition === undefined || allowedPosition === candidatePosition)
+                )
+            ) {
                 continue;
             }
             const charBeforeCandidate = text[candidatePosition - 1];
@@ -134,9 +120,9 @@ class UseSuggestion {
                 continue;
             }
             Object.assign(this.search, {
-                delimiter: candidateDelimiter,
+                delimiter: candidateChar,
                 position: candidatePosition,
-                term: text.substring(candidatePosition + candidateDelimiter.length, start),
+                term: text.substring(candidatePosition + 1, start),
             });
             this.state.count++;
             return;
@@ -151,7 +137,7 @@ class UseSuggestion {
         const text = this.composer.text;
         let before = text.substring(0, this.search.position + 1);
         let after = text.substring(position, text.length);
-        if ([":", "::"].includes(this.search.delimiter)) {
+        if (this.search.delimiter === ":") {
             before = text.substring(0, this.search.position);
             after = text.substring(position, text.length);
         }
@@ -160,9 +146,6 @@ class UseSuggestion {
                 id: option.partner.id,
                 type: "partner",
             });
-        }
-        if (option.role) {
-            this.composer.mentionedRoles.add(option.role);
         }
         if (option.thread) {
             this.composer.mentionedChannels.add({
@@ -185,6 +168,7 @@ class UseSuggestion {
         }
         const { type, suggestions } = this.suggestionService.searchSuggestions(this.search, {
             thread: this.thread,
+            sort: true,
         });
         if (!suggestions.length) {
             this.state.items = undefined;

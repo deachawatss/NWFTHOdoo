@@ -5,6 +5,7 @@ from odoo.exceptions import UserError, ValidationError, RedirectWarning
 
 
 class AccountJournal(models.Model):
+
     _inherit = "account.journal"
 
     l10n_ar_afip_pos_system = fields.Selection(
@@ -44,7 +45,6 @@ class AccountJournal(models.Model):
             ('FEERCELP', _('Export Voucher - Billing Plus')),
             ('FEERCEL', _('Export Voucher - Online Invoice')),
             ('CPERCEL', _('Product Coding - Online Voucher')),
-            ('CF', _('External Fiscal Controller')),
         ]
 
     def _get_journal_letter(self, counterpart_partner=False):
@@ -107,7 +107,7 @@ class AccountJournal(models.Model):
         receipt_m_code = ['54']
         receipt_codes = ['4', '9', '15']
         expo_codes = ['19', '20', '21']
-        tique_codes = ['81', '82', '83', '110', '112', '113', '115', '116', '118', '119', '120']
+        zeta_codes = ['80', '83']
         lsg_codes = ['331']
         no_pos_docs = [
             '23', '24', '25', '26', '27', '28', '33', '43', '45', '46', '48', '58', '60', '61', '150', '151', '157',
@@ -123,9 +123,11 @@ class AccountJournal(models.Model):
         elif afip_pos_system == 'II_IM':
             # pre-printed invoice
             codes = usual_codes + receipt_codes + expo_codes + invoice_m_code + receipt_m_code
-        elif afip_pos_system in ['RAW_MAW', 'RLI_RLM']:
+        elif afip_pos_system == 'RAW_MAW':
             # electronic/online invoice
             codes = usual_codes + receipt_codes + invoice_m_code + receipt_m_code + mipyme_codes
+        elif afip_pos_system == 'RLI_RLM':
+            codes = usual_codes + receipt_codes + invoice_m_code + receipt_m_code + mipyme_codes + zeta_codes
         elif afip_pos_system in ['CPERCEL', 'CPEWS']:
             # invoice with detail
             codes = usual_codes + invoice_m_code
@@ -134,8 +136,6 @@ class AccountJournal(models.Model):
             codes = usual_codes + mipyme_codes
         elif afip_pos_system in ['FEERCEL', 'FEEWS', 'FEERCELP']:
             codes = expo_codes
-        elif afip_pos_system == 'CF':
-            codes = tique_codes
         return [('code', 'in', codes)]
 
     @api.constrains('l10n_ar_afip_pos_system')
@@ -171,8 +171,8 @@ class AccountJournal(models.Model):
         fields_to_check = [field for field in protected_fields if field in vals]
 
         if fields_to_check:
-            self.env.cr.execute("SELECT DISTINCT(journal_id) FROM account_move WHERE posted_before = True")
-            res = self.env.cr.fetchall()
+            self._cr.execute("SELECT DISTINCT(journal_id) FROM account_move WHERE posted_before = True")
+            res = self._cr.fetchall()
             journal_with_entry_ids = [journal_id for journal_id, in res]
 
             for journal in self:

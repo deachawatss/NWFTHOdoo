@@ -113,7 +113,7 @@
                     </group>
                 </notebook>
                 <notebook position="inside">
-                    <page name="contract_information" string="Work Information">
+                    <page name="public" string="Work Information">
                         <div id="o_work_employee_container" class="d-lg-flex"> <!-- These two div are used to position org_chart -->
                             <div id="o_work_employee_main" class="flex-grow-1">
                                 <group string="Location">
@@ -145,7 +145,7 @@
                                 <field name="private_email" string="Email" readonly="not can_edit"/>
                                 <field name="private_phone" string="Phone" class="o_force_ltr" readonly="not can_edit"/>
                                 <field name="private_lang" string="Language" readonly="not can_edit"/>
-                                <field name="employee_bank_account_id" context="{'display_partner': True}" readonly="not can_edit"/>
+                                <field name="employee_bank_account_id" readonly="not can_edit"/>
                                 <label for="distance_home_work"/>
                                 <div class="o_row">
                                     <field name="distance_home_work" readonly="not can_edit" class="o_hr_narrow_field"/>
@@ -157,15 +157,8 @@
                                 <field name="identification_id" readonly="not can_edit"/>
                                 <field name="ssnid" readonly="not can_edit"/>
                                 <field name="passport_id" readonly="not can_edit"/>
-                                <field name="sex" readonly="not can_edit"/>
-                                <label for="birthday"/>
-                                        <div class="oe_inline">
-                                            <field name="birthday" class="o_hr_narrow_field" readonly="not can_edit"/>
-                                            <span invisible="not birthday" groups="hr.group_hr_user">
-                                                <label for="birthday_public_display" class="fw-bold text-900 form-check-label ms-3"/>
-                                                <field name="birthday_public_display" class="ms-3" readonly="not can_edit"/>
-                                            </span>
-                                        </div>
+                                <field name="gender" readonly="not can_edit"/>
+                                <field name="birthday" readonly="not can_edit"/>
                                 <field name="place_of_birth" readonly="not can_edit"/>
                                 <field name="country_of_birth" readonly="not can_edit"/>
                             </group>
@@ -195,13 +188,12 @@
                     </page>
                      <page name="hr_settings" string="HR Settings">
                         <group>
-                        <field name="is_hr_user" invisible="True"/>
                             <group string='Status' name="active_group">
-                                <field name="employee_type" readonly="not is_hr_user"/>
+                                <field name="employee_type" readonly="not can_edit"/>
                             </group>
                             <group string="Attendance" name="identification_group">
-                                <field name="pin" readonly="not is_hr_user"/>
-                                <field name="barcode" readonly="not is_hr_user"/>
+                                <field name="pin" readonly="not can_edit"/>
+                                <field name="barcode" readonly="not can_edit"/>
                             </group>
                         </group>
                     </page>
@@ -226,10 +218,9 @@
                         </button>
                     </div>
                 </xpath>
-                <xpath expr="//group[@name='access_groups']" position="inside">
+                <xpath expr="//field[@name='mobile']" position="after">
                     <field name="create_employee_id" force_save="1" invisible="1"/>
-                    <field name="create_employee" force_save="1" string="Create Employee" invisible="1" groups="hr.group_hr_user"/>
-                    <!-- It is required to stay create_employee field defined here to make it true because store value is false -->
+                    <field name="create_employee" force_save="1" string="Create Employee" invisible="create_employee_id &gt; 0 or id &gt; 0" groups="hr.group_hr_user"/>
                 </xpath>
             </field>
         </record>
@@ -280,15 +271,6 @@
                         context="{'active_test': False}"
                         type="object">
                         <field name="employee_count" widget="statinfo" string="Employee"/>
-                    </button>
-                    <button name="action_related_contact"
-                        class="oe_stat_button"
-                        icon="fa-address-card-o"
-                        type="object"
-                        help="Related Contact">
-                        <div class="o_stat_info">
-                            <span class="o_stat_text">Contact</span>
-                        </div>
                     </button>
                 </xpath>
             </field>

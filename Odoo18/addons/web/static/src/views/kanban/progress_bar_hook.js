@@ -1,17 +1,13 @@
 import { reactive } from "@odoo/owl";
-import { getCurrency } from "@web/core/currency";
 import { Domain } from "@web/core/domain";
 import { _t } from "@web/core/l10n/translation";
-import {
-    extractInfoFromGroupData,
-    getAggregateSpecifications,
-} from "@web/model/relational_model/utils";
+import { extractInfoFromGroupData } from "@web/model/relational_model/utils";
 
 const FALSE = Symbol("False");
 
 /**
  *
- * @param {*} groups: returned by formatted_read_group
+ * @param {*} groups: returned by web_read_group
  * @param {*} groupByField
  * @param {*} value
  * @returns
@@ -32,10 +28,10 @@ function _createFilterDomain(fieldName, bars, value) {
     return filterDomain;
 }
 
-function _groupsToAggregateValues(groups, groupBy, fields, domain) {
+function _groupsToAggregateValues(groups, groupBy, fields) {
     const groupByFieldName = groupBy[0].split(":")[0];
     return groups.map((g) => {
-        const groupInfo = extractInfoFromGroupData(g, groupBy, fields, domain);
+        const groupInfo = extractInfoFromGroupData(g, groupBy, fields);
         return Object.assign(groupInfo.aggregates, { [groupByFieldName]: groupInfo.serverValue });
     });
 }
@@ -52,14 +48,6 @@ class ProgressBarState {
     }
 
     getGroupInfo(group) {
-        if (this._pbCounts === null) {
-            // progressbar isn't loaded yet
-            return {
-                activeBar: null,
-                bars: [],
-                isReady: false,
-            };
-        }
         if (!this._groupsInfo[group.id]) {
             const aggValues = _findGroup(
                 this._aggregateValues,
@@ -115,7 +103,7 @@ class ProgressBarState {
 
                 if (this._aggregateFields.length) {
                     //recompute the aggregates is not necessary
-                    //the formatted_read_group was already done with the correct domain (containing the applied filter)
+                    //the web_read_group was already done with the correct domain (containing the applied filter)
                     this.activeBars[group.serverValue].aggregates = _findGroup(
                         this._aggregateValues,
                         group.groupByField,
@@ -130,7 +118,6 @@ class ProgressBarState {
                     return self.activeBars[group.serverValue]?.value || null;
                 },
                 bars,
-                isReady: true,
             };
 
             this._groupsInfo[group.id] = progressBar;
@@ -143,35 +130,19 @@ class ProgressBarState {
         let value = 0;
         if (!this.activeBars[group.serverValue]) {
             value = group.count;
-            if (value && aggregateField) {
-                value = _findGroup(this._aggregateValues, group.groupByField, group.serverValue)[
-                    aggregateField.name
-                ];
+            if (aggregateField) {
+                value =
+                    _findGroup(this._aggregateValues, group.groupByField, group.serverValue)[
+                        aggregateField.name
+                    ] || 0;
             }
         } else {
             value = this.activeBars[group.serverValue].count;
-            if (value && aggregateField) {
+            if (aggregateField) {
                 value =
-                    this.activeBars[group.serverValue]?.aggregates &&
-                    this.activeBars[group.serverValue]?.aggregates[aggregateField.name];
-            }
-        }
-        value ||= 0;
-        if (aggregateField.type === "monetary" && aggregateField.currency_field) {
-            const currencies = group.aggregates?.[aggregateField.currency_field];
-            if (currencies?.length > 1) {
-                return {
-                    title: `${title}: ${_t("different currencies cannot be aggregated")}`,
-                    value,
-                    currency: false,
-                };
-            }
-            if (currencies?.[0]) {
-                return {
-                    title,
-                    value,
-                    currency: getCurrency(currencies[0]),
-                };
+                    (this.activeBars[group.serverValue]?.aggregates &&
+                        this.activeBars[group.serverValue]?.aggregates[aggregateField.name]) ||
+                    0;
             }
         }
         return { title, value };
@@ -221,16 +192,16 @@ class ProgressBarState {
         );
         const { context, fields, groupBy, resModel } = this.model.root;
         const kwargs = { context };
-        const aggregateSpecs = getAggregateSpecifications(this._aggregateFields);
+        const fieldNames = [...this._aggregateFields.map((f) => f.name), group.groupByField.name];
         const domain = filterDomain
             ? Domain.and([group.groupDomain, filterDomain]).toList()
             : group.groupDomain;
         return this.model.orm
-            .formattedReadGroup(resModel, domain, groupBy, aggregateSpecs, kwargs)
-            .then((groups) => {
-                if (groups.length) {
+            .webReadGroup(resModel, domain, fieldNames, groupBy, kwargs)
+            .then((res) => {
+                if (res.length) {
                     const groupByField = group.groupByField;
-                    const aggrValues = _groupsToAggregateValues(groups, groupBy, fields, domain);
+                    const aggrValues = _groupsToAggregateValues(res.groups, groupBy, fields);
                     activeBar.aggregates = _findGroup(aggrValues, groupByField, group.serverValue);
                 }
             });
@@ -240,7 +211,7 @@ class ProgressBarState {
         this._updateProgressBar();
         if (this._aggregateFields.length) {
             this._updateAggregates();
-            this.updateAggregateGroup(group);
+            this.updateAggreagteGroup(group);
         }
 
         // If the selected bar is empty, remove the selection
@@ -251,7 +222,7 @@ class ProgressBarState {
         }
     }
 
-    updateAggregateGroup(group) {
+    updateAggreagteGroup(group) {
         if (group && this.activeBars[group.serverValue]) {
             const { bars } = this.getGroupInfo(group);
             this._updateAggregateGroup(group, bars, this.activeBars[group.serverValue]);
@@ -260,20 +231,23 @@ class ProgressBarState {
 
     async _updateAggregates() {
         const { context, fields, groupBy, domain, resModel } = this.model.root;
+        const fieldsName = this._aggregateFields.map((f) => f.name);
+        const firstGroupByName = groupBy[0].split(":")[0];
         const kwargs = { context };
-        const groups = await this.model.orm.formattedReadGroup(
+        const res = await this.model.orm.webReadGroup(
             resModel,
             domain,
+            [...fieldsName, firstGroupByName],
             groupBy,
-            getAggregateSpecifications(this._aggregateFields),
             kwargs
         );
-        this._aggregateValues = _groupsToAggregateValues(groups, groupBy, fields);
+        this._aggregateValues = _groupsToAggregateValues(res.groups, groupBy, fields);
     }
 
     async _updateProgressBar() {
         const groupBy = this.model.root.groupBy;
-        if (groupBy.length) {
+        const defaultGroupBy = this.model.root.defaultGroupBy;
+        if (groupBy.length || defaultGroupBy) {
             const resModel = this.model.root.resModel;
             const domain = this.model.root.domain;
             const context = this.model.root.context;
@@ -281,7 +255,7 @@ class ProgressBarState {
             const groupsId = this.model.root.groups.map((g) => g.id).join();
             const res = await this.model.orm.call(resModel, "read_progress_bar", [], {
                 domain,
-                group_by: groupBy[0],
+                group_by: groupBy.length ? groupBy[0] : defaultGroupBy,
                 progress_bar: { colors, field, help },
                 context,
             });
@@ -336,7 +310,7 @@ class ProgressBarState {
 
     /**
      * We must be able to match groups returned by the read_progress_bar call with groups previously
-     * returned by formatted_read_group. When grouped on date(time) fields, the key of each group is the
+     * returned by web_read_group. When grouped on date(time) fields, the key of each group is the
      * displayName of the period (e.g. "W8 2024"). When grouped on boolean fields, it's "True" and
      * "False". For falsy values (e.g. unset many2one), it's "False". In all other cases, it's the
      * group's value (e.g. the id for a many2one).
@@ -345,12 +319,15 @@ class ProgressBarState {
      * @return string
      */
     _getGroupValue(group) {
+        if (group.groupByField.type === "date" || group.groupByField.type === "datetime") {
+            return group.displayName || "False";
+        }
         if (group.value === true) {
             return "True";
         } else if (group.value === false) {
             return "False";
         }
-        return group.serverValue;
+        return group.value;
     }
 }
 
@@ -359,8 +336,8 @@ export function useProgressBar(progressAttributes, model, aggregateFields, activ
         new ProgressBarState(progressAttributes, model, aggregateFields, activeBars)
     );
 
-    const onWillLoadRoot = model.hooks.onWillLoadRoot;
     let prom;
+    const onWillLoadRoot = model.hooks.onWillLoadRoot;
     model.hooks.onWillLoadRoot = (config) => {
         onWillLoadRoot();
         prom = progressBarState.loadProgressBar({
@@ -371,12 +348,9 @@ export function useProgressBar(progressAttributes, model, aggregateFields, activ
         });
     };
     const onRootLoaded = model.hooks.onRootLoaded;
-    model.hooks.onRootLoaded = async (root) => {
-        await onRootLoaded(root);
-        if (model.isReady) {
-            // do not wait for the progressbar on first load, to show the kanban view asap
-            return prom;
-        }
+    model.hooks.onRootLoaded = async () => {
+        await onRootLoaded();
+        return prom;
     };
 
     return progressBarState;

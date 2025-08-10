@@ -119,6 +119,14 @@ export class MediaDialog extends Component {
         });
     }
 
+    /**
+     * Method no longer used, kept for compatibility (stable policy).
+     * To be removed in master.
+     */
+    addTabs() {
+        this.addDefaultTabs();
+    }
+
     addDefaultTabs() {
         const onlyImages =
             this.props.onlyImages ||
@@ -133,7 +141,6 @@ export class MediaDialog extends Component {
             this.addTab(TABS.IMAGES, {
                 useMediaLibrary: this.props.useMediaLibrary,
                 multiSelect: this.props.multiImages,
-                addFieldImage: this.props.addFieldImage,
             });
         }
         if (!noIcons) {
@@ -310,9 +317,9 @@ export class MediaDialog extends Component {
         if (saveSelectedMedia) {
             const elements = await this.renderMedia(selectedMedia);
             if (this.props.multiImages) {
-                await this.props.save(elements, selectedMedia, this.state.activeTab);
+                this.props.save(elements);
             } else {
-                await this.props.save(elements[0], selectedMedia, this.state.activeTab);
+                this.props.save(elements[0]);
             }
         }
         this.props.close();

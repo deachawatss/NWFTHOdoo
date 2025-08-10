@@ -3,11 +3,10 @@
 from odoo import api, fields, models, tools
 
 from odoo.addons.base.models.res_partner import _tz_get
-from odoo.exceptions import ValidationError
 
 
-class HrLeaveReportCalendar(models.Model):
-    _name = 'hr.leave.report.calendar'
+class LeaveReportCalendar(models.Model):
+    _name = "hr.leave.report.calendar"
     _description = 'Time Off Calendar'
     _auto = False
     _order = "start_datetime DESC, employee_id"
@@ -15,11 +14,9 @@ class HrLeaveReportCalendar(models.Model):
     name = fields.Char(string='Name', readonly=True, compute="_compute_name")
     start_datetime = fields.Datetime(string='From', readonly=True)
     stop_datetime = fields.Datetime(string='To', readonly=True)
-    duration_display = fields.Char(related='leave_id.duration_display', readonly=True)
     tz = fields.Selection(_tz_get, string="Timezone", readonly=True)
     duration = fields.Float(string='Duration', readonly=True)
     employee_id = fields.Many2one('hr.employee', readonly=True)
-    user_id = fields.Many2one('res.users', readonly=True)
     department_id = fields.Many2one('hr.department', readonly=True)
     job_id = fields.Many2one('hr.job', readonly=True)
     company_id = fields.Many2one('res.company', readonly=True)
@@ -43,8 +40,8 @@ class HrLeaveReportCalendar(models.Model):
     is_manager = fields.Boolean("Manager", compute="_compute_is_manager")
 
     def init(self):
-        tools.drop_view_if_exists(self.env.cr, 'hr_leave_report_calendar')
-        self.env.cr.execute("""CREATE OR REPLACE VIEW hr_leave_report_calendar AS
+        tools.drop_view_if_exists(self._cr, 'hr_leave_report_calendar')
+        self._cr.execute("""CREATE OR REPLACE VIEW hr_leave_report_calendar AS
         (SELECT
             hl.id AS id,
             hl.id AS leave_id,
@@ -57,8 +54,7 @@ class HrLeaveReportCalendar(models.Model):
             hl.private_name AS description,
             hl.holiday_status_id AS holiday_status_id,
             em.company_id AS company_id,
-            v.job_id AS job_id,
-            em.user_id AS user_id,
+            em.job_id AS job_id,
             COALESCE(
                 rr.tz,
                 rc.tz,
@@ -70,11 +66,10 @@ class HrLeaveReportCalendar(models.Model):
         FROM hr_leave hl
             LEFT JOIN hr_employee em
                 ON em.id = hl.employee_id
-            LEFT JOIN hr_version v ON v.id = em.current_version_id
             LEFT JOIN resource_resource rr
                 ON rr.id = em.resource_id
             LEFT JOIN resource_calendar rc
-                ON rc.id = v.resource_calendar_id
+                ON rc.id = em.resource_calendar_id
             LEFT JOIN res_company co
                 ON co.id = em.company_id
             LEFT JOIN resource_calendar cc
@@ -111,25 +106,10 @@ class HrLeaveReportCalendar(models.Model):
             leave.is_manager = self.env.user.has_group('hr_holidays.group_hr_holidays_user') or leave.leave_manager_id == self.env.user
 
     def action_approve(self):
-        current_user = self.env.user
-        if current_user.has_group('hr_holidays.group_hr_holidays_user'):
-            # If the user is a leave manager, approve the leave
-            self.leave_id.action_approve()
-        elif self.leave_manager_id == current_user and self.sudo().holiday_status_id.leave_validation_type in ('manager', 'both'):
-            # If the user is the employee's time off approver, approve the leave
-            self.sudo().leave_id.sudo(False).action_approve()
-        else:
-            # If the user is not a leave manager, raise an error
-            raise ValidationError(self.env._("You are not allowed to approve this leave request."))
+        self.leave_id.action_approve(check_state=False)
+
+    def action_validate(self):
+        self.leave_id.action_validate()
 
     def action_refuse(self):
-        current_user = self.env.user
-        if current_user.has_group('hr_holidays.group_hr_holidays_user'):
-            # If the user is a leave manager, refuse the leave
-            self.leave_id.action_refuse()
-        elif self.leave_manager_id == current_user and self.sudo().holiday_status_id.leave_validation_type in ('manager', 'both'):
-            # If the user is the employee's time off approver, refuse the leave
-            self.sudo().leave_id.sudo(False).action_refuse()
-        else:
-            # If the user is not a leave manager, raise an error
-            raise ValidationError(self.env._("You are not allowed to refuse this leave request."))
+        self.leave_id.action_refuse()

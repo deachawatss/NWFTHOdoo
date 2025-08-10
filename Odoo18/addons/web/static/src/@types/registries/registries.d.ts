@@ -49,12 +49,13 @@ declare module "registries" {
             canArchiveGroup: boolean;
             canDeleteGroup: boolean;
             canEditGroup: boolean;
+            canQuickCreate: boolean;
         };
         props: object;
     }
-    export interface GroupConfigItemsRegistryItemShape {
+    export interface KanbanHeaderConfigItemsRegistryItemShape {
         label: String;
-        method: string | (() => {});
+        method: string;
         isVisible: boolean | ((params: KanbanHeaderConfigItemsFnParams) => boolean);
         class: string | ((params: KanbanHeaderConfigItemsFnParams) => (string | string[] | { [key: string]: boolean }));
     }
@@ -91,7 +92,7 @@ declare module "registries" {
         favoriteMenu: FavoriteMenuRegistryItemShape;
         formatters: FormattersRegistryItemShape;
         form_compilers: FormCompilersRegistryItemShape;
-        group_config_items: GroupConfigItemsRegistryItemShape;
+        kanban_header_config_items: KanbanHeaderConfigItemsRegistryItemShape;
         lazy_components: LazyComponentsRegistryItemShape;
         main_components: MainComponentsRegistryItemShape;
         parsers: ParsersRegistryItemShape;

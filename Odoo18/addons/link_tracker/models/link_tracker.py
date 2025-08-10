@@ -6,11 +6,12 @@ import string
 
 from werkzeug import urls
 
-from odoo import tools, models, fields, api, _
-from odoo.addons.mail.tools import link_preview
+from odoo import _, api, fields, models, tools
 from odoo.exceptions import UserError
-from odoo.fields import Domain
+from odoo.osv import expression
 from odoo.tools.mail import validate_url
+
+from odoo.addons.mail.tools import link_preview
 
 LINK_TRACKER_UNIQUE_FIELDS = ('url', 'campaign_id', 'medium_id', 'source_id', 'label')
 
@@ -27,7 +28,7 @@ class LinkTracker(models.Model):
     This model is also used in mass_mailing where each link in html body is
     automatically converted into a short link that is tracked and integrates
     UTMs. """
-    _name = 'link.tracker'
+    _name = "link.tracker"
     _rec_name = "short_url"
     _description = "Link Tracker"
     _order = "count DESC"
@@ -82,7 +83,7 @@ class LinkTracker(models.Model):
 
     def _compute_code(self):
         for tracker in self:
-            record = self.env['link.tracker.code'].search([('link_id', 'in', tracker.ids)], limit=1, order='id DESC')
+            record = self.env['link.tracker.code'].search([('link_id', '=', tracker.id)], limit=1, order='id DESC')
             tracker.code = record.code
 
     def _inverse_code(self):
@@ -111,7 +112,7 @@ class LinkTracker(models.Model):
                 continue
 
             query = parsed.decode_query()
-            for key, field_name, _cook in self.env['utm.mixin'].tracking_fields():
+            for key, field_name, cook in self.env['utm.mixin'].tracking_fields():
                 field = self._fields[field_name]
                 attr = tracker[field_name]
                 if field.type == 'many2one':
@@ -137,8 +138,8 @@ class LinkTracker(models.Model):
             return tracker[field_name]
 
         # build a query to fetch all needed link trackers at once
-        search_query = Domain.OR([
-            Domain.AND([
+        search_query = expression.OR([
+            expression.AND([
                 [('url', '=', tracker.url)],
                 [('campaign_id', '=', tracker.campaign_id.id)],
                 [('medium_id', '=', tracker.medium_id.id)],
@@ -213,7 +214,7 @@ class LinkTracker(models.Model):
 
         def _format_key_domain(field_values):
             """Handle "label" being False / '' and be defensive."""
-            return Domain.AND([
+            return expression.AND([
                 [(field_name, '=', value) if value or field_name != 'label' else ('label', 'in', (False, ''))]
                 for field_name, value in field_values
             ])
@@ -233,7 +234,7 @@ class LinkTracker(models.Model):
 
         # Find unique keys of trackers, then fetch existing trackers
         unique_keys = {_format_key(vals) for vals in vals_list}
-        found_trackers = self.search(Domain.OR(_format_key_domain(key) for key in unique_keys))
+        found_trackers = self.search(expression.OR([_format_key_domain(key) for key in unique_keys]))
         key_to_trackers_map = {_format_key(tracker): tracker for tracker in found_trackers}
 
         if len(unique_keys) != len(found_trackers):
@@ -258,7 +259,7 @@ class LinkTracker(models.Model):
     def action_view_statistics(self):
         action = self.env['ir.actions.act_window']._for_xml_id('link_tracker.link_tracker_click_action_statistics')
         action['domain'] = [('link_id', '=', self.id)]
-        action['context'] = dict(self.env.context, create=False)
+        action['context'] = dict(self._context, create=False)
         return action
 
     def action_visit_page(self):
@@ -291,17 +292,16 @@ class LinkTracker(models.Model):
 
 
 class LinkTrackerCode(models.Model):
-    _name = 'link.tracker.code'
+    _name = "link.tracker.code"
     _description = "Link Tracker Code"
     _rec_name = 'code'
 
     code = fields.Char(string='Short URL Code', required=True, store=True)
-    link_id = fields.Many2one('link.tracker', 'Link', required=True, index=True, ondelete='cascade')
+    link_id = fields.Many2one('link.tracker', 'Link', required=True, ondelete='cascade')
 
-    _code = models.Constraint(
-        'unique( code )',
-        'Code must be unique.',
-    )
+    _sql_constraints = [
+        ('code', 'unique( code )', 'Code must be unique.')
+    ]
 
     @api.model
     def _get_random_code_strings(self, n=1):
@@ -319,7 +319,7 @@ class LinkTrackerCode(models.Model):
 
 
 class LinkTrackerClick(models.Model):
-    _name = 'link.tracker.click'
+    _name = "link.tracker.click"
     _rec_name = "link_id"
     _description = "Link Tracker Click"
 

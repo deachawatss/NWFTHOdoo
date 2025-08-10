@@ -9,7 +9,7 @@ from odoo.tools.misc import clean_context
 
 
 class MrpUnbuild(models.Model):
-    _name = 'mrp.unbuild'
+    _name = "mrp.unbuild"
     _description = "Unbuild Order"
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'id desc'
@@ -26,10 +26,11 @@ class MrpUnbuild(models.Model):
         required=True, index=True)
     product_qty = fields.Float(
         'Quantity', default=1.0,
+        digits='Product Unit of Measure',
         compute='_compute_product_qty', store=True, precompute=True, readonly=False,
         required=True)
     product_uom_id = fields.Many2one(
-        'uom.uom', 'Unit',
+        'uom.uom', 'Unit of Measure',
         compute='_compute_product_uom_id', store=True, readonly=False, precompute=True,
         required=True)
     bom_id = fields.Many2one(
@@ -50,7 +51,7 @@ class MrpUnbuild(models.Model):
     mo_id = fields.Many2one(
         'mrp.production', 'Manufacturing Order',
         domain="[('state', '=', 'done'), ('product_id', '=?', product_id), ('bom_id', '=?', bom_id)]",
-        check_company=True, index='btree_not_null')
+        check_company=True)
     mo_bom_id = fields.Many2one('mrp.bom', 'Bill of Material used on the Production Order', related='mo_id.bom_id')
     lot_id = fields.Many2one(
         'stock.lot', 'Lot/Serial Number',
@@ -79,10 +80,9 @@ class MrpUnbuild(models.Model):
         ('draft', 'Draft'),
         ('done', 'Done')], string='Status', default='draft')
 
-    _qty_positive = models.Constraint(
-        'check (product_qty > 0)',
-        'The quantity to unbuild must be positive!',
-    )
+    _sql_constraints = [
+        ('qty_positive', 'check (product_qty > 0)', 'The quantity to unbuild must be positive!'),
+    ]
 
     @api.depends('mo_id', 'product_id')
     def _compute_product_uom_id(self):
@@ -170,8 +170,8 @@ class MrpUnbuild(models.Model):
     def action_unbuild(self):
         self.ensure_one()
         self._check_company()
-        # remove the default_* keys that were only needed in the unbuild wizard
-        self = self.with_env(self.env(context=clean_context(self.env)))  # noqa: PLW0642
+        # remove the default_* keys that was only needed in the unbuild wizard
+        self.env.context = dict(clean_context(self.env.context))
         if self.product_id.tracking != 'none' and not self.lot_id.id:
             raise UserError(_('You should provide a lot number for the final product.'))
 
@@ -186,16 +186,12 @@ class MrpUnbuild(models.Model):
 
         finished_moves = consume_moves.filtered(lambda m: m.product_id == self.product_id)
         consume_moves -= finished_moves
-        error_message = _(
-            "Please specify a manufacturing order.\n"
-            "It will allow us to retrieve the lots/serial numbers of the correct components and/or byproducts."
-        )
 
         if any(produce_move.has_tracking != 'none' and not self.mo_id for produce_move in produce_moves):
-            raise UserError(error_message)
+            raise UserError(_('Some of your components are tracked, you have to specify a manufacturing order in order to retrieve the correct components.'))
 
         if any(consume_move.has_tracking != 'none' and not self.mo_id for consume_move in consume_moves):
-            raise UserError(error_message)
+            raise UserError(_('Some of your byproducts are tracked, you have to specify a manufacturing order in order to retrieve the correct byproducts.'))
 
         for finished_move in finished_moves:
             finished_move_line_vals = self._prepare_finished_move_line_vals(finished_move)
@@ -207,7 +203,7 @@ class MrpUnbuild(models.Model):
             original_move = move in produce_moves and self.mo_id.move_raw_ids or self.mo_id.move_finished_ids
             original_move = original_move.filtered(lambda m: m.product_id == move.product_id)
             if not original_move:
-                move.quantity = move.product_uom.round(move.product_uom_qty)
+                move.quantity = float_round(move.product_uom_qty, precision_rounding=move.product_uom.rounding)
                 continue
             needed_quantity = move.product_uom_qty
             moves_lines = original_move.mapped('move_line_ids')
@@ -216,7 +212,7 @@ class MrpUnbuild(models.Model):
             for move_line in moves_lines:
                 # Iterate over all move_lines until we unbuilded the correct quantity.
                 taken_quantity = min(needed_quantity, move_line.quantity - qty_already_used[move_line])
-                taken_quantity = move.product_uom.round(taken_quantity)
+                taken_quantity = float_round(taken_quantity, precision_rounding=move.product_uom.rounding)
                 if taken_quantity:
                     move_line_vals = self._prepare_move_line_vals(move, move_line, taken_quantity)
                     unbuild_move_line = self.env["stock.move.line"].create(move_line_vals)
@@ -277,6 +273,7 @@ class MrpUnbuild(models.Model):
 
     def _generate_move_from_existing_move(self, move, factor, location_id, location_dest_id):
         return self.env['stock.move'].create({
+            'name': self.name,
             'date': self.create_date,
             'product_id': move.product_id.id,
             'product_uom_qty': move.quantity * factor,
@@ -296,6 +293,7 @@ class MrpUnbuild(models.Model):
         location_dest_id = bom_line_id and self.location_dest_id or product_prod_location
         warehouse = location_dest_id.warehouse_id
         return self.env['stock.move'].create({
+            'name': self.name,
             'date': self.create_date,
             'bom_line_id': bom_line_id,
             'byproduct_id': byproduct_id,
@@ -312,7 +310,7 @@ class MrpUnbuild(models.Model):
 
     def action_validate(self):
         self.ensure_one()
-        precision = self.env['decimal.precision'].precision_get('Product Unit')
+        precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
         available_qty = self.env['stock.quant']._get_available_quantity(self.product_id, self.location_id, self.lot_id, strict=True)
         unbuild_qty = self.product_uom_id._compute_quantity(self.product_qty, self.product_id.uom_id)
         if float_compare(available_qty, unbuild_qty, precision_digits=precision) >= 0:

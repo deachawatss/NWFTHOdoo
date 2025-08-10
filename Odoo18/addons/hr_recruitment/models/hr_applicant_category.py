@@ -6,8 +6,8 @@ from random import randint
 from odoo import fields, models
 
 
-class HrApplicantCategory(models.Model):
-    _name = 'hr.applicant.category'
+class ApplicantCategory(models.Model):
+    _name = "hr.applicant.category"
     _description = "Category of applicant"
 
     def _get_default_color(self):
@@ -16,7 +16,6 @@ class HrApplicantCategory(models.Model):
     name = fields.Char("Tag Name", required=True)
     color = fields.Integer(string='Color Index', default=_get_default_color)
 
-    _name_uniq = models.Constraint(
-        'unique (name)',
-        'Tag name already exists!',
-    )
+    _sql_constraints = [
+        ('name_uniq', 'unique (name)', "Tag name already exists!"),
+    ]

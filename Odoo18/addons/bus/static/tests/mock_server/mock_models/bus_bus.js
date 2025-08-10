@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { getWebSocketWorker } from "@bus/../tests/mock_websocket";
 import { models } from "@web/../tests/web_test_helpers";
 
@@ -27,9 +29,7 @@ export class BusBus extends models.Model {
         }
         const values = [];
         const authenticatedUserId =
-            "res.users" in this.env
-                ? this.env.cookie.get("authenticated_user_sid") ?? this.env.uid
-                : null;
+            "res.users" in this.env && this.env.cookie.get("authenticated_user_sid");
         const channels = [
             ...IrWebSocket._build_bus_channel_list(this.channelsByUser[authenticatedUserId] || []),
         ];

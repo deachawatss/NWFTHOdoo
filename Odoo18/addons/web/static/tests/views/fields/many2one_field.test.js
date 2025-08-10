@@ -1,13 +1,5 @@
 import { describe, expect, getFixture, test } from "@odoo/hoot";
-import {
-    click,
-    middleClick,
-    press,
-    queryAll,
-    queryAllTexts,
-    queryOne,
-    scroll,
-} from "@odoo/hoot-dom";
+import { click, press, queryAll, queryAllTexts, queryOne, scroll } from "@odoo/hoot-dom";
 import { Deferred, animationFrame, runAllTimers } from "@odoo/hoot-mock";
 import { Component, xml } from "@odoo/owl";
 import {
@@ -28,7 +20,6 @@ import {
     mountViewInDialog,
     mountWithCleanup,
     onRpc,
-    patchWithCleanup,
     selectFieldDropdownItem,
     serverState,
     toggleMenuItem,
@@ -39,7 +30,6 @@ import {
 import { user } from "@web/core/user";
 import { Record } from "@web/model/record";
 import { Field } from "@web/views/fields/field";
-import { Many2XAutocomplete } from "@web/views/fields/relational_utils";
 import { WebClient } from "@web/webclient/webclient";
 
 describe.current.tags("desktop");
@@ -345,7 +335,9 @@ test("editing a many2one (with form view opened with external button)", async ()
             </form>`,
     };
 
-    onRpc("get_formview_id", () => false);
+    onRpc("get_formview_id", () => {
+        return false;
+    });
     onRpc("web_save", () => {
         expect.step("web_save");
     });
@@ -411,9 +403,10 @@ test("many2ones in form views with show_address", async () => {
     });
 
     expect("input.o_input").toHaveValue("aaa");
-    expect(".o_field_many2one_extra").toHaveInnerHTML("<div>Street</div><div>City ZIP</div>", {
-        type: "html",
-    });
+    expect(".o_field_many2one_extra").toHaveInnerHTML(
+        "<span>Street</span><br><span>City ZIP</span>",
+        { type: "html" }
+    );
     expect("button.o_external_button").toHaveCount(1);
 });
 
@@ -433,13 +426,9 @@ test("many2one show_address in edit", async () => {
             return result;
         }
     });
-    onRpc("web_name_search", ({ parent }) => {
+    onRpc("name_search", ({ parent }) => {
         const result = parent();
-        return result.map(({ id }) => ({
-            id,
-            display_name: namegets[id],
-            __formatted_display_name: namegets[id],
-        }));
+        return result.map(([id]) => [id, namegets[id]]);
     });
 
     await mountView({
@@ -457,7 +446,7 @@ test("many2one show_address in edit", async () => {
     });
 
     expect(".o_field_widget input").toHaveValue("aaa");
-    expect(".o_field_many2one_extra").toHaveInnerHTML("<div>AAA</div><div>Record</div>", {
+    expect(".o_field_many2one_extra").toHaveInnerHTML("<span>AAA</span><br><span>Record</span>", {
         type: "html",
     });
 
@@ -466,7 +455,7 @@ test("many2one show_address in edit", async () => {
     await contains(".dropdown-menu li").click();
 
     expect(".o_field_widget input").toHaveValue("first record");
-    expect(".o_field_many2one_extra").toHaveInnerHTML("<div>First</div><div>Record</div>", {
+    expect(".o_field_many2one_extra").toHaveInnerHTML("<span>First</span><br><span>Record</span>", {
         type: "html",
     });
 
@@ -475,9 +464,10 @@ test("many2one show_address in edit", async () => {
     await contains(".dropdown-menu li").click();
 
     expect(".o_field_widget input").toHaveValue("second record");
-    expect(".o_field_many2one_extra").toHaveInnerHTML("<div>Second</div><div>Record</div>", {
-        type: "html",
-    });
+    expect(".o_field_many2one_extra").toHaveInnerHTML(
+        "<span>Second</span><br><span>Record</span>",
+        { type: "html" }
+    );
 });
 
 test("show_address works in a view embedded in a view of another type", async () => {
@@ -557,7 +547,7 @@ test("many2ones in form views with search more", async () => {
             </form>`,
     });
 
-    await selectFieldDropdownItem("trululu", "Search more...");
+    await selectFieldDropdownItem("trululu", "Search More...");
 
     expect("tr.o_data_row").toHaveCount(9);
     expect(".o_field_widget[name=trululu] input").toHaveValue("aaa");
@@ -568,7 +558,7 @@ test("many2ones in form views with search more", async () => {
     expect("tr.o_data_row").toHaveCount(0);
 });
 
-test("many2ones: Open the selection dialog several times using the 'Search more...' button with a context containing 'search_default_...'", async () => {
+test("many2ones: Open the selection dialog several times using the 'Search More...' button with a context containing 'search_default_...'", async () => {
     for (let i = 5; i < 11; i++) {
         Partner._records.push({ id: i, name: `Partner ${i}` });
     }
@@ -598,7 +588,7 @@ test("many2ones: Open the selection dialog several times using the 'Search more.
             </form>`,
     });
 
-    await selectFieldDropdownItem("trululu", "Search more...");
+    await selectFieldDropdownItem("trululu", "Search More...");
 
     expect(".modal .o_data_row").toHaveCount(1);
     expect(getFacetTexts(".modal")).toEqual(["Displayed name\nPartner 10"]);
@@ -606,7 +596,7 @@ test("many2ones: Open the selection dialog several times using the 'Search more.
     await contains(".modal .btn-close").click();
     expect(".modal").toHaveCount(0);
 
-    await selectFieldDropdownItem("trululu", "Search more...");
+    await selectFieldDropdownItem("trululu", "Search More...");
     expect(".modal .o_data_row").toHaveCount(1);
     expect(getFacetTexts(".modal")).toEqual(["Displayed name\nPartner 10"]);
 });
@@ -873,6 +863,10 @@ test("focus tracking on a many2one in a list", async () => {
             </list>`,
     });
 
+    // Select two records
+    await contains(".o_data_row:eq(0) .o_list_record_selector input").click();
+    await contains(".o_data_row:eq(1) .o_list_record_selector input").click();
+
     await contains(".o_data_row .o_data_cell").click();
     expect(".o_data_row .o_data_cell input").toBeFocused();
 
@@ -924,14 +918,13 @@ test("empty many2one field", async () => {
 
     await contains(".o_field_many2one input").click();
     expect(".dropdown-menu li.o_m2o_dropdown_option").toHaveCount(1);
-    expect(".dropdown-menu li.o_m2o_start_typing").toHaveCount(0);
+    expect(".dropdown-menu li.o_m2o_start_typing").toHaveCount(1);
 
     await contains(".o_field_many2one[name='trululu'] input").edit("abc", { confirm: false });
     await runAllTimers();
 
     expect(".dropdown-menu li.o_m2o_dropdown_option").toHaveCount(2);
     expect(".dropdown-menu li.o_m2o_start_typing").toHaveCount(0);
-    expect(".dropdown-menu li.o_m2o_no_result").toHaveCount(0);
 });
 
 test("empty readonly many2one field", async () => {
@@ -942,53 +935,7 @@ test("empty readonly many2one field", async () => {
     });
 
     expect("div.o_field_widget[name=trululu]").toHaveCount(1);
-    expect(".o_field_widget[name=trululu] .o_many2one").toHaveText("");
-});
-
-test("empty many2one field with no result", async () => {
-    patchWithCleanup(Many2XAutocomplete.prototype, {
-        getCreationContext(value) {
-            expect(value).toBe("");
-            const context = super.getCreationContext(value);
-            expect(context[`default_${this.props.nameCreateField}`]).toBe(undefined);
-            return context;
-        },
-    });
-    class M2O extends models.Model {
-        m2o = fields.Many2one({ relation: "m2o" });
-    }
-    defineModels([M2O]);
-    await mountView({
-        type: "form",
-        resModel: "m2o",
-        arch: `
-            <form>
-                <sheet>
-                    <group>
-                        <field name="m2o" />
-                    </group>
-                </sheet>
-            </form>`,
-    });
-
-    await contains(".o_field_many2one input").click();
-    expect(".dropdown-menu li.o_m2o_dropdown_option").toHaveCount(1);
-    expect(".dropdown-menu li.o_m2o_dropdown_option").toHaveText("Create...");
-    expect(".dropdown-menu li.o_m2o_start_typing").toHaveCount(0);
-
-    await contains(".dropdown-menu li.o_m2o_dropdown_option").click();
-    expect(".o_dialog").toHaveCount(1);
-    expect(".o_dialog .o_field_many2one[name=m2o] input").toHaveValue("");
-    press("Esc");
-    await animationFrame();
-    expect(".o_dialog").toHaveCount(0);
-
-    await contains(".o_field_many2one input").edit("abc", { confirm: false });
-    await runAllTimers();
-
-    expect(".dropdown-menu li.o_m2o_dropdown_option").toHaveCount(2);
-    expect(".dropdown-menu li.o_m2o_start_typing").toHaveCount(0);
-    expect(".dropdown-menu li.o_m2o_no_result").toHaveCount(0);
+    expect(".o_field_widget[name=trululu]").toHaveInnerHTML("");
 });
 
 test("empty many2one field with node options", async () => {
@@ -1009,7 +956,7 @@ test("empty many2one field with node options", async () => {
     });
 
     await contains(".o_field_many2one[name='trululu'] input").click();
-    expect(".o_field_many2one[name='trululu'] .dropdown-menu li.o_m2o_start_typing").toHaveCount(0);
+    expect(".o_field_many2one[name='trululu'] .dropdown-menu li.o_m2o_start_typing").toHaveCount(1);
 
     await contains(".o_field_many2one[name='product_id'] input").click();
     expect(".o_field_many2one[name='product_id'] .dropdown-menu li.o_m2o_start_typing").toHaveCount(
@@ -1043,7 +990,7 @@ test("many2one with no_create_edit and no_quick_create options should show no re
 test("many2one in edit mode", async () => {
     expect.assertions(17);
 
-    // create 10 partners to have the 'Search more' option in the autocomplete dropdown
+    // create 10 partners to have the 'Search More' option in the autocomplete dropdown
     for (let i = 0; i < 10; i++) {
         const id = 20 + i;
         Partner._records.push({ id, name: `Partner ${id}` });
@@ -1096,9 +1043,9 @@ test("many2one in edit mode", async () => {
     expect(".o_field_many2one[name='trululu'] .dropdown-menu").not.toHaveCount();
     expect(".o_field_many2one input").toHaveValue("first record");
 
-    // change the value of the m2o with a record in the 'Search more' modal
+    // change the value of the m2o with a record in the 'Search More' modal
     await clickFieldDropdown("trululu");
-    // click on 'Search more' (mouseenter required by ui-autocomplete)
+    // click on 'Search More' (mouseenter required by ui-autocomplete)
     await contains(
         ".o_field_many2one[name='trululu'] .dropdown-menu .o_m2o_dropdown_option_search_more"
     ).click();
@@ -1206,7 +1153,7 @@ test("many2one with co-model whose name field is a many2one", async () => {
 });
 
 test("many2one searches with correct value", async () => {
-    onRpc("web_name_search", ({ kwargs }) => {
+    onRpc("name_search", ({ kwargs }) => {
         expect.step(`search: ${kwargs.name}`);
     });
     await mountView({
@@ -1240,8 +1187,74 @@ test("many2one searches with correct value", async () => {
     expect.verifySteps(["search: ", "search: ", "search: p", "search: p"]);
 });
 
+test("many2one search with server returning multiple lines", async () => {
+    const namegets = {
+        2: "fizz\nbuzz\nfizzbuzz",
+        4: "aaa\nAAA\nRecord",
+    };
+
+    onRpc("web_read", ({ method, parent }) => {
+        expect.step(method);
+        const result = parent();
+        result[0].trululu = {
+            id: result[0].trululu.id,
+            display_name: namegets[result[0].trululu.id],
+        };
+        return result;
+    });
+    onRpc("name_search", () => {
+        expect.step("name_search");
+        return Object.keys(namegets).map((id) => [parseInt(id), namegets[id]]);
+    });
+    onRpc("web_save", ({ args }) => {
+        expect.step("web_save");
+        expect(args[1]).toEqual({
+            trululu: 2,
+        });
+    });
+
+    await mountView({
+        type: "form",
+        resModel: "partner",
+        resId: 1,
+        arch: `
+            <form>
+                <sheet>
+                    <group>
+                        <field name="trululu" />
+                    </group>
+                </sheet>
+            </form>`,
+    });
+    expect.verifySteps(["web_read"]);
+
+    // Initial value
+    expect(".o_field_widget input").toHaveValue("aaa");
+    expect(".o_field_many2one_extra").toHaveInnerHTML("<span>AAA</span><br><span>Record</span>", {
+        type: "html",
+    });
+
+    // Change the value
+    await contains(".o_field_widget input").edit("fizz", { confirm: false });
+    await runAllTimers();
+    // should display only the first line of the returned value from the server
+    expect.verifySteps(["name_search"]);
+    expect(queryAllTexts(".dropdown-menu li:not(.o_m2o_dropdown_option")).toEqual(["fizz", "aaa"]);
+    await contains(".dropdown-menu li").click();
+
+    expect.verifySteps([]);
+    expect(".o_field_widget input").toHaveValue("fizz");
+    expect(".o_field_many2one_extra").toHaveInnerHTML(
+        "<span>buzz</span><br><span>fizzbuzz</span>",
+        { type: "html" }
+    );
+
+    await clickSave();
+    expect.verifySteps(["web_save"]);
+});
+
 test("many2one search with trailing and leading spaces", async () => {
-    onRpc("web_name_search", ({ kwargs }) => {
+    onRpc("name_search", ({ kwargs }) => {
         expect.step("search: " + kwargs.name);
     });
     await mountView({
@@ -1259,7 +1272,7 @@ test("many2one search with trailing and leading spaces", async () => {
     expect(".o_field_many2one[name='trululu'] .dropdown-menu").toBeVisible();
     expect(
         ".o_field_many2one[name='trululu'] .dropdown-menu li:not(.o_m2o_dropdown_option)"
-    ).toHaveCount(3);
+    ).toHaveCount(4);
 
     // search with leading spaces
     await contains(input).edit("   first", { confirm: false });
@@ -1365,9 +1378,9 @@ test("standalone many2one field", async () => {
 
     await contains(".o_field_widget input").edit("xyzzrot", { confirm: false });
     await runAllTimers();
-    await contains(".o_field_widget .o_m2o_dropdown_option_create").click();
+    await contains(".o_field_widget .ui-menu-item").click();
     expect(".o_field_widget .o_external_button").toHaveCount(0);
-    expect.verifySteps(["web_name_search", "name_create"]);
+    expect.verifySteps(["name_search", "name_create"]);
 });
 
 test("form: quick create then save directly", async () => {
@@ -1392,7 +1405,7 @@ test("form: quick create then save directly", async () => {
 
     await contains(".o_field_widget[name=trululu] input").edit("b", { confirm: false });
     await runAllTimers();
-    await contains(".o_m2o_dropdown_option_create").click();
+    await contains(".ui-menu-item").click();
     await contains(".o_form_button_save").click();
 
     // should wait for the name_create before creating the record
@@ -1419,7 +1432,7 @@ test("form: quick create for field that returns false after name_create call", a
 
     await contains(".o_field_widget[name=trululu] input").edit("beam", { confirm: false });
     await runAllTimers();
-    await contains(".o_m2o_dropdown_option_create").click();
+    await contains(".ui-menu-item").click();
     expect.verifySteps(["name_create"]);
     expect(".o_input_dropdown input").toHaveValue("");
 });
@@ -1456,7 +1469,7 @@ test("list: quick create then save directly", async () => {
 
     await contains(".o_field_widget[name=trululu] input").edit("b", { confirm: false });
     await runAllTimers();
-    await contains(".o_m2o_dropdown_option_create").click();
+    await contains(".ui-menu-item").click();
 
     await contains(".o_list_button_save").click();
 
@@ -1505,7 +1518,7 @@ test("list in form: quick create then save directly", async () => {
 
     await contains(".o_field_widget[name=trululu] input").edit("b", { confirm: false });
     await runAllTimers();
-    await contains(".o_m2o_dropdown_option_create").click();
+    await contains(".ui-menu-item").click();
 
     await contains(".o_form_button_save").click();
 
@@ -1547,7 +1560,7 @@ test("name_create in form dialog", async () => {
         confirm: false,
     });
     await runAllTimers();
-    await contains(".modal .o_field_widget[name=product_id] .o_m2o_dropdown_option_create").click();
+    await contains(".modal .o_field_widget[name=product_id] .ui-menu-item").click();
 
     expect.verifySteps(["name_create"]);
 });
@@ -1570,8 +1583,8 @@ test("many2one inside one2many form view, with domain", async () => {
     Partner._views = {
         list: '<list><field name="name"/></list>',
     };
-    onRpc("web_name_search", ({ kwargs }) => {
-        expect(kwargs.domain).toEqual([["id", ">", 1]]);
+    onRpc("name_search", ({ kwargs }) => {
+        expect(kwargs.args).toEqual([["id", ">", 1]]);
     });
     onRpc("web_search_read", ({ kwargs }) => {
         expect(kwargs.domain).toEqual([["id", ">", 1]]);
@@ -1599,7 +1612,7 @@ test("many2one inside one2many form view, with domain", async () => {
     await contains(".o_data_row .o_data_cell").click();
     await contains(".o_field_widget[name=trululu] input").click();
     await runAllTimers();
-    await clickFieldDropdownItem("trululu", "Search more...");
+    await clickFieldDropdownItem("trululu", "Search More...");
 
     expect(".modal .o_list_view").toHaveCount(1);
     expect(".modal .o_data_row").toHaveCount(8);
@@ -1644,7 +1657,7 @@ test("list in form: quick create then add a new line directly", async () => {
 
     await contains(".o_field_widget[name=trululu] input").edit("b", { confirm: false });
     await runAllTimers();
-    await contains(".o_m2o_dropdown_option_create").click();
+    await contains(".ui-menu-item").click();
 
     await contains(".o_field_x2many_list_row_add a").click();
 
@@ -2133,7 +2146,9 @@ test("list in form: call button in sub view", async () => {
             });
         },
     });
-    onRpc("get_formview_id", () => false);
+    onRpc("get_formview_id", () => {
+        return false;
+    });
 
     await mountViewInDialog({
         type: "form",
@@ -2225,7 +2240,9 @@ test("X2Many sequence list in modal", async () => {
             </list>`,
     };
 
-    onRpc("partner.type", "get_formview_id", () => false);
+    onRpc("partner.type", "get_formview_id", () => {
+        return false;
+    });
     onRpc("partner.type", "web_save", () => {
         expect.step("partner.type web_save");
     });
@@ -2265,8 +2282,8 @@ test("X2Many sequence list in modal", async () => {
 
 test("autocompletion in a many2one, in form view with a domain", async () => {
     expect.assertions(1);
-    onRpc("web_name_search", ({ kwargs }) => {
-        expect(kwargs.domain).toEqual([]);
+    onRpc("name_search", ({ kwargs }) => {
+        expect(kwargs.args).toEqual([]);
     });
 
     await mountView({
@@ -2281,8 +2298,8 @@ test("autocompletion in a many2one, in form view with a domain", async () => {
 
 test("autocompletion in a many2one, in form view with a date field", async () => {
     expect.assertions(1);
-    onRpc("web_name_search", ({ kwargs }) => {
-        expect(kwargs.domain).toEqual([["bar", "=", true]]);
+    onRpc("name_search", ({ kwargs }) => {
+        expect(kwargs.args).toEqual([["bar", "=", true]]);
     });
 
     await mountView({
@@ -2372,15 +2389,15 @@ test("selecting a many2one, then discarding", async () => {
     expect(".o_field_widget[name='product_id'] input").toHaveValue("");
 });
 
-test("domain and context are correctly used when doing a web_name_search in a m2o", async () => {
+test("domain and context are correctly used when doing a name_search in a m2o", async () => {
     expect.assertions(4);
 
     Partner._records[0].timmy = [12];
     // Need to take into account the company service which populates context at startup
     const DEFAULT_USER_CTX = { ...user.context, allowed_company_ids: [1] };
     serverState.userContext = { hey: "ho" };
-    onRpc("product", "web_name_search", ({ kwargs }) => {
-        expect(kwargs.domain).toEqual(["&", ["foo", "=", "bar"], ["foo", "=", "yop"]]);
+    onRpc("product", "name_search", ({ kwargs }) => {
+        expect(kwargs.args).toEqual(["&", ["foo", "=", "bar"], ["foo", "=", "yop"]]);
         expect(kwargs.context).toEqual({
             ...DEFAULT_USER_CTX,
             hey: "ho",
@@ -2389,8 +2406,8 @@ test("domain and context are correctly used when doing a web_name_search in a m2
         });
         return [];
     });
-    onRpc("partner", "web_name_search", ({ kwargs }) => {
-        expect(kwargs.domain).toEqual([["id", "in", [12]]]);
+    onRpc("partner", "name_search", ({ kwargs }) => {
+        expect(kwargs.args).toEqual([["id", "in", [12]]]);
         expect(kwargs.context).toEqual({
             ...DEFAULT_USER_CTX,
             hey: "ho",
@@ -2460,7 +2477,7 @@ test("failing quick create on a many2one because ValidationError", async () => {
 
     await contains(".o_field_widget[name='product_id'] input").edit("abcd", { confirm: false });
     await runAllTimers();
-    await contains(".o_field_widget[name='product_id'] .o_m2o_dropdown_option_create").click();
+    await contains(".o_field_widget[name='product_id'] .dropdown-item").click();
     await animationFrame(); // wait for the error service to ensure that there's no error dialog
     expect(".o_error_dialog").toHaveCount(0);
     expect(".modal .o_form_view").toHaveCount(1);
@@ -2489,7 +2506,7 @@ test("failing quick create on a many2one", async () => {
     await contains(".o_field_widget[name='product_id'] input").edit("abcd", { confirm: false });
     await runAllTimers();
     expect.errors(1);
-    await contains(".o_field_widget[name='product_id'] .o_m2o_dropdown_option_create").click();
+    await contains(".o_field_widget[name='product_id'] .dropdown-item").click();
     await animationFrame(); // wait for the error service
     expect.verifyErrors(["RPC_ERROR"]);
     expect(".o_error_dialog").toHaveCount(1);
@@ -2525,7 +2542,7 @@ test("failing quick create on a many2one inside a one2many because ValidationErr
     await contains(".o_field_x2many_list_row_add a").click();
     await contains(".o_field_widget[name='product_id'] input").edit("abcd", { confirm: false });
     await runAllTimers();
-    await contains(".o_field_widget[name='product_id'] .o_m2o_dropdown_option_create").click();
+    await contains(".o_field_widget[name='product_id'] .dropdown-item").click();
 
     expect(".modal .o_form_view").toHaveCount(1);
     expect(".modal .o_field_widget[name='name'] input").toHaveValue("abcd");
@@ -2628,9 +2645,10 @@ test("no_create option on a many2one", async () => {
 
     await contains(".o_field_many2one input").edit("new partner", { confirm: false });
     await runAllTimers();
-    expect(".o_m2o_dropdown_option_create").toHaveCount(0);
-    expect(".o_m2o_dropdown_option_create_edit").toHaveCount(0);
-    await press("escape");
+    await press("tab");
+
+    expect(".modal").toHaveCount(0);
+    expect(".o_field_many2one input").toHaveValue("");
 });
 
 test("no_create option on a many2one when can_create is absent", async () => {
@@ -2647,9 +2665,10 @@ test("no_create option on a many2one when can_create is absent", async () => {
     });
     await contains(".o_field_many2one input").edit("new partner", { confirm: false });
     await runAllTimers();
-    expect(".o_m2o_dropdown_option_create").toHaveCount(0);
-    expect(".o_m2o_dropdown_option_create_edit").toHaveCount(0);
-    await press("escape");
+    await press("tab");
+
+    expect(".modal").toHaveCount(0);
+    expect(".o_field_many2one input").toHaveValue("");
 });
 
 test("no_quick_create option on a many2one when can_create is absent", async () => {
@@ -2666,9 +2685,10 @@ test("no_quick_create option on a many2one when can_create is absent", async () 
     });
     await contains(".o_field_many2one input").edit("new partner", { confirm: false });
     await runAllTimers();
-    expect(queryAllTexts(".ui-autocomplete .o_m2o_dropdown_option")).toEqual([
-        "Create and edit...",
-    ]);
+    expect(".ui-autocomplete .o_m2o_dropdown_option").toHaveCount(1);
+    expect(".ui-autocomplete .o_m2o_dropdown_option").toHaveClass(
+        "o_m2o_dropdown_option_create_edit"
+    );
 });
 
 test("can_create and can_write option on a many2one", async () => {
@@ -2683,7 +2703,9 @@ test("can_create and can_write option on a many2one", async () => {
             </form>`,
     };
 
-    onRpc("product", "get_formview_id", () => false);
+    onRpc("product", "get_formview_id", () => {
+        return false;
+    });
 
     await mountViewInDialog({
         type: "form",
@@ -2769,7 +2791,9 @@ test("propagate can_create onto the search popup", async () => {
                 <field name="name"/>
             </search>`,
     };
-    onRpc("get_formview_id", () => false);
+    onRpc("get_formview_id", () => {
+        return false;
+    });
 
     await mountView({
         type: "form",
@@ -2793,7 +2817,7 @@ test("propagate can_create onto the search popup", async () => {
 
     await contains(".o_field_many2one[name=product_id] input").edit("", { confirm: false });
     await runAllTimers();
-    await clickFieldDropdownItem("product_id", "Search more...");
+    await clickFieldDropdownItem("product_id", "Search More...");
 
     expect(".modal-dialog.modal-lg").toHaveCount(1);
 
@@ -3047,7 +3071,7 @@ test("many2one in editable list + onchange, with enter", async () => {
         "get_views",
         "web_search_read", // to display results in the dialog
         "has_group",
-        "web_name_search",
+        "name_search",
         "onchange",
         "web_save",
     ]);
@@ -3090,7 +3114,7 @@ test("many2one in editable list + onchange, with enter, part 2", async () => {
         "get_views",
         "web_search_read", // to display results in the dialog
         "has_group",
-        "web_name_search",
+        "name_search",
         "onchange",
         "web_save",
     ]);
@@ -3103,8 +3127,8 @@ test("many2one: dynamic domain set in the field's definition", async () => {
         relation: "partner",
         domain: "[('foo' ,'=', foo)]",
     });
-    onRpc("web_name_search", ({ kwargs }) => {
-        expect(kwargs.domain).toEqual([["foo", "=", "yop"]]);
+    onRpc("name_search", ({ kwargs }) => {
+        expect(kwargs.args).toEqual([["foo", "=", "yop"]]);
     });
 
     await mountView({
@@ -3130,9 +3154,9 @@ test("many2one: domain set in view and on field", async () => {
         relation: "partner",
         domain: "[('foo' ,'=', 'boum')]",
     });
-    onRpc("web_name_search", ({ kwargs }) => {
+    onRpc("name_search", ({ kwargs }) => {
         // should only use the domain set in the view
-        expect(kwargs.domain).toEqual([["foo", "=", "blip"]]);
+        expect(kwargs.args).toEqual([["foo", "=", "blip"]]);
     });
 
     await mountView({
@@ -3167,8 +3191,8 @@ test("many2one: domain updated by an onchange", async () => {
             },
         };
     });
-    onRpc("web_name_search", ({ kwargs }) => {
-        expect(kwargs.domain).toEqual(domain);
+    onRpc("name_search", ({ kwargs }) => {
+        expect(kwargs.args).toEqual(domain);
     });
     await mountView({
         type: "form",
@@ -3181,19 +3205,19 @@ test("many2one: domain updated by an onchange", async () => {
             </form>`,
     });
 
-    // trigger a web_name_search (domain should be [])
+    // trigger a name_search (domain should be [])
     await contains(".o_field_widget[name=trululu] input").click();
     // close the dropdown
     await contains(".o_field_widget[name=trululu] input").click();
     // trigger an onchange that will update the domain
 
-    // trigger a web_name_search (domain should be [['id', 'in', [10]]])
+    // trigger a name_search (domain should be [['id', 'in', [10]]])
     await contains(".o_field_widget[name='trululu'] input").click();
 });
 
 test("search more in many2one: no text in input", async () => {
-    // when the user clicks on 'Search more...' in a many2one dropdown, and there is no text
-    // in the input (i.e. no value to search on), we bypass the web_name_search that is meant to
+    // when the user clicks on 'Search More...' in a many2one dropdown, and there is no text
+    // in the input (i.e. no value to search on), we bypass the name_search that is meant to
     // return a list of preselected ids to filter on in the list view (opened in a dialog)
     expect.assertions(2);
 
@@ -3228,7 +3252,7 @@ test("search more in many2one: no text in input", async () => {
     expect.verifySteps([
         "get_views", // main form view
         "onchange",
-        "web_name_search", // to display results in the dropdown
+        "name_search", // to display results in the dropdown
         "get_views", // list view in dialog
         "has_group",
         "web_search_read", // to display results in the dialog
@@ -3236,8 +3260,8 @@ test("search more in many2one: no text in input", async () => {
 });
 
 test("search more in many2one: text in input", async () => {
-    // when the user clicks on 'Search more...' in a many2one dropdown, and there is some
-    // text in the input, we perform a web_name_search to get a (limited) list of preselected
+    // when the user clicks on 'Search More...' in a many2one dropdown, and there is some
+    // text in the input, we perform a name_search to get a (limited) list of preselected
     // ids and we add a dynamic filter (with those ids) to the search view in the dialog, so
     // that the user can remove this filter to bypass the limit
     expect.assertions(5);
@@ -3282,8 +3306,8 @@ test("search more in many2one: text in input", async () => {
     expect.verifySteps([
         "get_views", // main form view
         "onchange",
-        "web_name_search", // empty search, triggered when the user clicks in the input
-        "web_name_search", // to display results in the dropdown
+        "name_search", // empty search, triggered when the user clicks in the input
+        "name_search", // to display results in the dropdown
         "name_search", // to get preselected ids matching the search
         "get_views", // list view in dialog
         "has_group",
@@ -3370,8 +3394,8 @@ test("updating a many2one from a many2many", async () => {
     expect(".o_dialog:not(.o_inactive_modal) div[name=turtle_trululu] input").toHaveValue("test");
 });
 
-test("search more in many2one: cannot resequence inside dialog", async () => {
-    // when the user clicks on 'Search more...' in a many2one dropdown, resequencing inside
+test("search more in many2one: resequence inside dialog", async () => {
+    // when the user clicks on 'Search More...' in a many2one dropdown, resequencing inside
     // the dialog works
     Partner._fields.sequence = fields.Integer();
     for (let i = 0; i < 8; i++) {
@@ -3388,6 +3412,9 @@ test("search more in many2one: cannot resequence inside dialog", async () => {
     onRpc("web_search_read", ({ kwargs }) => {
         expect(kwargs.domain).toEqual([]);
     });
+    onRpc("/web/dataset/resequence", () => {
+        expect.step("/web/dataset/resequence");
+    });
     onRpc(({ method }) => {
         expect.step(method);
     });
@@ -3403,15 +3430,21 @@ test("search more in many2one: cannot resequence inside dialog", async () => {
     await contains(`.o_field_widget[name="trululu"] .o_m2o_dropdown_option_search_more`).click();
 
     expect(".modal").toHaveCount(1);
-    expect(".modal .o_row_handle.o_disabled").toHaveCount(11);
+    expect(".modal .ui-sortable-handle").toHaveCount(11);
+    await contains(".modal .o_data_row:nth-child(2) .ui-sortable-handle").dragAndDrop(
+        ".modal tbody tr"
+    );
+    await animationFrame();
 
     expect.verifySteps([
         "get_views",
         "onchange",
-        "web_name_search", // to display results in the dropdown
+        "name_search", // to display results in the dropdown
         "get_views", // list view in dialog
         "web_search_read", // to display results in the dialog
         "has_group",
+        "/web/dataset/resequence", // resequencing lines
+        "read",
     ]);
 });
 
@@ -3491,7 +3524,7 @@ test("search more in many2one: group and use the pager", async () => {
         arch: '<form><field name="trululu" /></form>',
     });
 
-    await selectFieldDropdownItem("trululu", "Search more...");
+    await selectFieldDropdownItem("trululu", "Search More...");
     await toggleSearchBarMenu(".modal");
     await toggleMenuItem("Bar");
 
@@ -3507,7 +3540,9 @@ test("focus when closing many2one modal in many2one modal", async () => {
         form: '<form><field name="trululu"/></form>',
     };
 
-    onRpc("get_formview_id", () => false);
+    onRpc("get_formview_id", () => {
+        return false;
+    });
 
     await mountViewInDialog({
         type: "form",
@@ -3580,7 +3615,7 @@ test("search more pager is reset when doing a new search", async () => {
             </form>`,
     });
 
-    await selectFieldDropdownItem("trululu", "Search more...");
+    await selectFieldDropdownItem("trululu", "Search More...");
 
     await contains(".modal .o_pager_next").click();
 
@@ -3649,20 +3684,6 @@ test("Many2oneField with placeholder", async () => {
     expect(".o_field_widget[name='trululu'] input").toHaveAttribute("placeholder", "Placeholder");
 });
 
-test("placeholder_field shows as placeholder", async () => {
-    await mountView({
-        type: "form",
-        resModel: "partner",
-        arch: `<form>
-            <field name="name"/>
-            <field name="trululu" options="{'placeholder_field': 'name'}"/>
-        </form>`,
-        resId: 1,
-    });
-
-    expect(".o_field_widget[name='trululu'] input").toHaveAttribute("placeholder", "first record");
-});
-
 test("external_button performs a doAction by default", async () => {
     Partner._views = {
         form: '<form><field name="trululu"/></form>',
@@ -3689,7 +3710,7 @@ test("external_button performs a doAction by default", async () => {
     });
 
     await selectFieldDropdownItem("trululu", "first record");
-    expect(".o_field_widget .o_external_button .oi-arrow-right").toHaveCount(1);
+    expect(".o_field_widget .o_external_button.oi-arrow-right").toHaveCount(1);
     await contains(".o_field_widget .o_external_button", { visible: false }).click();
 
     expect.verifySteps(["get_formview_action"]);
@@ -3709,58 +3730,20 @@ test("external_button opens a FormViewDialog in dialogs", async () => {
     expect(".modal").toHaveCount(1);
 
     await selectFieldDropdownItem("trululu", "first record");
-    expect(".o_field_widget .o_external_button .oi-launch").toHaveCount(1);
+    expect(".o_field_widget .o_external_button.oi-launch").toHaveCount(1);
     await contains(".o_field_widget .o_external_button", { visible: false }).click();
 
     expect.verifySteps(["get_formview_id"]);
     expect(".modal").toHaveCount(2);
 });
 
-test("external_button opens a new tab when middle clicked or ctrl+click", async () => {
-    mockService("action", {
-        doAction(params, options) {
-            if (options?.newWindow) {
-                expect.step("opened in a new window");
-                return;
-            }
-            super.doAction(params);
-        },
-        loadState() {},
-    });
-    Partner._views = {
-        form: '<form><field name="trululu"/></form>',
-    };
-    onRpc("get_formview_action", () => ({
-        type: "ir.actions.act_window",
-        res_model: "partner",
-        view_type: "form",
-        view_mode: "form",
-        views: [[false, "form"]],
-        target: "current",
-        res_id: false,
-    }));
-    await mountWithCleanup(WebClient);
-    await getService("action").doAction({
-        name: "Partner",
-        res_model: "partner",
-        res_id: 1,
-        type: "ir.actions.act_window",
-        views: [[false, "form"]],
-    });
-
-    await selectFieldDropdownItem("trululu", "first record");
-    await contains(".o_external_button", { visible: false }).click({ ctrlKey: true });
-    expect.verifySteps(["opened in a new window"]);
-    await middleClick(".o_external_button");
-    await animationFrame();
-    expect.verifySteps(["opened in a new window"]);
-});
-
 test("keep changes when editing related record in a dialog", async () => {
     Partner._views = {
         [["form", 98]]: '<form><field name="int_field"/></form>',
     };
-    onRpc("get_formview_id", () => 98);
+    onRpc("get_formview_id", () => {
+        return 98;
+    });
     onRpc("web_save", () => {
         expect.step("web_save");
     });
@@ -3774,7 +3757,7 @@ test("keep changes when editing related record in a dialog", async () => {
     await contains(".o_field_widget[name=foo] input").edit("some value", { confirm: false });
     await runAllTimers();
     await selectFieldDropdownItem("trululu", "first record");
-    expect(".o_field_widget .o_external_button .oi-launch").toHaveCount(1);
+    expect(".o_field_widget .o_external_button.oi-launch").toHaveCount(1);
     await contains(".o_field_widget .o_external_button", { visible: false }).click();
     expect(".modal").toHaveCount(2);
 
@@ -3794,7 +3777,9 @@ test("create and edit, save and then discard", async () => {
     Partner.views = {
         [[98, "form"]]: '<form><field name="name"/></form>',
     };
-    onRpc("get_formview_id", () => 98);
+    onRpc("get_formview_id", () => {
+        return 98;
+    });
     await mountView({
         type: "form",
         resModel: "partner",
@@ -3858,9 +3843,9 @@ test("many2one field with false as name", async () => {
 });
 
 test("many2one search with false as name", async () => {
-    onRpc("web_name_search", () => [
-        { id: 1, display_name: false, __formatted_display_name: false },
-    ]);
+    onRpc("name_search", () => {
+        return [[1, false]];
+    });
     await mountView({
         type: "form",
         resModel: "partner",
@@ -3874,107 +3859,4 @@ test("many2one search with false as name", async () => {
     expect(".o_field_many2one[name='trululu'] .dropdown-menu a.dropdown-item:eq(0)").toHaveText(
         "Unnamed"
     );
-});
-
-test("many2one search with formatted name", async () => {
-    onRpc("web_name_search", () => [
-        {
-            id: 1,
-            display_name: "Paul Eric",
-            __formatted_display_name: "Test: **Paul** --Eric-- `good guy`\n\tMore text",
-        },
-    ]);
-    await mountView({
-        type: "form",
-        resModel: "partner",
-        arch: `
-            <form>
-                <field name="trululu" />
-            </form>`,
-    });
-
-    await contains(".o_field_many2one input").click();
-    expect(
-        ".o_field_many2one[name='trululu'] .dropdown-menu a.dropdown-item:eq(0)"
-    ).toHaveInnerHTML(
-        `Test: <b>Paul</b> <span class="text-muted">Eric</span> <span class="o_tag position-relative d-inline-flex align-items-center mw-100 o_badge badge rounded-pill lh-1 o_tag_color_0">good guy</span><br/><span style="margin-left: 2em"></span>More text`
-    );
-    await contains(
-        ".o_field_many2one[name='trululu'] .dropdown-menu a.dropdown-item:eq(0)"
-    ).click();
-    expect(".o_field_many2one input").toHaveValue("Paul Eric");
-});
-
-test.tags("desktop");
-test("search typeahead", async () => {
-    onRpc("web_name_search", () => expect.step("web_name_search"));
-    await mountView({
-        type: "form",
-        resModel: "partner",
-        arch: `<form><field name="trululu" options="{ 'search_threshold': 3 }"/></form>`,
-    });
-
-    await contains(".o_field_widget[name=trululu] input").click();
-    await runAllTimers();
-    expect.verifySteps([]);
-    expect(queryAllTexts(`.o-autocomplete.dropdown li`)).toEqual([
-        "Start typing 3 characters",
-        "Search more...",
-    ]);
-
-    await contains(".o_field_widget[name=trululu] input").edit("r", { confirm: false });
-    await runAllTimers();
-    expect.verifySteps([]);
-    expect(queryAllTexts(`.o-autocomplete.dropdown li`)).toEqual([
-        "Start typing 3 characters",
-        'Create "r"',
-        "Create and edit...",
-        "Search more...",
-    ]);
-
-    await contains(".o_field_widget[name=trululu] input").edit("re", { confirm: false });
-    await runAllTimers();
-    expect.verifySteps([]);
-    expect(queryAllTexts(`.o-autocomplete.dropdown li`)).toEqual([
-        "Start typing 3 characters",
-        'Create "re"',
-        "Create and edit...",
-        "Search more...",
-    ]);
-
-    await contains(".o_field_widget[name=trululu] input").edit("rec", { confirm: false });
-    await runAllTimers();
-    expect.verifySteps(["web_name_search"]);
-    expect(queryAllTexts(`.o-autocomplete.dropdown li`)).toEqual([
-        "first record",
-        "second record",
-        'Create "rec"',
-        "Create and edit...",
-        "Search more...",
-    ]);
-});
-
-test("highlight search in many2one", async () => {
-    await mountView({
-        type: "form",
-        resModel: "partner",
-        arch: `<form><field name="trululu"/></form>`,
-    });
-    await contains(".o_field_widget[name=trululu] input").edit("rec", { confirm: false });
-    await runAllTimers();
-    expect(`.o-autocomplete.dropdown li:not(.o_m2o_dropdown_option) a`).toHaveCount(2);
-    expect(`.o-autocomplete.dropdown li:eq(0) a`).toHaveInnerHTML(`
-        first
-        <span class="text-primary fw-bold">
-            rec
-        </span>
-        ord
-    `);
-    expect(`.o-autocomplete.dropdown li:eq(1) a`).toHaveInnerHTML(`
-        second
-        <span class="text-primary fw-bold">
-            rec
-        </span>
-        ord
-    `);
 });

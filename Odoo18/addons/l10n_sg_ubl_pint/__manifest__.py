@@ -9,6 +9,5 @@
     """,
     'depends': ['account_edi_ubl_cii_tax_extension'],
     'installable': True,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3'
 }

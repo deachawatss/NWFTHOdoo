@@ -24,7 +24,7 @@ class AccountChartTemplate(models.AbstractModel):
                 'name': _("Withholding Tax on Purchases - Transition Account"),
                 'code': '252002',
                 'account_type': 'liability_current',
-                'reconcile': True,
+                'reconcile': False,
             },
             'l10n_ng_withholding_payable': {
                 'name': _("Withholding Tax Payable"),

@@ -3,7 +3,7 @@
 from odoo import api, models
 
 
-class MailTrackingValue(models.Model):
+class MailTrackingValues(models.Model):
     _inherit = 'mail.tracking.value'
 
     @api.ondelete(at_uninstall=True)

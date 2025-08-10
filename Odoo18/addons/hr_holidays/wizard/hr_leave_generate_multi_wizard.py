@@ -1,23 +1,15 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from datetime import datetime, timedelta
+from pytz import timezone, UTC
 
-from pytz import UTC, timezone
-
-from odoo import api, fields, models
-from odoo.exceptions import AccessError, UserError
-from odoo.fields import Domain
+from odoo import fields, models, _
+from odoo.exceptions import UserError
 
 
 class HrLeaveGenerateMultiWizard(models.TransientModel):
-    _name = 'hr.leave.generate.multi.wizard'
+    _name = "hr.leave.generate.multi.wizard"
     _description = 'Generate time off for multiple employees'
-
-    def _get_employee_domain(self):
-        domain = Domain([('company_id', 'in', self.env.companies.ids)])
-        if not self.env.user.has_group('hr_holidays.group_hr_holidays_user'):
-            domain &= Domain(['|', ('leave_manager_id', '=', self.env.user.id), ('user_id', '=', self.env.user.id)])
-        return domain
 
     name = fields.Char("Description")
     holiday_status_id = fields.Many2one(
@@ -33,7 +25,7 @@ class HrLeaveGenerateMultiWizard(models.TransientModel):
              "\n- By Company: all employees of the specified company"
              "\n- By Department: all employees of the specified department"
              "\n- By Employee Tag: all employees of the specific employee group category")
-    employee_ids = fields.Many2many('hr.employee', string='Employees', domain=lambda self: self._get_employee_domain())
+    employee_ids = fields.Many2many('hr.employee', string='Employees', domain="[('company_id', '=', company_id)]")
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company, required=True)
     department_id = fields.Many2one('hr.department')
     category_id = fields.Many2one('hr.employee.category', string='Employee Tag')
@@ -55,7 +47,6 @@ class HrLeaveGenerateMultiWizard(models.TransientModel):
     def _prepare_employees_holiday_values(self, employees, date_from_tz, date_to_tz):
         self.ensure_one()
         work_days_data = employees._get_work_days_data_batch(date_from_tz, date_to_tz)
-        validated = self.env.user.has_group('hr_holidays.group_hr_holidays_user') or self.holiday_status_id.leave_validation_type == 'no_validation'
         return [{
             'name': self.name,
             'holiday_status_id': self.holiday_status_id.id,
@@ -65,7 +56,7 @@ class HrLeaveGenerateMultiWizard(models.TransientModel):
             'request_date_to': self.date_to,
             'number_of_days': work_days_data[employee.id]['days'],
             'employee_id': employee.id,
-            'state': 'validate' if validated else 'confirm',
+            'state': 'validate',
         } for employee in employees if work_days_data[employee.id]['days']]
 
     def action_generate_time_off(self):
@@ -79,7 +70,7 @@ class HrLeaveGenerateMultiWizard(models.TransientModel):
         conflicting_leaves = self.env['hr.leave'].with_context(
             tracking_disable=True,
             mail_activity_automation_skip=True,
-            leave_fast_create=True,
+            leave_fast_create=True
         ).search([
             ('date_from', '<=', date_to_tz),
             ('date_to', '>', date_from_tz),
@@ -88,12 +79,11 @@ class HrLeaveGenerateMultiWizard(models.TransientModel):
 
         if conflicting_leaves:
             # YTI: More complex use cases could be managed later
-            invalid_time_off = conflicting_leaves.filtered(lambda leave: leave.leave_type_request_unit == 'hour')
+            invalid_time_off = conflicting_leaves.filtered(lambda l: l.leave_type_request_unit == 'hour')
             if invalid_time_off:
-                raise UserError(self.env_('Automatic time off spliting during batch generation is not managed for ovelapping time off declared in hours. Conflicting time off:\n%s', '\n'.join(f"- {l.display_name}" for l in invalid_time_off)))
-            one_day_leaves = conflicting_leaves.filtered(lambda leave: leave.request_date_from == leave.request_date_to)
-            one_day_leaves.action_refuse()
-            (conflicting_leaves - one_day_leaves)._split_leaves(self.date_from, self.date_to + timedelta(days=1))
+                raise UserError(_('Automatic time off spliting during batch generation is not managed for ovelapping time off declared in hours. Conflicting time off:\n%s', '\n'.join(f"- {l.display_name}" for l in invalid_time_off)))
+
+            conflicting_leaves._split_leaves(self.date_from, self.date_to + timedelta(days=1))
 
         vals_list = self._prepare_employees_holiday_values(employees, date_from_tz, date_to_tz)
         leaves = self.env['hr.leave'].with_context(
@@ -111,16 +101,9 @@ class HrLeaveGenerateMultiWizard(models.TransientModel):
 
         return {
             'type': 'ir.actions.act_window',
-            'name': self.env._('Generated Time Off'),
+            'name': _('Generated Time Off'),
             "views": [[self.env.ref('hr_holidays.hr_leave_view_tree').id, "list"], [self.env.ref('hr_holidays.hr_leave_view_form_manager').id, "form"]],
             'view_mode': 'list',
             'res_model': 'hr.leave',
-            'domain': [('id', 'in', leaves.ids)],
+            'domain': [('id', 'in', leaves.ids)]
         }
-
-    @api.constrains('allocation_mode')
-    def _check_allocation_mode(self):
-        is_manager = self.env.user.has_group('hr_holidays.group_hr_holidays_user')
-        for record in self:
-            if record.allocation_mode != 'employee' and not is_manager:
-                raise AccessError(self.env._("As Time Off Responsible, you can only use the allocation mode 'By Employee'."))

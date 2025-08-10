@@ -208,7 +208,7 @@ test("Can see records on PIVOT cells", async function () {
         },
     };
     mockService("action", fakeActionService);
-    const { env, model } = await createSpreadsheetWithPivot({ pivotType: "static" });
+    const { env, model } = await createSpreadsheetWithPivot();
     const firstSheetId = model.getters.getActiveSheetId();
 
     async function checkCells(cells) {
@@ -264,12 +264,12 @@ test("Can see records on PIVOT cells", async function () {
 
     // same but without the column headers
     // set the function in A3 such as the data cells matches the ones in the first sheet
-    setCellContent(model, "A3", `=PIVOT("1",,,FALSE,,FALSE)`, "42");
+    setCellContent(model, "A3", `=PIVOT("1",,,FALSE)`, "42");
     await checkCells(data_cells);
 });
 
 test("Cannot see records of pivot formula without value", async function () {
-    const { env, model } = await createSpreadsheetWithPivot({ pivotType: "static" });
+    const { env, model } = await createSpreadsheetWithPivot();
     expect(getCellFormula(model, "B3")).toBe(
         `=PIVOT.VALUE(1,"probability:avg","bar",FALSE,"foo",1)`
     );
@@ -341,10 +341,10 @@ test("See records is not visible if the pivot is not loaded, even if the cell ha
     let deferred = undefined;
     const { env, model } = await createSpreadsheetWithPivot({
         arch: /*xml*/ `
-            <pivot>
-                <field name="probability" type="measure"/>
-            </pivot>
-        `,
+        <pivot>
+            <field name="probability" type="measure"/>
+        </pivot>
+    `,
         mockRPC: async function (route, args) {
             if (deferred && args.method === "read_group" && args.model === "partner") {
                 await deferred;

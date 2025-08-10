@@ -1,10 +1,10 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import Command
-from odoo.tests.common import tagged
 
 from odoo.addons.sale_loyalty.tests.common import TestSaleCouponCommon
-
+from odoo.tests.common import tagged
 
 @tagged('-at_install', 'post_install')
 class TestBuyGiftCard(TestSaleCouponCommon):
@@ -16,11 +16,13 @@ class TestBuyGiftCard(TestSaleCouponCommon):
             (0, False, {
                 'product_id': self.product_A.id,
                 'name': 'Ordinary Product A',
+                'product_uom': self.uom_unit.id,
                 'product_uom_qty': 1.0,
             }),
             (0, False, {
                 'product_id': self.product_gift_card.id,
                 'name': 'Gift Card Product',
+                'product_uom': self.uom_unit.id,
                 'product_uom_qty': 1.0,
             })
         ]})

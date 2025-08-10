@@ -9,31 +9,14 @@ import { registry } from "./registry";
  * }} BundleFileNames
  */
 
-export const globalBundleCache = new Map();
-export const assetCacheByDocument = new WeakMap();
-
-function getGlobalBundleCache() {
-    return globalBundleCache;
-}
-
-function getAssetCache(targetDoc) {
-    if (!assetCacheByDocument.has(targetDoc)) {
-        assetCacheByDocument.set(targetDoc, new Map());
-    }
-    return assetCacheByDocument.get(targetDoc);
-}
-
-export function computeBundleCacheMap(targetDoc) {
-    const cacheMap = getGlobalBundleCache();
-    for (const script of targetDoc.head.querySelectorAll("script[src]")) {
+const computeCacheMap = () => {
+    for (const script of document.head.querySelectorAll("script[src]")) {
         cacheMap.set(script.getAttribute("src"), Promise.resolve());
     }
-    for (const link of targetDoc.head.querySelectorAll("link[rel=stylesheet][href]")) {
+    for (const link of document.head.querySelectorAll("link[rel=stylesheet][href]")) {
         cacheMap.set(link.getAttribute("href"), Promise.resolve());
     }
-}
-
-whenReady(() => computeBundleCacheMap(document));
+};
 
 /**
  * @param {HTMLLinkElement | HTMLScriptElement} el
@@ -58,11 +41,12 @@ const onLoadAndError = (el, onLoad, onError) => {
 
     el.addEventListener("load", onLoadListener);
     el.addEventListener("error", onErrorListener);
-
-    window.addEventListener("pagehide", () => {
-        removeListeners();
-    });
 };
+
+/** @type {Map<string, Promise<BundleFileNames | void>>} */
+const cacheMap = new Map();
+
+whenReady(computeCacheMap);
 
 /** @type {typeof assets["getBundle"]} */
 export function getBundle() {
@@ -90,21 +74,17 @@ export class AssetsLoadingError extends Error {}
  * Utility component that loads an asset bundle before instanciating a component
  */
 export class LazyComponent extends Component {
-    static template = xml`<t t-component="Component" t-props="componentProps"/>`;
+    static template = xml`<t t-component="Component" t-props="props.props"/>`;
     static props = {
         Component: String,
         bundle: String,
-        props: { type: [Object, Function], optional: true },
+        props: { type: Object, optional: true },
     };
     setup() {
         onWillStart(async () => {
             await loadBundle(this.props.bundle);
             this.Component = registry.category("lazy_components").get(this.props.Component);
         });
-    }
-
-    get componentProps() {
-        return typeof this.props.props === "function" ? this.props.props() : this.props.props;
     }
 }
 
@@ -127,7 +107,6 @@ export const assets = {
      * @returns {Promise<BundleFileNames>}
      */
     getBundle(bundleName) {
-        const cacheMap = getGlobalBundleCache();
         if (cacheMap.has(bundleName)) {
             return cacheMap.get(bundleName);
         }
@@ -153,7 +132,7 @@ export const assets = {
             })
             .catch((reason) => {
                 cacheMap.delete(bundleName);
-                throw new AssetsLoadingError(`The loading of ${url} failed`, { cause: reason });
+                throw reason;
             });
         cacheMap.set(bundleName, promise);
         return promise;
@@ -164,13 +143,9 @@ export const assets = {
      * asset will be loaded if it was already done before.
      *
      * @param {string} bundleName
-     * @param {Object} options
-     * @param {Document} [options.targetDoc=document] document to which the bundle will be applied (e.g. iframe document)
-     * @param {Boolean} [options.css=true] apply bundle css on targetDoc
-     * @param {Boolean} [options.js=true] apply bundle js on targetDoc
      * @returns {Promise<void[]>}
      */
-    loadBundle(bundleName, { targetDoc = document, css = true, js = true } = {}) {
+    loadBundle(bundleName) {
         if (typeof bundleName !== "string") {
             throw new Error(
                 `loadBundle(bundleName:string) accepts only bundleName argument as a string ! Not ${JSON.stringify(
@@ -178,16 +153,9 @@ export const assets = {
                 )} as ${typeof bundleName}`
             );
         }
-        return getBundle(bundleName).then(({ cssLibs, jsLibs }) => {
-            const promises = [];
-            if (css && cssLibs) {
-                promises.push(...cssLibs.map((url) => assets.loadCSS(url, { targetDoc })));
-            }
-            if (js && jsLibs) {
-                promises.push(...jsLibs.map((url) => assets.loadJS(url, { targetDoc })));
-            }
-            return Promise.all(promises);
-        });
+        return getBundle(bundleName).then(({ cssLibs, jsLibs }) =>
+            Promise.all([...cssLibs.map(loadCSS), ...jsLibs.map(loadJS)])
+        );
     },
 
     /**
@@ -195,42 +163,36 @@ export const assets = {
      *
      * @param {string} url the url of the stylesheet
      * @param {number} [retryCount]
-     * @param {Object} options
-     * @param {number} [retryCount]
-     * @param {Document} [options.targetDoc=document] document to which the bundle will be applied (e.g. iframe document)
      * @returns {Promise<void>} resolved when the stylesheet has been loaded
      */
-    loadCSS(url, { retryCount = 0, targetDoc = document } = {}) {
-        const cacheMap = getAssetCache(targetDoc);
+    loadCSS(url, retryCount = 0) {
         if (cacheMap.has(url)) {
             return cacheMap.get(url);
         }
-        const linkEl = targetDoc.createElement("link");
+        const linkEl = document.createElement("link");
         linkEl.setAttribute("href", url);
         linkEl.type = "text/css";
         linkEl.rel = "stylesheet";
         const promise = new Promise((resolve, reject) =>
-            onLoadAndError(linkEl, resolve, async (error) => {
+            onLoadAndError(linkEl, resolve, async () => {
                 cacheMap.delete(url);
                 if (retryCount < assets.retries.count) {
                     const delay = assets.retries.delay + assets.retries.extraDelay * retryCount;
                     await new Promise((res) => setTimeout(res, delay));
                     linkEl.remove();
-                    loadCSS(url, { retryCount: retryCount + 1, targetDoc })
+                    loadCSS(url, retryCount + 1)
                         .then(resolve)
                         .catch((reason) => {
                             cacheMap.delete(url);
                             reject(reason);
                         });
                 } else {
-                    reject(
-                        new AssetsLoadingError(`The loading of ${url} failed`, { cause: error })
-                    );
+                    reject(new AssetsLoadingError(`The loading of ${url} failed`));
                 }
             })
         );
         cacheMap.set(url, promise);
-        targetDoc.head.appendChild(linkEl);
+        document.head.appendChild(linkEl);
         return promise;
     },
 
@@ -238,25 +200,23 @@ export const assets = {
      * Loads the given url inside a script tag.
      *
      * @param {string} url the url of the script
-     * @param {Document} targetDoc document to which the bundle will be applied (e.g. iframe document)
      * @returns {Promise<void>} resolved when the script has been loaded
      */
-    loadJS(url, { targetDoc = document } = {}) {
-        const cacheMap = getAssetCache(targetDoc);
+    loadJS(url) {
         if (cacheMap.has(url)) {
             return cacheMap.get(url);
         }
-        const scriptEl = targetDoc.createElement("script");
+        const scriptEl = document.createElement("script");
         scriptEl.setAttribute("src", url);
         scriptEl.type = url.includes("web/static/lib/pdfjs/") ? "module" : "text/javascript";
         const promise = new Promise((resolve, reject) =>
-            onLoadAndError(scriptEl, resolve, (error) => {
+            onLoadAndError(scriptEl, resolve, () => {
                 cacheMap.delete(url);
-                reject(new AssetsLoadingError(`The loading of ${url} failed`, { cause: error }));
+                reject(new AssetsLoadingError(`The loading of ${url} failed`));
             })
         );
         cacheMap.set(url, promise);
-        targetDoc.head.appendChild(scriptEl);
+        document.head.appendChild(scriptEl);
         return promise;
     },
 };

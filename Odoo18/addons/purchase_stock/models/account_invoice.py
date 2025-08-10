@@ -3,7 +3,7 @@
 
 from odoo import fields, models, api
 from odoo.tools import float_compare, float_is_zero
-from odoo.tools.misc import unique
+from odoo.tools.misc import groupby
 
 
 class AccountMove(models.Model):
@@ -113,7 +113,7 @@ class AccountMove(models.Model):
         return lines_vals_list
 
     def _post(self, soft=True):
-        if not self.env.context.get('move_reverse_cancel'):
+        if not self._context.get('move_reverse_cancel'):
             self.env['account.move.line'].create(self._stock_account_prepare_anglo_saxon_in_lines_vals())
 
         # Create correction layer and impact accounts if invoice price is different
@@ -129,16 +129,16 @@ class AccountMove(models.Model):
             svls, _amls = valued_lines._apply_price_difference()
             stock_valuation_layers |= svls
 
-        for product, company in unique((svl.product_id, svl.company_id) for svl in stock_valuation_layers):
+        for (product, company), dummy in groupby(stock_valuation_layers, key=lambda svl: (svl.product_id, svl.company_id)):
             product = product.with_company(company.id)
-            if not product.uom_id.is_zero(product.quantity_svl):
+            if not float_is_zero(product.quantity_svl, precision_rounding=product.uom_id.rounding):
                 product.sudo().with_context(disable_auto_svl=True).write({'standard_price': product.value_svl / product.quantity_svl})
 
-        for lot, company in unique((svl.lot_id, svl.company_id) for svl in stock_valuation_layers):
+        for (lot, company), dummy in groupby(stock_valuation_layers, key=lambda svl: (svl.lot_id, svl.company_id)):
             if not lot:
                 continue
             lot = lot.with_company(company.id)
-            if not lot.product_id.uom_id.is_zero(lot.quantity_svl):
+            if not float_is_zero(lot.quantity_svl, precision_rounding=lot.product_id.uom_id.rounding):
                 lot.sudo().with_context(disable_auto_svl=True).write({'standard_price': lot.value_svl / lot.quantity_svl})
 
         posted = super(AccountMove, self.with_context(skip_cogs_reconciliation=True))._post(soft)

@@ -14,6 +14,7 @@ import {
 const lunchInfos = {
     username: "Johnny Hache",
     wallet: 12.05,
+    wallet_with_config: 12.05,
     is_manager: false,
     currency: {
         symbol: "€",
@@ -202,9 +203,7 @@ test("Manager: user change", async () => {
     expect(".lunch_user .dropdown-item:contains(David Elora)").toHaveCount(1);
 
     expectedUserId = 2;
-    await contains(
-        ".lunch_user li:not(.o_m2o_dropdown_option) .dropdown-item:contains('David Elora')"
-    ).click();
+    await contains(".lunch_user li:not(.o_m2o_dropdown_option) .dropdown-item:eq(3)").click();
 
     expect(".o_lunch_banner .w-100 > .d-flex > span:nth-child(2)").toHaveText("-10000.00\n€", {
         message: "David Elora is poor",

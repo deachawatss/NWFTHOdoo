@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { Model } from "@odoo/o-spreadsheet";
 
 /**

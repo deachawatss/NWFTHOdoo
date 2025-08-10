@@ -1,10 +1,10 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import models
-from odoo.fields import Domain
+from odoo.osv import expression
 
 
-class ProjectProject(models.Model):
+class Project(models.Model):
     _inherit = "project.project"
 
     # ----------------------------
@@ -22,9 +22,9 @@ class ProjectProject(models.Model):
         return sequence_per_invoice_type
 
     def _get_profitability_aal_domain(self):
-        return Domain.AND([
+        return expression.AND([
             super()._get_profitability_aal_domain(),
-            Domain('category', '!=', 'manufacturing_order'),
+            [('category', '!=', 'manufacturing_order')],
         ])
 
     def _get_profitability_items(self, with_action=True):

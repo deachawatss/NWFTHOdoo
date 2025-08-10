@@ -2,6 +2,7 @@ from odoo import models, _
 from odoo.addons.account.models.chart_template import template
 
 
+
 class AccountChartTemplate(models.AbstractModel):
     _inherit = "account.chart.template"
 
@@ -20,6 +21,8 @@ class AccountChartTemplate(models.AbstractModel):
             'country': None,
             'property_account_receivable_id': 'receivable',
             'property_account_payable_id': 'payable',
+            'property_account_expense_categ_id': 'expense',
+            'property_account_income_categ_id': 'income',
             'property_stock_account_input_categ_id': 'stock_in',
             'property_stock_account_output_categ_id': 'stock_out',
             'property_stock_valuation_account_id': 'stock_valuation',
@@ -48,7 +51,5 @@ class AccountChartTemplate(models.AbstractModel):
                 'default_cash_difference_expense_account_id': 'cash_diff_expense',
                 'account_journal_early_pay_discount_loss_account_id': 'cash_discount_loss',
                 'account_journal_early_pay_discount_gain_account_id': 'cash_discount_gain',
-                'expense_account_id': 'expense',
-                'income_account_id': 'income',
             }
         }

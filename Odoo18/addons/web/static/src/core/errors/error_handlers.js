@@ -73,6 +73,7 @@ export function rpcErrorHandler(env, error, originalError) {
             code: originalError.code,
             type: originalError.type,
             serverHost: error.event?.target?.location.host,
+            id: originalError.id,
             model: originalError.model,
         });
         return true;

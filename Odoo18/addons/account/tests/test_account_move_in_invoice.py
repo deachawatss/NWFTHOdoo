@@ -1,9 +1,10 @@
+# -*- coding: utf-8 -*-
 # pylint: disable=bad-whitespace
 from freezegun import freeze_time
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 from odoo.tests import Form, tagged
-from odoo import fields
-from odoo.fields import Command, Domain
+from odoo import fields, Command
+from odoo.osv import expression
 from odoo.exceptions import ValidationError, UserError
 from datetime import date
 
@@ -127,7 +128,7 @@ class TestAccountMoveInInvoiceOnchanges(AccountTestInvoicingCommon):
             'amount_tax': 168.0,
             'amount_total': 1128.0,
         }
-        cls.env.user.group_ids += cls.env.ref('uom.group_uom')
+        cls.env.user.groups_id += cls.env.ref('uom.group_uom')
 
     @classmethod
     def setup_armageddon_tax(cls, tax_name, company_data, **kwargs):
@@ -217,10 +218,6 @@ class TestAccountMoveInInvoiceOnchanges(AccountTestInvoicingCommon):
         ''' Test mapping a price-included tax (10%) with a price-excluded tax (20%) on a price_unit of 110.0.
         The price_unit should be 100.0 after applying the fiscal position.
         '''
-        fiscal_position = self.env['account.fiscal.position'].create({
-            'name': 'fiscal_pos_a',
-        })
-
         tax_price_include = self.env['account.tax'].create({
             'name': '10% incl',
             'type_tax_use': 'purchase',
@@ -234,8 +231,16 @@ class TestAccountMoveInInvoiceOnchanges(AccountTestInvoicingCommon):
             'type_tax_use': 'purchase',
             'amount_type': 'percent',
             'amount': 15,
-            'fiscal_position_ids': [Command.set(fiscal_position.ids)],
-            'original_tax_ids': [Command.set(tax_price_include.ids)],
+        })
+
+        fiscal_position = self.env['account.fiscal.position'].create({
+            'name': 'fiscal_pos_a',
+            'tax_ids': [
+                (0, None, {
+                    'tax_src_id': tax_price_include.id,
+                    'tax_dest_id': tax_price_exclude.id,
+                }),
+            ],
         })
 
         product = self.env['product.product'].create({
@@ -356,9 +361,6 @@ class TestAccountMoveInInvoiceOnchanges(AccountTestInvoicingCommon):
         ''' Test mapping a price-included tax (10%) with another price-included tax (20%) on a price_unit of 110.0.
         The price_unit should be 120.0 after applying the fiscal position.
         '''
-        fiscal_position = self.env['account.fiscal.position'].create({
-            'name': 'fiscal_pos_a',
-        })
         tax_price_include_1 = self.env['account.tax'].create({
             'name': '10% incl',
             'type_tax_use': 'purchase',
@@ -374,8 +376,16 @@ class TestAccountMoveInInvoiceOnchanges(AccountTestInvoicingCommon):
             'amount': 20,
             'price_include_override': 'tax_included',
             'include_base_amount': True,
-            'fiscal_position_ids': [Command.link(fiscal_position.id)],
-            'original_tax_ids': [Command.link(tax_price_include_1.id)],
+        })
+
+        fiscal_position = self.env['account.fiscal.position'].create({
+            'name': 'fiscal_pos_a',
+            'tax_ids': [
+                (0, None, {
+                    'tax_src_id': tax_price_include_1.id,
+                    'tax_dest_id': tax_price_include_2.id,
+                }),
+            ],
         })
 
         product = self.env['product.product'].create({
@@ -787,7 +797,7 @@ class TestAccountMoveInInvoiceOnchanges(AccountTestInvoicingCommon):
 
     def test_in_invoice_line_onchange_cash_rounding_1(self):
         # Required for `invoice_cash_rounding_id` to be visible in the view
-        self.env.user.group_ids += self.env.ref('account.group_cash_rounding')
+        self.env.user.groups_id += self.env.ref('account.group_cash_rounding')
         # Test 'add_invoice_line' rounding
         move_form = Form(self.invoice)
         # Add a cash rounding having 'add_invoice_line'.
@@ -1120,8 +1130,8 @@ class TestAccountMoveInInvoiceOnchanges(AccountTestInvoicingCommon):
             # `purchase` adds a view which makes `invoice_vendor_bill_id` invisible
             # for purchase users
             # https://github.com/odoo/odoo/blob/385884afd31f25d61e99d139ecd4c574d99a1863/addons/purchase/views/account_move_views.xml#L26
-            self.env.user.group_ids -= self.env.ref('purchase.group_purchase_manager')
-            self.env.user.group_ids -= self.env.ref('purchase.group_purchase_user')
+            self.env.user.groups_id -= self.env.ref('purchase.group_purchase_manager')
+            self.env.user.groups_id -= self.env.ref('purchase.group_purchase_user')
         copy_invoice = self.invoice.copy()
 
         move_form = Form(self.invoice)
@@ -1568,8 +1578,11 @@ class TestAccountMoveInInvoiceOnchanges(AccountTestInvoicingCommon):
         move.action_post()
         self.assertFalse(move.payment_ids)  # don't auto reconcile payments
 
+        # Reconcile manually, the move is now fully paid
+        (move.line_ids[-1] | payment.move_id.line_ids.filtered(lambda line: line.account_id == move.line_ids[-1].account_id)).reconcile()
+
         # If the move is already fully paid, we should alert the user
-        with self.assertRaisesRegex(UserError, r"There's nothing left to pay for the selected journal items, so no payment registration is necessary. You've got your finances under control like a boss!"):
+        with self.assertRaisesRegex(UserError, r"You can't register a payment because there is nothing left"):
             action_register_payment = move.action_force_register_payment()
             self.env[action_register_payment['res_model']].with_context(action_register_payment['context']).create({})
 
@@ -2240,7 +2253,7 @@ class TestAccountMoveInInvoiceOnchanges(AccountTestInvoicingCommon):
     def test_in_invoice_line_tax_line_delete(self):
         with self.assertRaisesRegex(ValidationError, "You cannot delete a tax line"):
             with Form(self.invoice) as invoice_form:
-                invoice_form.journal_line_ids.remove(2)
+                invoice_form.line_ids.remove(2)
 
     @freeze_time('2022-06-17')
     def test_fiduciary_mode_date_suggestion(self):
@@ -2289,9 +2302,9 @@ class TestAccountMoveInInvoiceOnchanges(AccountTestInvoicingCommon):
         move = move_form.save()
         self.assertEqual(move.invoice_date.strftime('%Y-%m-%d'), '2022-05-06')
 
-    def _assert_payment_move_state(self, move_type, amount, counterpart_values_list, payment_state, post_move=True):
+    def _assert_payment_move_state(self, move_type, amount, counterpart_values_list, payment_state):
         def assert_partial(line1, line2):
-            partial = self.env['account.partial.reconcile'].search(Domain.OR([
+            partial = self.env['account.partial.reconcile'].search(expression.OR([
                 [('debit_move_id', '=', line1.id), ('credit_move_id', '=', line2.id)],
                 [('debit_move_id', '=', line2.id), ('credit_move_id', '=', line1.id)],
             ]), limit=1)
@@ -2330,8 +2343,7 @@ class TestAccountMoveInInvoiceOnchanges(AccountTestInvoicingCommon):
                     }),
                 ]
             move = self.env['account.move'].create(move_vals)
-            if post_move:
-                move.action_post()
+            move.action_post()
             return move
 
         def create_payment(move, amount):
@@ -2474,69 +2486,6 @@ class TestAccountMoveInInvoiceOnchanges(AccountTestInvoicingCommon):
             ):
                 self._assert_payment_move_state(move_type, amount, counterpart_values_list, payment_state)
 
-    def test_payment_move_state_draft(self):
-        for move_type, amount, counterpart_values_list, payment_state, *extra in (
-            ('out_invoice', 1000.0, [('out_refund', 1000.0)], 'reversed'),
-            ('out_invoice', 1000.0, [('out_refund', 500.0), ('out_refund', 500.0)], 'reversed'),
-            ('out_invoice', 1000.0, [('out_refund', 500.0), ('entry', -500.0)], 'reversed'),
-            ('out_receipt', 1000.0, [('out_refund', 1000.0)], 'reversed'),
-            ('out_receipt', 1000.0, [('out_refund', 500.0), ('out_refund', 500.0)], 'reversed'),
-            ('out_refund', 1000.0, [('entry', 1000.0)], 'reversed'),
-            ('in_invoice', 1000.0, [('in_refund', 1000.0)], 'reversed'),
-            ('in_invoice', 1000.0, [('in_refund', 500.0), ('in_refund', 500.0)], 'reversed'),
-            ('in_invoice', 1000.0, [('in_refund', 500.0), ('entry', 500.0)], 'reversed'),
-            ('in_receipt', 1000.0, [('in_refund', 1000.0)], 'reversed'),
-            ('in_receipt', 1000.0, [('in_refund', 500.0), ('in_refund', 500.0)], 'reversed'),
-            ('in_refund', 1000.0, [('entry', -1000.0)], 'reversed'),
-            ('entry', 1000.0, [('entry', -1000.0)], 'not_paid'),
-            ('out_invoice', 1000.0, [('payment', 500.0)], 'partial'),
-            ('out_invoice', 1000.0, [('payment', 1000.0)], 'in_payment'),
-            ('out_invoice', 1000.0, [('statement_line', 500.0)], 'partial'),
-            ('out_invoice', 1000.0, [('statement_line', 1000.0)], 'paid'),
-            ('out_receipt', 1000.0, [('payment', 500.0)], 'partial'),
-            ('out_receipt', 1000.0, [('payment', 1000.0)], 'in_payment'),
-            ('out_receipt', 1000.0, [('statement_line', 500.0)], 'partial'),
-            ('out_receipt', 1000.0, [('statement_line', 1000.0)], 'paid'),
-            ('out_refund', 1000.0, [('payment', 500.0)], 'partial'),
-            ('out_refund', 1000.0, [('payment', 1000.0)], 'in_payment'),
-            ('out_refund', 1000.0, [('statement_line', -500.0)], 'partial'),
-            ('out_refund', 1000.0, [('statement_line', -1000.0)], 'paid'),
-            ('in_invoice', 1000.0, [('payment', 500.0)], 'partial'),
-            ('in_invoice', 1000.0, [('payment', 1000.0)], 'in_payment'),
-            ('in_invoice', 1000.0, [('statement_line', -500.0)], 'partial'),
-            ('in_invoice', 1000.0, [('statement_line', -1000.0)], 'paid'),
-            ('in_receipt', 1000.0, [('payment', 500.0)], 'partial'),
-            ('in_receipt', 1000.0, [('payment', 1000.0)], 'in_payment'),
-            ('in_receipt', 1000.0, [('statement_line', -500.0)], 'partial'),
-            ('in_receipt', 1000.0, [('statement_line', -1000.0)], 'paid'),
-            ('in_refund', 1000.0, [('payment', 500.0)], 'partial'),
-            ('in_refund', 1000.0, [('payment', 1000.0)], 'in_payment'),
-            ('in_refund', 1000.0, [('statement_line', 500.0)], 'partial'),
-            ('in_refund', 1000.0, [('statement_line', 1000.0)], 'paid'),
-            ('entry', 1000.0, [('payment', 500.0)], 'not_paid'),
-            ('entry', 1000.0, [('payment', 1000.0)], 'not_paid'),
-            ('entry', 1000.0, [('statement_line', 500.0)], 'not_paid'),
-            ('entry', 1000.0, [('statement_line', 1000.0)], 'not_paid'),
-            ('out_invoice', 1000.0, [('out_refund', 500.0), ('payment', 500.0)], 'in_payment'),
-            ('out_invoice', 1000.0, [('out_refund', 500.0), ('payment', 400.0)], 'partial'),
-            ('out_invoice', 1000.0, [('out_refund', 500.0), ('statement_line', 500.0)], 'paid'),
-            ('out_invoice', 1000.0, [('out_refund', 500.0), ('statement_line', 400.0)], 'partial'),
-            ('out_invoice', 1000.0, [('entry', -1000.0)], 'paid'),
-            ('in_invoice', 1000.0, [('in_refund', 500.0), ('payment', 500.0)], 'in_payment'),
-            ('in_invoice', 1000.0, [('in_refund', 500.0), ('payment', 400.0)], 'partial'),
-            ('in_invoice', 1000.0, [('in_refund', 500.0), ('statement_line', -500.0)], 'paid'),
-            ('in_invoice', 1000.0, [('in_refund', 500.0), ('statement_line', -400.0)], 'partial'),
-            ('in_invoice', 1000.0, [('entry', 1000.0)], 'paid'),
-            ('out_invoice', 0.0, [], 'not_paid'),
-        ):
-            with self.subTest(
-                move_type=move_type,
-                amount=amount,
-                counterpart_values_list=counterpart_values_list,
-                payment_state=payment_state,
-            ):
-                self._assert_payment_move_state(move_type, amount, counterpart_values_list, payment_state, post_move=False)
-
     def test_onchange_journal_currency(self):
         """
         Ensure invoice currency changes on journal change, iff the journal
@@ -2593,7 +2542,7 @@ class TestAccountMoveInInvoiceOnchanges(AccountTestInvoicingCommon):
         Ensure that taxes are recomputed correctly when product uom and
         price unit are changed for users without 'uom.group_uom' group
         """
-        self.env.user.group_ids -= self.env.ref('uom.group_uom')
+        self.env.user.groups_id -= self.env.ref('uom.group_uom')
         tax = self.company_data['default_tax_purchase']
         product = self.env['product.product'].create({
             'name': 'product',
@@ -2747,17 +2696,14 @@ class TestAccountMoveInInvoiceOnchanges(AccountTestInvoicingCommon):
         product = self.env['product.product'].create({
             'name': 'product',
             'uom_id': uom_gram.id,
+            'uom_po_id': uom_kgm.id,
             'standard_price': 110.0,
-            'seller_ids': [Command.create({
-                'partner_id': self.partner_a.id,
-                'product_uom_id': uom_kgm.id,
-            })]
         })
         # customer invoice should have sale uom
         invoice = self.init_invoice(move_type='out_invoice', products=[product])
         invoice_uom = invoice.invoice_line_ids[0].product_uom_id
         self.assertEqual(invoice_uom, uom_gram)
-        # vendor bill should have seller uom
+        # vendor bill should have purchase uom
         bill = self.init_invoice(move_type='in_invoice', products=[product])
         bill_uom = bill.invoice_line_ids[0].product_uom_id
         self.assertEqual(bill_uom, uom_kgm)
@@ -2769,7 +2715,7 @@ class TestAccountMoveInInvoiceOnchanges(AccountTestInvoicingCommon):
         payment_term_line = self.invoice.line_ids.filtered(lambda l: l.display_type == 'payment_term')
         index = self.invoice.line_ids.ids.index(payment_term_line.id)
         with Form(self.invoice) as move_form:
-            with move_form.journal_line_ids.edit(index) as line_form:
+            with move_form.line_ids.edit(index) as line_form:
                 line_form.name = 'XYZ'
         move_form.save()
         self.invoice.action_post()
@@ -2806,52 +2752,3 @@ class TestAccountMoveInInvoiceOnchanges(AccountTestInvoicingCommon):
         action = credit_note_wizard.reverse_moves()
         credit_note = self.env['account.move'].browse(action['res_id'])
         self.assertEqual(credit_note.amount_total, invoice.amount_total)
-
-    def test_journal_item_on_payable_account(self):
-        move_form = Form(self.env['account.move'].with_context(default_move_type='in_invoice'))
-
-        with move_form.journal_line_ids.new() as line_form:
-            line_form.account_id = self.company_data['default_account_payable']
-
-        with self.assertRaisesRegex(UserError, 'Any journal item on a payable account must have a due date and vice versa.'):
-            move_form.save()
-
-    def test_default_tax(self):
-        ''' Tests that for invoices the default product tax is used. If none, the account default tax should be used.
-
-            In the case of receipts, the default receipt tax in the COA should take priority over the previous statement.
-        '''
-        receipt_tax = self.env['account.tax'].create({
-            'name': 'Default receipt tax',
-            'type_tax_use': 'purchase',
-            'amount_type': 'percent',
-            'amount': 10,
-            'company_id': self.env.company.id,
-        })
-        product_tax = receipt_tax.copy({'name': 'Default product tax'})
-        account_tax = receipt_tax.copy({'name': 'Default account tax'})
-        invoice = self.init_invoice('in_invoice', products=self.product_a)
-        receipt = self.init_invoice('in_receipt', products=self.product_a)
-        moves = invoice + receipt
-
-        # Set up the default taxes
-        self.env.company.account_purchase_receipt_tax_id = receipt_tax
-        self.product_a.supplier_taxes_id = product_tax
-        moves.invoice_line_ids.account_id.tax_ids = account_tax
-
-        # Receipt tax (for the receipt only)
-        moves.invoice_line_ids._compute_tax_ids()
-        self.assertEqual(invoice.invoice_line_ids.tax_ids, product_tax)
-        self.assertEqual(receipt.invoice_line_ids.tax_ids, receipt_tax)
-
-        # Product tax
-        self.env.company.account_purchase_receipt_tax_id = False
-        moves.invoice_line_ids._compute_tax_ids()
-        self.assertEqual(invoice.invoice_line_ids.tax_ids, product_tax)
-        self.assertEqual(receipt.invoice_line_ids.tax_ids, product_tax)
-
-        # Account tax
-        self.product_a.supplier_taxes_id = False
-        moves.invoice_line_ids._compute_tax_ids()
-        self.assertEqual(invoice.invoice_line_ids.tax_ids, account_tax)
-        self.assertEqual(receipt.invoice_line_ids.tax_ids, account_tax)

@@ -39,7 +39,5 @@ class AccountChartTemplate(models.AbstractModel):
                 'default_cash_difference_expense_account_id': 'om_account_500909',
                 'deferred_expense_account_id': 'om_account_100416',
                 'deferred_revenue_account_id': 'om_account_200401',
-                'income_account_id': 'om_account_400101',
-                'expense_account_id': 'om_account_500101',
             },
         }

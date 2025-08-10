@@ -4,12 +4,11 @@
     'version': '0.1',
     'category': 'Hidden/Tests',
     'description': """A module to verify the inheritance.""",
-    'depends': ['base', 'test_orm'],
+    'depends': ['base', 'test_new_api'],
     'data': [
         'ir.model.access.csv',
         'demo_data.xml',
     ],
     'installable': True,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

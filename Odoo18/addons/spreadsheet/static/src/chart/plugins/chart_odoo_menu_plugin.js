@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { OdooCorePlugin } from "@spreadsheet/plugins";
 import { coreTypes, helpers } from "@odoo/o-spreadsheet";
 import { omit } from "@web/core/utils/objects";
@@ -21,7 +23,7 @@ export class ChartOdooMenuPlugin extends OdooCorePlugin {
                 this.history.update("odooMenuReference", cmd.chartId, cmd.odooMenuId);
                 break;
             case "DELETE_FIGURE":
-                this.history.update("odooMenuReference", cmd.figureId, undefined);
+                this.history.update("odooMenuReference", cmd.id, undefined);
                 break;
             case "DUPLICATE_SHEET":
                 this.updateOnDuplicateSheet(cmd.sheetId, cmd.sheetIdTo);

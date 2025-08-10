@@ -2,14 +2,13 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import tools, _
-from odoo.exceptions import UserError
 from odoo.http import route, request
 from odoo.addons.mass_mailing.controllers import main
 
 
 class MassMailController(main.MassMailController):
 
-    @route('/website_mass_mailing/is_subscriber', type='jsonrpc', website=True, auth='public')
+    @route('/website_mass_mailing/is_subscriber', type='json', website=True, auth='public')
     def is_subscriber(self, list_id, subscription_type, **post):
         value = self._get_value(subscription_type)
         fname = self._get_fname(subscription_type)
@@ -33,14 +32,12 @@ class MassMailController(main.MassMailController):
     def _get_fname(self, subscription_type):
         return 'email' if subscription_type == 'email' else ''
 
-    @route('/website_mass_mailing/subscribe', type='jsonrpc', website=True, auth='public')
+    @route('/website_mass_mailing/subscribe', type='json', website=True, auth='public')
     def subscribe(self, list_id, value, subscription_type, **post):
-        try:
-            request.env['ir.http']._verify_request_recaptcha_token('website_mass_mailing_subscribe')
-        except UserError as e:
+        if not request.env['ir.http']._verify_request_recaptcha_token('website_mass_mailing_subscribe'):
             return {
                 'toast_type': 'danger',
-                'toast_content': str(e),
+                'toast_content': _("Suspicious activity detected by Google reCaptcha."),
             }
 
         fname = self._get_fname(subscription_type)

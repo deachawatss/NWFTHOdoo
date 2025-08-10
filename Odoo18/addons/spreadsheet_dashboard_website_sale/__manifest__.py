@@ -2,7 +2,7 @@
 {
     'name': "Spreadsheet dashboard for eCommerce",
     'version': '1.0',
-    'category': 'Productivity/Dashboard',
+    'category': 'Hidden',
     'summary': 'Spreadsheet',
     'description': 'Spreadsheet',
     'depends': ['spreadsheet_dashboard', 'website_sale'],
@@ -11,6 +11,5 @@
     ],
     'installable': True,
     'auto_install': ['website_sale'],
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

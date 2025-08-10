@@ -1,1 +1,2 @@
-from . import test_taxes_global_discount
+# Part of Odoo. See LICENSE file for full copyright and licensing details.
+from . import test_frontend

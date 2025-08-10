@@ -16,7 +16,7 @@ class TestHrLeaveType(TestHrHolidaysCommon):
         leave_type = self.env['hr.leave.type'].create({
             'name': 'Paid Time Off',
             'time_type': 'leave',
-            'requires_allocation': False,
+            'requires_allocation': 'no',
         })
 
         leave_date = date_utils.start_of((date.today() - relativedelta(days=1)), 'week')
@@ -39,7 +39,7 @@ class TestHrLeaveType(TestHrHolidaysCommon):
         with self.assertRaises(AccessError):
             self.env['hr.leave.type'].with_user(self.user_hruser_id).create({
                 'name': 'UserCheats',
-                'requires_allocation': False,
+                'requires_allocation': 'no',
             })
 
     def test_users_tz_shift_back(self):
@@ -62,7 +62,7 @@ class TestHrLeaveType(TestHrHolidaysCommon):
             'employee_id': employee.id,
             'date_from': '2024-08-19',
             'date_to': '2024-08-20',
-        }).action_approve()
+        }).action_validate()
 
         leave_types = self.env['hr.leave.type'].with_context(
             default_date_from='2024-08-20 21:00:00',

@@ -1,25 +1,24 @@
+# Part of Odoo. See LICENSE file for full copyright and licensing details.
+import argparse
 import os
 import re
 import sys
+from pathlib import Path
 
 import jinja2
 
 from . import Command
 
-
 class Scaffold(Command):
     """ Generates an Odoo module skeleton. """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.epilog = "Built-in templates available are: %s" % ', '.join(
-            d for d in os.listdir(builtins())
-            if d != 'base'
-        )
-
     def run(self, cmdargs):
         # TODO: bash completion file
-        parser = self.parser
+        parser = argparse.ArgumentParser(
+            prog=f'{Path(sys.argv[0]).name} {self.name}',
+            description=self.__doc__,
+            epilog=self.epilog(),
+        )
         parser.add_argument(
             '-t', '--template', type=template, default=template('default'),
             help="Use a custom module template, can be a template name or the"
@@ -48,6 +47,11 @@ class Scaffold(Command):
             params=params,
         )
 
+    def epilog(self):
+        return "Built-in templates available are: %s" % ', '.join(
+            d for d in os.listdir(builtins())
+            if d != 'base'
+        )
 
 builtins = lambda *args: os.path.join(
     os.path.abspath(os.path.dirname(__file__)),
@@ -78,7 +82,7 @@ def directory(p, create=False):
     if create and not os.path.exists(expanded):
         os.makedirs(expanded)
     if not os.path.isdir(expanded):
-        sys.exit("%s is not a directory" % p)
+        die("%s is not a directory" % p)
     return expanded
 
 env = jinja2.Environment()
@@ -96,7 +100,7 @@ class template(object):
         self.path = identifier
         if os.path.isdir(self.path):
             return
-        sys.exit(f"{identifier} is not a valid module template")
+        die("{} is not a valid module template".format(identifier))
 
     def __str__(self):
         return self.id
@@ -136,6 +140,10 @@ class template(object):
                        .stream(params or {})\
                        .dump(f, encoding='utf-8')
                     f.write(b'\n')
+
+def die(message, code=1):
+    print(message, file=sys.stderr)
+    sys.exit(code)
 
 def warn(message):
     # ASK: shall we use logger ?

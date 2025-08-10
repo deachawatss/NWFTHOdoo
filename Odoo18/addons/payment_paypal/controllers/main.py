@@ -21,22 +21,25 @@ class PaypalController(http.Controller):
     _complete_url = '/payment/paypal/complete_order'
     _webhook_url = '/payment/paypal/webhook/'
 
-    @http.route(_complete_url, type='jsonrpc', auth='public', methods=['POST'])
-    def paypal_complete_order(self, order_id, reference):
+    @http.route(_complete_url, type='json', auth='public', methods=['POST'])
+    def paypal_complete_order(self, provider_id, order_id, reference=None):
         """ Make a capture request and handle the notification data.
 
+        :param int provider_id: The provider handling the transaction, as a `payment.provider` id.
         :param string order_id: The order id provided by PayPal to identify the order.
-        :param str reference: The reference of the transaction, used to generate the idempotency
-                              key.
+        :param str reference: The reference of the transaction used to generate idempotency key.
         :return: None
         """
-        tx_sudo = request.env['payment.transaction'].sudo()._get_tx_from_notification_data(
-            'paypal', {'reference_id': reference}
-        )
-        idempotency_key = payment_utils.generate_idempotency_key(
-            tx_sudo, scope='payment_request_controller'
-        )
-        response = tx_sudo.provider_id._paypal_make_request(
+        provider_sudo = request.env['payment.provider'].browse(provider_id).sudo()
+        idempotency_key = None
+        if reference:
+            tx_sudo = request.env['payment.transaction'].sudo()._get_tx_from_notification_data(
+                'paypal', {'reference_id': reference}
+            )
+            idempotency_key = payment_utils.generate_idempotency_key(
+                tx_sudo, scope='payment_request_controller'
+            )
+        response = provider_sudo._paypal_make_request(
             f'/v2/checkout/orders/{order_id}/capture', idempotency_key=idempotency_key
         )
         normalized_response = self._normalize_paypal_data(response)

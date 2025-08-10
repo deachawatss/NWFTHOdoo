@@ -14,7 +14,6 @@ class TestPurchaseToInvoiceCommon(AccountTestInvoicingCommon):
     def setUpClass(cls):
         super(TestPurchaseToInvoiceCommon, cls).setUpClass()
         cls.other_currency = cls.setup_other_currency('EUR')
-        cls.env.user.group_ids += cls.env.ref('uom.group_uom')
         uom_unit = cls.env.ref('uom.product_uom_unit')
         uom_hour = cls.env.ref('uom.product_uom_hour')
         cls.product_order = cls.env['product.product'].create({
@@ -23,6 +22,7 @@ class TestPurchaseToInvoiceCommon(AccountTestInvoicingCommon):
             'list_price': 280.0,
             'type': 'consu',
             'uom_id': uom_unit.id,
+            'uom_po_id': uom_unit.id,
             'purchase_method': 'purchase',
             'default_code': 'PROD_ORDER',
             'taxes_id': False,
@@ -33,6 +33,7 @@ class TestPurchaseToInvoiceCommon(AccountTestInvoicingCommon):
             'list_price': 290.0,
             'type': 'consu',
             'uom_id': uom_unit.id,
+            'uom_po_id': uom_unit.id,
             'purchase_method': 'purchase',
             'default_code': 'PROD_ORDER',
             'taxes_id': False,
@@ -43,6 +44,7 @@ class TestPurchaseToInvoiceCommon(AccountTestInvoicingCommon):
             'list_price': 280.0,
             'type': 'consu',
             'uom_id': uom_unit.id,
+            'uom_po_id': uom_unit.id,
             'purchase_method': 'purchase',
             'default_code': 'PROD_ORDER_VAR_NAME',
             'taxes_id': False,
@@ -53,6 +55,7 @@ class TestPurchaseToInvoiceCommon(AccountTestInvoicingCommon):
             'list_price': 180.0,
             'type': 'service',
             'uom_id': uom_unit.id,
+            'uom_po_id': uom_unit.id,
             'purchase_method': 'receive',
             'default_code': 'SERV_DEL',
             'taxes_id': False,
@@ -63,6 +66,7 @@ class TestPurchaseToInvoiceCommon(AccountTestInvoicingCommon):
             'list_price': 90.0,
             'type': 'service',
             'uom_id': uom_hour.id,
+            'uom_po_id': uom_hour.id,
             'purchase_method': 'purchase',
             'default_code': 'PRE-PAID',
             'taxes_id': False,
@@ -73,6 +77,7 @@ class TestPurchaseToInvoiceCommon(AccountTestInvoicingCommon):
             'list_price': 70.0,
             'type': 'consu',
             'uom_id': uom_unit.id,
+            'uom_po_id': uom_unit.id,
             'purchase_method': 'receive',
             'default_code': 'PROD_DEL',
             'taxes_id': False,
@@ -92,7 +97,7 @@ class TestPurchaseToInvoiceCommon(AccountTestInvoicingCommon):
                 line_form.product_id = product
                 line_form.price_unit = product.list_price
                 line_form.product_qty = 1
-                line_form.product_uom_id = product.uom_id
+                line_form.product_uom = product.uom_id
                 line_form.date_planned = date_planned
                 if taxes:
                     line_form.tax_ids.clear()
@@ -121,19 +126,19 @@ class TestPurchaseToInvoice(TestPurchaseToInvoiceCommon):
             'name': self.product_deliver.name,
             'product_id': self.product_deliver.id,
             'product_qty': 10.0,
-            'product_uom_id': self.product_deliver.uom_id.id,
+            'product_uom': self.product_deliver.uom_id.id,
             'price_unit': self.product_deliver.list_price,
             'order_id': purchase_order.id,
-            'tax_ids': False,
+            'taxes_id': False,
         })
         pol_serv_deliver = PurchaseOrderLine.create({
             'name': self.service_deliver.name,
             'product_id': self.service_deliver.id,
             'product_qty': 10.0,
-            'product_uom_id': self.service_deliver.uom_id.id,
+            'product_uom': self.service_deliver.uom_id.id,
             'price_unit': self.service_deliver.list_price,
             'order_id': purchase_order.id,
-            'tax_ids': False,
+            'taxes_id': False,
         })
         purchase_order.button_confirm()
 
@@ -165,19 +170,19 @@ class TestPurchaseToInvoice(TestPurchaseToInvoiceCommon):
             'name': self.product_order.name,
             'product_id': self.product_order.id,
             'product_qty': 10.0,
-            'product_uom_id': self.product_order.uom_id.id,
+            'product_uom': self.product_order.uom_id.id,
             'price_unit': self.product_order.list_price,
             'order_id': purchase_order.id,
-            'tax_ids': False,
+            'taxes_id': False,
         })
         pol_serv_order = PurchaseOrderLine.create({
             'name': self.service_order.name,
             'product_id': self.service_order.id,
             'product_qty': 10.0,
-            'product_uom_id': self.service_order.uom_id.id,
+            'product_uom': self.service_order.uom_id.id,
             'price_unit': self.service_order.list_price,
             'order_id': purchase_order.id,
-            'tax_ids': False,
+            'taxes_id': False,
         })
         purchase_order.button_confirm()
 
@@ -209,19 +214,19 @@ class TestPurchaseToInvoice(TestPurchaseToInvoiceCommon):
             'name': self.product_deliver.name,
             'product_id': self.product_deliver.id,
             'product_qty': 10.0,
-            'product_uom_id': self.product_deliver.uom_id.id,
+            'product_uom': self.product_deliver.uom_id.id,
             'price_unit': self.product_deliver.list_price,
             'order_id': purchase_order.id,
-            'tax_ids': False,
+            'taxes_id': False,
         })
         pol_serv_deliver = PurchaseOrderLine.create({
             'name': self.service_deliver.name,
             'product_id': self.service_deliver.id,
             'product_qty': 10.0,
-            'product_uom_id': self.service_deliver.uom_id.id,
+            'product_uom': self.service_deliver.uom_id.id,
             'price_unit': self.service_deliver.list_price,
             'order_id': purchase_order.id,
-            'tax_ids': False,
+            'taxes_id': False,
         })
         purchase_order.button_confirm()
 
@@ -254,19 +259,19 @@ class TestPurchaseToInvoice(TestPurchaseToInvoiceCommon):
             'name': self.product_order.name,
             'product_id': self.product_order.id,
             'product_qty': 10.0,
-            'product_uom_id': self.product_order.uom_id.id,
+            'product_uom': self.product_order.uom_id.id,
             'price_unit': self.product_order.list_price,
             'order_id': purchase_order.id,
-            'tax_ids': False,
+            'taxes_id': False,
         })
         pol_serv_order = PurchaseOrderLine.create({
             'name': self.service_order.name,
             'product_id': self.service_order.id,
             'product_qty': 10.0,
-            'product_uom_id': self.service_order.uom_id.id,
+            'product_uom': self.service_order.uom_id.id,
             'price_unit': self.service_order.list_price,
             'order_id': purchase_order.id,
-            'tax_ids': False,
+            'taxes_id': False,
         })
         purchase_order.button_confirm()
 
@@ -307,10 +312,10 @@ class TestPurchaseToInvoice(TestPurchaseToInvoiceCommon):
                 'name': self.product_order.name,
                 'product_id': self.product_order.id,
                 'product_qty': 1,
-                'product_uom_id': self.product_order.uom_id.id,
+                'product_uom': self.product_order.uom_id.id,
                 'price_unit': 1000,
                 'order_id': po.id,
-                'tax_ids': False,
+                'taxes_id': False,
             })
             po.button_confirm()
             pol_prod_order.write({'qty_received': 1})
@@ -350,9 +355,9 @@ class TestPurchaseToInvoice(TestPurchaseToInvoiceCommon):
                 'name': self.product_a.name,
                 'product_id': self.product_a.id,
                 'product_qty': 12,
-                'product_uom_id': self.product_a.uom_id.id,
+                'product_uom': self.product_a.uom_id.id,
                 'price_unit': 0.001,
-                'tax_ids': False,
+                'taxes_id': False,
             })]
         })
         po.button_confirm()
@@ -369,7 +374,7 @@ class TestPurchaseToInvoice(TestPurchaseToInvoiceCommon):
         the po, it is the same that is mentioned in the bill.
         """
         # Required for `analytic.group_analytic_accounting` to be visible in the view
-        self.env.user.group_ids += self.env.ref('analytic.group_analytic_accounting')
+        self.env.user.groups_id += self.env.ref('analytic.group_analytic_accounting')
         analytic_plan = self.env['account.analytic.plan'].create({'name': 'Plan Test'})
         analytic_account_default = self.env['account.analytic.account'].create({'name': 'default', 'plan_id': analytic_plan.id})
         analytic_account_manual = self.env['account.analytic.account'].create({'name': 'manual', 'plan_id': analytic_plan.id})
@@ -397,8 +402,8 @@ class TestPurchaseToInvoice(TestPurchaseToInvoiceCommon):
         self.assertRecordValues(aml, [{'analytic_distribution': analytic_distribution_manual}])
 
     def test_purchase_order_analytic_account_product_change(self):
-        self.env.user.group_ids += self.env.ref('account.group_account_readonly')
-        self.env.user.group_ids += self.env.ref('analytic.group_analytic_accounting')
+        self.env.user.groups_id += self.env.ref('account.group_account_readonly')
+        self.env.user.groups_id += self.env.ref('analytic.group_analytic_accounting')
 
         analytic_plan = self.env['account.analytic.plan'].create({'name': 'Plan Test'})
         analytic_account_super = self.env['account.analytic.account'].create({'name': 'Super Account', 'plan_id': analytic_plan.id})
@@ -448,7 +453,7 @@ class TestPurchaseToInvoice(TestPurchaseToInvoiceCommon):
         the default analytic account is correctly set during the conversion from po to invoice.
         An additional analytic account set manually in another plan is also passed to the invoice.
         """
-        self.env.user.group_ids += self.env.ref('analytic.group_analytic_accounting')
+        self.env.user.groups_id += self.env.ref('analytic.group_analytic_accounting')
         analytic_plan_default = self.env['account.analytic.plan'].create({
             'name': 'default',
             'applicability_ids': [Command.create({
@@ -495,9 +500,9 @@ class TestPurchaseToInvoice(TestPurchaseToInvoiceCommon):
                     'name': self.product_order.name,
                     'product_id': self.product_order.id,
                     'product_qty': 10.0,
-                    'product_uom_id': self.product_order.uom_id.id,
+                    'product_uom': self.product_order.uom_id.id,
                     'price_unit': self.product_order.list_price,
-                    'tax_ids': False,
+                    'taxes_id': False,
                     'sequence': sequence_number,
                 }) for sequence_number in range(10, 13)]
             purchase_order = self.env['purchase.order'].with_context(tracking_disable=True).create({
@@ -529,9 +534,9 @@ class TestPurchaseToInvoice(TestPurchaseToInvoiceCommon):
                     'name': self.product_order.name,
                     'product_id': self.product_order.id,
                     'product_qty': 10.0,
-                    'product_uom_id': self.product_order.uom_id.id,
+                    'product_uom': self.product_order.uom_id.id,
                     'price_unit': self.product_order.list_price,
-                    'tax_ids': False,
+                    'taxes_id': False,
                     'sequence': sequence_number,
                 }) for sequence_number in range(10, 13)]
             purchase_order = self.env['purchase.order'].with_context(tracking_disable=True).create({
@@ -571,9 +576,9 @@ class TestPurchaseToInvoice(TestPurchaseToInvoiceCommon):
                     'name': self.product_deliver.name,
                     'product_id': self.product_deliver.id,
                     'product_qty': 20.0,
-                    'product_uom_id': self.product_deliver.uom_id.id,
+                    'product_uom': self.product_deliver.uom_id.id,
                     'price_unit': self.product_deliver.list_price,
-                    'tax_ids': False,
+                    'taxes_id': False,
                 }),
             ],
         })
@@ -699,7 +704,7 @@ class TestPurchaseToInvoice(TestPurchaseToInvoiceCommon):
         # Increase the PO line quantity: it should take another price if min. qty. is reached.
         po_form = Form(po)
         with po_form.order_line.edit(0) as po_line_form:
-            po_line_form.product_uom_id = uom_dozen
+            po_line_form.product_uom = uom_dozen
             po_line_form.product_qty = 3
         po = po_form.save()
         po_line = po.order_line[0]
@@ -720,37 +725,37 @@ class TestPurchaseToInvoice(TestPurchaseToInvoiceCommon):
             'name': "just a description",
             'product_id': self.product_deliver.id,
             'product_qty': 1,
-            'product_uom_id': self.product_deliver.uom_id.id,
+            'product_uom': self.product_deliver.uom_id.id,
             'price_unit': self.product_deliver.list_price,
             'order_id': po.id,
-            'tax_ids': False,
+            'taxes_id': False,
         })
         pol_prod_same = PurchaseOrderLine.create({
             'name': self.product_deliver.display_name,
             'product_id': self.product_deliver.id,
             'product_qty': 1,
-            'product_uom_id': self.product_deliver.uom_id.id,
+            'product_uom': self.product_deliver.uom_id.id,
             'price_unit': self.product_deliver.list_price,
             'order_id': po.id,
-            'tax_ids': False,
+            'taxes_id': False,
         })
         pol_prod_product_in_name = PurchaseOrderLine.create({
             'name': f"{self.product_deliver.display_name} with more description",
             'product_id': self.product_deliver.id,
             'product_qty': 1,
-            'product_uom_id': self.product_deliver.uom_id.id,
+            'product_uom': self.product_deliver.uom_id.id,
             'price_unit': self.product_deliver.list_price,
             'order_id': po.id,
-            'tax_ids': False,
+            'taxes_id': False,
         })
         pol_prod_name_in_product = PurchaseOrderLine.create({
             'name': "Switch",
             'product_id': self.product_deliver.id,
             'product_qty': 1,
-            'product_uom_id': self.product_deliver.uom_id.id,
+            'product_uom': self.product_deliver.uom_id.id,
             'price_unit': self.product_deliver.list_price,
             'order_id': po.id,
-            'tax_ids': False,
+            'taxes_id': False,
         })
 
         # Invoice the purchase order
@@ -891,6 +896,7 @@ class TestInvoicePurchaseMatch(TestPurchaseToInvoiceCommon):
             'list_price': 0.0,
             'type': 'consu',
             'uom_id': uom_unit.id,
+            'uom_po_id': uom_unit.id,
             'purchase_method': 'purchase',
             'default_code': 'PROD_ORDER',
             'taxes_id': False,
@@ -963,7 +969,6 @@ class TestInvoicePurchaseMatch(TestPurchaseToInvoiceCommon):
         prev_moves = self.env['account.move'].search([])
         self.init_purchase(confirm=True, products=[self.product_order, self.product_order_var_name])
         self.env['purchase.order.line'].flush_model()
-        self.env['purchase.order'].flush_model()
 
         match_lines = self.env['purchase.bill.line.match'].search([('partner_id', '=', self.partner_a.id)])
         match_lines.action_match_lines()
@@ -1011,8 +1016,8 @@ class TestInvoicePurchaseMatch(TestPurchaseToInvoiceCommon):
         action = wizard.action_add_to_po()
         po = self.env['purchase.order'].browse(action['res_id'])
         self.assertEqual(po.partner_id, self.partner_a)
-        self.assertTrue(po.order_line.tax_ids)
-        self.assertEqual(po.order_line.tax_ids, bill.invoice_line_ids.tax_ids)
+        self.assertTrue(po.order_line.taxes_id)
+        self.assertEqual(po.order_line.taxes_id, bill.invoice_line_ids.tax_ids)
         self.assertEqual(po.order_line.product_id, bill.invoice_line_ids.product_id)
         self.assertEqual(po.order_line.product_id, self.product_order_var_name + self.service_deliver)
 
@@ -1125,6 +1130,63 @@ class TestInvoicePurchaseMatch(TestPurchaseToInvoiceCommon):
         self.assertEqual(bill.currency_id, self.other_currency, "The currency of the Bill should be the one of the context")
         self.assertEqual(bill.invoice_line_ids.currency_id, self.other_currency, "The currency of the Bill lines should be the same as the currency of the Bill")
 
+    def test_payment_reference_autocomplete_invoice(self):
+        """
+        Test that the payment_reference field is not replaced when selected a purchase order
+        We test the flow for 8 use cases:
+        - Purchase order with partner ref:
+            - Bill with ref:
+                - Bill with payment_reference -> should not be replaced
+                - Bill without payment_reference -> should be the po.partner_ref
+            - Bill without ref:
+                - Bill with payment_reference -> should not be replaced
+                - Bill without payment_reference -> should be the po.partner_ref
+        - Purchase order without partner ref:
+            - Bill with ref
+                - Bill with payment_reference -> should not be replaced
+                - Bill without payment_reference -> should be the bill ref
+            - Bill with ref
+                - Bill with payment_reference -> should not be replaced
+                - Bill without payment_reference -> should be empty
+        """
+        purchase_order_w_ref, purchase_order_wo_ref = self.env['purchase.order'].with_context(tracking_disable=True).create([
+            {
+                'partner_id': self.partner_a.id,
+                'partner_ref': partner_ref,
+                'order_line': [
+                    Command.create({
+                        'product_id': self.product_order.id,
+                        'product_qty': 1.0,
+                        'price_unit': self.product_order.list_price,
+                        'taxes_id': False,
+                    }),
+                ]
+            } for partner_ref in ('PO-001', False)
+        ])
+        (purchase_order_w_ref + purchase_order_wo_ref).button_confirm()
+
+        expected_values_dict = {
+            purchase_order_w_ref: {
+                'w_bill_ref': {'w_payment_reference': '222', 'wo_payment_reference': purchase_order_w_ref.partner_ref},
+                'wo_bill_ref': {'w_payment_reference': '222', 'wo_payment_reference': purchase_order_w_ref.partner_ref},
+            },
+            purchase_order_wo_ref: {
+                'w_bill_ref': {'w_payment_reference': '222', 'wo_payment_reference': '111'},
+                'wo_bill_ref': {'w_payment_reference': '222', 'wo_payment_reference': ''},
+            }
+        }
+
+        for purchase_order, purchase_expected_values in expected_values_dict.items():
+            for w_bill_ref, expected_values in purchase_expected_values.items():
+                for w_payment_reference, expected_value in expected_values.items():
+                    with self.subTest(po_partner_ref=purchase_order.partner_ref, w_bill_ref=w_bill_ref, w_payment_reference=w_payment_reference, expected_value=expected_value):
+                        move_form = Form(self.env['account.move'].with_context(default_move_type='in_invoice'))
+                        move_form.ref = '111' if w_bill_ref == 'w_bill_ref' else ''
+                        move_form.payment_reference = '222' if w_payment_reference == 'w_payment_reference' else ''
+                        move_form.purchase_vendor_bill_id = self.env['purchase.bill.union'].browse(-purchase_order.id).exists()
+                        payment_reference = move_form._values['payment_reference'] or ''
+                        self.assertEqual(payment_reference, expected_value, "The payment reference should be %s" % expected_value)
+
     def test_invoice_user_id_on_bill(self):
         """
         Test that the invoice_user_id field is False when creating a vendor bill from a PO
@@ -1137,7 +1199,7 @@ class TestInvoicePurchaseMatch(TestPurchaseToInvoiceCommon):
             'name': 'Purchase user',
             'login': 'purchaseUser',
             'email': 'pu@odoo.com',
-            'group_ids': [Command.set([group_purchase_user.id, group_employee.id, group_partner_manager.id])],
+            'groups_id': [Command.set([group_purchase_user.id, group_employee.id, group_partner_manager.id])],
         })
         po1 = self.env['purchase.order'].with_context(tracking_disable=True).create({
             'partner_id': self.partner_a.id,
@@ -1147,7 +1209,7 @@ class TestInvoicePurchaseMatch(TestPurchaseToInvoiceCommon):
                     'product_id': self.product_order.id,
                     'product_qty': 1.0,
                     'price_unit': self.product_order.list_price,
-                    'tax_ids': False,
+                    'taxes_id': False,
                 }),
             ]
         })

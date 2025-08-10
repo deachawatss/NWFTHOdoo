@@ -2,9 +2,8 @@ import { Component, onMounted, onWillDestroy, useComponent, useRef } from "@odoo
 import { useHotkey } from "@web/core/hotkeys/hotkey_hook";
 import { OVERLAY_SYMBOL } from "@web/core/overlay/overlay_container";
 import { usePosition } from "@web/core/position/position_hook";
-import { reverseForRTL } from "@web/core/position/utils";
 import { useActiveElement } from "@web/core/ui/ui_service";
-import { mergeClasses } from "@web/core/utils/classname";
+import { addClassesToElement, mergeClasses } from "@web/core/utils/classname";
 import { useForwardRefToParent } from "@web/core/utils/hooks";
 
 function useEarlyExternalListener(target, eventName, handler, eventParams) {
@@ -77,7 +76,6 @@ export class Popover extends Component {
                 );
             },
         },
-        close: { type: Function },
 
         // Styling and semantical props
         animation: { optional: true, type: Boolean },
@@ -102,6 +100,7 @@ export class Popover extends Component {
         },
 
         // Control props
+        close: { optional: true, type: Function },
         closeOnClickAway: { optional: true, type: Function },
         closeOnEscape: { optional: true, type: Boolean },
         setActiveElement: { optional: true, type: Boolean },
@@ -110,8 +109,8 @@ export class Popover extends Component {
         ref: { optional: true, type: Function },
         slots: { optional: true, type: Object },
     };
-    static animationTime = 200;
 
+    static animationTime = 200;
     setup() {
         if (this.props.setActiveElement) {
             useActiveElement("ref");
@@ -119,11 +118,46 @@ export class Popover extends Component {
 
         useForwardRefToParent("ref");
         this.popoverRef = useRef("ref");
-        this.position = usePosition("ref", () => this.props.target, this.positioningOptions);
+
+        let shouldAnimate = this.props.animation;
+        this.position = usePosition("ref", () => this.props.target, {
+            onPositioned: (el, solution) => {
+                (this.props.onPositioned || this.onPositioned.bind(this))(el, solution);
+                if (this.props.arrow && this.props.onPositioned) {
+                    this.onPositioned.bind(this)(el, solution);
+                }
+
+                // opening animation
+                if (shouldAnimate) {
+                    shouldAnimate = false; // animate only once
+                    const transform = {
+                        top: ["translateY(-5%)", "translateY(0)"],
+                        right: ["translateX(5%)", "translateX(0)"],
+                        bottom: ["translateY(5%)", "translateY(0)"],
+                        left: ["translateX(-5%)", "translateX(0)"],
+                    }[solution.direction];
+                    this.position.lock();
+                    const animation = el.animate(
+                        { opacity: [0, 1], transform },
+                        this.constructor.animationTime
+                    );
+                    animation.finished.then(this.position.unlock);
+                }
+
+                if (this.props.fixedPosition) {
+                    // Prevent further positioning updates if fixed position is wanted
+                    this.position.lock();
+                }
+            },
+            position: this.props.position,
+        });
 
         onMounted(() => POPOVERS.set(this.props.target, this.popoverRef.el));
         onWillDestroy(() => POPOVERS.delete(this.props.target));
 
+        if (!this.props.close) {
+            return;
+        }
         if (this.props.target.isConnected) {
             useClickAway((target) => this.onClickAway(target));
 
@@ -139,31 +173,10 @@ export class Popover extends Component {
     }
 
     get defaultClassObj() {
-        return mergeClasses("o_popover popover mw-100 bs-popover-auto", this.props.class);
-    }
-
-    get positioningOptions() {
-        return {
-            margin: this.props.arrow ? 8 : 0,
-            onPositioned: (el, solution) => {
-                this.onPositioned(solution);
-                this.props.onPositioned?.(el, solution);
-            },
-            position: this.props.position,
-            shrink: true,
-        };
-    }
-
-    animate(direction) {
-        const transform = {
-            top: ["translateY(-5%)", "translateY(0)"],
-            right: ["translateX(5%)", "translateX(0)"],
-            bottom: ["translateY(5%)", "translateY(0)"],
-            left: ["translateX(-5%)", "translateX(0)"],
-        }[direction];
-        return this.popoverRef.el.animate(
-            { opacity: [0, 1], transform },
-            this.constructor.animationTime
+        return mergeClasses(
+            "o_popover popover mw-100",
+            { "o-popover--with-arrow": this.props.arrow },
+            this.props.class
         );
     }
 
@@ -181,75 +194,65 @@ export class Popover extends Component {
         }
     }
 
-    onPositioned({ direction, variant, variantOffset }) {
-        if (this.props.arrow) {
-            this.updateArrow(direction, variant, variantOffset);
-        }
-
-        // opening animation (only once)
-        if (this.props.animation && !this.animationDone) {
-            this.position.lock();
-            this.animate(direction).finished.then(() => {
-                this.animationDone = true;
-                if (!this.props.fixedPosition) {
-                    this.position.unlock();
-                }
-            });
-        }
-
-        if (this.props.fixedPosition) {
-            // Prevent further positioning updates if fixed position is wanted
-            this.position.lock();
-        }
-    }
-
     onTargetMutate() {
         if (!this.props.target.isConnected) {
             this.props.close();
         }
     }
 
-    updateArrow(direction, variant, variantOffset) {
-        const { el } = this.popoverRef;
+    onPositioned(el, { direction, variant }) {
+        const position = `${direction[0]}${variant[0]}`;
 
-        // Reverse the direction if RTL as bootstrap expects it that way
-        [direction, variant] = reverseForRTL(direction, variant);
+        // reset all popover classes
+        el.classList = [];
+        const directionMap = {
+            top: "top",
+            bottom: "bottom",
+            left: "start",
+            right: "end",
+        };
+        addClassesToElement(
+            el,
+            this.defaultClassObj,
+            `bs-popover-${directionMap[direction]}`,
+            `o-popover-${direction}`,
+            `o-popover--${position}`
+        );
 
-        // Update the bootstrap popper placement, in order to give the arrow its shape
-        el.dataset.popperPlacement = direction;
-
-        // Update arrow position
-        const vertical = ["top", "bottom"].includes(direction);
-        const placementProperty = vertical ? "left" : "top";
-        const placement = {
-            start: "--position-min",
-            middle: "--position-center",
-            fit: "--position-center",
-            end: "--position-max",
-        }[variant];
-        const arrowEl = el.querySelector(":scope > .popover-arrow");
-        Object.assign(arrowEl.style, {
-            top: "",
-            left: "",
-            [placementProperty]: `clamp(
-                var(--position-min),
-                calc(var(${placement}) - ${variantOffset}px),
-                var(--position-max)
-            )`,
-        });
-
-        // Should the arrow get sucked?
-        const sizeProperty = vertical ? "width" : "height";
-        const { [sizeProperty]: arrowSize, [placementProperty]: arrowPosition } =
-            arrowEl.getBoundingClientRect();
-        const { [sizeProperty]: targetSize, [placementProperty]: targetPosition } =
-            this.props.target.getBoundingClientRect();
-        const arrowCenter = arrowPosition + arrowSize / 2;
-        const margin = arrowSize / 2 - 1;
-        const hasEnoughSpace = arrowSize < targetSize - 2 * margin;
-        const isOutsideSafeEdge =
-            arrowCenter < targetPosition + margin ||
-            arrowCenter > targetPosition + targetSize - margin;
-        arrowEl.classList.toggle("sucked", hasEnoughSpace && isOutsideSafeEdge);
+        if (this.props.arrow) {
+            const arrowEl = el.querySelector(":scope > .popover-arrow");
+            // reset all arrow classes
+            arrowEl.className = "popover-arrow";
+            switch (position) {
+                case "tm": // top-middle
+                case "bm": // bottom-middle
+                case "tf": // top-fit
+                case "bf": // bottom-fit
+                    arrowEl.classList.add("start-0", "end-0", "mx-auto");
+                    break;
+                case "lm": // left-middle
+                case "rm": // right-middle
+                case "lf": // left-fit
+                case "rf": // right-fit
+                    arrowEl.classList.add("top-0", "bottom-0", "my-auto");
+                    break;
+                case "ts": // top-start
+                case "bs": // bottom-start
+                    arrowEl.classList.add("end-auto");
+                    break;
+                case "te": // top-end
+                case "be": // bottom-end
+                    arrowEl.classList.add("start-auto");
+                    break;
+                case "ls": // left-start
+                case "rs": // right-start
+                    arrowEl.classList.add("bottom-auto");
+                    break;
+                case "le": // left-end
+                case "re": // right-end
+                    arrowEl.classList.add("top-auto");
+                    break;
+            }
+        }
     }
 }

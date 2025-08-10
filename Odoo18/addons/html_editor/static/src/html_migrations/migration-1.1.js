@@ -4,7 +4,7 @@
  * @param {HTMLElement} container
  * @param {Object} env
  */
-export function migrate(container) {
+export function upgrade(container) {
     const excalidrawContainers = container.querySelectorAll("[data-embedded='draw']");
     for (const excalidrawContainer of excalidrawContainers) {
         const source = JSON.parse(excalidrawContainer.dataset.embeddedProps).source;
@@ -13,7 +13,6 @@ export function migrate(container) {
         newParagraph.append(anchor);
         anchor.append(document.createTextNode(source));
         anchor.href = source;
-        excalidrawContainer.after(newParagraph);
-        excalidrawContainer.remove();
+        excalidrawContainer.replaceWith(newParagraph);
     }
 }

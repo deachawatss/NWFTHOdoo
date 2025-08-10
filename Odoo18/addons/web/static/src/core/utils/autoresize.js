@@ -19,9 +19,6 @@ export function useAutoresize(ref, options = {}) {
             if (el) {
                 resize = (programmaticResize = false) => {
                     wasProgrammaticallyResized = programmaticResize;
-                    if (options.ignoreIfEmpty && !el.value) {
-                        return;
-                    }
                     if (el instanceof HTMLInputElement) {
                         resizeInput(el, options);
                     } else {
@@ -56,11 +53,7 @@ export function useAutoresize(ref, options = {}) {
     });
 }
 
-/**
- * @param {HTMLInputElement} input
- * @param {{ offset?: number }} [options]
- */
-function resizeInput(input, options) {
+function resizeInput(input) {
     // This mesures the maximum width of the input which can get from the flex layout.
     input.style.width = "100%";
     const maxWidth = input.clientWidth;
@@ -76,13 +69,9 @@ function resizeInput(input, options) {
         input.style.width = "100%";
         return;
     }
-    input.style.width = input.scrollWidth + 5 + (isSafari16 ? 8 : 0) + (options.offset || 0) + "px";
+    input.style.width = input.scrollWidth + 5 + (isSafari16 ? 8 : 0) + "px";
 }
 
-/**
- * @param {HTMLTextAreaElement} input
- * @param {{ minimumHeight?: number }} [options]
- */
 export function resizeTextArea(textarea, options = {}) {
     const minimumHeight = options.minimumHeight || 0;
     let heightOffset = 0;
@@ -102,7 +91,9 @@ export function resizeTextArea(textarea, options = {}) {
         borderTopWidth: 0,
         borderBottomWidth: 0,
         paddingTop: 0,
+        paddingRight: style.paddingRight,
         paddingBottom: 0,
+        paddingLeft: style.paddingLeft,
     });
     textarea.style.height = "auto";
     const height = Math.max(minimumHeight, textarea.scrollHeight + heightOffset);

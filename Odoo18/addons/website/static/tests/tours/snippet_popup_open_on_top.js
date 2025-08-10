@@ -18,24 +18,19 @@ registerWebsitePreviewTour("snippet_popup_open_on_top", {
     },
     {
         content: "Set delay to 0 second",
-        trigger: '[data-action-id="setPopupDelay"] input',
+        trigger: '[data-attribute-name="showAfter"] input',
         run: 'edit 0',
     },
     ...clickOnSave(),
     {
         content: 'Check that the modal is scrolled on top',
-        trigger: ":iframe .s_popup .modal.show:contains('hello world')",
-        run: async function () {
+        trigger: ":iframe .s_popup .modal:contains('hello world')",
+        run: function () {
             const modalEl = this.anchor;
-            let activeEl = modalEl.ownerDocument.activeElement;
-            if (activeEl.parentElement.closest('.modal') !== modalEl) {
-                // Wait after Popup.trapFocus by waiting for modal shown event
-                await new Promise((resolve) => modalEl.addEventListener("shown.bs.modal", resolve));
-            }
             if (modalEl.scrollHeight <= modalEl.clientHeight) {
                 console.error('There is no scrollbar on the modal');
             }
-            activeEl = modalEl.ownerDocument.activeElement;
+            const activeEl = modalEl.ownerDocument.activeElement;
             if (activeEl.parentElement.closest('.modal') !== modalEl) {
                 // Note: it might not be the best idea to still focus a button
                 // that is not in the viewport, but since this is a niche case

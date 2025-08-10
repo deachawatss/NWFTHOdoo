@@ -3,12 +3,11 @@ from contextlib import contextmanager
 
 from odoo import api, fields, models, _, Command
 from odoo.exceptions import UserError
-from odoo.fields import Domain
+from odoo.tools import create_index
 from odoo.tools.misc import formatLang
 
-
 class AccountBankStatement(models.Model):
-    _name = 'account.bank.statement'
+    _name = "account.bank.statement"
     _description = "Bank Statement"
     _order = "first_line_index desc"
     _check_company_auto = True
@@ -62,7 +61,7 @@ class AccountBankStatement(models.Model):
 
     currency_id = fields.Many2one(
         comodel_name='res.currency',
-        compute='_compute_currency_id', store=True,
+        compute='_compute_currency_id',
     )
 
     journal_id = fields.Many2one(
@@ -103,8 +102,18 @@ class AccountBankStatement(models.Model):
         string="Attachments",
     )
 
-    _journal_id_date_desc_id_desc_idx = models.Index("(journal_id, date DESC, id DESC)")
-    _first_line_index_idx = models.Index("(journal_id, first_line_index)")
+    def init(self):
+        super().init()
+        create_index(self.env.cr,
+                     indexname='account_bank_statement_journal_id_date_desc_id_desc_idx',
+                     tablename='account_bank_statement',
+                     expressions=['journal_id', 'date DESC', 'id DESC'])
+        create_index(
+            self.env.cr,
+            indexname='account_bank_statement_first_line_index_idx',
+            tablename='account_bank_statement',
+            expressions=['journal_id', 'first_line_index'],
+        )
 
     # -------------------------------------------------------------------------
     # COMPUTE METHODS
@@ -166,7 +175,7 @@ class AccountBankStatement(models.Model):
         for stmt in self:
             stmt.balance_end_real = stmt.balance_end
 
-    @api.depends('journal_id.currency_id', 'company_id.currency_id')
+    @api.depends('journal_id')
     def _compute_currency_id(self):
         for statement in self:
             statement.currency_id = statement.journal_id.currency_id or statement.company_id.currency_id
@@ -206,9 +215,11 @@ class AccountBankStatement(models.Model):
             stmt.problem_description = description
 
     def _search_is_valid(self, operator, value):
-        if operator != 'in':
-            return NotImplemented
+        if operator not in ('=', '!=', '<>'):
+            raise UserError(_('Operation not supported'))
         invalid_ids = self._get_invalid_statement_ids(all_statements=True)
+        if operator in ('!=', '<>') and value or operator == '=' and not value:
+            return [('id', 'in', invalid_ids)]
         return [('id', 'not in', invalid_ids)]
 
     # -------------------------------------------------------------------------
@@ -220,7 +231,6 @@ class AccountBankStatement(models.Model):
         previous = self.env['account.bank.statement'].search(
             [
                 ('first_line_index', '<', self.first_line_index),
-                ('first_line_index', '!=', False),
                 ('journal_id', '=', self.journal_id.id),
             ],
             limit=1,
@@ -261,16 +271,16 @@ class AccountBankStatement(models.Model):
     # -------------------------------------------------------------------------
 
     @api.model
-    def default_get(self, fields):
+    def default_get(self, fields_list):
         # EXTENDS base
-        defaults = super().default_get(fields)
+        defaults = super().default_get(fields_list)
 
-        if 'line_ids' not in fields:
+        if 'line_ids' not in fields_list:
             return defaults
 
-        active_ids = self.env.context.get('active_ids', [])
-        context_split_line_id = self.env.context.get('split_line_id')
-        context_st_line_id = self.env.context.get('st_line_id')
+        active_ids = self._context.get('active_ids', [])
+        context_split_line_id = self._context.get('split_line_id')
+        context_st_line_id = self._context.get('st_line_id')
         lines = None
         # creating statements with split button
         if context_split_line_id:
@@ -345,11 +355,11 @@ class AccountBankStatement(models.Model):
             container['records'] = stmts = super().create(vals_list)
         return stmts
 
-    def write(self, vals):
-        if len(self) != 1 and 'attachment_ids' in vals:
-            vals.pop('attachment_ids')
+    def write(self, values):
+        if len(self) != 1 and 'attachment_ids' in values:
+            values.pop('attachment_ids')
 
         container = {'records': self}
-        with self._check_attachments(container, [vals]):
-            result = super().write(vals)
+        with self._check_attachments(container, [values]):
+            result = super().write(values)
         return result

@@ -6,7 +6,7 @@ from datetime import datetime
 from odoo import api, fields, models
 
 
-class MailTrackingValue(models.Model):
+class MailTracking(models.Model):
     _name = 'mail.tracking.value'
     _description = 'Mail Tracking Value'
     _rec_name = 'field_id'
@@ -45,9 +45,8 @@ class MailTrackingValue(models.Model):
         def has_field_access(tracking):
             if not tracking.field_id:
                 return env.is_system()
-            model = env[tracking.field_id.model]
-            model_field = model._fields.get(tracking.field_id.name)
-            return model._has_field_access(model_field, 'read') if model_field else False
+            model_field = env[tracking.field_id.model]._fields.get(tracking.field_id.name)
+            return model_field.is_accessible(env) if model_field else False
 
         return self.filtered(has_field_access)
 
@@ -113,79 +112,29 @@ class MailTrackingValue(models.Model):
                 'new_value_char': new_value and dict(col_info['selection'])[new_value] or ''
             })
         elif col_info['type'] == 'many2one':
-            # Can be:
-            # - False value
-            # - recordset, in case of standard field
-            # - (id, display name), in case of properties (read format)
-            if not initial_value:
-                initial_value = (0, '')
-            elif isinstance(initial_value, models.BaseModel):
-                initial_value = (initial_value.id, initial_value.display_name)
-
-            if not new_value:
-                new_value = (0, '')
-            elif isinstance(new_value, models.BaseModel):
-                new_value = (new_value.id, new_value.display_name)
-
             values.update({
-                'old_value_integer': initial_value[0],
-                'new_value_integer': new_value[0],
-                'old_value_char': initial_value[1],
-                'new_value_char': new_value[1]
+                'old_value_integer': initial_value.id if initial_value else 0,
+                'new_value_integer': new_value.id if new_value else 0,
+                'old_value_char': initial_value.display_name if initial_value else '',
+                'new_value_char': new_value.display_name if new_value else ''
             })
-        elif col_info['type'] in {'one2many', 'many2many', 'tags'}:
-            # Can be:
-            # - False value
-            # - recordset, in case of standard field
-            # - [(id, display name), ...], in case of properties (read format)
-            if not initial_value:
-                old_value_char = ''
-            elif isinstance(initial_value, models.BaseModel):
-                old_value_char = ', '.join(initial_value.mapped('display_name'))
-            else:
-                old_value_char = ', '.join(value[1] for value in initial_value)
-            if not new_value:
-                new_value_char = ''
-            elif isinstance(new_value, models.BaseModel):
-                new_value_char = ', '.join(new_value.mapped('display_name'))
-            else:
-                new_value_char = ', '.join(value[1] for value in new_value)
-
+        elif col_info['type'] in {'one2many', 'many2many'}:
             values.update({
-                'old_value_char': old_value_char,
-                'new_value_char': new_value_char,
+                'old_value_char': ', '.join(initial_value.mapped('display_name')) if initial_value else '',
+                'new_value_char': ', '.join(new_value.mapped('display_name')) if new_value else '',
             })
         else:
             raise NotImplementedError(f'Unsupported tracking on field {field.name} (type {col_info["type"]}')
 
         return values
 
-    @api.model
-    def _create_tracking_values_property(self, initial_value, col_name, col_info, record):
-        """Generate the values for the <mail.tracking.values> corresponding to a property."""
-        col_info = col_info | {'type': initial_value['type'], 'selection': initial_value.get('selection')}
-
-        field_info = {
-            'desc': f"{col_info['string']}: {initial_value['string']}",
-            'name': col_name,
-            'type': initial_value['type'],
-        }
-        value = initial_value.get('value', False)
-        if value and initial_value['type'] == 'tags':
-            value = [t for t in initial_value.get('tags', []) if t[0] in value]
-
-        tracking_values = self.env['mail.tracking.value']._create_tracking_values(
-            value, False, col_name, col_info, record)
-        return {**tracking_values, 'field_info': field_info}
-
     def _tracking_value_format(self):
         """ Return structure and formatted data structure to be used by chatter
         to display tracking values. Order it according to asked display, aka
         ascending sequence (and field name).
 
-        :return: for each tracking value in self, their formatted display
+        :return list: for each tracking value in self, their formatted display
           values given as a dict;
-        :rtype: list[dict]
         """
         model_map = {}
         for tracking in self:
@@ -202,9 +151,8 @@ class MailTrackingValue(models.Model):
         to display tracking values. Order it according to asked display, aka
         ascending sequence (and field name).
 
-        :returns: for each tracking value in self, their formatted display
+        :return list: for each tracking value in self, their formatted display
           values given as a dict;
-        :rtype: list[dict]
         """
         if not self:
             return []
@@ -227,38 +175,35 @@ class MailTrackingValue(models.Model):
         )
         # generate dict of field information, if available
         fields_col_info = (
-            tracking.field_id.ttype != 'properties'
-            and tracked_fields.get(tracking.field_id.name)
-            or {
+            tracked_fields.get(tracking.field_id.name) or {
                 'string': tracking.field_info['desc'] if tracking.field_info else self.env._('Unknown'),
                 'type': tracking.field_info['type'] if tracking.field_info else 'char',
             } for tracking in self
         )
 
-        def sort_tracking_info(tracking_info_tuple):
-            tracking = tracking_info_tuple[0]
-            field_name = tracking.field_id.name or (tracking.field_info['name'] if tracking.field_info else 'unknown')
-            return (
-                fields_sequence_map.get(field_name, 100),
-                tracking.field_id.ttype == 'properties',
-                field_name,
-            )
-
         formatted = [
             {
+                'changedField': col_info['string'],
                 'id': tracking.id,
-                'fieldInfo': {
-                    'changedField': col_info['string'],
+                'fieldName': tracking.field_id.name or (tracking.field_info['name'] if tracking.field_info else 'unknown'),
+                'fieldType': col_info['type'],
+                'newValue': {
                     'currencyId': tracking.currency_id.id,
                     'floatPrecision': col_info.get('digits'),
-                    'fieldType': col_info['type'],
-                    'isPropertyField': tracking.field_id.ttype == 'properties',
+                    'value': tracking._format_display_value(col_info['type'], new=True)[0],
                 },
-                'newValue': tracking._format_display_value(col_info['type'], new=True)[0],
-                'oldValue': tracking._format_display_value(col_info['type'], new=False)[0],
+                'oldValue': {
+                    'currencyId': tracking.currency_id.id,
+                    'floatPrecision': col_info.get('digits'),
+                    'value': tracking._format_display_value(col_info['type'], new=False)[0],
+                },
             }
-            for tracking, col_info in sorted(zip(self, fields_col_info), key=sort_tracking_info)
+            for tracking, col_info in zip(self, fields_col_info)
         ]
+        formatted.sort(
+            key=lambda info: (fields_sequence_map.get(info['fieldName'], 100), info['fieldName']),
+            reverse=False,
+        )
         return formatted
 
     def _format_display_value(self, field_type, new=True):

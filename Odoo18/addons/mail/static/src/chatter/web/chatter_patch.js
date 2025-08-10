@@ -1,18 +1,19 @@
 import { ScheduledMessage } from "@mail/chatter/web/scheduled_message";
 import { Activity } from "@mail/core/web/activity";
 import { AttachmentList } from "@mail/core/common/attachment_list";
+import { BaseRecipientsList } from "@mail/core/web/base_recipients_list";
 import { Chatter } from "@mail/chatter/web_portal/chatter";
+import { SuggestedRecipientsList } from "@mail/core/web/suggested_recipient_list";
 import { FollowerList } from "@mail/core/web/follower_list";
 import { isDragSourceExternalFile } from "@mail/utils/common/misc";
 import { useAttachmentUploader } from "@mail/core/common/attachment_uploader_hook";
 import { useCustomDropzone } from "@web/core/dropzone/dropzone_hook";
-import { useHover, useMessageScrolling } from "@mail/utils/common/hooks";
+import { useHover, useMessageHighlight } from "@mail/utils/common/hooks";
 import { MailAttachmentDropzone } from "@mail/core/common/mail_attachment_dropzone";
-import { RecipientsInput } from "@mail/core/web/recipients_input";
 import { SearchMessageInput } from "@mail/core/common/search_message_input";
 import { SearchMessageResult } from "@mail/core/common/search_message_result";
-import { Deferred, KeepLast } from "@web/core/utils/concurrency";
-import { onWillStart, status, useEffect } from "@odoo/owl";
+
+import { useEffect } from "@odoo/owl";
 
 import { _t } from "@web/core/l10n/translation";
 import { browser } from "@web/core/browser/browser";
@@ -23,21 +24,20 @@ import { useDropdownState } from "@web/core/dropdown/dropdown_hooks";
 import { useService } from "@web/core/utils/hooks";
 import { useMessageSearch } from "@mail/core/common/message_search_hook";
 import { usePopoutAttachment } from "@mail/core/common/attachment_view";
-import { rpc } from "@web/core/network/rpc";
-import { useRecordObserver } from "@web/model/relational_model/utils";
 
 export const DELAY_FOR_SPINNER = 1000;
 
 Object.assign(Chatter.components, {
     Activity,
     AttachmentList,
+    BaseRecipientsList,
     Dropdown,
     FileUploader,
     FollowerList,
-    RecipientsInput,
     ScheduledMessage,
     SearchMessageInput,
     SearchMessageResult,
+    SuggestedRecipientsList,
 });
 
 Chatter.props.push(
@@ -45,7 +45,6 @@ Chatter.props.push(
     "compactHeight?",
     "has_activities?",
     "hasAttachmentPreview?",
-    "hasParentReloadOnActivityChanged?",
     "hasParentReloadOnAttachmentsChanged?",
     "hasParentReloadOnFollowersUpdate?",
     "hasParentReloadOnMessagePosted?",
@@ -54,14 +53,13 @@ Chatter.props.push(
     "isChatterAside?",
     "isInFormSheetBg?",
     "saveRecord?",
-    "record?"
+    "webRecord?"
 );
 
 Object.assign(Chatter.defaultProps, {
     compactHeight: false,
     has_activities: true,
     hasAttachmentPreview: false,
-    hasParentReloadOnActivityChanged: false,
     hasParentReloadOnAttachmentsChanged: false,
     hasParentReloadOnFollowersUpdate: false,
     hasParentReloadOnMessagePosted: false,
@@ -77,32 +75,9 @@ Object.assign(Chatter.defaultProps, {
  */
 patch(Chatter.prototype, {
     setup() {
-        this.messageHighlight = useMessageScrolling();
+        this.messageHighlight = useMessageHighlight();
         super.setup(...arguments);
         this.orm = useService("orm");
-        this.keepLastSuggestedRecipientsUpdate = new KeepLast();
-        let mailImpactingFieldsPromise = new Deferred();
-        onWillStart(async () => {
-            const { partner_fields, primary_email_field } = await rpc(
-                "/mail/thread/recipients/fields",
-                {
-                    thread_model: this.props.threadModel,
-                }
-            );
-            this.mailImpactingFields = {
-                recordFields: partner_fields,
-                emailFields: primary_email_field,
-            };
-            mailImpactingFieldsPromise.resolve();
-        });
-
-        useRecordObserver(async (record) => {
-            if (mailImpactingFieldsPromise) {
-                await mailImpactingFieldsPromise;
-                mailImpactingFieldsPromise = null;
-            }
-            return this.updateRecipients(record);
-        });
         this.attachmentPopout = usePopoutAttachment();
         Object.assign(this.state, {
             composerType: false,
@@ -144,7 +119,7 @@ patch(Chatter.prototype, {
                     );
                     this.state.isAttachmentBoxOpened = true;
                 }
-            },
+            }
         });
         useEffect(
             () => {
@@ -184,54 +159,6 @@ patch(Chatter.prototype, {
                 this.state.aside = this.props.isChatterAside;
             },
             () => [this.props.isChatterAside]
-        );
-    },
-
-    async updateRecipients(record, mode = this.state.composerType) {
-        if (!record) {
-            return;
-        }
-        const partnerIds = []; // Ensure that we don't have duplicates
-        let email;
-        this.mailImpactingFields.recordFields.forEach((field) => {
-            const value = record._changes[field];
-            if (record.data[field] !== undefined && value) {
-                partnerIds.push(value.id);
-            }
-        });
-        this.mailImpactingFields.emailFields.forEach((field) => {
-            const value = record._changes[field];
-            if (record.data[field] !== undefined && value) {
-                email = value;
-                return;
-            }
-        });
-        if ((!partnerIds.length && !email) || mode !== "message" || status(this) === "destroyed") {
-            return;
-        }
-        const recipients = await this.keepLastSuggestedRecipientsUpdate.add(
-            rpc("/mail/thread/recipients/get_suggested_recipients", {
-                thread_model: this.props.threadModel,
-                thread_id: this.props.threadId,
-                partner_ids: partnerIds,
-                main_email: email,
-            })
-        );
-        if (status(this) === "destroyed" && !this.state.thread) {
-            return;
-        }
-        this.state.thread.suggestedRecipients = recipients.map((result) => ({
-            email: result.email,
-            partner_id: result.partner_id,
-            name: result.name || result.email,
-            persona: result.partner_id ? { type: "partner", id: result.partner_id } : false,
-        }));
-        this.state.thread.additionalRecipients = this.state.thread.additionalRecipients.filter(
-            (additionalRecipient) =>
-                this.state.thread.suggestedRecipients.every(
-                    (suggestedRecipient) =>
-                        suggestedRecipient.partner_id !== additionalRecipient.partner_id
-                )
         );
     },
 
@@ -317,11 +244,15 @@ patch(Chatter.prototype, {
         this.state.isSearchOpen = false;
     },
 
+    async _follow(thread) {
+        await this.orm.call(thread.model, "message_subscribe", [[thread.id]], {
+            partner_ids: [this.store.self.id],
+        });
+        this.onFollowerChanged(thread);
+    },
+
     onActivityChanged(thread) {
         this.load(thread, [...this.requestList, "messages"]);
-        if (this.props.hasParentReloadOnActivityChanged) {
-            this.reloadParentView();
-        }
     },
 
     onAddFollowers() {
@@ -352,22 +283,35 @@ patch(Chatter.prototype, {
         }
     },
 
+    async onClickFollow() {
+        if (this.state.thread.id) {
+            this._follow(this.state.thread);
+        } else {
+            this.onThreadCreated = this._follow;
+            await this.props.saveRecord?.();
+        }
+    },
+
     onClickSearch() {
         this.state.composerType = false;
         this.state.isSearchOpen = !this.state.isSearchOpen;
     },
 
-    onCloseFullComposerCallback(isDiscard) {
-        this.toggleComposer();
-        super.onCloseFullComposerCallback();
-        if (!isDiscard) {
-            this.reloadParentView();
-        }
+    async onClickUnfollow() {
+        const thread = this.state.thread;
+        await thread.selfFollower.remove();
+        this.onFollowerChanged(thread);
     },
 
-    onFollowerChanged() {
+    onCloseFullComposerCallback() {
+        this.toggleComposer();
+        super.onCloseFullComposerCallback();
+    },
+
+    onFollowerChanged(thread) {
         document.body.click(); // hack to close dropdown
         this.reloadParentView();
+        this.load(thread, ["followers", "suggestedRecipients"]);
     },
 
     _onMounted() {
@@ -388,8 +332,6 @@ patch(Chatter.prototype, {
     onScheduledMessageChanged(thread) {
         // reload messages as well as a scheduled message could have been sent
         this.load(thread, ["scheduledMessages", "messages"]);
-        // sending a message could trigger another action (eg. move so to quotation sent)
-        this.reloadParentView();
     },
 
     onSuggestedRecipientAdded(thread) {
@@ -410,8 +352,8 @@ patch(Chatter.prototype, {
 
     async reloadParentView() {
         await this.props.saveRecord?.();
-        if (this.props.record) {
-            await this.props.record.load();
+        if (this.props.webRecord) {
+            await this.props.webRecord.load();
         }
     },
 
@@ -420,9 +362,6 @@ patch(Chatter.prototype, {
         const schedule = async (thread) => {
             await this.store.scheduleActivity(thread.model, [thread.id]);
             this.load(thread, ["activities", "messages"]);
-            if (this.props.hasParentReloadOnActivityChanged) {
-                await this.reloadParentView();
-            }
         };
         if (this.state.thread.id) {
             schedule(this.state.thread);
@@ -438,13 +377,10 @@ patch(Chatter.prototype, {
 
     toggleComposer(mode = false) {
         this.closeSearch();
-        const toggle = async () => {
+        const toggle = () => {
             if (this.state.composerType === mode) {
                 this.state.composerType = false;
             } else {
-                if (mode === "message") {
-                    await this.updateRecipients(this.props.record, mode);
-                }
                 this.state.composerType = mode;
             }
         };

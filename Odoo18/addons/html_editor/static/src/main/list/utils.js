@@ -1,5 +1,3 @@
-import { getFontSizeOrClass } from "@html_editor/utils/formatting";
-
 export function createList(document, mode) {
     const node = document.createElement(mode === "OL" ? "OL" : "UL");
     if (mode === "CL") {
@@ -8,29 +6,18 @@ export function createList(document, mode) {
     return node;
 }
 
+// @todo @phoenix Change this API (and implementation), as all use cases seem to
+// create a list with a single LI
 export function insertListAfter(document, afterNode, mode, content = []) {
     const list = createList(document, mode);
     afterNode.after(list);
-    const li = document.createElement("LI");
-    let fontSizeStyle;
-    if (content.length === 1 && content[0].tagName === "FONT" && content[0].style.color) {
-        li.style.color = content[0].style.color;
-        li.append(...content[0].childNodes);
-    } else if (
-        content.length === 1 &&
-        content[0].tagName === "SPAN" &&
-        (fontSizeStyle = getFontSizeOrClass(content[0]))
-    ) {
-        if (fontSizeStyle.type === "font-size") {
-            li.style.fontSize = fontSizeStyle.value;
-        } else if (fontSizeStyle.type === "class") {
-            li.classList.add(fontSizeStyle.value);
-        }
-        li.append(...content[0].childNodes);
-    } else {
-        li.append(...content);
-    }
-    list.append(li);
+    list.append(
+        ...content.map((c) => {
+            const li = document.createElement("LI");
+            li.append(...[].concat(c));
+            return li;
+        })
+    );
     return list;
 }
 

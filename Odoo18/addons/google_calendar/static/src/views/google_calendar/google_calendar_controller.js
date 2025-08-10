@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { AttendeeCalendarController } from "@calendar/views/attendee_calendar/attendee_calendar_controller";
 
 import { _t } from "@web/core/l10n/translation";

@@ -13,7 +13,7 @@ class TestEnv(TransactionCase):
             'name': 'superuser',
             'login': 'superuser',
             'password': 'superuser',
-            'group_ids': [(6, 0, cls.env.user.group_ids.ids)],
+            'groups_id': [(6, 0, cls.env.user.groups_id.ids)],
         })
         cls.env = cls.env(user=user)
 

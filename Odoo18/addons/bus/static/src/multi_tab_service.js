@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
 import { browser } from "@web/core/browser/browser";
 import { EventBus } from "@odoo/owl";
@@ -187,9 +189,6 @@ export const multiTabService = {
              */
             isOnMainTab() {
                 return _isOnMainTab;
-            },
-            get isOnLastTab() {
-                return Object.keys(getItemFromStorage("lastPresenceByTab", {})).length === 0; // Main tab is not included.
             },
             /**
              * Get value shared between all the tabs.

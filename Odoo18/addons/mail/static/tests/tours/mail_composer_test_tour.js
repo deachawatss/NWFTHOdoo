@@ -33,18 +33,18 @@ registry.category("web_tour.tours").add("mail/static/tests/tours/mail_composer_t
         },
         {
             content: "Add one file in composer",
-            trigger: ".o-mail-Composer button[title='Attach Files']",
+            trigger: ".o-mail-Composer button[aria-label='Attach files']",
             async run() {
                 const files = [new File(["hello, world"], "file1.txt", { type: "text/plain" })];
-                await inputFiles(".o-mail-Composer .o_input_file", files);
+                await inputFiles(".o-mail-Composer-coreMain .o_input_file", files);
             },
         },
         {
-            trigger: ".o-mail-AttachmentContainer:not(.o-isUploading)", // waiting the attachment to be uploaded
+            trigger: ".o-mail-AttachmentCard:not(.o-isUploading)", // waiting the attachment to be uploaded
         },
         {
             content: "Open full composer",
-            trigger: "button[title='Open Full Composer']",
+            trigger: "button[aria-label='Full composer']",
             run: "click",
         },
         {
@@ -122,6 +122,17 @@ registry.category("web_tour.tours").add("mail/static/tests/tours/mail_composer_t
                 '.mail-composer-template-dropdown.popover .o-dropdown-item:contains("Test template")',
         },
         {
+            content: "Verify admin template is NOT listed",
+            trigger: ".mail-composer-template-dropdown.popover",
+            run() {
+                const hasAdminTemplate = [...document.querySelectorAll('.o-dropdown-item')]
+                    .some(item => item.textContent.includes("Test template for admin"));
+                if (hasAdminTemplate) {
+                    console.error("Template assigned to the admin is visible to a non-assigned user! This should not happen.");
+                }
+            },
+        },
+        {
             content: "Send message from full composer",
             trigger: ".o_mail_send",
             run: "click",
@@ -139,16 +150,15 @@ registry.category("web_tour.tours").add("mail/static/tests/tours/mail_composer_t
         },
         {
             content: "Check message has correct recipients",
-            trigger:
-                ".o-mail-MessageNotificationPopover:contains('Not A Demo User (NotADemoUser@mail.com)\nJane (jane@example.com)\nMitchell Admin (test.admin@test.example.com)')",
+            trigger: ".o-mail-MessageNotificationPopover:contains('Not A Demo User\nJane')",
         },
         {
             content: "Check message contains the first attachment",
-            trigger: '.o-mail-Message .o-mail-AttachmentContainer:contains("file1.txt")',
+            trigger: '.o-mail-Message .o-mail-AttachmentCard:contains("file1.txt")',
         },
         {
             content: "Check message contains the second attachment",
-            trigger: '.o-mail-Message .o-mail-AttachmentContainer:contains("file2.txt")',
+            trigger: '.o-mail-Message .o-mail-AttachmentCard:contains("file2.txt")',
         },
         // Test the full composer input text is kept on closing
         {
@@ -158,7 +168,7 @@ registry.category("web_tour.tours").add("mail/static/tests/tours/mail_composer_t
         },
         {
             content: "Open full composer",
-            trigger: "button[title='Open Full Composer']",
+            trigger: "button[aria-label='Full composer']",
             run: "click",
         },
         {
@@ -204,7 +214,7 @@ registry.category("web_tour.tours").add("mail/static/tests/tours/mail_composer_t
         },
         {
             content: "Open full composer",
-            trigger: "button[title='Open Full Composer']",
+            trigger: "button[aria-label='Full composer']",
             run: "click",
         },
         {

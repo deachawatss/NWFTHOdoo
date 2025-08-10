@@ -1,67 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <template
-        id="website_sale_comparison.add_to_compare"
-        inherit_id="website_sale.shop_product_buttons"
-        name="Comparison List"
-        priority="22"
-    >
-        <t name="buttons_container" position="inside">
+    <template id="add_to_compare" inherit_id="website_sale.products_item" name="Comparison List" priority="22">
+        <xpath expr="//div[hasclass('o_wsale_product_btn')]" position="inside">
             <t t-set="attrib_categories" t-value="product.valid_product_template_attribute_line_ids._prepare_categories_for_display()"/>
             <t t-set="product_variant_id" t-value="product._get_first_possible_variant_id()"/>
             <button
                 t-if="product_variant_id and attrib_categories"
                 type="button"
                 role="button"
-                class="btn btn-light o_add_compare"
+                class="d-none d-md-inline-block btn btn-light o_add_compare"
                 title="Compare"
                 aria-label="Compare"
-                t-att-data-product-template-id="product.id"
                 t-att-data-product-product-id="product_variant_id"
                 data-action="o_comparelist"
             >
                 <span class="fa fa-exchange o_not-animable"/>
             </button>
-        </t>
+        </xpath>
     </template>
 
-    <template
-        id="product_add_to_compare"
-        name='Add to comparison in product page'
-        inherit_id="website_sale.cta_wrapper"
-        priority="8"
-    >
-        <xpath expr="//div[@id='product_option_block']" position="inside">
+    <template id="product_add_to_compare" name='Add to comparison in product page' inherit_id="website_sale.product" priority="8">
+        <xpath expr="//div[@id='o_wsale_cta_wrapper']" position="after">
             <t t-set="attrib_categories" t-value="product.valid_product_template_attribute_line_ids._prepare_categories_for_display()"/>
             <t t-set="product_variant_id" t-value="product._get_first_possible_variant_id()"/>
-            <t
-                t-set="_button_classes"
-                t-valuef="o_add_compare_dyn btn btn-outline-primary d-none d-md-block order-last"
-            />
-            <t
-                t-if="not is_view_active('website_sale_wishlist.product_add_to_wishlist')"
-                t-set="_button_classes"
-                t-value="_button_classes + ' flex-grow-1'"
-            />
-            <t
-                t-if="is_view_active('website_sale.cta_wrapper_large')"
-                t-set="_button_classes"
-                t-value="_button_classes + ' btn-lg px-lg-0'"
-            />
-            <button
-                t-if="product_variant_id and attrib_categories"
+            <button t-if="product_variant_id and attrib_categories"
                 type="button"
                 role="button"
-                t-att-class="_button_classes"
-                aria-label="Add to Compare"
-                title="Add to compare"
-                t-att-data-product-template-id="product.id"
+                class="d-none d-md-block btn btn-link px-0 o_add_compare_dyn"
+                aria-label="Compare"
                 t-att-data-product-product-id="product_variant_id"
-                data-action="o_comparelist"
-            >
-                <span class="fa fa-exchange"/>
-                <span t-att-class="'d-inline' + (' d-lg-none' if website.product_page_image_width == '50_pc' and not (is_view_active('website_sale.cta_wrapper_boxed') or is_view_active('website_sale.cta_wrapper_large')) or is_view_active('website_sale_wishlist.product_add_to_wishlist') else '')">Add to Compare</span>
+                data-action="o_comparelist">
+                    <span class="fa fa-exchange me-2"/>Compare
             </button>
         </xpath>
     </template>
@@ -83,6 +53,27 @@
                                         <t t-call="website_sale_comparison.specifications_table"/>
                                     </div>
                                 </t>
+                                <t t-if="is_view_active('website_sale.product_tags')">
+                                    <div class="col-lg-6">
+                                        <table class="table">
+                                            <t t-if="product.product_variant_ids.all_product_tag_ids">
+                                                <tr>
+                                                    <th class="text-start" t-att-colspan="2">
+                                                        <span>Tags</span>
+                                                    </th>
+                                                </tr>
+                                                <tr class="d-flex">
+                                                    <td class="w-25 d-flex align-items-center"><span>Tags</span></td>
+                                                    <td class="w-75 text-muted">
+                                                        <t t-call="website_sale.product_tags">
+                                                            <t t-set="all_product_tags" t-value="product.product_variant_ids.all_product_tag_ids"/>
+                                                        </t>
+                                                    </td>
+                                                </tr>
+                                            </t>
+                                        </table>
+                                    </div>
+                                </t>
                             </div>
                         </div>
                     </div>
@@ -98,14 +89,6 @@
         active="False"
     >
         <xpath expr="//div[@id='more_information_accordion_item']" position="before">
-            <t
-                t-set="attrib_categories"
-                t-value="product.valid_product_template_attribute_line_ids._prepare_categories_for_display()"
-            />
-            <t
-                t-set="product_variant_id"
-                t-value="product._get_first_possible_variant_id()"
-            />
             <t t-if="product.valid_product_template_attribute_line_ids._prepare_categories_for_display()">
                 <t t-foreach="attrib_categories" t-as="category">
                     <div class="accordion-item">
@@ -202,7 +185,7 @@
                                 <tr>
                                     <td t-if="len(attrib_categories)" class='o_ws_compare_image td-top-left border-bottom-0'/>
                                     <td t-foreach="products" t-as="product" class="o_ws_compare_image position-relative border-bottom-0">
-                                        <a href="#" t-att-data-product-product-id="product.id" class="o_comparelist_remove" t-if="len(products) &gt; 2">
+                                        <a href="#" t-att-data-product_product_id="product.id" class="o_comparelist_remove" t-if="len(products) &gt; 2">
                                             <strong>x</strong>
                                         </a>
                                         <a t-att-href="product.website_url">
@@ -212,17 +195,21 @@
                                 </tr>
                                 <tr>
                                     <td t-if="len(attrib_categories)" class='td-top-left border-top-0'/>
-                                    <td t-foreach="products" t-as="product" class="border-top-0 align-top">
+                                    <td t-foreach="products" t-as="product" class="border-top-0">
                                         <t t-set="combination_info" t-value="product._get_combination_info_variant()"/>
                                         <div class='product_summary'>
                                             <a class="o_product_comparison_table" t-att-href="product.website_url">
                                                 <span t-esc="combination_info['display_name']"></span><br/>
                                             </a>
-                                            <span class="o_comparison_price" t-if="not combination_info['prevent_zero_price_sale']">
+
+                                            <span class="o_comparison_price" t-if="combination_info['prevent_zero_price_sale']">
+                                                <strong t-field="website.prevent_zero_price_sale_text"/>
+                                            </span>
+                                            <span class="o_comparison_price" t-else="">
                                                 <strong>Price:</strong>
                                                 <span t-out="combination_info['price']"
                                                       t-options="{'widget': 'monetary', 'display_currency': website.currency_id}"/>
-                                                <del t-if="combination_info.get('compare_list_price') and (combination_info['compare_list_price'] &gt; combination_info['price'])"
+                                                <del t-if="combination_info['compare_list_price'] and (combination_info['compare_list_price'] &gt; combination_info['price'])"
                                                      t-attf-class="text-muted mr8"
                                                      style="white-space: nowrap;"
                                                      t-esc="combination_info['compare_list_price']"
@@ -232,30 +219,28 @@
                                                      style="white-space: nowrap;"
                                                      t-out="combination_info['list_price']"
                                                      t-options="{'widget': 'monetary', 'display_currency': website.currency_id}"/>
-                                                <small t-if="combination_info.get('base_unit_price')"
-                                                       class="d-block text-muted">
-                                                    <t t-call="website_sale.base_unit_price">
-                                                        <t t-set="base_unit_price" t-value="combination_info['base_unit_price']"/>
-                                                    </t>
+                                                <small t-if="combination_info['base_unit_price']"
+                                                       class="d-block text-muted"
+                                                       groups="website_sale.group_show_uom_price">
+                                                    <t t-call='website_sale.base_unit_price'/>
                                                 </small>
                                             </span>
-                                            <div class="text-center">
+
+                                            <form action="/shop/cart/update" method="post" class="text-center o_add_cart_form_compare">
+                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                <input name="product_id"
+                                                       type="hidden"
+                                                       t-att-value="product.id"
+                                                       t-att-data-product-tracking-info="'product_tracking_info' in combination_info and json.dumps(combination_info['product_tracking_info'])"/>
                                                 <a t-if="combination_info['prevent_zero_price_sale']"
-                                                   t-att-href="website.contact_us_button_url + '?subject=' + combination_info['display_name']"
+                                                   t-att-href="website.contact_us_button_url"
                                                    class="btn btn-primary btn_cta">
                                                    Contact Us
                                                 </a>
-                                                <button
-                                                    t-else=""
-                                                    name="comparison_add_to_cart"
-                                                    class="btn btn-primary"
-                                                    t-att-data-show-quantity="is_view_active('website_sale.product_quantity')"
-                                                    t-att-data-product-template-id="product.product_tmpl_id.id"
-                                                    t-att-data-product-product-id="product.id"
-                                                >
+                                                <a t-else="" role="button" class="btn btn-primary a-submit" href="#">
                                                     <i class="fa fa-shopping-cart me-2"/>Add to Cart
-                                                </button>
-                                            </div>
+                                                </a>
+                                            </form>
                                         </div>
                                     </td>
                                 </tr>
@@ -301,6 +286,40 @@
                 <div class="oe_structure" id="oe_structure_website_sale_comparison_product_compare_2"/>
             </div>
         </t>
+    </template>
+
+    <template id="product_product" name="Comparator - Product row in comparator popover">
+        <t t-set="combination_info" t-value="product._get_combination_info_variant()"/>
+        <div class="row g-0 align-items-center my-1 o_product_row" t-att-data-category_ids="product.public_categ_ids.ids">
+            <div class="col-3 text-center">
+                <img class="img o_image_64_max" t-att-src="website.image_url(product, 'image_128')" alt="Product image"/>
+            </div>
+            <div class="col-8 ps-2">
+                <h6>
+                    <a t-att-href="product.website_url"><t t-esc="combination_info['display_name']" /></a><br/>
+                    <div t-attf-class="{{'d-none' if combination_info['prevent_zero_price_sale'] else ''}}">
+                        <span t-out="combination_info['price']"
+                              t-options="{'widget': 'monetary', 'display_currency': website.currency_id}"/>
+                        <del t-if="combination_info['compare_list_price'] and (combination_info['compare_list_price'] &gt; combination_info['price'])"
+                             t-attf-class="text-muted me-1 h6 mb-0 small"
+                             style="white-space: nowrap;"
+                             t-esc="combination_info['compare_list_price']"
+                             t-options="{'widget': 'monetary', 'display_currency': website.currency_id}" />
+                        <del t-else=""
+                             t-attf-class="text-muted me-1 h6 mb-0 small {{'' if combination_info['has_discounted_price'] else 'd-none'}}"
+                             style="white-space: nowrap;"
+                             t-esc="combination_info['list_price']"
+                             t-options="{'widget': 'monetary', 'display_currency': website.currency_id}"/>
+                    </div>
+                    <div t-attf-class="{{'' if combination_info['prevent_zero_price_sale'] else 'd-none'}}" t-field="website.prevent_zero_price_sale_text"/>
+                </h6>
+            </div>
+            <div class="col-1 text-end">
+                <a href='#' class="o_remove" title="Remove" t-att-data-product_product_id="product.id">
+                    <i class="fa fa-trash" role="img" aria-label="Remove"></i>
+                </a>
+            </div>
+        </div>
     </template>
 
 </odoo>

@@ -335,7 +335,7 @@ class TestIndonesianEfaktur(AccountTestInvoicingCommon):
         # No codes have been consumed.
         self.assertEqual(self.efaktur.available, available_code)
 
-        with self.assertRaises(ValidationError, msg='E-faktur is not available for invoices without any taxes.'):
+        with self.assertRaises(ValidationError, msg='E-faktur is not available for invoices without any taxes.'), self.cr.savepoint():
             out_invoice_no_taxes.download_efaktur()
 
     def test_efaktur_consume_code(self):
@@ -467,7 +467,7 @@ class TestIndonesianEfaktur(AccountTestInvoicingCommon):
         self.efaktur.write({'min': "0000000000001"})
 
         # Suppose we use the range 4 times, then the next_num = 5 and availability = 6
-        for _i in range(4):
+        for i in range(4):
             self.efaktur.pop_number()
 
         # Once a range is used, then we can't change the min to any number

@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
 import { ancestors } from '@web_editor/js/common/wysiwyg_utils';
 import { KeepLast } from '@web/core/utils/concurrency';
@@ -25,7 +27,7 @@ export class LinkPopoverWidget {
                 <div class="d-flex">
                     <a href="#" target="_blank" class="o_we_url_link fw-bold flex-grow-1 text-truncate" title="${_t('Open in a new tab')}"></a>
                     <a href="#" class="mx-1 o_we_copy_link text-dark" data-bs-toggle="tooltip" data-bs-placement="top" title="${_t('Copy Link')}">
-                        <i class="fa fa-clipboard"></i>
+                        <i class="fa fa-clone"></i>
                     </a>
                     <a href="#" class="mx-1 o_we_edit_link text-dark" data-bs-toggle="tooltip" data-bs-placement="top" title="${_t('Edit Link')}">
                         <i class="fa fa-edit"></i>

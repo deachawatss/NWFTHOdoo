@@ -5,9 +5,11 @@ import ast
 
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
+from odoo.tools import format_list
 
 
-class SurveySurvey(models.Model):
+
+class Survey(models.Model):
     _inherit = 'survey.survey'
 
     slide_ids = fields.One2many(
@@ -32,16 +34,15 @@ class SurveySurvey(models.Model):
         certifications = self.sudo().slide_ids.filtered(lambda slide: slide.slide_type == "certification").mapped('survey_id').exists()
         if certifications:
             certifications_course_mapping = [
-                self.env._(
+                _(
                     "- %(certification)s (Courses - %(courses)s)",
                     certification=certi.title,
-                    courses=certi.slide_channel_ids.mapped("name"),
+                    courses=format_list(self.env, certi.slide_channel_ids.mapped("name")),
                 )
                 for certi in certifications
             ]
             raise ValidationError(_(
-                'Uh-oh! You can’t delete surveys used as a Course Certification! Otherwise, students might think diplomas just grow on trees.\n'
-                'The courses that need them are:\n%s',
+                'Any Survey listed below is currently used as a Course Certification and cannot be deleted:\n%s',
                 '\n'.join(certifications_course_mapping)))
 
     # ---------------------------------------------------------

@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <record id="sale_margin_sale_order" model="ir.ui.view">
+    <record model="ir.ui.view" id="sale_margin_sale_order">
         <field name="name">sale.order.margin.view.form</field>
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="priority" eval="15"/>
         <field name="arch" type="xml">
-            <field name="tax_totals" position="after">
-                <div class="d-flex float-end" colspan="2">
+            <xpath expr="//field[@name='tax_totals']" position="after">
+                <div class="d-flex float-end" colspan="2" groups="base.group_user">
                     <label for="margin"/>
                     <div>
                         <field name="margin" class="oe_inline"/>
@@ -18,11 +18,28 @@
                         </span>
                     </div>
                 </div>
-            </field>
-            <xpath expr="//field[@name='order_line']//form//field[@name='price_unit']" position="after">
+            </xpath>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="sale_margin_sale_order_line">
+        <field name="name">sale.order.line.margin.view.form</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='order_line']/form//field[@name='price_unit']" position="after">
                 <field name="purchase_price" groups="base.group_user"/>
             </xpath>
-           <xpath expr="//field[@name='order_line']//list//field[@name='price_unit']" position="after">
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="sale_margin_sale_order_line_form">
+        <field name="name">sale.order.line.list.margin.view.form</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+           <xpath expr="//field[@name='order_line']/list//field[@name='price_unit']" position="after">
+                <field name="price_subtotal" column_invisible="True"/>
                 <field name="purchase_price" optional="hide"/>
                 <field name="margin" optional="hide"/>
                 <field name="margin_percent"
@@ -32,7 +49,7 @@
         </field>
     </record>
 
-    <record id="sale_margin_sale_order_pivot" model="ir.ui.view">
+    <record model="ir.ui.view" id="sale_margin_sale_order_pivot">
         <field name="name">sale.order.margin.view.pivot</field>
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_sale_order_pivot"/>
@@ -43,7 +60,7 @@
         </field>
     </record>
 
-    <record id="sale_margin_sale_order_graph" model="ir.ui.view">
+    <record model="ir.ui.view" id="sale_margin_sale_order_graph">
         <field name="name">sale.order.margin.view.graph</field>
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_sale_order_graph"/>

@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { registry } from '@web/core/registry';
 
 import { listView } from '@web/views/list/list_view';
@@ -15,15 +17,11 @@ export class EmployeeListController extends ListController {
         const menuItems = super.getStaticActionMenuItems();
         const selectedRecords = this.model.root.selection;
 
-        menuItems.archive.callback = this.archiveEmployee.bind(
-            this,
-            selectedRecords.map(({resId}) => resId),
-        )
+        // Only override the Archive action when only 1 record is selected.
+        if (selectedRecords.length === 1 && selectedRecords[0].data.active) {
+            menuItems.archive.callback = this.archiveEmployee.bind(this, selectedRecords[0].resId);
+        }
         return menuItems;
-    }
-
-    async createRecord() {
-        await this.props.createRecord();
     }
 }
 

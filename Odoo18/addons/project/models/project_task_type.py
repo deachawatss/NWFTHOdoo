@@ -31,7 +31,6 @@ class ProjectTaskType(models.Model):
         string='Email Template',
         domain=[('model', '=', 'project.task')],
         help="If set, an email will be automatically sent to the customer when the task reaches this stage.")
-    color = fields.Integer(string='Color', export_string_translation=False)
     fold = fields.Boolean(string='Folded in Kanban')
     rating_template_id = fields.Many2one(
         'mail.template',
@@ -76,7 +75,7 @@ class ProjectTaskType(models.Model):
     def write(self, vals):
         if 'active' in vals and not vals['active']:
             self.env['project.task'].search([('stage_id', 'in', self.ids)]).write({'active': False})
-        return super().write(vals)
+        return super(ProjectTaskType, self).write(vals)
 
     def copy_data(self, default=None):
         vals_list = super().copy_data(default=default)
@@ -141,12 +140,12 @@ class ProjectTaskType(models.Model):
             if stage['id'] in personal_stages_by_stage:
                 personal_stages_by_stage[stage['id']].stage_id = replacement_stage_id
 
-    def action_unarchive(self):
-        res = super().action_unarchive()
-        stage_active = self.filtered(self._active_name)
-        if stage_active and self.env['project.task'].with_context(active_test=False).search_count(
-            [('active', '=', False), ('stage_id', 'in', stage_active.ids)], limit=1
-        ):
+    def toggle_active(self):
+        res = super().toggle_active()
+        stage_active = self.filtered('active')
+        inactive_tasks = self.env['project.task'].with_context(active_test=False).search(
+            [('active', '=', False), ('stage_id', 'in', stage_active.ids)], limit=1)
+        if stage_active and inactive_tasks:
             wizard = self.env['project.task.type.delete.wizard'].create({
                 'stage_ids': stage_active.ids,
             })

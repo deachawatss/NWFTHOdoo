@@ -8,7 +8,7 @@
 export function areSaleOrderLinesLinked(linkingSaleOrderLine, linkedSaleOrderLine) {
     const linkingId = linkedSaleOrderLine.isNew
         ? linkingSaleOrderLine.data.linked_virtual_id
-        : linkingSaleOrderLine.data.linked_line_id.id;
+        : linkingSaleOrderLine.data.linked_line_id[0];
     const linkedId = linkedSaleOrderLine.isNew
         ? linkedSaleOrderLine.data.virtual_id
         : linkedSaleOrderLine.resId;

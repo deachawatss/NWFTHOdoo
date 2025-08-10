@@ -1,8 +1,9 @@
-from odoo import api, fields, _, models
+from odoo import api, fields, _
 from odoo.exceptions import UserError, AccessDenied
+from odoo.addons.base.models.res_users import CheckIdentity
 
 
-class ResUsersIdentitycheck(models.TransientModel):
+class CheckIdentityPasskeys(CheckIdentity):
     _inherit = 'res.users.identitycheck'
 
     auth_method = fields.Selection(selection_add=[('webauthn', 'Passkey')])
@@ -18,7 +19,7 @@ class ResUsersIdentitycheck(models.TransientModel):
         if self.auth_method == 'webauthn':
             try:
                 credential = {
-                    'webauthn_response': self.env.context.get('password'),
+                    'webauthn_response': self.password,
                     'type': 'webauthn',
                 }
                 self.create_uid._check_credentials(credential, {'interactive': True})

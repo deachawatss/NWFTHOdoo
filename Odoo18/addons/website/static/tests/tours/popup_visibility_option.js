@@ -20,7 +20,7 @@ registerWebsitePreviewTour(
         {
             content: "Click the 'No Desktop' visibility option.",
             trigger:
-                `.options-container [data-label="Visibility"] button[data-action-param="no_desktop"]`,
+                ".snippet-option-DeviceVisibility we-button[data-toggle-device-visibility='no_desktop']",
             run: "click",
         },
         {

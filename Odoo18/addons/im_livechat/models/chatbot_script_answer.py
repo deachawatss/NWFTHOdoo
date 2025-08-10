@@ -1,7 +1,9 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, models, fields
-from odoo.fields import Domain
+from odoo.osv import expression
+from odoo.addons.mail.tools.discuss import Store
 
 import textwrap
 
@@ -17,13 +19,13 @@ class ChatbotScriptAnswer(models.Model):
         help="The visitor will be redirected to this link upon clicking the option "
              "(note that the script will end if the link is external to the livechat website).")
     script_step_id = fields.Many2one(
-        'chatbot.script.step', string='Script Step', required=True, index=True, ondelete='cascade')
+        'chatbot.script.step', string='Script Step', required=True, ondelete='cascade')
     chatbot_script_id = fields.Many2one(related='script_step_id.chatbot_script_id')
 
     @api.depends('script_step_id')
     @api.depends_context('chatbot_script_answer_display_short_name')
     def _compute_display_name(self):
-        if self.env.context.get('chatbot_script_answer_display_short_name'):
+        if self._context.get('chatbot_script_answer_display_short_name'):
             return super()._compute_display_name()
 
         for answer in self:
@@ -42,16 +44,18 @@ class ChatbotScriptAnswer(models.Model):
         ('chatbot_triggering_answers_widget') This allows to only see the question_answer
         from the same chatbot you're configuring.
         """
-        domain = Domain.TRUE
+        domain = []
         if value and operator == 'ilike':
             # search on both name OR step's message (combined with passed args)
-            domain = Domain('name', operator, value) | Domain('script_step_id.message', operator, value)
+            domain = ['|', ('name', operator, value), ('script_step_id.message', operator, value)]
 
         force_domain_chatbot_script_id = self.env.context.get('force_domain_chatbot_script_id')
         if force_domain_chatbot_script_id:
-            domain &= Domain('chatbot_script_id', '=', force_domain_chatbot_script_id)
+            domain = expression.AND([domain, [('chatbot_script_id', '=', force_domain_chatbot_script_id)]])
 
         return domain
 
-    def _to_store_defaults(self, target):
-        return ["name", "redirect_link"]
+    def _to_store(self, store: Store, /, *, fields=None):
+        if fields is None:
+            fields = ["name", "redirect_link"]
+        store.add("chatbot.script.answer", self._read_format(fields, load=False))

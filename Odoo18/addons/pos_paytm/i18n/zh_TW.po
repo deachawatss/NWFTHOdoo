@@ -3,15 +3,15 @@
 # 	* pos_paytm
 # 
 # Translators:
-# Wil Odoo, 2025
+# Wil Odoo, 2024
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~18.2\n"
+"Project-Id-Version: Odoo Server 18.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-02-20 10:02+0000\n"
-"PO-Revision-Date: 2025-05-06 12:04+0000\n"
-"Last-Translator: Wil Odoo, 2025\n"
+"POT-Creation-Date: 2024-09-25 08:39+0000\n"
+"PO-Revision-Date: 2024-09-25 09:41+0000\n"
+"Last-Translator: Wil Odoo, 2024\n"
 "Language-Team: Chinese (Taiwan) (https://app.transifex.com/odoo/teams/41243/zh_TW/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -63,19 +63,9 @@ msgstr ""
 " 全部、付款卡，或二維碼"
 
 #. module: pos_paytm
-#: model:ir.model.fields,field_description:pos_paytm.field_pos_payment_method__display_name
-msgid "Display Name"
-msgstr "顯示名稱"
-
-#. module: pos_paytm
 #: model:ir.model.fields,help:pos_paytm.field_pos_payment_method__paytm_mid
 msgid "Go to https://business.paytm.com/ and create the merchant account"
 msgstr "請到 https://business.paytm.com/ 然後建立商家帳戶"
-
-#. module: pos_paytm
-#: model:ir.model.fields,field_description:pos_paytm.field_pos_payment_method__id
-msgid "ID"
-msgstr "識別號"
 
 #. module: pos_paytm
 #: model:ir.model.fields.selection,name:pos_paytm.selection__pos_payment_method__accept_payment__manual
@@ -98,7 +88,7 @@ msgstr "PayTM 頻道識別碼"
 
 #. module: pos_paytm
 #. odoo-javascript
-#: code:addons/pos_paytm/static/src/app/utils/payment/payment_paytm.js:0
+#: code:addons/pos_paytm/static/src/js/payment_paytm.js:0
 msgid "PayTM Error"
 msgstr "PayTM 錯誤"
 
@@ -134,7 +124,7 @@ msgstr "QR"
 
 #. module: pos_paytm
 #. odoo-javascript
-#: code:addons/pos_paytm/static/src/app/utils/payment/payment_paytm.js:0
+#: code:addons/pos_paytm/static/src/js/payment_paytm.js:0
 msgid "Reference number mismatched"
 msgstr "參考編號不對應"
 

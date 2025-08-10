@@ -1,10 +1,11 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from datetime import timedelta
 from collections import defaultdict
 
 from odoo import api, fields, models, _
-from odoo.fields import Domain
+from odoo.osv import expression
 from odoo.tools import float_compare
 from odoo.exceptions import UserError
 
@@ -13,15 +14,15 @@ class SaleOrderLine(models.Model):
     _inherit = 'sale.order.line'
 
     qty_delivered_method = fields.Selection(selection_add=[('stock_move', 'Stock Moves')])
-    route_ids = fields.Many2many('stock.route', string='Routes', domain=[('sale_selectable', '=', True)], ondelete='restrict')
+    route_id = fields.Many2one('stock.route', string='Route', domain=[('sale_selectable', '=', True)], ondelete='restrict')
     move_ids = fields.One2many('stock.move', 'sale_line_id', string='Stock Moves')
-    virtual_available_at_date = fields.Float(compute='_compute_qty_at_date', digits='Product Unit')
+    virtual_available_at_date = fields.Float(compute='_compute_qty_at_date', digits='Product Unit of Measure')
     scheduled_date = fields.Datetime(compute='_compute_qty_at_date')
     forecast_expected_date = fields.Datetime(compute='_compute_qty_at_date')
-    free_qty_today = fields.Float(compute='_compute_qty_at_date', digits='Product Unit')
+    free_qty_today = fields.Float(compute='_compute_qty_at_date', digits='Product Unit of Measure')
     qty_available_today = fields.Float(compute='_compute_qty_at_date')
     warehouse_id = fields.Many2one('stock.warehouse', compute='_compute_warehouse_id', store=True)
-    qty_to_deliver = fields.Float(compute='_compute_qty_to_deliver', digits='Product Unit')
+    qty_to_deliver = fields.Float(compute='_compute_qty_to_deliver', digits='Product Unit of Measure')
     is_mto = fields.Boolean(compute='_compute_is_mto')
     display_qty_widget = fields.Boolean(compute='_compute_qty_to_deliver')
     is_storable = fields.Boolean(related='product_id.is_storable')
@@ -29,19 +30,19 @@ class SaleOrderLine(models.Model):
         compute='_compute_customer_lead', store=True, readonly=False, precompute=True,
         inverse='_inverse_customer_lead')
 
-    @api.depends('route_ids', 'order_id.warehouse_id', 'product_id')
+    @api.depends('route_id', 'order_id.warehouse_id', 'product_packaging_id', 'product_id')
     def _compute_warehouse_id(self):
         for line in self:
             line.warehouse_id = line.order_id.warehouse_id
-            if line.route_ids:
+            if line.route_id:
                 domain = [
-                    ('location_dest_id', 'in', line.order_id.partner_shipping_id.property_stock_customer.ids),
+                    ('location_dest_id', '=', line.order_id.partner_shipping_id.property_stock_customer.id),
                     ('action', '!=', 'push'),
                 ]
                 # prefer rules on the route itself even if they pull from a different warehouse than the SO's
                 rules = sorted(
                     self.env['stock.rule'].search(
-                        domain=Domain.AND([[('route_id', 'in', line.route_ids.ids)], domain]),
+                        domain=expression.AND([[('route_id', '=', line.route_id.id)], domain]),
                         order='route_sequence, sequence'
                     ),
                     # if there are multiple rules on the route, prefer those that pull from the SO's warehouse
@@ -51,12 +52,12 @@ class SaleOrderLine(models.Model):
                 if rules:
                     line.warehouse_id = rules[0].location_src_id.warehouse_id
 
-    @api.depends('is_storable', 'product_uom_qty', 'qty_delivered', 'state', 'move_ids', 'product_uom_id')
+    @api.depends('is_storable', 'product_uom_qty', 'qty_delivered', 'state', 'move_ids', 'product_uom')
     def _compute_qty_to_deliver(self):
         """Compute the visibility of the inventory widget."""
         for line in self:
             line.qty_to_deliver = line.product_uom_qty - line.qty_delivered
-            if line.state in ('draft', 'sent', 'sale') and line.is_storable and line.product_uom_id and line.qty_to_deliver > 0:
+            if line.state in ('draft', 'sent', 'sale') and line.is_storable and line.product_uom and line.qty_to_deliver > 0:
                 if line.state == 'sale' and not line.move_ids:
                     line.display_qty_widget = False
                 else:
@@ -64,15 +65,8 @@ class SaleOrderLine(models.Model):
             else:
                 line.display_qty_widget = False
 
-    def _read_qties(self, date, wh):
-        return self.mapped('product_id').with_context(to_date=date, warehouse_id=wh).read([
-            'qty_available',
-            'free_qty',
-            'virtual_available',
-        ])
-
     @api.depends(
-        'product_id', 'customer_lead', 'product_uom_qty', 'product_uom_id', 'order_id.commitment_date',
+        'product_id', 'customer_lead', 'product_uom_qty', 'product_uom', 'order_id.commitment_date',
         'move_ids', 'move_ids.forecast_expected_date', 'move_ids.forecast_availability',
         'warehouse_id')
     def _compute_qty_at_date(self):
@@ -110,8 +104,8 @@ class SaleOrderLine(models.Model):
             line.qty_available_today = 0
             line.free_qty_today = 0
             for move in moves:
-                line.qty_available_today += move.product_uom._compute_quantity(move.quantity, line.product_uom_id)
-                line.free_qty_today += move.product_id.uom_id._compute_quantity(move.forecast_availability, line.product_uom_id)
+                line.qty_available_today += move.product_uom._compute_quantity(move.quantity, line.product_uom)
+                line.free_qty_today += move.product_id.uom_id._compute_quantity(move.forecast_availability, line.product_uom)
             line.scheduled_date = line.order_id.commitment_date or line._expected_date()
             line.virtual_available_at_date = False
             treated |= line
@@ -126,7 +120,11 @@ class SaleOrderLine(models.Model):
             grouped_lines[(line.warehouse_id.id, line.order_id.commitment_date or line._expected_date())] |= line
 
         for (warehouse, scheduled_date), lines in grouped_lines.items():
-            product_qties = lines._read_qties(scheduled_date, warehouse)
+            product_qties = lines.mapped('product_id').with_context(to_date=scheduled_date, warehouse_id=warehouse).read([
+                'qty_available',
+                'free_qty',
+                'virtual_available',
+            ])
             qties_per_product = {
                 product['id']: (product['qty_available'], product['free_qty'], product['virtual_available'])
                 for product in product_qties
@@ -139,11 +137,11 @@ class SaleOrderLine(models.Model):
                 line.virtual_available_at_date = virtual_available_at_date - qty_processed_per_product[line.product_id.id]
                 line.forecast_expected_date = False
                 product_qty = line.product_uom_qty
-                if line.product_uom_id and line.product_id.uom_id and line.product_uom_id != line.product_id.uom_id:
-                    line.qty_available_today = line.product_id.uom_id._compute_quantity(line.qty_available_today, line.product_uom_id)
-                    line.free_qty_today = line.product_id.uom_id._compute_quantity(line.free_qty_today, line.product_uom_id)
-                    line.virtual_available_at_date = line.product_id.uom_id._compute_quantity(line.virtual_available_at_date, line.product_uom_id)
-                    product_qty = line.product_uom_id._compute_quantity(product_qty, line.product_id.uom_id)
+                if line.product_uom and line.product_id.uom_id and line.product_uom != line.product_id.uom_id:
+                    line.qty_available_today = line.product_id.uom_id._compute_quantity(line.qty_available_today, line.product_uom)
+                    line.free_qty_today = line.product_id.uom_id._compute_quantity(line.free_qty_today, line.product_uom)
+                    line.virtual_available_at_date = line.product_id.uom_id._compute_quantity(line.virtual_available_at_date, line.product_uom)
+                    product_qty = line.product_uom._compute_quantity(product_qty, line.product_id.uom_id)
                 qty_processed_per_product[line.product_id.id] += product_qty
             treated |= lines
         remaining = (self - treated)
@@ -153,18 +151,18 @@ class SaleOrderLine(models.Model):
         remaining.free_qty_today = False
         remaining.qty_available_today = False
 
-    @api.depends('product_id', 'route_ids', 'warehouse_id', 'product_id.route_ids')
+    @api.depends('product_id', 'route_id', 'warehouse_id', 'product_id.route_ids')
     def _compute_is_mto(self):
         """ Verify the route of the product based on the warehouse
             set 'is_available' at True if the product availability in stock does
-            not need to be verified, which is the case in MTO, Drop-Shipping
+            not need to be verified, which is the case in MTO, Cross-Dock or Drop-Shipping
         """
         self.is_mto = False
         for line in self:
             if not line.display_qty_widget:
                 continue
             product = line.product_id
-            product_routes = line.route_ids or (product.route_ids + product.categ_id.total_route_ids)
+            product_routes = line.route_id or (product.route_ids + product.categ_id.total_route_ids)
 
             # Check MTO
             mto_route = line.warehouse_id.mto_pull_id.route_id
@@ -203,26 +201,31 @@ class SaleOrderLine(models.Model):
                 for move in outgoing_moves:
                     if move.state != 'done':
                         continue
-                    qty += move.product_uom._compute_quantity(move.quantity, line.product_uom_id, rounding_method='HALF-UP')
+                    qty += move.product_uom._compute_quantity(move.quantity, line.product_uom, rounding_method='HALF-UP')
                 for move in incoming_moves:
                     if move.state != 'done':
                         continue
-                    qty -= move.product_uom._compute_quantity(move.quantity, line.product_uom_id, rounding_method='HALF-UP')
+                    qty -= move.product_uom._compute_quantity(move.quantity, line.product_uom, rounding_method='HALF-UP')
                 line.qty_delivered = qty
 
     @api.model_create_multi
     def create(self, vals_list):
-        lines = super().create(vals_list)
+        lines = super(SaleOrderLine, self).create(vals_list)
         lines.filtered(lambda line: line.state == 'sale')._action_launch_stock_rule()
         return lines
 
-    def write(self, vals):
+    def write(self, values):
         lines = self.env['sale.order.line']
-        if 'product_uom_qty' in vals:
+        if 'product_uom_qty' in values:
             lines = self.filtered(lambda r: r.state == 'sale' and not r.is_expense)
 
+        if 'product_packaging_id' in values:
+            self.move_ids.filtered(
+                lambda m: m.state not in ['cancel', 'done']
+            ).product_packaging_id = values['product_packaging_id']
+
         previous_product_uom_qty = {line.id: line.product_uom_qty for line in lines}
-        res = super().write(vals)
+        res = super(SaleOrderLine, self).write(values)
         if lines:
             lines._action_launch_stock_rule(previous_product_uom_qty=previous_product_uom_qty)
         return res
@@ -261,15 +264,15 @@ class SaleOrderLine(models.Model):
             'sale_line_id': self.id,
             'date_planned': date_planned,
             'date_deadline': date_deadline,
-            'route_ids': self.route_ids,
+            'route_ids': self.route_id,
             'warehouse_id': self.warehouse_id,
             'partner_id': self.order_id.partner_shipping_id.id,
             'location_final_id': self._get_location_final(),
-            'product_description_variants': self.with_context(lang=self.order_id.partner_id.lang)._get_sale_order_line_multiline_description_variants().strip(),
+            'product_description_variants': self.with_context(lang=self.order_id.partner_id.lang)._get_sale_order_line_multiline_description_variants(),
             'company_id': self.order_id.company_id,
+            'product_packaging_id': self.product_packaging_id,
             'sequence': self.sequence,
             'never_product_template_attribute_value_ids': self.product_no_variant_attribute_value_ids,
-            'packaging_uom_id': self.product_uom_id,
         })
         return values
 
@@ -284,10 +287,10 @@ class SaleOrderLine(models.Model):
         outgoing_moves, incoming_moves = self._get_outgoing_incoming_moves(strict=False)
         for move in outgoing_moves:
             qty_to_compute = move.quantity if move.state == 'done' else move.product_uom_qty
-            qty += move.product_uom._compute_quantity(qty_to_compute, self.product_uom_id, rounding_method='HALF-UP')
+            qty += move.product_uom._compute_quantity(qty_to_compute, self.product_uom, rounding_method='HALF-UP')
         for move in incoming_moves:
             qty_to_compute = move.quantity if move.state == 'done' else move.product_uom_qty
-            qty -= move.product_uom._compute_quantity(qty_to_compute, self.product_uom_id, rounding_method='HALF-UP')
+            qty -= move.product_uom._compute_quantity(qty_to_compute, self.product_uom, rounding_method='HALF-UP')
         return qty
 
     def _get_outgoing_incoming_moves(self, strict=True):
@@ -309,12 +312,15 @@ class SaleOrderLine(models.Model):
                 if move.warehouse_id.id not in seen_wh_ids:
                     triggering_rule_ids.append(move.rule_id.id)
                     seen_wh_ids.add(move.warehouse_id.id)
-        if self.env.context.get('accrual_entry_date'):
-            moves = moves.filtered(lambda r: fields.Date.context_today(r, r.date) <= self.env.context['accrual_entry_date'])
+        if self._context.get('accrual_entry_date'):
+            moves = moves.filtered(lambda r: fields.Date.context_today(r, r.date) <= self._context['accrual_entry_date'])
 
         for move in moves:
-            if (strict and move.location_dest_id._is_outgoing()) or \
-               (not strict and move.rule_id.id in triggering_rule_ids and (move.location_final_id or move.location_dest_id)._is_outgoing()):
+            if not move._is_dropshipped_returned() and (
+                (strict and move.location_dest_id._is_outgoing()) or (
+                not strict and move.rule_id.id in triggering_rule_ids and
+                (move.location_final_id or move.location_dest_id)._is_outgoing()
+            )):
                 if not move.origin_returned_move_id or (move.origin_returned_move_id and move.to_refund):
                     outgoing_moves_ids.add(move.id)
             elif move.location_id._is_outgoing() and move.to_refund:
@@ -333,21 +339,21 @@ class SaleOrderLine(models.Model):
             'partner_id': self.order_id.partner_shipping_id.id,
         }
 
-    def _create_procurements(self, product_qty, procurement_uom, values):
+    def _create_procurements(self, product_qty, procurement_uom, origin, values):
         self.ensure_one()
         return [self.env['procurement.group'].Procurement(
             self.product_id, product_qty, procurement_uom, self._get_location_final(),
-            self.product_id.display_name, self.order_id.name, self.order_id.company_id, values)]
+            self.product_id.display_name, origin, self.order_id.company_id, values)]
 
-    def _action_launch_stock_rule(self, *, previous_product_uom_qty=False):
+    def _action_launch_stock_rule(self, previous_product_uom_qty=False):
         """
         Launch procurement group run method with required/custom fields generated by a
         sale order line. procurement group will launch '_run_pull', '_run_buy' or '_run_manufacture'
         depending on the sale order line product rule.
         """
-        if self.env.context.get("skip_procurement"):
+        if self._context.get("skip_procurement"):
             return True
-        precision = self.env['decimal.precision'].precision_get('Product Unit')
+        precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
         procurements = []
         for line in self:
             line = line.with_company(line.company_id)
@@ -375,10 +381,11 @@ class SaleOrderLine(models.Model):
             values = line._prepare_procurement_values(group_id=group_id)
             product_qty = line.product_uom_qty - qty
 
-            line_uom = line.product_uom_id
+            line_uom = line.product_uom
             quant_uom = line.product_id.uom_id
+            origin = f'{line.order_id.name} - {line.order_id.client_order_ref}' if line.order_id.client_order_ref else line.order_id.name
             product_qty, procurement_uom = line_uom._adjust_uom_quantities(product_qty, quant_uom)
-            procurements += line._create_procurements(product_qty, procurement_uom, values)
+            procurements += line._create_procurements(product_qty, procurement_uom, origin, values)
         if procurements:
             self.env['procurement.group'].run(procurements)
 
@@ -392,7 +399,7 @@ class SaleOrderLine(models.Model):
         return True
 
     def _update_line_quantity(self, values):
-        precision = self.env['decimal.precision'].precision_get('Product Unit')
+        precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
         line_products = self.filtered(lambda l: l.product_id.type == 'consu')
         if line_products.mapped('qty_delivered') and float_compare(values['product_uom_qty'], max(line_products.mapped('qty_delivered')), precision_digits=precision) == -1:
             raise UserError(_('The ordered quantity of a sale order line cannot be decreased below the amount already delivered. Instead, create a return in your inventory.'))
@@ -420,7 +427,7 @@ class SaleOrderLine(models.Model):
         res = super()._get_product_catalog_lines_data(**kwargs)
         res['deliveredQty'] = sum(
             self.mapped(
-                lambda line: line.product_uom_id._compute_quantity(
+                lambda line: line.product_uom._compute_quantity(
                     qty=line.qty_delivered,
                     to_unit=line.product_id.uom_id,
                 )

@@ -1,6 +1,8 @@
+/** @odoo-module */
+
 import {
     clickOnSave,
-    changeOptionInPopover,
+    changeOption,
     checkIfVisibleOnScreen,
     insertSnippet,
     registerWebsitePreviewTour,
@@ -37,23 +39,19 @@ registerWebsitePreviewTour("dropdowns_and_header_hide_on_scroll", {
 }, () => [
     ...insertSnippet({id: "s_media_list", name: "Media List", groupName: "Content"}),
     selectHeader(),
-    ...changeOptionInPopover("Header", "Scroll Effect", ".dropdown-item:contains('Fixed')"),
+    changeOption("undefined", 'we-select[data-variable="header-scroll-effect"]'),
+    changeOption("undefined", 'we-button[data-name="header_effect_fixed_opt"]'),
     {
         content: "Wait for the modification has been applied",
-        trigger: ".o_notification .o_notification_title:contains('Content saved')",
+        trigger: ".o_we_customize_panel:contains(Select a block on your page to style it.)",
         timeout: 30000,
     },
     {
         trigger: ":iframe #wrapwrap header.o_header_fixed",
     },
     selectHeader(),
-    {
-        // Checking step needed to make sure the builder DOM is up to date with
-        // the reloaded iframe.
-        content: "Expect Fixed scroll effect to be selected",
-        trigger: "[data-label='Scroll Effect'] .dropdown-toggle:contains('Fixed')",
-    },
-    ...changeOptionInPopover("Header", "Template", ".dropdown-item[data-action-param*=sales_two]"),
+    changeOption("WebsiteLevelColor", 'we-select[data-variable="header-template"] we-toggler'),
+    changeOption("WebsiteLevelColor", 'we-button[data-name="header_sales_two_opt"]'),
     {
         trigger: ":iframe .o_header_sales_two_top",
         timeout: 30000,

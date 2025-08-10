@@ -6,58 +6,11 @@ export class ProjectProject extends models.Model {
 
     name = fields.Char();
     is_favorite = fields.Boolean();
-    is_template = fields.Boolean();
-    active = fields.Boolean({ default: true });
-    stage_id = fields.Many2one({ relation: "project.project.stage" });
-    date = fields.Date({ string: "Expiration Date" });
-    date_start = fields.Date();
-    user_id = fields.Many2one({ relation: "res.users", falsy_value_label: "👤 Unassigned" });
 
     _records = [
-        {
-            id: 1,
-            name: "Project 1",
-            stage_id: 1,
-            date: "2024-01-09 07:00:00",
-            date_start: "2024-01-03 12:00:00",
-        },
-        { id: 2, name: "Project 2", stage_id: 2 },
+        { id: 1, name: "Project 1" },
+        { id: 2, name: "Project 2" },
     ];
-
-    _views = {
-        list: '<list><field name="name"/></list>',
-        form: '<form><field name="name"/></form>',
-    };
-
-    check_access_rights() {
-        return Promise.resolve(true);
-    }
-
-    get_template_tasks(projectId) {
-        return this.env["project.task"].search_read(
-            [
-                ["project_id", "=", projectId],
-                ["is_template", "=", true],
-            ],
-            ["id", "name"]
-        );
-    }
-}
-
-export class ProjectProjectStage extends models.Model {
-    _name = "project.project.stage";
-
-    name = fields.Char();
-
-    _records = [
-        { id: 1, name: "Stage 1" },
-        { id: 2, name: "Stage 2" },
-    ];
-
-    _views = {
-        list: '<list><field name="name"/></list>',
-        form: '<form><field name="name"/></form>',
-    };
 }
 
 export class ProjectTask extends models.Model {
@@ -71,8 +24,8 @@ export class ProjectTask extends models.Model {
     });
     subtask_count = fields.Integer();
     closed_subtask_count = fields.Integer();
-    project_id = fields.Many2one({ relation: "project.project", falsy_value_label: "🔒 Private" });
-    display_in_project = fields.Boolean({ default: true });
+    project_id = fields.Many2one({ relation: "project.project" });
+    display_in_project = fields.Boolean();
     stage_id = fields.Many2one({ relation: "project.task.type" });
     milestone_id = fields.Many2one({ relation: "project.milestone" });
     state = fields.Selection({
@@ -80,15 +33,12 @@ export class ProjectTask extends models.Model {
             ["01_in_progress", "In Progress"],
             ["02_changes_requested", "Changes Requested"],
             ["03_approved", "Approved"],
-            ["1_canceled", "Cancelled"],
-            ["1_done", "Done"],
             ["04_waiting_normal", "Waiting Normal"],
         ],
     });
     user_ids = fields.Many2many({
         string: "Assignees",
         relation: "res.users",
-        falsy_value_label: "👤 Unassigned",
     });
     priority = fields.Selection({
         selection: [
@@ -96,17 +46,10 @@ export class ProjectTask extends models.Model {
             ["1", "High"],
         ],
     });
-    partner_id = fields.Many2one({ string: "Partner", relation: "res.partner" });
     planned_date_begin = fields.Datetime({ string: "Start Date" });
     date_deadline = fields.Datetime({ string: "Stop Date" });
     depend_on_ids = fields.Many2many({ relation: "project.task" });
     closed_depend_on_count = fields.Integer();
-    is_closed = fields.Boolean();
-    is_template = fields.Boolean({ string: "Is Template", default: false });
-
-    plan_task_in_calendar(idOrIds, values) {
-        return this.write(idOrIds, values);
-    }
 
     _records = [
         {
@@ -163,7 +106,6 @@ export function defineProjectModels() {
 
 export const projectModels = {
     ProjectProject,
-    ProjectProjectStage,
     ProjectTask,
     ProjectTaskType,
     ProjectMilestone,

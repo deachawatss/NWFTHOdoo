@@ -1,16 +1,10 @@
-import { Component, onMounted, useState, xml } from "@odoo/owl";
-import { Navigator, useNavigation } from "@web/core/navigation/navigation";
+import { Component, xml } from "@odoo/owl";
+import { useNavigation } from "@web/core/navigation/navigation";
 import { useAutofocus } from "@web/core/utils/hooks";
-import { describe, destroy, expect, test } from "@odoo/hoot";
-import {
-    hover,
-    press,
-    queryAllTexts,
-    queryOne,
-    manuallyDispatchProgrammaticEvent,
-} from "@odoo/hoot-dom";
+import { describe, expect, test } from "@odoo/hoot";
+import { hover, press } from "@odoo/hoot-dom";
 import { animationFrame } from "@odoo/hoot-mock";
-import { mountWithCleanup, patchWithCleanup } from "@web/../tests/web_test_helpers";
+import { mountWithCleanup } from "@web/../tests/web_test_helpers";
 
 class BasicHookParent extends Component {
     static props = [];
@@ -31,7 +25,6 @@ class BasicHookParent extends Component {
     setup() {
         useAutofocus({ refName: "outsideRef" });
         this.navigation = useNavigation("containerRef", this.navOptions);
-        onMounted(() => this.navigation.items[0]?.setActive());
     }
 
     navOptions = {};
@@ -93,15 +86,13 @@ test("hotkey override options", async () => {
     class Parent extends BasicHookParent {
         navOptions = {
             hotkeys: {
-                arrowleft: (navigator) => {
-                    expect.step(navigator.activeItemIndex);
-                    navigator.items[
-                        (navigator.activeItemIndex + 2) % navigator.items.length
-                    ].setActive();
+                arrowleft: (index, items) => {
+                    expect.step(index);
+                    items[(index + 2) % items.length].focus();
                 },
-                escape: (navigator) => {
+                escape: (index, items) => {
                     expect.step("escape");
-                    navigator.items[0].setActive();
+                    items[0].focus();
                 },
             },
         };
@@ -139,7 +130,6 @@ test("navigation with virtual focus", async () => {
     class Parent extends BasicHookParent {
         navOptions = {
             virtualFocus: true,
-            isNavigationAvailable: () => true,
         };
 
         onClick(id) {
@@ -196,82 +186,4 @@ test("hovering an item makes it active but doesn't focus", async () => {
     await animationFrame();
     expect(".four").toBeFocused();
     expect(".four").toHaveClass("focus");
-});
-
-test("navigation disabled when component is destroyed", async () => {
-    patchWithCleanup(Navigator.prototype, {
-        update() {
-            expect.step("enable");
-            super.update();
-        },
-        _destroy() {
-            expect.step("disable");
-            super._destroy();
-        },
-    });
-    const component = await mountWithCleanup(BasicHookParent);
-    await expect.waitForSteps(["enable"]);
-    destroy(component);
-    await expect.waitForSteps(["disable"]);
-});
-
-test("insert item before current", async () => {
-    class TestComp extends Component {
-        static props = [];
-        static template = xml`
-            <div class="container" t-ref="containerRef">
-                <t t-foreach="state.items" t-as="item" t-key="item">
-                    <div class="o-navigable" t-attf-class="item-{{item}}" tabindex="0" t-esc="item"/>
-                </t>
-            </div>
-        `;
-
-        setup() {
-            this.navigation = useNavigation("containerRef");
-            this.state = useState({ items: [1, 2, 3] });
-            onMounted(() => this.navigation.items[0].setActive());
-        }
-    }
-
-    const component = await mountWithCleanup(TestComp);
-    await press("arrowup");
-    expect(queryAllTexts(".o-navigable")).toEqual(["1", "2", "3"]);
-    expect(".item-3").toBeFocused();
-    expect(".item-3").toHaveClass("focus");
-
-    component.state.items.splice(2, 0, 10);
-    await animationFrame();
-
-    expect(queryAllTexts(".o-navigable")).toEqual(["1", "2", "10", "3"]);
-    expect(".item-3").toBeFocused();
-    expect(".item-3").toHaveClass("focus");
-
-    await press("arrowup");
-    expect(".item-10").toBeFocused();
-    expect(".item-10").toHaveClass("focus");
-});
-
-test("items are focused only on mousemove, not on mouseenter", async () => {
-    await mountWithCleanup(BasicHookParent);
-
-    expect(".one").toBeFocused();
-
-    manuallyDispatchProgrammaticEvent(queryOne(".two"), "mouseenter");
-    await animationFrame();
-    // mouseenter should be ignored
-    expect(".two").not.toHaveClass("focus");
-
-    await press("arrowdown");
-    await animationFrame();
-    expect(".two").toHaveClass("focus");
-
-    manuallyDispatchProgrammaticEvent(queryOne(".three"), "mousemove");
-    await animationFrame();
-    // mousemove should not be ignored
-    expect(".three").toHaveClass("focus");
-    expect(".two").not.toHaveClass("focus");
-
-    manuallyDispatchProgrammaticEvent(queryOne(".three"), "mousemove");
-    await animationFrame();
-    expect(".three").toHaveClass("focus");
 });

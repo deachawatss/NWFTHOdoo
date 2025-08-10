@@ -1,6 +1,8 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from collections import Counter
+from lxml import etree
 import os
 import time
 from unittest import skip
@@ -10,20 +12,22 @@ import pathlib
 import lxml
 import base64
 
-import odoo.modules
-from odoo import api
+import odoo
+from odoo import api, http
+from odoo.addons import __path__ as ADDONS_PATH
 from odoo.addons.base.models.assetsbundle import AssetsBundle, XMLAssetError, ANY_UNIQUE
 from odoo.addons.base.models.ir_asset import AssetPaths
 from odoo.addons.base.models.ir_attachment import IrAttachment
+from odoo.modules.module import get_manifest
 from odoo.tests import HttpCase, tagged
 from odoo.tests.common import TransactionCase
-from odoo.tools import mute_logger
+from odoo.addons.base.models.ir_qweb import QWebException
+from odoo.tools import mute_logger, func
 from odoo.tools.misc import file_path
 
 GETMTINE = os.path.getmtime
 
 # ruff: noqa: S320
-
 
 class TestAddonPaths(TransactionCase):
     def test_operations(self):
@@ -95,23 +99,19 @@ class TestAddonPaths(TransactionCase):
         ])
 
 
-class Manifests(dict):
-    def __init__(self, default):
-        self.defaults = default
-
-    def __missing__(self, key):
-        return self.defaults(key)
-
-
 class AddonManifestPatched(TransactionCase):
     def setUp(self):
         super().setUp()
 
         self.installed_modules = {'base', 'test_assetsbundle'}
-        self.manifests = Manifests(odoo.modules.Manifest.for_addon)
+        self.manifests = {
+            'base': get_manifest('base'),
+            'web': get_manifest('web'),
+            'test_assetsbundle': get_manifest('test_assetsbundle'),
+        }
 
         self.patch(self.env.registry, '_init_modules', self.installed_modules)
-        self.patch(odoo.modules.Manifest, 'for_addon', lambda module, **kw: self.manifests[module])
+        self.patch(odoo.modules.module, '_get_manifest_cached', Mock(side_effect=lambda module: self.manifests.get(module, {})))
 
 
 class FileTouchable(AddonManifestPatched):
@@ -1415,45 +1415,6 @@ class TestAssetsManifest(AddonManifestPatched):
             '''
         )
 
-    def test_20_css_compatibility_prefix(self):
-        self.env['ir.asset'].create({
-            'name': '1',
-            'bundle': 'test_assetsbundle.irasset2',
-            'path': 'test_assetsbundle/static/src/scss/test_prefix.scss',
-        })
-        bundle = self.env['ir.qweb']._get_asset_bundle('test_assetsbundle.irasset2', js=False, autoprefix=True)
-        content = bundle.css().raw.decode()
-        self.assertRegex(content, '.appearance-none{-webkit-appearance: none; -moz-appearance: none; appearance: none;}')
-        self.assertRegex(content, '.appearance-auto{-webkit-appearance: auto; -moz-appearance: auto; appearance: auto;}')
-        self.assertRegex(content, '.appearance-none-prefixed{-webkit-appearance: none;}')
-
-        self.assertRegex(content, '.display-flex{display: -webkit-box; display: -webkit-flex; display: flex;}')
-        self.assertRegex(content, '.display-inline-flex{display: -webkit-inline-box; display: -webkit-inline-flex; display: inline-flex;}')
-        self.assertRegex(content, '.display-inline{display: inline;}')        
-        self.assertRegex(content, '.display-var-flex{--dummy-display: flex;}')
-        self.assertRegex(content, '.display-var-inline-flex{--dummy-display: inline-flex;}')
-        self.assertRegex(content, '.display-var-inline{--dummy-display: inline;}')
-
-        self.assertRegex(content, '.flex-flow-row-nowrap{-webkit-flex-flow: row nowrap; flex-flow: row nowrap;}')
-        self.assertRegex(content, '.flex-flow-column-wrap{-webkit-flex-flow: column wrap; flex-flow: column wrap;}')
-        self.assertRegex(content, '.flex-flow-column-reverse-wrap-reverse{flex-flow: column-reverse wrap-reverse;}')
-        self.assertRegex(content, '.flex-flow-row{flex-flow: row;}')
-        
-        self.assertRegex(content, '.flex-direction-column{-webkit-box-orient: vertical; -webkit-box-direction: normal; -webkit-flex-direction: column; flex-direction: column;}')
-        self.assertRegex(content, '.flex-direction-column-reverse{flex-direction: column-reverse;}')
-        self.assertRegex(content, '.flex-direction-row{flex-direction: row;}')
-        
-        self.assertRegex(content, '.flex-wrap-wrap{-webkit-flex-wrap: wrap; flex-wrap: wrap;}')
-        self.assertRegex(content, '.flex-wrap-nowrap{-webkit-flex-wrap: nowrap; flex-wrap: nowrap;}')
-        self.assertRegex(content, '.flex-wrap-wrap-reverse{flex-wrap: wrap-reverse;}')
-
-        self.assertRegex(content, '.flex-0-0-auto{-webkit-box-flex: 0; -webkit-flex: 0 0 auto; flex: 0 0 auto;}')
-        self.assertRegex(content, '.flex-0-1-auto{-webkit-box-flex: 0; -webkit-flex: 0 1 auto; flex: 0 1 auto;}')
-        self.assertRegex(content, '.flex-1-1-100{-webkit-box-flex: 1; -webkit-flex: 1 1 100; flex: 1 1 100;}')
-        self.assertRegex(content, '.flex-1-1-100percent{flex: 1 1 100%;}')
-        self.assertRegex(content, '.flex-auto{flex: auto;}')
-        self.assertRegex(content, '.flex-1-30px{flex: 1 30px;}')
-
     def test_21_js_before_css(self):
         '''Non existing target node: ignore the manifest line'''
         self.installed_modules.add('test_other')
@@ -1914,12 +1875,11 @@ class TestAssetsManifest(AddonManifestPatched):
             """
         )
 
-
 @tagged('-at_install', 'post_install')
 class AssetsNodeOrmCacheUsage(TransactionCase):
 
     def cache_keys(self):
-        keys = list(self.env.registry._Registry__caches['assets'])
+        keys = self.env.registry._Registry__caches['assets'].d
 
         asset_keys = [key for key in keys if key[0] == 'ir.asset' and '_get_asset_paths' in str(key[1])] # ignore topological sort entry
         qweb_keys = [key for key in keys if key[0] == 'ir.qweb']

@@ -7,7 +7,7 @@ from odoo import _, fields, models, tools
 from odoo.tools.misc import file_open
 
 
-class MailingMailingTest(models.TransientModel):
+class TestMassMailing(models.TransientModel):
     _name = 'mailing.mailing.test'
     _description = 'Sample Mail Wizard'
     # allow mailing.mailing.test records to live for 10h (instead of 1h default)

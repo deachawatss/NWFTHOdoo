@@ -1,28 +1,20 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import fields, models
+from odoo.osv import expression
 from odoo.tools import float_round, groupby
 
 
 class ProductTemplate(models.Model):
+    _name = 'product.template'
     _inherit = 'product.template'
 
     def _get_product_accounts(self):
         accounts = super()._get_product_accounts()
-        if self.categ_id:
-            # If category set on the product take production account from category even if
-            # production account on category is False
-            production_account = self.categ_id.property_stock_account_production_cost_id
-        else:
-            ProductCategory = self.env['product.category']
-            production_account = (
-                self.valuation == 'real_time'
-                and ProductCategory._fields['property_stock_account_production_cost_id'].get_company_dependent_fallback(
-                    ProductCategory
-                )
-                or self.env['account.account']
-            )
-        accounts['production'] = production_account
+        accounts.update({
+            'production': self.categ_id.property_stock_account_production_cost_id,
+        })
         return accounts
 
     def action_bom_cost(self):
@@ -37,6 +29,7 @@ class ProductTemplate(models.Model):
 
 
 class ProductProduct(models.Model):
+    _name = 'product.product'
     _inherit = 'product.product'
 
     def button_bom_cost(self):
@@ -95,7 +88,10 @@ class ProductProduct(models.Model):
             if opt._skip_operation_line(self):
                 continue
 
-            total += opt.cost
+            duration_expected = (
+                opt.workcenter_id._get_expected_duration(self) +
+                opt.time_cycle * 100 / opt.workcenter_id.time_efficiency)
+            total += (duration_expected / 60) * opt._total_cost_per_hour()
 
         for line in bom.bom_line_ids:
             if line._skip_bom_line(self):
@@ -127,7 +123,7 @@ class ProductCategory(models.Model):
 
     property_stock_account_production_cost_id = fields.Many2one(
         'account.account', 'Production Account', company_dependent=True, ondelete='restrict',
-        check_company=True,
+        domain="[('deprecated', '=', False)]", check_company=True,
         help="""This account will be used as a valuation counterpart for both components and final products for manufacturing orders.
                 If there are any workcenter/employee costs, this value will remain on the account once the production is completed.""")
 

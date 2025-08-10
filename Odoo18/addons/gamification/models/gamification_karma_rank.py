@@ -4,10 +4,10 @@ from odoo import api, fields, models
 from odoo.tools.translate import html_translate
 
 
-class GamificationKarmaRank(models.Model):
+class KarmaRank(models.Model):
     _name = 'gamification.karma.rank'
     _description = 'Rank based on karma'
-    _inherit = ['image.mixin']
+    _inherit = 'image.mixin'
     _order = 'karma_min'
 
     name = fields.Text(string='Rank Name', translate=True, required=True)
@@ -20,10 +20,9 @@ class GamificationKarmaRank(models.Model):
     user_ids = fields.One2many('res.users', 'rank_id', string='Users')
     rank_users_count = fields.Integer("# Users", compute="_compute_rank_users_count")
 
-    _karma_min_check = models.Constraint(
-        'CHECK( karma_min > 0 )',
-        'The required karma has to be above 0.',
-    )
+    _sql_constraints = [
+        ('karma_min_check', "CHECK( karma_min > 0 )", 'The required karma has to be above 0.')
+    ]
 
     @api.depends('user_ids')
     def _compute_rank_users_count(self):
@@ -33,8 +32,8 @@ class GamificationKarmaRank(models.Model):
             rank.rank_users_count = requests_mapped_data.get(rank.id, 0)
 
     @api.model_create_multi
-    def create(self, vals_list):
-        res = super().create(vals_list)
+    def create(self, values_list):
+        res = super(KarmaRank, self).create(values_list)
         if any(res.mapped('karma_min')) > 0:
             users = self.env['res.users'].sudo().search([('karma', '>=', max(min(res.mapped('karma_min')), 1))])
             if users:
@@ -47,7 +46,7 @@ class GamificationKarmaRank(models.Model):
             low = min(vals['karma_min'], min(self.mapped('karma_min')))
             high = max(vals['karma_min'], max(self.mapped('karma_min')))
 
-        res = super().write(vals)
+        res = super(KarmaRank, self).write(vals)
 
         if 'karma_min' in vals:
             after_ranks = self.env['gamification.karma.rank'].search([], order="karma_min DESC").ids

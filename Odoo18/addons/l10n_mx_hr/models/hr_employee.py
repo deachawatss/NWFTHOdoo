@@ -4,7 +4,7 @@
 from odoo import fields, models
 
 
-class HrEmployee(models.Model):
+class Employee(models.Model):
     _inherit = 'hr.employee'
 
     l10n_mx_curp = fields.Char('CURP', groups="hr.group_hr_user", tracking=True)

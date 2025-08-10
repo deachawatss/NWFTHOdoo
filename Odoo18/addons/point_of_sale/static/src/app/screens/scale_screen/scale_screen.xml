@@ -21,7 +21,7 @@
                 <div class="d-flex gap-5 align-items-center mb-2">
                 <div class="w-50">
                     <button class="btn btn-primary w-50 fs-3" t-att-disabled="scale.tareRequested" t-on-click="() => scale.requestTare()">
-                        <i t-if="scale.tareRequested" class="fa fa-circle-o-notch fa-spin"/>
+                        <i t-if="scale.tareRequested" class="fa fa-spinner fa-spin"/>
                         <t t-else="">Tare</t>
                     </button>
                     </div>

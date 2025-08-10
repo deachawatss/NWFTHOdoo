@@ -14,8 +14,8 @@ class MailActivityType(models.Model):
     case res_model field should be used. """
     _name = 'mail.activity.type'
     _description = 'Activity Type'
-    _order = 'sequence, id'
     _rec_name = 'name'
+    _order = 'sequence, id'
 
     def _get_model_selection(self):
         return [
@@ -38,7 +38,7 @@ class MailActivityType(models.Model):
         ('months', 'months')], string="Delay units", help="Unit of delay", required=True, default='days')
     delay_label = fields.Char(compute='_compute_delay_label')
     delay_from = fields.Selection([
-        ('current_date', 'after previous activity completion date'),
+        ('current_date', 'after completion date'),
         ('previous_activity', 'after previous activity deadline')], string="Delay Type", help="Type of delay", required=True, default='previous_activity')
     icon = fields.Char('Icon', help="Font awesome icon e.g. fa-tasks")
     decoration_type = fields.Selection([
@@ -74,6 +74,7 @@ class MailActivityType(models.Model):
     mail_template_ids = fields.Many2many('mail.template', string='Email templates')
     default_user_id = fields.Many2one("res.users", string="Default User")
     default_note = fields.Html(string="Default Note", translate=True)
+    keep_done = fields.Boolean(string="Keep Done", help='Keep activities marked as done in the activity view')
 
     #Fields for display purpose only
     initial_res_model = fields.Selection(selection=_get_model_selection, string='Initial model', compute="_compute_initial_res_model", store=False,
@@ -128,10 +129,10 @@ class MailActivityType(models.Model):
             else:
                 activity_type.chaining_type = 'suggest'
 
-    def write(self, vals):
+    def write(self, values):
         # Protect some master types against model change when they are used
         # as default in apps, in business flows, plans, ...
-        if 'res_model' in vals:
+        if 'res_model' in values:
             xmlid_to_model = {
                 xmlid: info['res_model']
                 for xmlid, info in self._get_model_info_by_xmlid().items()
@@ -140,14 +141,14 @@ class MailActivityType(models.Model):
             for xml_id, model in xmlid_to_model.items():
                 activity_type = self.env.ref(xml_id, raise_if_not_found=False)
                 # beware '' and False for void res_model
-                if activity_type and (vals['res_model'] or False) != (model or False) and activity_type in self:
+                if activity_type and (values['res_model'] or False) != (model or False) and activity_type in self:
                     modified += activity_type
             if modified:
                 raise exceptions.UserError(
                     _('You cannot modify %(activities_names)s target model as they are are required in various apps.',
                       activities_names=', '.join(act.name for act in modified),
                 ))
-        return super().write(vals)
+        return super().write(values)
 
     @api.ondelete(at_uninstall=False)
     def _unlink_except_todo(self):
@@ -166,14 +167,6 @@ class MailActivityType(models.Model):
         if self.env.ref('mail.mail_activity_data_todo') in self:
             raise UserError(_("The 'To-Do' activity type is used to create reminders from the top bar menu and the command palette. Consequently, it cannot be archived or deleted."))
         return super().action_archive()
-
-    def unlink(self):
-        """ When removing an activity type, put activities into a Todo. """
-        todo_type = self.env.ref('mail.mail_activity_data_todo')
-        self.env['mail.activity'].search([('activity_type_id', 'in', self.ids)]).write({
-            'activity_type_id': todo_type.id,
-        })
-        return super().unlink()
 
     def _get_date_deadline(self):
         """ Return the activity deadline computed from today or from activity_previous_deadline context variable. """

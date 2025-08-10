@@ -3,8 +3,7 @@
 
 from odoo import api, models, fields
 
-
-class GamificationGoalWizard(models.TransientModel):
+class goal_manual_wizard(models.TransientModel):
     """Wizard to update a manual goal"""
     _name = 'gamification.goal.wizard'
     _description = 'Gamification Goal Wizard'

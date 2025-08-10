@@ -375,7 +375,7 @@ class TestItEdiExport(TestItEdi):
             'amount': 0.0,
             'amount_type': 'percent',
             'l10n_it_exempt_reason': 'N3.1',
-            'invoice_legal_notes': 'Art. 8, c.1, lett.a - D.P.R. 633/1972',
+            'l10n_it_law_reference': 'Art. 8, c.1, lett.a - D.P.R. 633/1972',
         })
 
         american_partner_b = self.env['res.partner'].create({
@@ -473,7 +473,7 @@ class TestItEdiExport(TestItEdi):
         if self.env['ir.module.module']._get('sale').state != 'installed':
             self.skipTest("sale module is not installed")
 
-        sale_order = self.env['sale.order'].with_company(self.company).sudo().create({
+        sale_order = self.env['sale.order'].with_company(self.company).create({
             'partner_id': self.italian_partner_a.id,
             'order_line': [
                 Command.create({'product_id': self.service_product.id, 'price_unit': 200.00}),
@@ -483,7 +483,7 @@ class TestItEdiExport(TestItEdi):
 
         for amount in (50, 100):
             self.env['account.move'].with_company(self.company).browse(
-                self.env['sale.advance.payment.inv'].sudo().create([{
+                self.env['sale.advance.payment.inv'].create([{
                     'advance_payment_method': 'fixed',
                     'fixed_amount': amount,
                     'sale_order_ids': [Command.link(sale_order.id)],
@@ -491,7 +491,7 @@ class TestItEdiExport(TestItEdi):
             ).action_post()
 
         invoice = self.env['account.move'].with_company(self.company).browse(
-            self.env['sale.advance.payment.inv'].sudo().create([{
+            self.env['sale.advance.payment.inv'].create([{
                 'advance_payment_method': 'delivered',
                 'sale_order_ids': [Command.link(sale_order.id)],
             }]).create_invoices()['res_id']
@@ -525,7 +525,7 @@ class TestItEdiExport(TestItEdi):
 
         self._assert_export_invoice(invoice, 'prezzio_unitario_converted_company_currency.xml')
 
-    def test_export_XML_lowercase_fields_and_payment_method(self):
+    def test_export_XML_lowercase_fields(self):
         partner = self.env['res.partner'].create({
             'name': 'Alessi',
             'l10n_it_codice_fiscale': 'Mrtmtt91d08f205j',
@@ -545,7 +545,111 @@ class TestItEdiExport(TestItEdi):
                     'tax_ids': [Command.set(self.default_tax.ids)],
                 }),
             ],
-            'l10n_it_payment_method': 'MP15',
         })
         invoice.action_post()
         self._assert_export_invoice(invoice, 'invoice_lowercase_fields.xml')
+
+    def test_export_XML_product_with_multiline_description_field(self):
+        invoice = self.env['account.move'].with_company(self.company).create({
+            'move_type': 'out_invoice',
+            'invoice_date': '2022-03-24',
+            'invoice_date_due': '2022-03-24',
+            'partner_id': self.italian_partner_a.id,
+            'invoice_line_ids': [
+                Command.create({
+                    'product_id': self.product_a.id,
+                    'name': 'High-quality ergonomic office chair.\nBreathable mesh back and cushioned seat.\nAdjustable height and lumbar support.\nSupports up to 120 kg weight capacity.\nIdeal for home and corporate workspaces.',
+                    'price_unit': 800.40,
+                    'tax_ids': [Command.set(self.default_tax.ids)],
+                }),
+            ],
+        })
+        invoice.action_post()
+        self._assert_export_invoice(invoice, 'invoice_with_multiple_product_description_fields.xml')
+
+    def test_export_invoice_with_rounding_lines_value(self):
+        """Test that invoices with rounding lines are correctly exported with exempt tax 'N2.2'."""
+        self.env['res.config.settings'].create({
+            'company_id': self.company.id,
+            'group_cash_rounding': True
+        })
+
+        cash_rounding_add_invoice_line = self.env['account.cash.rounding'].with_company(self.company).create({
+            'name': 'Rounding to 0.05',
+            'rounding': 0.05,
+            'strategy': 'add_invoice_line',
+            'profit_account_id': self.company_data_2['default_account_revenue'].id,
+            'loss_account_id': self.company_data_2['default_account_expense'].id,
+            'rounding_method': 'HALF-UP',
+        })
+
+        invoice = self.env['account.move'].with_company(self.company).create({
+            'move_type': 'out_invoice',
+            'partner_id': self.italian_partner_a.id,
+            'invoice_date': '2022-03-24',
+            'invoice_date_due': '2022-03-24',
+            'invoice_cash_rounding_id': cash_rounding_add_invoice_line.id,
+            'invoice_line_ids': [
+                Command.create({
+                    'name': 'standard_line',
+                    'price_unit': 100.02,
+                    'tax_ids': [Command.set(self.default_tax.ids)],
+                }),
+            ]
+        })
+        invoice.action_post()
+
+        self._assert_export_invoice(invoice, 'invoice_with_rounding_line.xml')
+
+    def test_export_invoice_exclude_postdated_moves(self):
+        """Test that in case of Credit note A, originated from Invoice A but reconciled
+           with Invoice B, we consider for DatiFattureCollegate xml element only
+           documents dated not after credit note A
+        """
+        invoice_a = self.env['account.move'].with_company(self.company).create({
+            'move_type': 'out_invoice',
+            'invoice_date': '2022-03-24',
+            'invoice_date_due': '2022-03-24',
+            'partner_id': self.italian_partner_a.id,
+            'invoice_line_ids': [
+                Command.create({
+                    'name': "Product A",
+                    'price_unit': 800.40,
+                    'tax_ids': [Command.set(self.default_tax.ids)],
+                })
+            ]
+        })
+        invoice_a.action_post()
+
+        credit_note = invoice_a._reverse_moves([{
+            'invoice_date': '2022-03-24',
+        }])
+        credit_note.write({
+            'invoice_line_ids': [
+                Command.clear(),
+                Command.create({
+                    'name': "Product A",
+                    'price_unit': 500.0,
+                    'tax_ids': [Command.set(self.default_tax.ids)],
+                })
+            ]
+        })
+        credit_note.action_post()
+        credit_note.line_ids.filtered(lambda l: l.account_type == 'asset_receivable').remove_move_reconcile()
+
+        invoice_b = self.env['account.move'].with_company(self.company).create({
+            'move_type': 'out_invoice',
+            'invoice_date': '2022-03-25',
+            'invoice_date_due': '2022-03-25',
+            'partner_id': self.italian_partner_a.id,
+            'invoice_line_ids': [
+                Command.create({
+                    'name': "Product A",
+                    'price_unit': 600,
+                    'tax_ids': [Command.set(self.default_tax.ids)],
+                })
+            ]
+        })
+        invoice_b.action_post()
+        (invoice_b.line_ids + credit_note.line_ids).filtered(lambda line: line.account_type in ('asset_receivable')).reconcile()
+        self._assert_export_invoice(credit_note, 'invoice_exclude_postdated_moves.xml')

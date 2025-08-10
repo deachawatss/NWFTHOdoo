@@ -1,5 +1,5 @@
 import { registry } from "@web/core/registry";
-import { stepUtils } from "@web_tour/tour_utils";
+import { stepUtils } from "@web_tour/tour_service/tour_utils";
 
 registry.category("web_tour.tours").add("discuss_configuration_tour", {
     url: "/odoo",
@@ -15,6 +15,10 @@ registry.category("web_tour.tours").add("discuss_configuration_tour", {
         },
         {
             trigger: ".dropdown-menu a:contains('Notification')",
+            run: "click",
+        },
+        {
+            trigger: ".o-mail-DiscussNotificationSettings label:contains('Mute')",
             run: "click",
         },
         {
@@ -49,7 +53,7 @@ registry.category("web_tour.tours").add("discuss_configuration_tour", {
             run: "click",
         },
         {
-            trigger: "span:contains('Voice detection sensitivity')",
+            trigger: "label:contains('Voice detection threshold')",
         },
         {
             trigger: "button:contains('Push to Talk')",

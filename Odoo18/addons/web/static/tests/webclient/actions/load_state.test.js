@@ -22,7 +22,7 @@ import {
 import { browser } from "@web/core/browser/browser";
 import { registry } from "@web/core/registry";
 import { WebClient } from "@web/webclient/webclient";
-import { router, routerBus, startRouter } from "@web/core/browser/router";
+import { router, routerBus } from "@web/core/browser/router";
 import { redirect } from "@web/core/utils/urls";
 import { ControlPanel } from "@web/search/control_panel/control_panel";
 import { _t } from "@web/core/l10n/translation";
@@ -679,7 +679,6 @@ describe(`new urls`, () => {
             "/web/action/load",
             "get_views",
             "web_search_read",
-            "has_group",
             "Update the state without updating URL, nextState: actionStack,action",
         ]);
     });
@@ -764,7 +763,6 @@ describe(`new urls`, () => {
             "/web/action/load",
             "get_views",
             "web_search_read",
-            "has_group",
             "Update the state without updating URL, nextState: actionStack,action,view_type",
         ]);
     });
@@ -943,7 +941,6 @@ describe(`new urls`, () => {
             "/web/action/load",
             "get_views",
             "web_search_read",
-            "has_group",
             "pushState http://example.com/odoo/action-1",
         ]);
     });
@@ -1360,7 +1357,7 @@ describe(`new urls`, () => {
         ]);
     });
 
-    test("properly reload dynamic actions from sessionStorage (action without id)", async () => {
+    test("properly reload dynamic actions from sessionStorage", async () => {
         patchWithCleanup(browser.sessionStorage, {
             setItem(key, value) {
                 expect.step(`set ${key}-${value}`);
@@ -1394,7 +1391,6 @@ describe(`new urls`, () => {
 
         expect(`.o_kanban_view`).toHaveCount(1);
         expect.verifySteps([
-            "get current_action-null",
             'set current_action-{"type":"ir.actions.act_window","res_model":"partner","res_id":1,"views":[[false,"form"]]}',
             'set current_action-{"type":"ir.actions.act_window","res_model":"partner","views":[[1,"kanban"]],"context":{"lang":"en","tz":"taht","uid":7,"allowed_company_ids":[1],"active_model":"partner","active_id":1,"active_ids":[1]}}',
         ]);
@@ -1409,77 +1405,6 @@ describe(`new urls`, () => {
         expect.verifySteps([
             'get current_action-{"type":"ir.actions.act_window","res_model":"partner","views":[[1,"kanban"]],"context":{"lang":"en","tz":"taht","uid":7,"allowed_company_ids":[1],"active_model":"partner","active_id":1,"active_ids":[1]}}',
             'set current_action-{"type":"ir.actions.act_window","res_model":"partner","views":[[1,"kanban"]],"context":{"lang":"en","tz":"taht","uid":7,"active_model":"partner","active_id":1,"active_ids":[1]}}',
-            "get menu_id-null",
-        ]);
-    });
-
-    test("properly reload dynamic actions from sessionStorage (action with id)", async () => {
-        patchWithCleanup(browser.sessionStorage, {
-            setItem(key, value) {
-                expect.step(`set ${key}-${value}`);
-                super.setItem(key, value);
-            },
-            getItem(key) {
-                const res = super.getItem(key);
-                expect.step(`get ${key}-${res}`);
-                return res;
-            },
-        });
-
-        defineActions([
-            {
-                id: 100,
-                type: "ir.actions.act_window",
-                res_model: "partner",
-                res_id: 1,
-                views: [[false, "form"]],
-            },
-            {
-                id: 200,
-                type: "ir.actions.act_window",
-                res_model: "partner",
-                views: [[1, "kanban"]],
-            },
-        ]);
-
-        await mountWebClient();
-        await getService("action").doAction(100);
-
-        expect(`.o_form_view`).toHaveCount(1);
-
-        //add a domain to an existing action.
-        await getService("action").doAction({
-            id: 200,
-            type: "ir.actions.act_window",
-            res_model: "partner",
-            views: [[1, "kanban"]],
-            domain: [["id", "=", 1]],
-        });
-        await animationFrame();
-
-        expect(`.o_kanban_view`).toHaveCount(1);
-        expect(`.o_kanban_record:not(.o_kanban_ghost)`).toHaveCount(1);
-        expect.verifySteps([
-            "get current_action-null",
-            'set current_action-{"binding_type":"action","binding_view_types":"list,form","id":100,"type":"ir.actions.act_window","xml_id":100,"res_model":"partner","res_id":1,"views":[[false,"form"]],"context":{},"embedded_action_ids":[],"group_ids":[],"limit":80,"mobile_view_mode":"kanban","target":"current","view_ids":[],"view_mode":"list,form","cache":true}',
-            'set current_action-{"id":200,"type":"ir.actions.act_window","res_model":"partner","views":[[1,"kanban"]],"domain":[["id","=",1]]}',
-        ]);
-
-        expect(browser.location.href).toBe("http://example.com/odoo/action-100/1/action-200");
-
-        // Emulate a Reload
-        startRouter(); // Emulate a full reload. Update the current state of the router with the URL (as is done on reload)
-        expect(router.current.action).toBe(200);
-        expect(router.current.active_id).toBe(1);
-        routerBus.trigger("ROUTE_CHANGE");
-
-        await animationFrame();
-        await animationFrame();
-        expect(`.o_kanban_view`).toHaveCount(1);
-        expect(`.o_kanban_record:not(.o_kanban_ghost)`).toHaveCount(1);
-        expect.verifySteps([
-            'get current_action-{"id":200,"type":"ir.actions.act_window","res_model":"partner","views":[[1,"kanban"]],"domain":[["id","=",1]]}',
-            'set current_action-{"id":200,"type":"ir.actions.act_window","res_model":"partner","views":[[1,"kanban"]],"domain":[["id","=",1]]}',
             "get menu_id-null",
         ]);
     });
@@ -1632,7 +1557,6 @@ describe(`legacy urls`, () => {
             "/web/action/load",
             "get_views",
             "web_search_read",
-            "has_group",
         ]);
     });
 
@@ -1697,7 +1621,6 @@ describe(`legacy urls`, () => {
             "/web/action/load",
             "get_views",
             "web_search_read",
-            "has_group",
         ]);
     });
 
@@ -1816,7 +1739,6 @@ describe(`legacy urls`, () => {
             "/web/action/load",
             "get_views",
             "web_search_read",
-            "has_group",
         ]);
     });
 

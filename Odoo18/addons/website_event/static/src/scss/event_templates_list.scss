@@ -76,9 +76,14 @@
         // inside the second photo will not be editable properly.
         display: block;
     }
-    .cover_auto {
+    .o_half_screen_height {
         // Set min-height to the same value as the header
         min-height: 200px !important;
+    }
+    .o_wevent_search {
+        @include media-breakpoint-up(lg) {
+            max-width: 300px;
+        }
     }
 }
 

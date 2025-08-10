@@ -7,7 +7,7 @@ import logging
 log = logging.getLogger(__name__)
 
 
-class AccountMove(models.Model):
+class AccountInvoiceFinnish(models.Model):
     _inherit = 'account.move'
 
     @api.model

@@ -2,23 +2,25 @@
 
 from odoo import _, api, Command, fields, models
 from odoo.exceptions import UserError
+from odoo.tools.float_utils import float_round, float_is_zero
 
 
-class StockReturnPickingLine(models.TransientModel):
-    _name = 'stock.return.picking.line'
+class ReturnPickingLine(models.TransientModel):
+    _name = "stock.return.picking.line"
     _rec_name = 'product_id'
     _description = 'Return Picking Line'
 
     product_id = fields.Many2one('product.product', string="Product", required=True)
     move_quantity = fields.Float(related="move_id.quantity", string="Move Quantity")
-    quantity = fields.Float("Quantity", digits='Product Unit', default=1, required=True)
-    uom_id = fields.Many2one('uom.uom', string='Unit', related='product_id.uom_id')
+    quantity = fields.Float("Quantity", digits='Product Unit of Measure', default=1, required=True)
+    uom_id = fields.Many2one('uom.uom', string='Unit of Measure', related='product_id.uom_id')
     wizard_id = fields.Many2one('stock.return.picking', string="Wizard")
     move_id = fields.Many2one('stock.move', "Move")
 
     def _prepare_move_default_values(self, new_picking):
         picking = new_picking or self.wizard_id.picking_id
         vals = {
+            'name': picking.name,
             'product_id': self.product_id.id,
             'product_uom_qty': self.quantity,
             'product_uom': self.product_id.uom_id.id,
@@ -40,7 +42,7 @@ class StockReturnPickingLine(models.TransientModel):
 
     def _process_line(self, new_picking):
         self.ensure_one()
-        if not self.uom_id.is_zero(self.quantity):
+        if not float_is_zero(self.quantity, precision_rounding=self.uom_id.rounding):
             vals = self._prepare_move_default_values(new_picking)
 
             if self.move_id:
@@ -76,7 +78,7 @@ class StockReturnPickingLine(models.TransientModel):
             return True
 
 
-class StockReturnPicking(models.TransientModel):
+class ReturnPicking(models.TransientModel):
     _name = 'stock.return.picking'
     _description = 'Return Picking'
 
@@ -98,6 +100,8 @@ class StockReturnPicking(models.TransientModel):
     @api.depends('picking_id')
     def _compute_moves_locations(self):
         for wizard in self:
+            if not wizard.picking_id:
+                continue
             product_return_moves = [Command.clear()]
             if not wizard.picking_id._can_return():
                 raise UserError(_("You may only return Done pickings."))
@@ -113,10 +117,9 @@ class StockReturnPicking(models.TransientModel):
                 product_return_moves_data = dict(product_return_moves_data_tmpl)
                 product_return_moves_data.update(wizard._prepare_stock_return_picking_line_vals_from_move(move))
                 product_return_moves.append(Command.create(product_return_moves_data))
-            if wizard.picking_id and not product_return_moves:
+            if not product_return_moves:
                 raise UserError(_("No products to return (only lines in Done state and not fully returned yet can be returned)."))
-            if wizard.picking_id:
-                wizard.product_return_moves = product_return_moves
+            wizard.product_return_moves = product_return_moves
 
     @api.model
     def _prepare_stock_return_picking_line_vals_from_move(self, stock_move):
@@ -213,7 +216,7 @@ class StockReturnPicking(models.TransientModel):
                 if not move.origin_returned_move_id or move.origin_returned_move_id != stock_move:
                     continue
                 quantity -= move.quantity
-            quantity = stock_move.product_id.uom_id.round(quantity)
+            quantity = float_round(quantity, precision_rounding=stock_move.product_id.uom_id.rounding)
             return_move.quantity = quantity
         return self.action_create_returns()
 

@@ -1,10 +1,8 @@
 import { Component, onWillStart, onWillUpdateProps } from "@odoo/owl";
-import { _t } from "@web/core/l10n/translation";
 import { TagsList } from "@web/core/tags_list/tags_list";
-import { isId } from "@web/core/tree_editor/utils";
 import { useService } from "@web/core/utils/hooks";
-import { imageUrl } from "@web/core/utils/urls";
 import { RecordAutocomplete } from "./record_autocomplete";
+import { _t } from "@web/core/l10n/translation";
 import { useTagNavigation } from "./tag_navigation_hook";
 
 export class MultiRecordSelector extends Component {
@@ -22,18 +20,9 @@ export class MultiRecordSelector extends Component {
 
     setup() {
         this.nameService = useService("name");
-        useTagNavigation("multiRecordSelector", {
-            delete: (index) => this.deleteTag(index),
-        });
+        this.onTagKeydown = useTagNavigation("multiRecordSelector", this.deleteTag.bind(this));
         onWillStart(() => this.computeDerivedParams());
         onWillUpdateProps((nextProps) => this.computeDerivedParams(nextProps));
-    }
-
-    get isAvatarModel() {
-        // bof
-        return ["res.partner", "res.users", "hr.employee", "hr.employee.public"].includes(
-            this.props.resModel
-        );
     }
 
     async computeDerivedParams(props = this.props) {
@@ -52,7 +41,7 @@ export class MultiRecordSelector extends Component {
      * a tag, the input is still empty.
      */
     get placeholder() {
-        return this.getTags(this.props, {}).length ? "" : this.props.placeholder;
+        return this.getIds().length ? "" : this.props.placeholder;
     }
 
     getIds(props = this.props) {
@@ -70,10 +59,7 @@ export class MultiRecordSelector extends Component {
                 onDelete: () => {
                     this.deleteTag(index);
                 },
-                img:
-                    this.isAvatarModel &&
-                    isId(id) &&
-                    imageUrl(this.props.resModel, id, "avatar_128"),
+                onKeydown: this.onTagKeydown,
             };
         });
     }

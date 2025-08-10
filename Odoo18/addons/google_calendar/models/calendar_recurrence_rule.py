@@ -1,18 +1,17 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import re
 import logging
 
-from odoo import api, models
-from odoo.fields import Command, Domain
+from odoo import api, models, Command
 from odoo.tools import email_normalize
 
 from odoo.addons.google_calendar.utils.google_calendar import GoogleCalendarService
 
 _logger = logging.getLogger(__name__)
 
-
-class CalendarRecurrence(models.Model):
+class RecurrenceRule(models.Model):
     _name = 'calendar.recurrence'
     _inherit = ['calendar.recurrence', 'google.calendar.sync']
 
@@ -185,7 +184,7 @@ class CalendarRecurrence(models.Model):
             vals['event_tz'] = gevent.start.get('timeZone')
             attendee_values[base_event.id] = {'attendee_ids': base_values.get('attendee_ids')}
 
-        recurrence = super(CalendarRecurrence, self.with_context(dont_notify=True))._create_from_google(gevents, vals_list)
+        recurrence = super(RecurrenceRule, self.with_context(dont_notify=True))._create_from_google(gevents, vals_list)
         generic_values_creation = {
             rec.id: attendee_values[rec.base_event_id.id]
             for rec in recurrence if attendee_values.get(rec.base_event_id.id)
@@ -198,7 +197,7 @@ class CalendarRecurrence(models.Model):
         # older versions of the module. When synced, these recurrency may come back from Google after database cleaning
         # and trigger errors as the records are not properly populated.
         # We also prevent sync of other user recurrent events.
-        return Domain('calendar_event_ids.user_id', '=', self.env.user.id) & Domain('rrule', '!=', False)
+        return [('calendar_event_ids.user_id', '=', self.env.user.id), ('rrule', '!=', False)]
 
     @api.model
     def _odoo_values(self, google_recurrence, default_reminders=()):
@@ -240,3 +239,9 @@ class CalendarRecurrence(models.Model):
         if event:
             return event._get_event_user()
         return self.env.user
+
+    def _is_google_insertion_blocked(self, sender_user):
+        self.ensure_one()
+        has_base_event = self.base_event_id
+        has_different_owner = self.base_event_id.user_id and self.base_event_id.user_id != sender_user
+        return has_base_event and has_different_owner

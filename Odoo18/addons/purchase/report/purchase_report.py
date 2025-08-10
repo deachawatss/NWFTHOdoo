@@ -11,7 +11,7 @@ from odoo.tools.sql import SQL
 
 
 class PurchaseReport(models.Model):
-    _name = 'purchase.report'
+    _name = "purchase.report"
     _description = "Purchase Report"
     _auto = False
     _order = 'date_order desc, price_total desc'
@@ -22,12 +22,13 @@ class PurchaseReport(models.Model):
         ('sent', 'RFQ Sent'),
         ('to approve', 'To Approve'),
         ('purchase', 'Purchase Order'),
+        ('done', 'Done'),
         ('cancel', 'Cancelled')
     ], 'Status', readonly=True)
     product_id = fields.Many2one('product.product', 'Product', readonly=True)
     partner_id = fields.Many2one('res.partner', 'Vendor', readonly=True)
     date_approve = fields.Datetime('Confirmation Date', readonly=True)
-    product_uom_id = fields.Many2one('uom.uom', 'Reference Unit of Measure', readonly=True)
+    product_uom = fields.Many2one('uom.uom', 'Reference Unit of Measure', required=True)
     company_id = fields.Many2one('res.company', 'Company', readonly=True)
     currency_id = fields.Many2one('res.currency', 'Currency', readonly=True)
     user_id = fields.Many2one('res.users', 'Buyer', readonly=True)
@@ -74,7 +75,7 @@ class PurchaseReport(models.Model):
                     p.product_tmpl_id,
                     t.categ_id as category_id,
                     c.currency_id,
-                    t.uom_id as product_uom_id,
+                    t.uom_id as product_uom,
                     extract(epoch from age(po.date_approve,po.date_order))/(24*60*60)::decimal(16,2) as delay,
                     extract(epoch from age(l.date_planned,po.date_order))/(24*60*60)::decimal(16,2) as delay_pass,
                     count(*) as nbr_lines,
@@ -85,9 +86,9 @@ class PurchaseReport(models.Model):
                     sum(p.weight * l.product_qty/line_uom.factor*product_uom.factor) as weight,
                     sum(p.volume * l.product_qty/line_uom.factor*product_uom.factor) as volume,
                     sum(l.price_subtotal / COALESCE(po.currency_rate, 1.0))::decimal(16,2) * account_currency_table.rate as untaxed_total,
-                    sum(l.product_qty * line_uom.factor / product_uom.factor) as qty_ordered,
-                    sum(l.qty_received * line_uom.factor / product_uom.factor) as qty_received,
-                    sum(l.qty_invoiced * line_uom.factor / product_uom.factor) as qty_billed,
+                    sum(l.product_qty / line_uom.factor * product_uom.factor) as qty_ordered,
+                    sum(l.qty_received / line_uom.factor * product_uom.factor) as qty_received,
+                    sum(l.qty_invoiced / line_uom.factor * product_uom.factor) as qty_billed,
                     case when t.purchase_method = 'purchase'
                          then sum(l.product_qty / line_uom.factor * product_uom.factor) - sum(l.qty_invoiced / line_uom.factor * product_uom.factor)
                          else sum(l.qty_received / line_uom.factor * product_uom.factor) - sum(l.qty_invoiced / line_uom.factor * product_uom.factor)
@@ -105,7 +106,7 @@ class PurchaseReport(models.Model):
                     left join product_product p on (l.product_id=p.id)
                         left join product_template t on (p.product_tmpl_id=t.id)
                 left join res_company C ON C.id = po.company_id
-                left join uom_uom line_uom on (line_uom.id=l.product_uom_id)
+                left join uom_uom line_uom on (line_uom.id=l.product_uom)
                 left join uom_uom product_uom on (product_uom.id=t.uom_id)
                 left join %(currency_table)s ON account_currency_table.company_id = po.company_id
             """,
@@ -132,7 +133,7 @@ class PurchaseReport(models.Model):
                 l.price_unit,
                 po.date_approve,
                 l.date_planned,
-                l.product_uom_id,
+                l.product_uom,
                 po.dest_address_id,
                 po.fiscal_position_id,
                 l.product_id,
@@ -140,6 +141,8 @@ class PurchaseReport(models.Model):
                 t.categ_id,
                 po.date_order,
                 po.state,
+                line_uom.uom_type,
+                line_uom.category_id,
                 t.uom_id,
                 t.purchase_method,
                 line_uom.id,

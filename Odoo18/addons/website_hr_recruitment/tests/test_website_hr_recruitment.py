@@ -4,9 +4,8 @@
 from odoo.api import Environment
 import odoo.tests
 from odoo.tools import html2plaintext
-import unittest
 
-from odoo.addons.http_routing.tests.common import MockRequest
+from odoo.addons.website.tools import MockRequest
 from odoo.addons.website_hr_recruitment.controllers.main import WebsiteHrRecruitment
 
 @odoo.tests.tagged('post_install', '-at_install')
@@ -37,20 +36,14 @@ class TestWebsiteHrRecruitmentForm(odoo.tests.HttpCase):
         self.assertEqual(guru_applicant.partner_name, 'John Smith')
         self.assertEqual(guru_applicant.email_from, 'john@smith.com')
         self.assertEqual(guru_applicant.partner_phone, '118.218')
-        self.assertTrue(
-            "Other Information:\n___________\n\nShort introduction from applicant : ### [GURU] HR RECRUITMENT TEST DATA ###"
-            in guru_applicant.message_ids.mapped(lambda m: html2plaintext(m.body))
-        )
+        self.assertEqual(html2plaintext(guru_applicant.applicant_notes), '### [GURU] HR RECRUITMENT TEST DATA ###')
         self.assertEqual(guru_applicant.job_id, job_guru)
 
         internship_applicant = capt.records[1]
         self.assertEqual(internship_applicant.partner_name, 'Jack Doe')
         self.assertEqual(internship_applicant.email_from, 'jack@doe.com')
         self.assertEqual(internship_applicant.partner_phone, '118.712')
-        self.assertTrue(
-            "Other Information:\n___________\n\nShort introduction from applicant : ### HR [INTERN] RECRUITMENT TEST DATA ###"
-            in internship_applicant.message_ids.mapped(lambda m: html2plaintext(m.body))
-        )
+        self.assertEqual(html2plaintext(internship_applicant.applicant_notes), '### HR [INTERN] RECRUITMENT TEST DATA ###')
         self.assertEqual(internship_applicant.job_id, job_intern)
 
     def test_jobs_listing_city_unspecified(self):

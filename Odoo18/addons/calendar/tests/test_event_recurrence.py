@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import pytz
@@ -21,7 +22,8 @@ class TestRecurrentEvents(TransactionCase):
         events = events.sorted('start')
         self.assertEqual(len(events), len(dates), "Wrong number of events in the recurrence")
         self.assertTrue(all(events.mapped('active')), "All events should be active")
-        for event, (start, stop) in zip(events, dates):
+        for event, dates in zip(events, dates):
+            start, stop = dates
             self.assertEqual(event.start, start)
             self.assertEqual(event.stop, stop)
 
@@ -745,56 +747,22 @@ class TestUpdateRecurrentEvents(TestRecurrentEvents):
         self.assertEqual(self.events.exists(), self.events[0])
 
     def test_unlink_recurrence_wizard_next(self):
-        """ Test unlinking the next recurrent event using the delete wizard. """
-        # Retrieve the recurring event to delete the next event occurrence.
         event = self.events[1]
-
-        # Step 1: Use the popover delete wizard to delete the next occurrence of the event.
-        wizard = self.env['calendar.popover.delete.wizard'].with_context(
-            form_view_ref='calendar.calendar_popover_delete_view').create({'calendar_event_id': event.id})
+        wizard = self.env['calendar.popover.delete.wizard'].create({'record': event.id})
         form = Form(wizard)
         form.delete = 'next'
         form.save()
         wizard.close()
-
-        # Step 2: Use another delete wizard to handle the deletion of the next occurrence.
-        wizard_delete = self.env['calendar.popover.delete.wizard'].with_context(
-            form_view_ref='calendar.view_event_delete_wizard_form',
-            default_recurrence='next'
-        ).create({'calendar_event_id': event.id})
-        form_delete = Form(wizard_delete)
-        form_delete.save()
-
-        # Step 3: Send cancellation notifications and delete the next occurrence.
-        # Ensure that the recurrence still exists but the next event occurrence is deleted.
-        wizard_delete.action_send_mail_and_delete()
         self.assertTrue(self.recurrence)
         self.assertEqual(self.events.exists(), self.events[0])
 
     def test_unlink_recurrence_wizard_all(self):
-        """ Test unlinking all recurrences using the delete wizard. """
-        # Step 0: Retrieve the recurring event to be deleted.
         event = self.events[1]
-
-        # Step 1: Use the popover delete wizard to delete all occurrences of the event.
-        wizard = self.env['calendar.popover.delete.wizard'].with_context(
-            form_view_ref='calendar.calendar_popover_delete_view').create({'calendar_event_id': event.id})
+        wizard = self.env['calendar.popover.delete.wizard'].create({'record': event.id})
         form = Form(wizard)
         form.delete = 'all'
         form.save()
         wizard.close()
-
-        # Step 2: Use another delete wizard to handle the deletion of the event recurrence.
-        wizard_delete = self.env['calendar.popover.delete.wizard'].with_context(
-            form_view_ref='calendar.view_event_delete_wizard_form',
-            default_recurrence='all'
-        ).create({'calendar_event_id': event.id})
-        form_delete = Form(wizard_delete)
-        form_delete.save()
-
-        # Step 3: Send cancellation notifications and delete all recurrences.
-        # Ensure that the recurrence and all related events have been deleted.
-        wizard_delete.action_send_mail_and_delete()
         self.assertFalse(self.recurrence.exists())
         self.assertFalse(self.events.exists())
 

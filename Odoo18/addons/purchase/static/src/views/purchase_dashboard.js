@@ -1,23 +1,17 @@
+/** @odoo-module */
 import { useService } from "@web/core/utils/hooks";
-import { Component, onWillStart, onWillUpdateProps } from "@odoo/owl";
+import { Component, onWillStart } from "@odoo/owl";
 
 export class PurchaseDashBoard extends Component {
     static template = "purchase.PurchaseDashboard";
-    static props = { list: { type: Object, optional: true } };
+    static props = {};
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
 
         onWillStart(async () => {
-            await this.updateDashboardState();
+            this.purchaseData = await this.orm.call("purchase.order", "retrieve_dashboard");
         });
-        onWillUpdateProps(async () => {
-            await this.updateDashboardState();
-        });
-    }
-    async updateDashboardState() {
-        this.purchaseData = await this.orm.call("purchase.order", "retrieve_dashboard");
-        this.multiuser = JSON.stringify(this.purchaseData.global) !== JSON.stringify(this.purchaseData.my);
     }
 
     /**

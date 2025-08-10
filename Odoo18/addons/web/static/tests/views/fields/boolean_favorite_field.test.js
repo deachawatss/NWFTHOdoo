@@ -9,13 +9,6 @@ import {
     onRpc,
 } from "@web/../tests/web_test_helpers";
 
-class User extends models.Model {
-    _name = "res.users";
-    has_group() {
-        return true;
-    }
-}
-
 class Partner extends models.Model {
     bar = fields.Boolean({ default: true });
 
@@ -28,7 +21,7 @@ class Partner extends models.Model {
     ];
 }
 
-defineModels([Partner, User]);
+defineModels([Partner]);
 
 test("FavoriteField in kanban view", async () => {
     await mountView({
@@ -249,7 +242,6 @@ test("FavoriteField in kanban view with readonly attribute", async () => {
         message: "should be favorite",
     });
     expect(`.o_kanban_record .o_field_widget .o_favorite > a`).toHaveClass("pe-none");
-    expect(`.o_kanban_record .o_field_widget .o_favorite`).toHaveClass("o_disabled");
     expect(`.o_kanban_record .o_field_widget`).toHaveText("");
 
     // click on favorite

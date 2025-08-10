@@ -25,10 +25,10 @@ class PaymentPortalSelfOrder(PaymentPortal):
 
     def _send_notification_payment_status(self, pos_order_id, status):
         pos_order = request.env['pos.order'].sudo().browse(pos_order_id)
+        pos_order.config_id.notify_synchronisation(pos_order.config_id.current_session_id.id, 0)
         pos_order.config_id._notify("ONLINE_PAYMENT_STATUS", {
-            'status': status,  # progress, success, fail
+            'status': status, # progress, success, fail
             'data': {
-                'pos.order': pos_order.read(pos_order._load_pos_self_data_fields(pos_order.config_id), load=False),
-                'pos.payment': pos_order.payment_ids.read(pos_order.payment_ids._load_pos_self_data_fields(pos_order.config_id), load=False),
+                'pos.order': pos_order.read(pos_order._load_pos_self_data_fields(pos_order.config_id.id), load=False)
             }
         })

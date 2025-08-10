@@ -15,6 +15,7 @@ class TestLivechatChatbotFormUI(HttpCaseWithUserDemo):
             '/odoo',
             'im_livechat_chatbot_steps_sequence_tour',
             login='admin',
+            step_delay=1000
         )
 
         chatbot_script = self.env['chatbot.script'].search([('title', '=', 'Test Chatbot Sequence')])
@@ -38,6 +39,7 @@ class TestLivechatChatbotFormUI(HttpCaseWithUserDemo):
             '/odoo',
             'im_livechat_chatbot_steps_sequence_with_move_tour',
             login='admin',
+            step_delay=1000
         )
 
         chatbot_script = self.env['chatbot.script'].search([('title', '=', 'Test Chatbot Sequence')])

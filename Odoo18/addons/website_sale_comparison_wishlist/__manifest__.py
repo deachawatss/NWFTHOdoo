@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 {
@@ -20,6 +21,5 @@ It allows for comparing products from the wishlist
         ],
     },
     'auto_install': True,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

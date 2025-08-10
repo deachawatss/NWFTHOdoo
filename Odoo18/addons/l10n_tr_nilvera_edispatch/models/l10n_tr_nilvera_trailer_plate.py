@@ -6,10 +6,9 @@ class L10nTrNilveraTrailerPlate(models.Model):
     _order = 'name'
     _description = "GİB Plate numbers"
 
-    _name_uniq = models.Constraint(
-        'unique(name,plate_number_type)',
-        "A Plate Number with that type already exists."
-    )
+    _sql_constraints = [
+        ('name_unique', 'unique(name,plate_number_type)', "A Plate Number with that type already exists."),
+    ]
 
     name = fields.Char(string="GİB Plate Number")
     plate_number_type = fields.Selection(

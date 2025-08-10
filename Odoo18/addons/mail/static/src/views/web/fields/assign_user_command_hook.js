@@ -21,7 +21,7 @@ export function useAssignUserCommand() {
 
     const getCurrentIds = () => {
         if (type === "many2one" && component.props.record.data[component.props.name]) {
-            return [component.props.record.data[component.props.name].id];
+            return [component.props.record.data[component.props.name][0]];
         } else if (type === "many2many") {
             return component.props.record.data[component.props.name].currentIds;
         }
@@ -30,10 +30,7 @@ export function useAssignUserCommand() {
 
     const add = async (record) => {
         if (type === "many2one") {
-            component.props.record.update({ [component.props.name]: {
-                id: record[0],
-                display_name: record[1],
-            } });
+            component.props.record.update({ [component.props.name]: record });
         } else if (type === "many2many") {
             component.props.record.data[component.props.name].linkTo(record[0], {
                 display_name: record[1],
@@ -66,7 +63,7 @@ export function useAssignUserCommand() {
         component._pendingRpc?.abort(false);
         component._pendingRpc = orm.call(component.relation, "name_search", [], {
             name: value,
-            domain: domain,
+            args: domain,
             operator: "ilike",
             limit: 80,
             context,

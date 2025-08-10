@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { onWillUnmount, reactive, useEffect, useExternalListener } from "@odoo/owl";
 import { useThrottleForAnimation } from "@web/core/utils/timing";
 import { pick } from "@web/core/utils/objects";

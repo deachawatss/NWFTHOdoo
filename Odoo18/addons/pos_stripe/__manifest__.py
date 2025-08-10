@@ -14,12 +14,8 @@
     'installable': True,
     'assets': {
         'point_of_sale._assets_pos': [
-            'pos_stripe/static/src/**/*',
-        ],
-        'web.assets_unit_tests': [
-            'pos_stripe/static/tests/unit/data/**/*'
+            'pos_stripe/static/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

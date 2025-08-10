@@ -9,7 +9,7 @@
                 position="'bottom-fit'"
                 beforeOpen.bind="onBeforeOpen"
                 onStateChanged.bind="onStateChanged"
-                navigationOptions="navigationOptions"
+                navigationOptions="{ virtualFocus: this.props.searchable }"
             >
                 <button type="button" t-att-class="`o_select_menu_toggler btn btn-light w-100 bg-light ${props.togglerClass || ''} ${canDeselect ? 'o_can_deselect' : ''}`" t-att-disabled="props.disabled">
                     <t t-if="props.multiSelect">
@@ -42,7 +42,6 @@
                         t-if="props.searchable"
                         type="text"
                         class="dropdown-item o_select_menu_sticky px-3 py-3 position-sticky top-0 start-0 border-bottom"
-                        t-att-class="props.searchClass"
                         t-ref="inputRef"
                         t-on-input="debouncedOnInput"
                         t-att-placeholder="props.searchPlaceholder"

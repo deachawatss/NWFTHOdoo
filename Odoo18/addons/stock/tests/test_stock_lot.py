@@ -96,12 +96,13 @@ class TestLotSerial(TestStockCommon):
         linked to a company"""
         picking1 = self.env['stock.picking'].create({
             'name': 'Picking 1',
-            'location_id': self.supplier_location.id,
-            'location_dest_id': self.stock_location.id,
-            'picking_type_id': self.picking_type_in.id,
+            'location_id': self.supplier_location,
+            'location_dest_id': self.stock_location,
+            'picking_type_id': self.env.ref('stock.picking_type_in').id,
             'move_ids': [Command.create({
-                'location_id': self.supplier_location.id,
-                'location_dest_id': self.stock_location.id,
+                'name': self.productB.name,
+                'location_id': self.supplier_location,
+                'location_dest_id': self.stock_location,
                 'product_id': self.productB.id,
                 'product_uom_qty': 1.0,
             })]
@@ -168,19 +169,21 @@ class TestLotSerial(TestStockCommon):
         customer = self.PartnerObj.create({'name': 'bob'})
         delivery_picking = self.env['stock.picking'].create({
             'partner_id': customer.id,
-            'picking_type_id': self.picking_type_out.id,
+            'picking_type_id': self.picking_type_out,
             'move_ids': [Command.create({
+                'name': self.productC.name,
                 'product_id': self.productC.id,
                 'product_uom_qty': 5,
                 'quantity': 5,
-                'location_id': self.stock_location.id,
-                'location_dest_id': self.customer_location.id,
+                'location_id': self.stock_location,
+                'location_dest_id': self.customer_location,
             })]
         })
+        stock = self.env['stock.location'].browse(self.stock_location)
         additional_product = self.productA
         lot = self.lot_p_a
-        lot.location_id = self.stock_location
-        quant = additional_product.stock_quant_ids.filtered(lambda q: q.location_id == self.stock_location)
+        lot.location_id = stock
+        quant = additional_product.stock_quant_ids.filtered(lambda q: q.location_id == stock)
         self.assertRecordValues(quant, [{'quantity': 10.0, 'reserved_quantity': 0.0}])
         delivery_picking.button_validate()
         delivery_picking.is_locked = False
@@ -205,8 +208,9 @@ class TestLotSerial(TestStockCommon):
         starting_quant = self.lot_p_b.quant_ids
         self.assertEqual(starting_quant.quantity, 1)
         move = self.env["stock.move"].create({
+            'name': 'test_move',
             'location_id': self.locationA.id,
-            'location_dest_id': self.customer_location.id,
+            'location_dest_id': self.customer_location,
             'product_id': self.productB.id,
             'product_uom_qty': 1.0,
         })
@@ -219,10 +223,11 @@ class TestLotSerial(TestStockCommon):
         # check that the quantity of starting quant is moved to a new quant
         self.assertEqual(starting_quant.quantity, 0)
         # check that the sn is in customer location
-        self.assertEqual(self.lot_p_b.location_id.id, self.customer_location.id)
+        self.assertEqual(self.lot_p_b.location_id.id, self.customer_location)
         # create a return
         move = self.env['stock.move'].create({
-            'location_id': self.customer_location.id,
+            'name': 'test_move',
+            'location_id': self.customer_location,
             'location_dest_id': self.locationA.id,
             'product_id': self.productB.id,
             'lot_ids': self.lot_p_b,
@@ -250,12 +255,13 @@ class TestLotSerial(TestStockCommon):
         # create a receipt and confirm it
         picking1 = self.env['stock.picking'].create({
             'name': 'Picking 1',
-            'location_id': self.supplier_location.id,
+            'location_id': self.supplier_location,
             'location_dest_id': branch_a_warehouse.lot_stock_id.id,
             'picking_type_id': branch_receipt_type.id,
         })
         move = self.env["stock.move"].with_company(branch_a).create({
-            'location_id': self.supplier_location.id,
+            'name': 'test_move',
+            'location_id': self.supplier_location,
             'location_dest_id': branch_a_warehouse.lot_stock_id.id,
             'product_id': self.productB.id,
             'product_uom_qty': 1.0,
@@ -272,44 +278,3 @@ class TestLotSerial(TestStockCommon):
         sn_form.product_id = self.productB
         sn = sn_form.save()
         self.assertEqual(sn.company_id, branch_a)
-
-    def test_lot_search_partner_ids(self):
-        """Test that the correct lots show when doing searches based on partner_ids"""
-        customer = self.PartnerObj.create({'name': 'bob'})
-        picking1 = self.env['stock.picking'].create({
-            'name': 'Picking 1',
-            'partner_id': customer.id,
-            'location_id': self.locationA.id,
-            'location_dest_id': self.customer_location.id,
-            'picking_type_id': self.picking_type_out.id,
-            'move_ids': [Command.create({
-                'location_id': self.locationA.id,
-                'location_dest_id': self.customer_location.id,
-                'product_id': self.productA.id,
-                'product_uom_qty': 1.0,
-                'quantity': 1.0,
-            })]
-        })
-        picking1.move_ids.move_line_ids.lot_id = self.lot_p_a
-        picking1.action_confirm()
-        picking1.button_validate()
-        lot_id = self.env['stock.lot'].search([('partner_ids', '!=', False)])
-        self.assertEqual(len(lot_id), 1)
-        self.assertEqual(lot_id, self.lot_p_a)
-        lot_id = self.env['stock.lot'].search([('partner_ids', '=', False)])
-        self.assertEqual(len(lot_id), 1)
-        self.assertEqual(lot_id, self.lot_p_b)
-        lot_id = self.env['stock.lot'].search([('partner_ids.name', 'ilike', 'bo')])
-        self.assertEqual(len(lot_id), 1)
-        self.assertEqual(lot_id, self.lot_p_a)
-
-    def test_default_lot_sequence(self):
-        """Test that the default lot sequence is used when the product is created with a null prefix"""
-        product_a = self.env['product.product'].create({
-            'name': 'Test Product A',
-            'tracking': 'lot',
-            'serial_prefix_format': False,
-        })
-        default_lot_sequence = self.env.ref('stock.sequence_production_lots')
-        product_a.invalidate_recordset()
-        self.assertEqual(product_a.lot_sequence_id, default_lot_sequence)

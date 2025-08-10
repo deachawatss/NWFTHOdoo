@@ -5,6 +5,25 @@
             <field name="implied_ids" eval="[(4, ref('product.group_product_variant'))]"/>
         </record>
 
+        <!-- Clothes scenario config -->
+        <record id="pos_category_upper" model="pos.category">
+            <field name="name">Upper body</field>
+            <field name="image_128" type="base64" file="point_of_sale/static/img/clothes-icon.png" />
+            <field name="sequence">4</field>
+        </record>
+
+        <record id="pos_category_lower" model="pos.category">
+            <field name="name">Lower body</field>
+            <field name="image_128" type="base64" file="point_of_sale/static/img/lower-body-icon.png" />
+            <field name="sequence">5</field>
+        </record>
+
+        <record id="pos_category_others" model="pos.category">
+            <field name="name">Others</field>
+            <field name="image_128" type="base64" file="point_of_sale/static/img/others-icon.png" />
+            <field name="sequence">6</field>
+        </record>
+
         <!-- Clothes products -->
         <record model="product.product" id="casual_t_shirt">
             <field name="name">Casual T-shirt</field>
@@ -14,9 +33,10 @@
             <field name="type">consu</field>
             <field name="weight">0.01</field>
             <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="image_1920" type="base64" file="point_of_sale/static/img/product_casual_t_shirt.png"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="categ_id" ref="product_category_clothes"/>
+            <field name="categ_id" ref="product.product_category_1"/>
             <field name="pos_categ_ids" eval="[(6, 0, [ref('pos_category_upper')])]" />
         </record>
 
@@ -104,9 +124,10 @@
             <field name="type">consu</field>
             <field name="weight">0.01</field>
             <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="image_1920" type="base64" file="point_of_sale/static/img/product_t_shirt_slim.png"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="categ_id" ref="product_category_clothes"/>
+            <field name="categ_id" ref="product.product_category_1"/>
             <field name="pos_categ_ids" eval="[(6, 0, [ref('pos_category_upper')])]" />
         </record>
 
@@ -132,9 +153,10 @@
             <field name="type">consu</field>
             <field name="weight">0.01</field>
             <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="image_1920" type="base64" file="point_of_sale/static/img/product_t_shirt_black_embroidered.png"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="categ_id" ref="product_category_clothes"/>
+            <field name="categ_id" ref="product.product_category_1"/>
             <field name="pos_categ_ids" eval="[(6, 0, [ref('pos_category_upper')])]" />
         </record>
 
@@ -160,9 +182,10 @@
             <field name="type">consu</field>
             <field name="weight">0.01</field>
             <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="image_1920" type="base64" file="point_of_sale/static/img/product_blue_denim_jeans.png"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="categ_id" ref="product_category_clothes"/>
+            <field name="categ_id" ref="product.product_category_1"/>
             <field name="pos_categ_ids" eval="[(6, 0, [ref('pos_category_lower')])]" />
         </record>
 
@@ -188,9 +211,10 @@
             <field name="type">consu</field>
             <field name="weight">0.01</field>
             <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="image_1920" type="base64" file="point_of_sale/static/img/product_blue_denim_jeans_slim.png"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="categ_id" ref="product_category_clothes"/>
+            <field name="categ_id" ref="product.product_category_1"/>
             <field name="pos_categ_ids" eval="[(6, 0, [ref('pos_category_lower')])]" />
         </record>
 
@@ -216,9 +240,10 @@
             <field name="type">consu</field>
             <field name="weight">0.01</field>
             <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="image_1920" type="base64" file="point_of_sale/static/img/product_hood.png"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="categ_id" ref="product_category_clothes"/>
+            <field name="categ_id" ref="product.product_category_1"/>
             <field name="pos_categ_ids" eval="[(6, 0, [ref('pos_category_others')])]" />
         </record>
         <record model="product.product" id="product_classic_brown_jacket">
@@ -229,9 +254,10 @@
             <field name="type">consu</field>
             <field name="weight">0.01</field>
             <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="image_1920" type="base64" file="point_of_sale/static/img/product_classic_brown_jacket.png"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="categ_id" ref="product_category_clothes"/>
+            <field name="categ_id" ref="product.product_category_1"/>
             <field name="pos_categ_ids" eval="[(6, 0, [ref('pos_category_upper')])]" />
         </record>
         <record model="product.product" id="product_crocheted_poncho_unisize">
@@ -242,9 +268,10 @@
             <field name="type">consu</field>
             <field name="weight">0.01</field>
             <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="image_1920" type="base64" file="point_of_sale/static/img/product_crocheted_poncho_unisize.png"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="categ_id" ref="product_category_clothes"/>
+            <field name="categ_id" ref="product.product_category_1"/>
             <field name="pos_categ_ids" eval="[(6, 0, [ref('pos_category_upper')])]" />
         </record>
         <record model="product.product" id="product_odoo_sneakers">
@@ -255,9 +282,10 @@
             <field name="type">consu</field>
             <field name="weight">0.01</field>
             <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="image_1920" type="base64" file="point_of_sale/static/img/product_odoo_sneakers.png"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="categ_id" ref="product_category_clothes"/>
+            <field name="categ_id" ref="product.product_category_1"/>
             <field name="pos_categ_ids" eval="[(6, 0, [ref('pos_category_others')])]" />
         </record>
 
@@ -354,9 +382,10 @@
             <field name="weight">0.01</field>
             <field name="list_price">80</field>
             <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="image_1920" type="base64" file="point_of_sale/static/img/product_t_shirt_pants.png"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="categ_id" ref="product_category_clothes"/>
+            <field name="categ_id" ref="product.product_category_1"/>
             <field name="pos_categ_ids" eval="[(6, 0, [ref('pos_category_others')])]" />
             <field name="combo_ids" eval="[(6, 0, [ref('jeans_combo'), ref('tshirt_combo')])]"/>
             <field name="taxes_id" eval="[(5,)]"/>
@@ -371,9 +400,10 @@
             <field name="type">consu</field>
             <field name="weight">0.01</field>
             <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="image_1920" type="base64" file="point_of_sale/static/img/casual_denim_short.png"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="categ_id" ref="product_category_clothes"/>
+            <field name="categ_id" ref="product.product_category_1"/>
             <field name="pos_categ_ids" eval="[(6, 0, [ref('pos_category_lower')])]" />
         </record>
 
@@ -385,9 +415,10 @@
             <field name="type">consu</field>
             <field name="weight">0.01</field>
             <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="image_1920" type="base64" file="point_of_sale/static/img/classic_leather_belt.png"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="categ_id" ref="product_category_clothes"/>
+            <field name="categ_id" ref="product.product_category_1"/>
             <field name="pos_categ_ids" eval="[(6, 0, [ref('pos_category_others')])]" />
         </record>
 
@@ -399,9 +430,10 @@
             <field name="type">consu</field>
             <field name="weight">0.01</field>
             <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="image_1920" type="base64" file="point_of_sale/static/img/cozy_sweater.png"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="categ_id" ref="product_category_clothes"/>
+            <field name="categ_id" ref="product.product_category_1"/>
             <field name="pos_categ_ids" eval="[(6, 0, [ref('pos_category_upper')])]" />
         </record>
 
@@ -413,9 +445,10 @@
             <field name="type">consu</field>
             <field name="weight">0.01</field>
             <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="image_1920" type="base64" file="point_of_sale/static/img/leather_jacket.png"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="categ_id" ref="product_category_clothes"/>
+            <field name="categ_id" ref="product.product_category_1"/>
             <field name="pos_categ_ids" eval="[(6, 0, [ref('pos_category_upper')])]" />
         </record>
 
@@ -427,9 +460,10 @@
             <field name="type">consu</field>
             <field name="weight">0.01</field>
             <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="image_1920" type="base64" file="point_of_sale/static/img/summer_hat.png"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="categ_id" ref="product_category_clothes"/>
+            <field name="categ_id" ref="product.product_category_1"/>
             <field name="pos_categ_ids" eval="[(6, 0, [ref('pos_category_others')])]" />
         </record>
 
@@ -441,9 +475,10 @@
             <field name="type">consu</field>
             <field name="weight">0.01</field>
             <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="image_1920" type="base64" file="point_of_sale/static/img/jean_jacket.png"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="categ_id" ref="product_category_clothes"/>
+            <field name="categ_id" ref="product.product_category_1"/>
             <field name="pos_categ_ids" eval="[(6, 0, [ref('pos_category_upper')])]" />
         </record>
 
@@ -455,9 +490,10 @@
             <field name="type">consu</field>
             <field name="weight">0.01</field>
             <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
             <field name="image_1920" type="base64" file="point_of_sale/static/img/sport_shoes.png"/>
             <field name="available_in_pos" eval="True"/>
-            <field name="categ_id" ref="product_category_clothes"/>
+            <field name="categ_id" ref="product.product_category_1"/>
             <field name="pos_categ_ids" eval="[(6, 0, [ref('pos_category_others')])]" />
         </record>
 

@@ -1,5 +1,5 @@
 import { useService } from "@web/core/utils/hooks";
-import { uuid } from "@web/core/utils/strings";
+import { uuid } from "../../utils";
 
 import { Component, useState, useRef, useEffect } from "@odoo/owl";
 import { useSortable } from "@web/core/utils/sortable_owl";

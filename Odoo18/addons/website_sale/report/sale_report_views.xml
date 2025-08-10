@@ -14,18 +14,13 @@
                 <filter string="Confirmed Orders" name="confirmed" domain="[('state', '=', 'sale')]"/>
                 <separator/>
                 <filter name="filter_date" date="date" default_period="month"/>
-                <group string="Group By">
+                <group expand="0" string="Group By">
                     <filter string="Website" name="groupby_website" context="{'group_by':'website_id'}" groups="website.group_multi_website"/>
                     <filter string="Product" name="groupby_product" context="{'group_by':'product_id'}"/>
                     <filter string="Product Category" name="groupby_product_category" context="{'group_by':'categ_id'}"/>
                     <filter string="Customer" name="groupby_customer" context="{'group_by':'partner_id'}"/>
                     <filter string="Customer Country" name="groupby_country" context="{'group_by':'country_id'}"/>
                     <filter string="Status" name="groupby_status" context="{'group_by':'state'}"/>
-                    <filter
-                        string="eCommerce Category"
-                        name="groupby_product_public_category"
-                        context="{'group_by': 'public_categ_ids'}"
-                    />
                     <separator orientation="vertical"/>
                     <filter string="Order Date" name="groupby_order_date" context="{'group_by':'date'}"/>
                     <!-- Dashboard filter - used by context -->
@@ -67,7 +62,6 @@
         <field name="arch" type="xml">
              <field name="order_reference" position="after">
                 <field name="website_id" optional="hide"/>
-                <field name="public_categ_ids" optional="hide"/>
             </field>
         </field>
     </record>

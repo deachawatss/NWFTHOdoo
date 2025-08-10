@@ -20,7 +20,7 @@ Dashboard / Reports for Warehouse Management includes:
 * Stock Inventory Value at given date (support dates in the past)
     """,
     'depends': ['stock', 'account'],
-    'category': 'Supply Chain/Inventory',
+    'category': 'Hidden',
     'sequence': 16,
     'demo': [
         'data/stock_account_demo.xml',
@@ -33,7 +33,6 @@ Dashboard / Reports for Warehouse Management includes:
         'views/res_config_settings_views.xml',
         'data/product_data.xml',
         'views/report_invoice.xml',
-        'views/res_company_views.xml',
         'views/stock_valuation_layer_views.xml',
         'views/stock_quant_views.xml',
         'views/product_views.xml',
@@ -52,6 +51,5 @@ Dashboard / Reports for Warehouse Management includes:
             'stock_account/static/src/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

@@ -56,17 +56,17 @@ export function getMenuServerData() {
             fields: {
                 name: { string: "Name", type: "char" },
                 action: { string: "Action", type: "char" },
-                group_ids: { string: "Groups", type: "many2many", relation: "res.group" },
+                groups_id: { string: "Groups", type: "many2many", relation: "res.group" },
             },
             records: [
-                { id: 11, name: "menu with xmlid", action: "action1", group_ids: [10] },
-                { id: 12, name: "menu without xmlid", action: "action1", group_ids: [10] },
+                { id: 11, name: "menu with xmlid", action: "action1", groups_id: [10] },
+                { id: 12, name: "menu without xmlid", action: "action1", groups_id: [10] },
             ],
         },
         "res.users": {
             fields: {
                 name: { string: "Name", type: "char" },
-                group_ids: { string: "Groups", type: "many2many", relation: "res.group" },
+                groups_id: { string: "Groups", type: "many2many", relation: "res.group" },
             },
             records: [
                 {
@@ -74,9 +74,9 @@ export function getMenuServerData() {
                     name: "Raoul",
                     active: true,
                     partner_id: serverState.partnerId,
-                    group_ids: [10],
+                    groups_id: [10],
                 },
-                { id: 2, name: "Joseph", group_ids: [] },
+                { id: 2, name: "Joseph", groups_id: [] },
             ],
         },
         "res.group": {

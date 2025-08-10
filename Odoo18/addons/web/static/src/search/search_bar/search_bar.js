@@ -2,18 +2,15 @@ import { Domain } from "@web/core/domain";
 import { serializeDate, serializeDateTime } from "@web/core/l10n/dates";
 import { registry } from "@web/core/registry";
 import { KeepLast } from "@web/core/utils/concurrency";
-import { useAutofocus, useBus, useChildRef, useService } from "@web/core/utils/hooks";
+import { useAutofocus, useBus, useService } from "@web/core/utils/hooks";
 import { DomainSelectorDialog } from "@web/core/domain_selector_dialog/domain_selector_dialog";
 import { fuzzyTest } from "@web/core/utils/search";
 import { _t } from "@web/core/l10n/translation";
 import { SearchBarMenu } from "../search_bar_menu/search_bar_menu";
-import { Component, status, useRef, useState } from "@odoo/owl";
+
+import { Component, useExternalListener, useRef, useState } from "@odoo/owl";
 import { useDropdownState } from "@web/core/dropdown/dropdown_hooks";
 import { hasTouch } from "@web/core/browser/feature_detection";
-import { Dropdown } from "@web/core/dropdown/dropdown";
-import { DropdownItem } from "@web/core/dropdown/dropdown_item";
-import { ACTIVE_ELEMENT_CLASS, useNavigation } from "@web/core/navigation/navigation";
-
 const parsers = registry.category("parsers");
 
 const CHAR_FIELDS = ["char", "html", "many2many", "many2one", "one2many", "text", "properties"];
@@ -26,8 +23,6 @@ export class SearchBar extends Component {
     static template = "web.SearchBar";
     static components = {
         SearchBarMenu,
-        Dropdown,
-        DropdownItem,
     };
     static props = {
         autofocus: { type: Boolean, optional: true },
@@ -60,6 +55,7 @@ export class SearchBar extends Component {
         // core state
         this.state = useState({
             expanded: [],
+            focusedIndex: 0,
             query: "",
             subItemsLimits: {},
         });
@@ -67,12 +63,6 @@ export class SearchBar extends Component {
         // derived state
         this.items = useState([]);
         this.subItems = {};
-
-        this.facetContainerRef = useRef("facetContainerRef");
-        this.menuRef = useChildRef();
-        this.setupFacetNavigation();
-        this.inputDropdownState = useDropdownState();
-        this.inputDropdownNavOptions = this.getDropdownNavigation();
 
         this.searchBarDropdownState = useDropdownState();
 
@@ -90,6 +80,9 @@ export class SearchBar extends Component {
         });
 
         useBus(this.env.searchModel, "update", this.render);
+
+        useExternalListener(window, "click", this.onWindowClick);
+        useExternalListener(window, "keydown", this.onWindowKeydown);
     }
 
     /**
@@ -103,6 +96,7 @@ export class SearchBar extends Component {
     /**
      * @param {Object} [options={}]
      * @param {number[]} [options.expanded]
+     * @param {number} [options.focusedIndex]
      * @param {string} [options.query]
      * @param {Object[]} [options.subItems]
      * @returns {Object[]}
@@ -110,6 +104,8 @@ export class SearchBar extends Component {
     async computeState(options = {}) {
         const query = "query" in options ? options.query : this.state.query;
         const expanded = "expanded" in options ? options.expanded : this.state.expanded;
+        const focusedIndex =
+            "focusedIndex" in options ? options.focusedIndex : this.state.focusedIndex;
         const subItems = "subItems" in options ? options.subItems : this.subItems;
 
         const tasks = [];
@@ -136,6 +132,7 @@ export class SearchBar extends Component {
 
         this.state.expanded = expanded;
         this.state.query = query;
+        this.state.focusedIndex = focusedIndex;
         this.subItems = subItems;
 
         this.inputRef.el.value = query;
@@ -176,10 +173,8 @@ export class SearchBar extends Component {
             // or the properties item itself
             preposition = null;
         }
-        if (
-            ["boolean", "tags"].includes(fieldType) ||
-            (isFieldProperty && fieldType === "selection")
-        ) {
+
+        if (["selection", "boolean", "tags"].includes(fieldType)) {
             const booleanOptions = [
                 [true, _t("Yes")],
                 [false, _t("No")],
@@ -189,7 +184,7 @@ export class SearchBar extends Component {
                 const { selection, tags } = searchItem.propertyFieldDefinition || {};
                 options = selection || tags || booleanOptions;
             } else {
-                options = booleanOptions;
+                options = this.fields[searchItem.fieldName].selection || booleanOptions;
             }
             for (const [value, label] of options) {
                 if (fuzzyTest(trimmedQuery.toLowerCase(), label.toLowerCase())) {
@@ -213,18 +208,21 @@ export class SearchBar extends Component {
         let value;
         try {
             switch (fieldType) {
-                case "date":
+                case "date": {
                     value = serializeDate(parser(trimmedQuery));
                     break;
-                case "datetime":
+                }
+                case "datetime": {
                     value = serializeDateTime(parser(trimmedQuery));
                     break;
-                case "selection":
-                case "many2one":
+                }
+                case "many2one": {
                     value = trimmedQuery;
                     break;
-                default:
+                }
+                default: {
                     value = parser(trimmedQuery);
+                }
             }
         } catch {
             return [];
@@ -248,7 +246,7 @@ export class SearchBar extends Component {
         } else if (fieldType === "properties") {
             item.isParent = true;
             item.unselectable = true;
-        } else if (fieldType === "many2one" || fieldType === "selection") {
+        } else if (fieldType === "many2one") {
             item.isParent = true;
         }
 
@@ -301,38 +299,38 @@ export class SearchBar extends Component {
      */
     async computeSubItems(searchItem, query) {
         const field = this.fields[searchItem.fieldName];
-        let options = [];
+        const context = { ...this.env.searchModel.domainEvalContext, ...field.context };
+        let domain = [];
+        if (searchItem.domain) {
+            try {
+                domain = new Domain(searchItem.domain).toList(context);
+            } catch {
+                // Pass
+            }
+        }
+        const relation =
+            searchItem.type === "field_property"
+                ? searchItem.propertyFieldDefinition.comodel
+                : field.relation;
+
+        let nameSearchOperator = "ilike";
+        if (query && query[0] === '"' && query[query.length - 1] === '"') {
+            query = query.slice(1, -1);
+            nameSearchOperator = "=";
+        }
+        const limitToFetch = this.state.subItemsLimits[searchItem.id] + 1;
+        const options = await this.orm.call(relation, "name_search", [], {
+            args: domain,
+            operator: nameSearchOperator,
+            context,
+            limit: limitToFetch,
+            name: query.trim(),
+        });
+
         let showLoadMore = false;
-        if (searchItem.fieldType === "selection") {
-            options = field.selection.filter(([_, label]) =>
-                fuzzyTest(query.toLowerCase(), label.toLowerCase())
-            );
-        } else {
-            let domain = [];
-            if (searchItem.domain) {
-                const domainEvalContext = {
-                    ...this.env.searchModel.domainEvalContext,
-                    ...field.context,
-                };
-                domain = new Domain(searchItem.domain).toList(domainEvalContext);
-            }
-            const relation =
-                searchItem.type === "field_property"
-                    ? searchItem.propertyFieldDefinition.comodel
-                    : field.relation;
-
-            const limitToFetch = this.state.subItemsLimits[searchItem.id] + 1;
-            options = await this.orm.call(relation, "name_search", [], {
-                domain: domain,
-                context: { ...this.env.searchModel.globalContext, ...field.context },
-                limit: limitToFetch,
-                name: query.trim(),
-            });
-
-            if (options.length === limitToFetch) {
-                options.pop();
-                showLoadMore = true;
-            }
+        if (options.length === limitToFetch) {
+            options.pop();
+            showLoadMore = true;
         }
 
         const subItems = [];
@@ -399,7 +397,7 @@ export class SearchBar extends Component {
 
     resetState(options = { focus: true }) {
         this.state.subItemsLimits = {};
-        this.computeState({ expanded: [], query: "", subItems: [] });
+        this.computeState({ expanded: [], focusedIndex: 0, query: "", subItems: [] });
         if (options.focus) {
             this.inputRef.el.focus();
         }
@@ -415,7 +413,6 @@ export class SearchBar extends Component {
 
         const searchItem = this.getSearchItem(item.searchItemId);
         if (
-            (searchItem.fieldType === "selection" && !item.isChild) ||
             (searchItem.type === "field" && searchItem.fieldType === "properties") ||
             (searchItem.type === "field_property" && item.unselectable)
         ) {
@@ -425,13 +422,19 @@ export class SearchBar extends Component {
 
         if (!item.unselectable) {
             const { searchItemId, label, operator, value } = item;
-            this.env.searchModel.addAutoCompletionValues(searchItemId, { label, operator, value });
+            const autoCompleteValues = { label, operator, value };
+            if (value && value[0] === '"' && value[value.length - 1] === '"') {
+                autoCompleteValues.value = value.slice(1, -1);
+                autoCompleteValues.label = label.slice(1, -1);
+                autoCompleteValues.operator = "=";
+                autoCompleteValues.enforceEqual = true;
+            }
+            this.env.searchModel.addAutoCompletionValues(searchItemId, autoCompleteValues);
         }
 
         if (item.loadMore) {
             item.loadMore();
         } else {
-            this.inputDropdownState.close();
             this.resetState();
         }
     }
@@ -456,141 +459,6 @@ export class SearchBar extends Component {
         this.computeState({ expanded });
     }
 
-    setupFacetNavigation() {
-        const isFacet = (target) => target && target.classList.contains("o_searchview_facet");
-
-        useNavigation(this.facetContainerRef, {
-            shouldFocusChildInput: false,
-            getItems: () => {
-                if (this.root.el && this.inputRef.el) {
-                    return [
-                        ...this.root.el.querySelectorAll(":scope .o_searchview_facet"),
-                        this.inputRef.el,
-                    ];
-                }
-                return [];
-            },
-            isNavigationAvailable: ({ navigator, target }) => navigator.contains(target),
-            hotkeys: {
-                enter: {
-                    isAvailable: () => !this.inputDropdownState.isOpen,
-                    callback: () => this.env.searchModel.search() /** @todo keep this thing ?*/,
-                },
-                arrowdown: {
-                    callback: () => this.env.searchModel.trigger("focus-view"),
-                },
-                backspace: {
-                    bypassEditableProtection: true,
-                    allowRepeat: false,
-                    isAvailable: ({ target }) =>
-                        isFacet(target) ||
-                        (target.selectionStart === 0 && target.selectionEnd === 0),
-                    callback: (navigator) => {
-                        const facets = this.env.searchModel.facets;
-                        if (isFacet(navigator.activeItem.el)) {
-                            this.removeFacet(facets[navigator.activeItemIndex]);
-                        } else if (facets.length > 0) {
-                            this.removeFacet(facets[facets.length - 1]);
-                        }
-                    },
-                },
-                arrowright: {
-                    bypassEditableProtection: true,
-                    allowRepeat: false,
-                    isAvailable: ({ target }) =>
-                        isFacet(target) || target.selectionStart === this.state.query.length,
-                    callback: (navigator) => {
-                        navigator.next();
-                        if (navigator.activeItem.el === this.inputRef.el) {
-                            this.inputRef.el.setSelectionRange(0, 0);
-                        }
-                    },
-                },
-                arrowleft: {
-                    bypassEditableProtection: true,
-                    isAvailable: ({ target }) => isFacet(target) || target.selectionStart === 0,
-                    callback: (navigator) => {
-                        navigator.previous();
-                        if (navigator.activeItem.el === this.inputRef.el) {
-                            const inputLength = this.inputRef.el.value.length;
-                            this.inputRef.el.setSelectionRange(inputLength, inputLength);
-                        }
-                    },
-                },
-            },
-        });
-    }
-
-    /**
-     * @returns {import("@web/core/navigation/navigation").NavigationOptions}
-     */
-    getDropdownNavigation() {
-        const isExpansible = (index) => {
-            const item = this.items[index];
-            return item && item.isParent;
-        };
-
-        const isCollapsible = (index) => {
-            const item = this.items[index];
-            return (
-                item && ((item.isParent && item.isExpanded) || item.isChild || item.isFieldProperty)
-            );
-        };
-
-        return {
-            virtualFocus: true,
-            getItems: () => this.menuRef.el?.querySelectorAll(":scope .o-dropdown-item") ?? [],
-            isNavigationAvailable: ({ navigator, target }) =>
-                this.inputDropdownState.isOpen &&
-                (this.facetContainerRef.el?.contains(target) || navigator.contains(target)),
-            onUpdated: (navigator) => (this.navigator = navigator),
-            hotkeys: {
-                escape: {
-                    callback: () => {
-                        this.inputDropdownState.close();
-                        this.resetState();
-                    },
-                },
-                arrowright: {
-                    bypassEditableProtection: true,
-                    allowRepeat: false,
-                    isAvailable: ({ navigator }) => isExpansible(navigator.activeItemIndex),
-                    callback: (navigator) => {
-                        const item = this.items[navigator.activeItemIndex];
-                        if (item.isParent) {
-                            if (item.isExpanded) {
-                                navigator.next();
-                            } else {
-                                this.toggleItem(item, true);
-                            }
-                        }
-                    },
-                },
-                arrowleft: {
-                    bypassEditableProtection: true,
-                    isAvailable: ({ navigator }) => isCollapsible(navigator.activeItemIndex),
-                    callback: (navigator) => {
-                        const item = this.items[navigator.activeItemIndex];
-
-                        const findIndex = (id) =>
-                            this.items.findIndex(
-                                (item) => item.isParent && item.searchItemId === id
-                            );
-                        if (item && item.isParent && item.isExpanded) {
-                            this.toggleItem(item, false);
-                        } else if (item && item.isChild) {
-                            navigator.items[findIndex(item.searchItemId)]?.setActive();
-                        } else if (item && item.isFieldProperty) {
-                            navigator.items[findIndex(item.propertyItemId)]?.setActive();
-                        } else if (this.inputRef.el.selectionStart === 0) {
-                            navigator.items[this.env.searchModel.facets.length - 1]?.setActive();
-                        }
-                    },
-                },
-            },
-        };
-    }
-
     //---------------------------------------------------------------------
     // Handlers
     //---------------------------------------------------------------------
@@ -608,17 +476,42 @@ export class SearchBar extends Component {
             resModel,
             domain,
             context: this.env.searchModel.domainEvalContext,
-            onConfirm: (nextDomain) => {
-                if (nextDomain !== domain) {
-                    this.env.searchModel.splitAndAddDomain(nextDomain, groupId);
-                }
-            },
+            onConfirm: (domain) => this.env.searchModel.splitAndAddDomain(domain, groupId),
             disableConfirmButton: (domain) => domain === `[]`,
-            title: _t("Custom Filter"),
-            confirmButtonText: _t("Search"),
-            discardButtonText: _t("Discard"),
+            title: _t("Modify Condition"),
             isDebugMode: this.env.searchModel.isDebugMode,
         });
+    }
+
+    /**
+     * @param {Object} facet
+     * @param {number} facetIndex
+     * @param {KeyboardEvent} ev
+     */
+    onFacetKeydown(facet, facetIndex, ev) {
+        switch (ev.key) {
+            case "ArrowLeft": {
+                if (facetIndex === 0) {
+                    this.inputRef.el.focus();
+                } else {
+                    this.focusFacet(facetIndex - 1);
+                }
+                break;
+            }
+            case "ArrowRight": {
+                const facets = this.root.el.getElementsByClassName("o_searchview_facet");
+                if (facetIndex === facets.length - 1) {
+                    this.inputRef.el.focus();
+                } else {
+                    this.focusFacet(facetIndex + 1);
+                }
+                break;
+            }
+            case "Backspace": {
+                this.removeFacet(facet);
+                break;
+            }
+        }
     }
 
     /**
@@ -628,13 +521,122 @@ export class SearchBar extends Component {
         this.removeFacet(facet);
     }
 
+    /**
+     * @param {number} index
+     */
+    onItemMousemove(focusedIndex) {
+        this.state.focusedIndex = focusedIndex;
+        this.inputRef.el.focus();
+    }
+
+    /**
+     * @param {KeyboardEvent} ev
+     */
+    onSearchKeydown(ev) {
+        if (ev.isComposing) {
+            // This case happens with an IME for example: we let it handle all key events.
+            return;
+        }
+        const focusedItem = this.items[this.state.focusedIndex];
+        let focusedIndex;
+        switch (ev.key) {
+            case "ArrowDown":
+                ev.preventDefault();
+                if (this.items.length) {
+                    if (this.state.focusedIndex >= this.items.length - 1) {
+                        focusedIndex = 0;
+                    } else {
+                        focusedIndex = this.state.focusedIndex + 1;
+                    }
+                } else {
+                    this.env.searchModel.trigger("focus-view");
+                }
+                break;
+            case "ArrowUp":
+                ev.preventDefault();
+                if (this.items.length) {
+                    if (
+                        this.state.focusedIndex === 0 ||
+                        this.state.focusedIndex > this.items.length - 1
+                    ) {
+                        focusedIndex = this.items.length - 1;
+                    } else {
+                        focusedIndex = this.state.focusedIndex - 1;
+                    }
+                }
+                break;
+            case "ArrowLeft":
+                if (focusedItem && focusedItem.isParent && focusedItem.isExpanded) {
+                    ev.preventDefault();
+                    this.toggleItem(focusedItem, false);
+                } else if (focusedItem && focusedItem.isChild) {
+                    ev.preventDefault();
+                    focusedIndex = this.items.findIndex(
+                        (item) => item.isParent && item.searchItemId === focusedItem.searchItemId
+                    );
+                } else if (focusedItem && focusedItem.isFieldProperty) {
+                    ev.preventDefault();
+                    focusedIndex = this.items.findIndex(
+                        (item) => item.isParent && item.searchItemId === focusedItem.propertyItemId
+                    );
+                } else if (ev.target.selectionStart === 0) {
+                    // focus rightmost facet if any.
+                    this.focusFacet();
+                } else {
+                    // do nothing and navigate inside text
+                }
+                break;
+            case "ArrowRight":
+                if (ev.target.selectionStart === this.state.query.length) {
+                    if (focusedItem && focusedItem.isParent) {
+                        ev.preventDefault();
+                        if (focusedItem.isExpanded) {
+                            focusedIndex = this.state.focusedIndex + 1;
+                        } else if (!ev.repeat) {
+                            this.toggleItem(focusedItem, true);
+                        }
+                    } else if (ev.target.selectionStart === this.state.query.length) {
+                        // Priority 3: focus leftmost facet if any.
+                        this.focusFacet(0);
+                    }
+                }
+                break;
+            case "Backspace":
+                if (!this.state.query.length) {
+                    const facets = this.env.searchModel.facets;
+                    if (facets.length) {
+                        this.removeFacet(facets[facets.length - 1]);
+                    }
+                }
+                break;
+            case "Enter":
+                if (!this.state.query.length) {
+                    this.env.searchModel.search(); /** @todo keep this thing ?*/
+                    break;
+                } else if (focusedItem) {
+                    ev.preventDefault(); // keep the focus inside the search bar
+                    this.selectItem(focusedItem);
+                }
+                break;
+            case "Tab":
+                if (this.state.query.length && focusedItem) {
+                    ev.preventDefault(); // keep the focus inside the search bar
+                    this.selectItem(focusedItem);
+                }
+                break;
+            case "Escape":
+                this.resetState();
+                break;
+        }
+
+        if (focusedIndex !== undefined) {
+            this.state.focusedIndex = focusedIndex;
+        }
+    }
+
     onSearchClick() {
-        if (!hasTouch()) {
-            if (!this.inputRef.el.value.length) {
-                this.searchBarDropdownState.open();
-            } else {
-                this.inputDropdownState.open();
-            }
+        if (!hasTouch() && !this.inputRef.el.value.length) {
+            this.searchBarDropdownState.open();
         }
     }
 
@@ -647,27 +649,18 @@ export class SearchBar extends Component {
         }
         const query = ev.target.value;
         if (query.trim()) {
-            this.inputDropdownState.open();
-            this.computeState({ query, expanded: [], subItems: [] });
+            this.computeState({ query, expanded: [], focusedIndex: 0, subItems: [] });
         } else if (this.items.length) {
-            this.inputDropdownState.close();
             this.resetState();
         }
     }
 
     onClickSearchIcon() {
+        const focusedItem = this.items[this.state.focusedIndex];
         if (!this.state.query.length) {
             this.env.searchModel.search();
-        } else {
-            const els = [
-                ...this.root.el.ownerDocument.querySelectorAll(
-                    ".o_searchview_autocomplete .o-dropdown-item"
-                ),
-            ];
-            const index = els.findIndex((el) => el.classList.contains(ACTIVE_ELEMENT_CLASS));
-            if (this.items[index]) {
-                this.selectItem(this.items[index]);
-            }
+        } else if (focusedItem) {
+            this.selectItem(focusedItem);
         }
     }
 
@@ -675,11 +668,21 @@ export class SearchBar extends Component {
         this.state.showSearchBar = !this.state.showSearchBar;
     }
 
-    onInputDropdownChanged(isOpen) {
-        if (!isOpen && status(this) === "mounted") {
+    /**
+     * @param {MouseEvent} ev
+     */
+    onWindowClick(ev) {
+        if (this.items.length && !this.root.el.contains(ev.target)) {
             this.resetState({ focus: false });
-        } else if (this.navigator) {
-            this.navigator.items[0]?.setActive();
+        }
+    }
+
+    /**
+     * @param {KeyboardEvent} ev
+     */
+    onWindowKeydown(ev) {
+        if (this.items.length && ev.key === "Escape") {
+            this.resetState();
         }
     }
 }

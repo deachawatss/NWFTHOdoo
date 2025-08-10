@@ -1,22 +1,18 @@
 import {
+    assertSteps,
+    click,
     contains,
     insertText,
     openDiscuss,
     start,
     startServer,
+    step,
 } from "@mail/../tests/mail_test_helpers";
 import { withGuest } from "@mail/../tests/mock_server/mail_mock_server";
 import { describe, test } from "@odoo/hoot";
-import {
-    asyncStep,
-    Command,
-    onRpc,
-    serverState,
-    waitForSteps,
-} from "@web/../tests/web_test_helpers";
+import { Command, onRpc, serverState } from "@web/../tests/web_test_helpers";
 import { defineLivechatModels } from "./livechat_test_helpers";
 
-import { press } from "@odoo/hoot-dom";
 import { rpc } from "@web/core/network/rpc";
 
 describe.current.tags("desktop");
@@ -28,21 +24,21 @@ test("Can execute help command on livechat channels", async () => {
     const channelId = pyEnv["discuss.channel"].create({
         anonymous_name: "Visitor 11",
         channel_member_ids: [
-            Command.create({ partner_id: serverState.partnerId, livechat_member_type: "agent" }),
-            Command.create({ guest_id: guestId, livechat_member_type: "visitor" }),
+            Command.create({ partner_id: serverState.partnerId }),
+            Command.create({ guest_id: guestId }),
         ],
         channel_type: "livechat",
         livechat_operator_id: serverState.partnerId,
     });
     onRpc("discuss.channel", "execute_command_help", () => {
-        asyncStep("execute_command_help");
+        step("execute_command_help");
         return true;
     });
     await start();
     await openDiscuss(channelId);
     await insertText(".o-mail-Composer-input", "/help");
-    await press("Enter");
-    await waitForSteps(["execute_command_help"]);
+    await click(".o-mail-Composer-send:enabled");
+    await assertSteps(["execute_command_help"]);
 });
 
 test('Receives visitor typing status "is typing"', async () => {
@@ -51,8 +47,8 @@ test('Receives visitor typing status "is typing"', async () => {
     const channelId = pyEnv["discuss.channel"].create({
         anonymous_name: "Visitor 20",
         channel_member_ids: [
-            Command.create({ partner_id: serverState.partnerId, livechat_member_type: "agent" }),
-            Command.create({ guest_id: guestId, livechat_member_type: "visitor" }),
+            Command.create({ partner_id: serverState.partnerId }),
+            Command.create({ guest_id: guestId }),
         ],
         channel_type: "livechat",
         livechat_operator_id: serverState.partnerId,

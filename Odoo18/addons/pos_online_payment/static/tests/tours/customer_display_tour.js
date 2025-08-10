@@ -1,4 +1,4 @@
-import * as Order from "@point_of_sale/../tests/generic_helpers/order_widget_util";
+import * as Order from "@point_of_sale/../tests/tours/utils/generic_components/order_widget_util";
 import { registry } from "@web/core/registry";
 import {
     postMessage,
@@ -6,7 +6,7 @@ import {
     ADD_PRODUCT_SELECTED,
     ORDER_IS_FINALIZED,
     NEW_ORDER,
-} from "@point_of_sale/../tests/customer_display/customer_display_tour";
+} from "@point_of_sale/../tests/tours/customer_display_tour";
 
 const QR_URL =
     "/report/barcode/QR/http%3A%2F%2Flocalhost%3A1740%2Fpos%2Fpay%2F6%3Faccess_token%3D5bb78d6c-bf8e-44ed-8de2-e4ae5b8696ec?width=200&height=200";

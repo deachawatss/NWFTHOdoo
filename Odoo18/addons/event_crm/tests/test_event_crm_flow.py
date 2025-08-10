@@ -28,6 +28,7 @@ class TestEventCrmFlow(TestEventCrmCommon, CronMixinCase):
 
         self.assertEqual(self.event_customer.country_id, self.env.ref('base.be'))
         self.assertEqual(self.event_customer.email_normalized, 'constantin@test.example.com')
+        self.assertFalse(self.event_customer.mobile)
         self.assertEqual(self.event_customer.phone, '0485112233')
 
     @users('user_eventmanager')
@@ -48,7 +49,7 @@ class TestEventCrmFlow(TestEventCrmCommon, CronMixinCase):
         # calling the action should create the generation request as well as a CRON trigger
         self.test_rule_attendee.event_registration_filter = False
         with self.capture_triggers('event_crm.ir_cron_generate_leads') as captured_trigger:
-            self.event_0.action_generate_leads(event_lead_rules=self.test_rule_attendee)
+            self.event_0.action_generate_leads()
         self.assertEqual(len(LeadRequestSudo.search([])), 1)
         self.assertEqual(len(captured_trigger.records), 1)
 

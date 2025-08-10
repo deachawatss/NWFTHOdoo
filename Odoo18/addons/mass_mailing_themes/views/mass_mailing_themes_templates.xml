@@ -251,7 +251,7 @@
                         <p style="text-align:left;"><a class="btn btn-primary" href="#">VISIT OUR WEBSITE</a></p>
                     </div>
                     <div class="col-lg-5 px-0">
-                        <img class="img-fluid o_we_custom_image" src="/web_editor/image_shape/mass_mailing_themes.s_tech_default_image/web_editor/geometric/geo_cornered_triangle.svg" data-shape="web_editor/geometric/geo_cornered_triangle" data-file-name="text_image-cornered_triangle.svg" data-shape-colors=";;;;" data-format-mimetype="image/jpeg"/>
+                        <img class="img-fluid o_we_custom_image" src="/web_editor/image_shape/mass_mailing_themes.s_tech_default_image/web_editor/geometric/geo_cornered_triangle.svg" data-shape="web_editor/geometric/geo_cornered_triangle" data-file-name="text_image-cornered_triangle.svg" data-shape-colors=";;;;" data-original-mimetype="image/jpeg"/>
                     </div>
                 </div>
             </div>
@@ -1126,13 +1126,13 @@
             <div class="container" style="">
                 <div class="col-lg-12 o_mail_header_social" style="background-color: rgb(255, 255, 255) !important; text-align: left;">
                     <a aria-label="Facebook" target="_blank" href="https://www.facebook.com/Odoo" data-original-title="Facebook" rel="noreferrer">
-                        <img class="img-fluid o_we_custom_image" src="/mass_mailing_themes/static/src/img/theme_newsletter/social-facebook.png" data-attachment-id="435" data-original-id="435" data-original-src="/mass_mailing_themes/static/src/img/theme_newsletter/social-facebook.png" data-mimetype="image/png" style="width: 30px;"/>
+                        <img class="img-fluid o_we_custom_image" src="/mass_mailing_themes/static/src/img/theme_newsletter/social-facebook.png" data-original-id="435" data-original-src="/mass_mailing_themes/static/src/img/theme_newsletter/social-facebook.png" data-mimetype="image/png" style="width: 30px;"/>
                     </a>&amp;nbsp;&amp;nbsp;
                     <a aria-label="X" target="_blank" href="https://twitter.com/Odoo" data-original-title="X" rel="noreferrer">
-                        <img class="img-fluid o_we_custom_image" src="/mass_mailing_themes/static/src/img/theme_newsletter/social-twitter.png" data-attachment-id="436" data-original-id="436" data-original-src="/mass_mailing_themes/static/src/img/theme_newsletter/social-twitter.png" data-mimetype="image/png" style="width: 30px;"/>
+                        <img class="img-fluid o_we_custom_image" src="/mass_mailing_themes/static/src/img/theme_newsletter/social-twitter.png" data-original-id="436" data-original-src="/mass_mailing_themes/static/src/img/theme_newsletter/social-twitter.png" data-mimetype="image/png" style="width: 30px;"/>
                     </a>&amp;nbsp;&amp;nbsp;
                     <a  aria-label="Instagram" target="_blank" href="https://www.linkedin.com/company/odoo" data-original-title="Linkedin" rel="noreferrer">
-                        <img class="img-fluid o_we_custom_image" src="/mass_mailing_themes/static/src/img/theme_newsletter/social-linkedin.png" data-attachment-id="437" data-original-id="437" data-original-src="/mass_mailing_themes/static/src/img/theme_newsletter/social-linkedin.png" data-mimetype="image/png" style="width: 30px;"/>
+                        <img class="img-fluid o_we_custom_image" src="/mass_mailing_themes/static/src/img/theme_newsletter/social-linkedin.png" data-original-id="437" data-original-src="/mass_mailing_themes/static/src/img/theme_newsletter/social-linkedin.png" data-mimetype="image/png" style="width: 30px;"/>
                     </a>
                 </div>
             </div>
@@ -1252,13 +1252,13 @@
             <div class="container">
                 <div class="col-lg-12 o_mail_footer_social pt0 pb0" style="text-align: center;">
                     <a aria-label="Facebook" class="text-white" target="_blank" href="https://www.facebook.com/Odoo" data-original-title="Facebook" rel="noreferrer">
-                        <img class="img-fluid o_we_custom_image" src="/mass_mailing_themes/static/src/img/theme_newsletter/social-facebook.png" data-attachment-id="435" data-original-id="435" data-original-src="/mass_mailing_themes/static/src/img/theme_newsletter/social-facebook.png" data-mimetype="image/png" style="width: 30px;"/>
+                        <img class="img-fluid o_we_custom_image" src="/mass_mailing_themes/static/src/img/theme_newsletter/social-facebook.png" data-original-id="435" data-original-src="/mass_mailing_themes/static/src/img/theme_newsletter/social-facebook.png" data-mimetype="image/png" style="width: 30px;"/>
                     </a>&amp;nbsp;&amp;nbsp;
                     <a class="text-white" aria-label="X" target="_blank" href="https://twitter.com/Odoo" data-original-title="X" rel="noreferrer">
-                        <img class="img-fluid o_we_custom_image" src="/mass_mailing_themes/static/src/img/theme_newsletter/social-twitter.png" data-attachment-id="436" data-original-id="436" data-original-src="/mass_mailing_themes/static/src/img/theme_newsletter/social-twitter.png" data-mimetype="image/png" style="width: 30px;"/>
+                        <img class="img-fluid o_we_custom_image" src="/mass_mailing_themes/static/src/img/theme_newsletter/social-twitter.png" data-original-id="436" data-original-src="/mass_mailing_themes/static/src/img/theme_newsletter/social-twitter.png" data-mimetype="image/png" style="width: 30px;"/>
                     </a>&amp;nbsp;&amp;nbsp;
                     <a class="text-white" aria-label="Instagram" target="_blank" href="https://www.linkedin.com/company/odoo" data-original-title="Linkedin" rel="noreferrer">
-                        <img class="img-fluid o_we_custom_image" src="/mass_mailing_themes/static/src/img/theme_newsletter/social-linkedin.png" data-attachment-id="437" data-original-id="437" data-original-src="/mass_mailing_themes/static/src/img/theme_newsletter/social-linkedin.png" data-mimetype="image/png" style="width: 30px;"/>
+                        <img class="img-fluid o_we_custom_image" src="/mass_mailing_themes/static/src/img/theme_newsletter/social-linkedin.png" data-original-id="437" data-original-src="/mass_mailing_themes/static/src/img/theme_newsletter/social-linkedin.png" data-mimetype="image/png" style="width: 30px;"/>
                     </a>
                 </div>
             </div>
@@ -1268,13 +1268,13 @@
         </div>
         <div class="s_footer_social o_mail_block_footer_social o_mail_footer_social_center o_mail_snippet_general o_cc o_cc1 pt0 pb0" data-snippet="s_mail_block_footer_social" data-name="Footer Center">
             <div class="container" style="text-align: center; color:rgb(183, 191, 199) !important;">
-                <span style="font-size: 12px;"><font style="color: rgb(183, 191, 199);">8000 Marina Blvd, Suite 300</font></span>
+                <span style="font-size: 12px;" class="o_default_snippet_text"><font style="color: rgb(183, 191, 199);">250 Executive Park Blvd</font></span>
                 <br/>
-                <span style="font-size: 12px;"><font style="color: rgb(183, 191, 199);">Brisbane, California 94005</font></span>
+                <span style="font-size: 12px;" class=""><font style="color: rgb(183, 191, 199);">San Francisco, California 94134</font></span>
                 <br/>
-                <span style="font-size: 12px;"><font style="color: rgb(183, 191, 199);">You received this email from </font></span><a href="mailto:" target="_blank"><span style="font-size: 12px;"><font style="color: rgb(183, 191, 199);">hello@musingsoftheweek.com</font></span></a>
+                <span style="font-size: 12px;" class="o_default_snippet_text"><font style="color: rgb(183, 191, 199);">You received this email from </font></span><a href="mailto:" target="_blank"><span style="font-size: 12px;" class="o_default_snippet_text"><font style="color: rgb(183, 191, 199);">hello@musingsoftheweek.com</font></span></a>
                 <br/>
-                <span style="font-size: 12px;"><font style="color: rgb(183, 191, 199);">To unsubscribe, </font></span><a href="/unsubscribe_from_list" target="_blank"><span style="font-size: 12px;"><font style="color: rgb(183, 191, 199);">click here</font></span></a><span style="font-size: 12px;"><font style="color: rgb(183, 191, 199);">.</font></span>
+                <span style="font-size: 12px;" class="o_default_snippet_text"><font style="color: rgb(183, 191, 199);">To unsubscribe, </font></span><a href="/unsubscribe_from_list" target="_blank"><span style="font-size: 12px;" class="o_default_snippet_text"><font style="color: rgb(183, 191, 199);">click here</font></span></a><span style="font-size: 12px;" class="o_default_snippet_text"><font style="color: rgb(183, 191, 199);">.</font></span>
             </div>
         </div>
     </template>
@@ -1546,7 +1546,7 @@
             </div>
         </div>
         <div class="s_picture o_mail_snippet_general pt48 px-3 o_cc o_cc2 pb0" data-snippet="s_picture" data-name="Picture" placeholder="Type &quot;/&quot; for commands" style="background-color: rgb(67, 128, 219);">
-            <img class="img-fluid o_we_custom_image" src="/web_editor/image_shape/mass_mailing_themes.s_default_image_block_image/web_editor/composition/composition_organic_line.svg?c1=%23FF9800" data-shape="web_editor/composition/composition_organic_line" data-file-name="picture-composition_organic_line.svg" data-shape-colors="#FF9800;;;;" data-format-mimetype="image/jpeg"/>
+            <img class="img-fluid o_we_custom_image" src="/web_editor/image_shape/mass_mailing_themes.s_default_image_block_image/web_editor/composition/composition_organic_line.svg?c1=%23FF9800" data-shape="web_editor/composition/composition_organic_line" data-file-name="picture-composition_organic_line.svg" data-shape-colors="#FF9800;;;;" data-original-mimetype="image/jpeg"/>
         </div>
         <div class="s_title o_mail_snippet_general pt32 pb0" data-snippet="s_title" data-name="Title" style="background-color: rgb(67, 128, 219);">
             <div class="container s_allow_columns">
@@ -1607,7 +1607,7 @@
             <div class="container s_allow_columns">
                 <p style="text-align: center">
                     <span style="font-size: 10px;">
-                        <font style="color: rgb(112, 157, 225);">You are receiving this email because you showed an interest in our previous events
+                        <font style="color: rgb(112, 157, 225);" class="o_default_snippet_text">You are receiving this email because you showed an interest in our previous events
                         </font>
                     </span>
                 </p>
@@ -1636,7 +1636,7 @@
                 </div>
                 <div class="row">
                     <div class="col-lg o_mail_footer_links">
-                        <a role="button" href="/unsubscribe_from_list" class="btn btn-link">Unsubscribe</a>
+                        <a role="button" href="/unsubscribe_from_list" class="btn btn-link o_default_snippet_text">Unsubscribe</a>
                     </div>
                 </div>
                 <div class="row">

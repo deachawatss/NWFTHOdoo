@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { useState } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
@@ -25,7 +27,7 @@ const OPT_GROUPS = [
     },
     {
         group: { sequence: 40, key: "custom", name: _t("Custom") },
-        triggers: ["on_create", "on_create_or_write", "on_unlink", "on_change"],
+        triggers: ["on_create_or_write", "on_unlink", "on_change"],
     },
     {
         group: { sequence: 50, key: "external", name: _t("External") },
@@ -37,7 +39,7 @@ const OPT_GROUPS = [
     },
     {
         group: { sequence: 60, key: "deprecated", name: _t("Deprecated (do not use)") },
-        triggers: ["on_write"],
+        triggers: ["on_create", "on_write"],
     },
 ];
 
@@ -79,7 +81,7 @@ export class TriggerSelectionField extends SelectionField {
         let relatedModelFields;
         useRecordObserver(async (record) => {
             const { data, fields } = record;
-            const modelId = data.model_id?.id;
+            const modelId = data.model_id?.[0];
             if (lastRelatedModelId !== modelId) {
                 lastRelatedModelId = modelId;
                 relatedModelFields = await orm.searchRead(

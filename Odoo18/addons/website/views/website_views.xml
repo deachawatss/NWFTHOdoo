@@ -99,13 +99,13 @@
                         <group>
                             <group>
                                 <field name="name"/>
-                                <field name="url" readonly="page_id or is_mega_menu or child_id"/>
+                                <field name="url"/>
                                 <field name="page_id"/>
                                 <field name="controller_page_id"/>
                                 <field name="is_mega_menu"/>
                             </group>
                             <group>
-                                <field name="new_window" readonly="is_mega_menu or child_id"/>
+                                <field name="new_window"/>
                                 <field name="sequence"/>
                                 <field name="website_id" options="{'no_create': True}" groups="website.group_multi_website"/>
                             </group>
@@ -220,7 +220,7 @@
             <field name="model_id" ref="website.model_website"/>
             <field name="state">code</field>
             <field name="code">action = model.action_dashboard_redirect()</field>
-            <field name="group_ids" eval="[(4, ref('base.group_user'))]"/>
+            <field name="groups_id" eval="[(4, ref('base.group_user'))]"/>
         </record>
 
         <record id="ir_actions_server_website_analytics" model="ir.actions.server">
@@ -228,7 +228,7 @@
             <field name="model_id" ref="website.model_website"/>
             <field name="state">code</field>
             <field name="code">action = model.env.ref('website.backend_dashboard').sudo().read()[0]</field>
-            <field name="group_ids" eval="[(4, ref('base.group_user'))]"/>
+            <field name="groups_id" eval="[(4, ref('base.group_user'))]"/>
         </record>
 
         <!-- ====== Themes =====================================================
@@ -269,7 +269,7 @@
                                     </div>
                                 </div>
                                 <t t-else="">
-                                    <button class="position-absolute top-0 start-0 h-100 w-100 opacity-0" role="button" type="open" t-if="record.url.value"/>
+                                    <button class="position-absolute top-0 start-0 h-100 w-100 opacity-0" role="button" type="edit" t-if="record.url.value"/>
                                 </t>
                             </div>
                             <div class="o_theme_preview_bottom mt-2 mb-3 px-2">

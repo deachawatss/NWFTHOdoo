@@ -1,12 +1,10 @@
 import { after, describe, expect, test } from "@odoo/hoot";
 import { on } from "@odoo/hoot-dom";
-import { microTick } from "@odoo/hoot-mock";
 import { Component, xml } from "@odoo/owl";
 import { getService, makeMockEnv, mountWithCleanup, onRpc } from "@web/../tests/web_test_helpers";
 
-import { rpc, rpcBus } from "@web/core/network/rpc";
+import { rpcBus } from "@web/core/network/rpc";
 import { useService } from "@web/core/utils/hooks";
-import { PersistentCache } from "@web/core/utils/persistent_cache";
 
 describe.current.tags("headless");
 
@@ -231,8 +229,8 @@ test("webReadGroup method", async () => {
             args: [],
             kwargs: {
                 domain: [["user_id", "=", 2]],
-                aggregates: ["amount_total:sum"],
-                groupby: ["date_order:month"],
+                fields: ["amount_total:sum"],
+                groupby: ["date_order"],
                 context: {
                     allowed_company_ids: [1],
                     lang: "en",
@@ -244,19 +242,75 @@ test("webReadGroup method", async () => {
             method: "web_read_group",
             model: "sale.order",
         });
-        return { length: 0, groups: [] };
+        return false;
     });
 
     const { services } = await makeMockEnv();
     await services.orm.webReadGroup(
         "sale.order",
         [["user_id", "=", 2]],
-        ["date_order:month"],
         ["amount_total:sum"],
+        ["date_order"],
         { offset: 1 }
     );
 
     expect.verifySteps(["/web/dataset/call_kw/sale.order/web_read_group"]);
+});
+
+test("readGroup method", async () => {
+    onRpc(async (params) => {
+        expect.step(params.route);
+        expect(params).toMatchObject({
+            args: [],
+            kwargs: {
+                domain: [["user_id", "=", 2]],
+                fields: ["amount_total:sum"],
+                groupby: ["date_order"],
+                context: {
+                    allowed_company_ids: [1],
+                    lang: "en",
+                    uid: 7,
+                    tz: "taht",
+                },
+                offset: 1,
+            },
+            method: "read_group",
+            model: "sale.order",
+        });
+        return false;
+    });
+
+    const { services } = await makeMockEnv();
+    await services.orm.readGroup(
+        "sale.order",
+        [["user_id", "=", 2]],
+        ["amount_total:sum"],
+        ["date_order"],
+        { offset: 1 }
+    );
+
+    expect.verifySteps(["/web/dataset/call_kw/sale.order/read_group"]);
+});
+
+test("test readGroup method removes duplicate values from groupby", async () => {
+    onRpc(async (params) => {
+        expect.step(params.route);
+        expect(params.kwargs.groupby).toMatchObject(["date_order:month"], {
+            message: "Duplicate values should be removed from groupby",
+        });
+        return false;
+    });
+
+    const { services } = await makeMockEnv();
+    await services.orm.readGroup(
+        "sale.order",
+        [["user_id", "=", 2]],
+        ["amount_total:sum"],
+        ["date_order:month", "date_order:month"],
+        { offset: 1 }
+    );
+
+    expect.verifySteps(["/web/dataset/call_kw/sale.order/read_group"]);
 });
 
 test("search_read method", async () => {
@@ -454,76 +508,4 @@ test("optimize read and unlink if no ids", async () => {
 
     await services.orm.unlink("res.partner", [], {});
     expect.verifySteps([]);
-});
-
-test("Cache: can cache a simple orm call", async () => {
-    rpc.setCache(
-        new PersistentCache(
-            "mockRpc",
-            1,
-            "85472d41873cdb504b7c7dfecdb8993d90db142c4c03e6d94c4ae37a7771dc5b"
-        )
-    );
-    onRpc(() => {
-        expect.step("Fetch");
-        return { name: 123 };
-    });
-
-    const { services } = await makeMockEnv();
-
-    expect(await services.orm.cached().read("res.partner", [1], [])).toEqual({ name: 123 });
-    expect(await services.orm.cached().read("res.partner", [1], [])).toEqual({ name: 123 });
-    expect(await services.orm.cached().read("res.partner", [1], [])).toEqual({ name: 123 });
-    expect.verifySteps(["Fetch"]);
-});
-
-test("Cache: can cache and update a orm call", async () => {
-    rpc.setCache(
-        new PersistentCache(
-            "mockRpc",
-            1,
-            "85472d41873cdb504b7c7dfecdb8993d90db142c4c03e6d94c4ae37a7771dc5b"
-        )
-    );
-    const response = [123, 456];
-    let i = 0;
-    onRpc(() => {
-        expect.step("Fetch");
-        return { name: response[i++] };
-    });
-
-    const { services } = await makeMockEnv();
-
-    expect(
-        await services.orm
-            .cached({
-                onFinish: (hasChanged, result) => {
-                    expect.step(
-                        `onFinish - hasChanged:${hasChanged} result:${JSON.stringify(result)}`
-                    );
-                },
-            })
-            .read("res.partner", [1], [])
-    ).toEqual({ name: 123 });
-    await microTick();
-    expect(
-        await services.orm
-            .cached({
-                onFinish: (hasChanged, result) => {
-                    expect.step(
-                        `onFinish - hasChanged:${hasChanged} result:${JSON.stringify(result)}`
-                    );
-                },
-            })
-            .read("res.partner", [1], [])
-    ).toEqual({ name: 123 });
-    await microTick();
-    await microTick();
-    await microTick();
-    expect.verifySteps([
-        "Fetch",
-        'onFinish - hasChanged:false result:{"name":123}',
-        "Fetch",
-        'onFinish - hasChanged:true result:{"name":456}',
-    ]);
 });

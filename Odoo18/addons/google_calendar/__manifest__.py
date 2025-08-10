@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 {
@@ -19,10 +20,12 @@
             'google_calendar/static/src/scss/google_calendar.scss',
             'google_calendar/static/src/views/**/*',
         ],
-        'web.assets_unit_tests': [
+        'web.qunit_suite_tests': [
             'google_calendar/static/tests/**/*',
         ],
+        'web.qunit_mobile_suite_tests': [
+            'google_calendar/static/tests/google_calendar_mock_server.js',
+        ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

@@ -4,8 +4,9 @@ from glob import glob
 from logging import getLogger
 from werkzeug import urls
 
+import odoo
+import odoo.modules.module  # get_manifest, don't from-import it
 from odoo import api, fields, models, tools
-from odoo.modules import Manifest
 from odoo.tools import misc
 from odoo.tools.constants import ASSET_EXTENSIONS, EXTERNAL_ASSET
 
@@ -67,10 +68,10 @@ class IrAsset(models.Model):
         self.env.registry.clear_cache('assets')
         return super().create(vals_list)
 
-    def write(self, vals):
+    def write(self, values):
         if self:
             self.env.registry.clear_cache('assets')
-        return super().write(vals)
+        return super().write(values)
 
     def unlink(self):
         self.env.registry.clear_cache('assets')
@@ -104,15 +105,11 @@ class IrAsset(models.Model):
     def _parse_bundle_name(self, bundle_name, debug_assets):
         bundle_name, asset_type = bundle_name.rsplit('.', 1)
         rtl = False
-        autoprefix = False
         if not debug_assets:
             bundle_name, min_ = bundle_name.rsplit('.', 1)
             if min_ != 'min':
                 raise ValueError("'min' expected in extension in non debug mode")
         if asset_type == 'css':
-            if bundle_name.endswith('.autoprefixed'):
-                bundle_name = bundle_name[:-13]
-                autoprefix = True
             if bundle_name.endswith('.rtl'):
                 bundle_name = bundle_name[:-4]
                 rtl = True
@@ -120,7 +117,7 @@ class IrAsset(models.Model):
             raise ValueError('Only js and css assets bundle are supported for now')
         if len(bundle_name.split('.')) != 2:
             raise ValueError(f'{bundle_name} is not a valid bundle name, should have two parts')
-        return bundle_name, rtl, asset_type, autoprefix
+        return bundle_name, rtl, asset_type
 
     @tools.conditional(
         'xml' not in tools.config['dev_mode'],
@@ -186,7 +183,7 @@ class IrAsset(models.Model):
 
         # 2. Process all addons' manifests.
         for addon in addons:
-            for command in Manifest.for_addon(addon)['assets'].get(bundle, ()):
+            for command in odoo.modules.module._get_manifest_cached(addon)['assets'].get(bundle, ()):
                 directive, target, path_def = self._process_command(command)
                 self._process_path(bundle, directive, target, path_def, asset_paths, seen, addons, installed, bundle_start_index, **assets_params)
 
@@ -243,7 +240,7 @@ class IrAsset(models.Model):
             # this should never happen
             raise ValueError("Unexpected directive")
 
-    def _get_related_assets(self, domain, **kwargs):
+    def _get_related_assets(self, domain):
         """
         Returns a set of assets matching the domain, regardless of their
         active state. This method can be overridden to filter the results.
@@ -261,8 +258,8 @@ class IrAsset(models.Model):
         a specific asset and target the right bundle, i.e. the first one
         defining the target path.
 
-        :param str target_path_def: path to match.
-        :param str root_bundle: bundle from which to initiate the search.
+        :param target_path_def: string: path to match.
+        :root_bundle: string: bundle from which to initiate the search.
         :returns: the first matching bundle or None
         """
         installed = self._get_installed_addons_list()
@@ -276,7 +273,7 @@ class IrAsset(models.Model):
 
         return root_bundle
 
-    def _get_active_addons_list(self, **kwargs):
+    def _get_active_addons_list(self):
         """Can be overridden to filter the returned list of active modules."""
         return self._get_installed_addons_list()
 
@@ -288,10 +285,10 @@ class IrAsset(models.Model):
         IrModule = self.env['ir.module.module']
 
         def mapper(addon):
-            manif = Manifest.for_addon(addon) or {}
+            manif = odoo.modules.module._get_manifest_cached(addon)
             from_terp = IrModule.get_values_from_terp(manif)
             from_terp['name'] = addon
-            from_terp['depends'] = manif.get('depends') or ['base']
+            from_terp['depends'] = manif.get('depends', ['base'])
             return from_terp
 
         manifs = map(mapper, addons_tuple)
@@ -310,7 +307,9 @@ class IrAsset(models.Model):
         Returns the list of all installed addons.
         :returns: string[]: list of module names
         """
-        return self.env.registry._init_modules.union(tools.config['server_wide_modules'])
+        # Main source: the current registry list
+        # Second source of modules: server wide modules
+        return self.env.registry._init_modules.union(odoo.conf.server_wide_modules or [])
 
     def _get_paths(self, path_def, installed):
         """
@@ -331,31 +330,35 @@ class IrAsset(models.Model):
 
         :param path_def: the definition (glob) of file paths to match
         :param installed: the list of installed addons
+        :param extensions: a list of extensions that found files must match
         :returns: a list of tuple: (path, full_path, modified)
         """
         paths = None
         path_def = fs2web(path_def)  # we expect to have all path definition unix style or url style, this is a safety
         path_parts = [part for part in path_def.split('/') if part]
         addon = path_parts[0]
-        addon_manifest = Manifest.for_addon(addon, display_warning=False)
+        addon_manifest = odoo.modules.module._get_manifest_cached(addon)
 
-        safe_path = False
+        safe_path = True
         if addon_manifest:
             if addon not in installed:
                 # Assert that the path is in the installed addons
                 raise Exception(f"Unallowed to fetch files from addon {addon} for file {path_def}")
-            addons_path = addon_manifest.addons_path
-            full_path = os.path.normpath(os.path.join(addons_path, *path_parts))
+            addons_path = addon_manifest['addons_path']
+            full_path = os.path.normpath(os.sep.join([addons_path, *path_parts]))
             # forbid escape from the current addon
             # "/mymodule/../myothermodule" is forbidden
-            static_prefix = os.path.join(addon_manifest.path, 'static', '')
+            static_prefix = os.sep.join([addons_path, addon, 'static', ''])
             if full_path.startswith(static_prefix):
                 paths_with_timestamps = _glob_static_file(full_path)
                 paths = [
                     (fs2web(absolute_path[len(addons_path):]), absolute_path, timestamp)
                     for absolute_path, timestamp in paths_with_timestamps
                 ]
-                safe_path = True
+            else:
+                safe_path = False
+        else:
+            safe_path = False
 
         if not paths and not can_aggregate(path_def):  # http:// or /web/content
             paths = [(path_def, EXTERNAL_ASSET, -1)]

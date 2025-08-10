@@ -10,7 +10,6 @@ from odoo.tools import mute_logger
 
 class TestForumCRUD(TestForumCommon):
 
-    @mute_logger('odoo.addons.base.models.ir_rule')
     def test_crud_rights(self):
         Post = self.env['forum.post']
         Vote = self.env['forum.post.vote']
@@ -95,17 +94,19 @@ class TestForumCRUD(TestForumCommon):
 
         with mute_logger('odoo.sql_db'):
             with self.assertRaises(IntegrityError):
-                # One should not be able to vote more than once on a same post
-                Vote.with_user(self.user_employee).create({
-                    'post_id': self.admin_post.id,
-                    'vote': '1',
-                })
+                with self.cr.savepoint():
+                    # One should not be able to vote more than once on a same post
+                    Vote.with_user(self.user_employee).create({
+                        'post_id': self.admin_post.id,
+                        'vote': '1',
+                    })
             with self.assertRaises(IntegrityError):
-                # One should not be able to vote more than once on a same post
-                Vote.with_user(self.user_employee).create({
-                    'post_id': self.admin_post.id,
-                    'vote': '1',
-                })
+                with self.cr.savepoint():
+                    # One should not be able to vote more than once on a same post
+                    Vote.with_user(self.user_employee).create({
+                        'post_id': self.admin_post.id,
+                        'vote': '1',
+                    })
 
         # One should not be able to create a vote for someone else
         new_employee_vote = Vote.with_user(self.user_employee).create({
@@ -121,15 +122,6 @@ class TestForumCRUD(TestForumCommon):
             'vote': '1',
         })
         self.assertEqual(new_portal_vote.user_id, self.user_portal, 'Creating a vote for someone else should not be allowed. It should create it for yourself instead')
-
-        # One should not be able to access a vote from someone else
-        with self.assertRaises(AccessError):
-            new_employee_vote.with_user(self.user_portal).read(['vote'])
-        with self.assertRaises(AccessError):
-            new_portal_vote.with_user(self.user_employee).read(['vote'])
-
-        # Admins should be able to access all votes
-        (new_employee_vote + new_portal_vote).with_user(self.user_admin).read(['vote'])
 
 
 class TestForumKarma(TestForumCommon):
@@ -412,7 +404,7 @@ class TestForumKarma(TestForumCommon):
 
     def test_vote(self):
         def check_vote_records_count_and_integrity(expected_total_votes_count):
-            groups = self.env['forum.post.vote'].formatted_read_group([], groupby=['post_id', 'user_id'], aggregates=['__count'])
+            groups = self.env['forum.post.vote'].read_group([], fields=['__count'], groupby=['post_id', 'user_id'], lazy=False)
             self.assertEqual(len(groups), expected_total_votes_count)
             for post_user_group in groups:
                 self.assertEqual(post_user_group['__count'], 1)

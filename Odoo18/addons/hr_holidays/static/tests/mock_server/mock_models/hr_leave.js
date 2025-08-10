@@ -7,9 +7,6 @@ export class HrLeave extends models.Model {
     employee_id = fields.Many2one({
         relation: "hr.employee",
     });
-    user_id = fields.Many2one({
-        relation: "res.users"
-    });
     department_id = fields.Many2one({
         relation: "hr.department",
     });
@@ -30,7 +27,4 @@ export class HrLeave extends models.Model {
             ["hour", "Hours"],
         ],
     });
-    can_cancel = fields.Boolean();
-    is_hatched = fields.Boolean();
-    is_striked = fields.Boolean();
 }

@@ -3,7 +3,6 @@
 
 from datetime import date
 import json
-from markupsafe import Markup
 from psycopg2 import IntegrityError, ProgrammingError
 import requests
 from unittest.mock import patch
@@ -190,59 +189,6 @@ ZeroDivisionError: division by zero""" % self.test_server_action.id
         self.assertEqual(len(category), 1, 'ir_actions_server: TODO')
         self.assertIn(category, self.test_partner.category_id)
 
-    def test_25_crud_copy(self):
-        self.action.write({
-            'state': 'object_copy',
-            'crud_model_id': self.res_partner_model.id,
-            'resource_ref': self.test_partner,
-        })
-        partner = self.env['res.partner'].search([('name', 'ilike', self.test_partner.name)])
-        self.assertEqual(len(partner), 1)
-        run_res = self.action.with_context(self.context).run()
-        self.assertFalse(run_res, 'ir_actions_server: duplicate record action correctly finished should return False')
-        partner = self.env['res.partner'].search([('name', 'ilike', self.test_partner.name)])
-        self.assertEqual(len(partner), 2)
-
-    def test_25_crud_copy_link_many2one(self):
-        self.action.write({
-            'state': 'object_copy',
-            'crud_model_id': self.res_partner_model.id,
-            'resource_ref': self.test_partner,
-            'link_field_id': self.res_partner_parent_field.id,
-        })
-        run_res = self.action.with_context(self.context).run()
-        self.assertFalse(run_res, 'ir_actions_server: duplicate record action correctly finished should return False')
-        dupe = self.test_partner.search([('name', 'ilike', self.test_partner.name), ('id', '!=', self.test_partner.id)])
-        self.assertEqual(len(dupe), 1)
-        self.assertEqual(self.test_partner.parent_id, dupe)
-
-    def test_25_crud_copy_link_one2many(self):
-        self.action.write({
-            'state': 'object_copy',
-            'crud_model_id': self.res_partner_model.id,
-            'resource_ref': self.test_partner,
-            'link_field_id': self.res_partner_children_field.id,
-        })
-        run_res = self.action.with_context(self.context).run()
-        self.assertFalse(run_res, 'ir_actions_server: duplicate record action correctly finished should return False')
-        dupe = self.test_partner.search([('name', 'ilike', self.test_partner.name), ('id', '!=', self.test_partner.id)])
-        self.assertEqual(len(dupe), 1)
-        self.assertIn(dupe, self.test_partner.child_ids)
-
-    def test_25_crud_copy_link_many2many(self):
-        category_id = self.env['res.partner.category'].name_create("CategoryToDuplicate")[0]
-        self.action.write({
-            'state': 'object_copy',
-            'crud_model_id': self.res_partner_category_model.id,
-            'link_field_id': self.res_partner_category_field.id,
-            'resource_ref': f'res.partner.category,{category_id}',
-        })
-        run_res = self.action.with_context(self.context).run()
-        self.assertFalse(run_res, 'ir_actions_server: duplicate record action correctly finished should return False')
-        dupe = self.env['res.partner.category'].search([('name', 'ilike', 'CategoryToDuplicate'), ('id', '!=', category_id)])
-        self.assertEqual(len(dupe), 1)
-        self.assertIn(dupe, self.test_partner.category_id)
-
     def test_30_crud_write(self):
         # Do: update partner name
         self.action.write({
@@ -256,20 +202,6 @@ ZeroDivisionError: division by zero""" % self.test_server_action.id
         partner = self.test_partner.search([('name', 'ilike', 'TestNew')])
         self.assertEqual(len(partner), 1, 'ir_actions_server: TODO')
         self.assertEqual(partner.city, 'OrigCity', 'ir_actions_server: TODO')
-
-    def test_31_crud_write_html(self):
-        self.assertEqual(self.action.value, False)
-        self.action.write({
-            'state': 'object_write',
-            'update_path': 'comment',
-            'html_value': '<p>MyComment</p>',
-        })
-        self.assertEqual(self.action.html_value, Markup('<p>MyComment</p>'))
-        # Test run
-        self.assertEqual(self.test_partner.comment, False)
-        run_res = self.action.with_context(self.context).run()
-        self.assertFalse(run_res, 'ir_actions_server: create record action correctly finished should return False')
-        self.assertEqual(self.test_partner.comment, Markup('<p>MyComment</p>'))
 
     def test_object_write_equation(self):
         # Do: update partners city
@@ -488,7 +420,7 @@ ZeroDivisionError: division by zero""" % self.test_server_action.id
         self.action.write({
             'model_id': self.res_country_model.id,
             'binding_model_id': self.res_country_model.id,
-            'group_ids': [Command.link(group0.id)],
+            'groups_id': [Command.link(group0.id)],
             'code': 'record.write({"vat_label": "VatFromTest"})',
         })
 
@@ -501,7 +433,7 @@ ZeroDivisionError: division by zero""" % self.test_server_action.id
         self.assertFalse(self.test_country.vat_label)
 
         # add group to the user, and test again
-        self.env.user.write({'group_ids': [Command.link(group0.id)]})
+        self.env.user.write({'groups_id': [Command.link(group0.id)]})
 
         bindings = Actions.get_bindings('res.country')
         self.assertItemsEqual(bindings.get('action'), self.action.read(['name', 'sequence', 'binding_view_types']))
@@ -592,11 +524,9 @@ ZeroDivisionError: division by zero""" % self.test_server_action.id
         with patch.object(requests, 'post', _patched_post), mute_logger('odoo.addons.base.models.ir_actions'):
             # first run: 200
             self.action.with_context(self.context).run()
-            self.env.cr.postcommit.run()  # webhooks run in postcommit
             # second run: 400, should *not* raise but
             # should warn in logs (hence mute_logger)
             self.action.with_context(self.context).run()
-            self.env.cr.postcommit.run()  # webhooks run in postcommit
         self.assertEqual(num_requests, 2)
 
     def test_90_convert_to_float(self):
@@ -818,7 +748,7 @@ class TestCustomFields(TestCommonCustomFields):
         #
         # Add a custom field equivalent to the following definition:
         #
-        # class ResPartner(models.Model)
+        # class Partner(models.Model)
         #     _inherit = 'res.partner'
         #     x_oh_boy = fields.Char(related="country_id.code", store=True)
         #
@@ -835,7 +765,7 @@ class TestCustomFields(TestCommonCustomFields):
 
         # create a non-computed field, and assert how many queries it takes
         model_id = self.env['ir.model']._get_id('res.partner')
-        query_count = 50
+        query_count = 49
         with self.assertQueryCount(query_count):
             self.env.registry.clear_cache()
             self.env['ir.model.fields'].create({
@@ -948,9 +878,9 @@ class TestCustomFieldsPostInstall(TestCommonCustomFields):
         # as a user could do through a SQL shell or a `cr.execute` in a server action
         self.env.cr.execute("ALTER TABLE ir_model_fields DROP CONSTRAINT ir_model_fields_name_manual_field")
         self.env.cr.execute("UPDATE ir_model_fields SET name = 'foo' WHERE id = %s", [field.id])
-        with self.assertLogs('odoo.registry') as log_catcher:
+        with self.assertLogs('odoo.addons.base.models.ir_model') as log_catcher:
             # Trick to reload the registry. The above rename done through SQL didn't reload the registry. This will.
-            self.env.registry._setup_models__(self.cr, [self.MODEL])
+            self.env.registry.setup_models(self.cr)
             self.assertIn(
                 f'The field `{field.name}` is not defined in the `{field.model}` Python class', log_catcher.output[0]
             )

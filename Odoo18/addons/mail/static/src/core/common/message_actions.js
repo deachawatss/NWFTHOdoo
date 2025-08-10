@@ -1,47 +1,78 @@
-import { toRaw, useComponent, useState } from "@odoo/owl";
+import { Component, toRaw, useComponent, useState, xml } from "@odoo/owl";
 
 import { _t } from "@web/core/l10n/translation";
 import { download } from "@web/core/network/download";
 import { registry } from "@web/core/registry";
+import { MessageReactionButton } from "./message_reaction_button";
 import { useService } from "@web/core/utils/hooks";
 import { discussComponentRegistry } from "./discuss_component_registry";
 import { Deferred } from "@web/core/utils/concurrency";
-import { useEmojiPicker } from "@web/core/emoji_picker/emoji_picker";
-import { QuickReactionMenu } from "@mail/core/common/quick_reaction_menu";
-import { isMobileOS } from "@web/core/browser/feature_detection";
+import { EMOJI_PICKER_PROPS, EmojiPicker } from "@web/core/emoji_picker/emoji_picker";
+import { Dialog } from "@web/core/dialog/dialog";
+import { onExternalClick } from "@mail/utils/common/hooks";
+import { convertBrToLineBreak } from "@mail/utils/common/format";
 
 const { DateTime } = luxon;
 
 export const messageActionsRegistry = registry.category("mail.message/actions");
 
+class EmojiPickerMobile extends Component {
+    static components = { Dialog, EmojiPicker };
+    static props = [...EMOJI_PICKER_PROPS, "onClose?"];
+    static template = xml`
+        <Dialog size="'lg'" header="false" footer="false" contentClass="'o-discuss-mobileContextMenu d-flex position-absolute bottom-0 rounded-0 h-50 bg-100'">
+            <div t-ref="root">
+                <EmojiPicker t-props="emojiPickerProps"/>
+            </div>
+        </Dialog>
+    `;
+
+    get emojiPickerProps() {
+        return {
+            ...this.props,
+            onSelect: (...args) => {
+                this.props.onSelect(...args);
+                this.props.close?.();
+            },
+        };
+    }
+
+    setup() {
+        super.setup();
+        onExternalClick("root", () => this.props.close?.());
+    }
+}
+
 messageActionsRegistry
     .add("reaction", {
-        component: QuickReactionMenu,
+        callComponent: MessageReactionButton,
         props: (component) => ({
             message: component.props.message,
             action: messageActionsRegistry.get("reaction"),
-            messageActive: component.isActive,
         }),
         condition: (component) => component.props.message.canAddReaction(component.props.thread),
         icon: "oi oi-smile-add",
         title: _t("Add a Reaction"),
-        onClick: async (component, action) =>
-            component.reactionPicker.open({
-                el: component.root?.el?.querySelector(`[name="${action.id}"]`),
-            }),
-        setup() {
-            const component = useComponent();
-            component.reactionPicker = useEmojiPicker(undefined, {
-                onSelect: (emoji) => {
-                    const reaction = component.props.message.reactions.find(
-                        ({ content, personas }) =>
-                            content === emoji && component.props.thread.effectiveSelf.in(personas)
-                    );
-                    if (!reaction) {
-                        component.props.message.react(emoji);
-                    }
+        onClick: async (component) => {
+            const def = new Deferred();
+            component.dialog.add(
+                EmojiPickerMobile,
+                {
+                    onSelect: (emoji) => {
+                        const reaction = component.props.message.reactions.find(
+                            ({ content, personas }) =>
+                                content === emoji &&
+                                component.props.thread.effectiveSelf.in(personas)
+                        );
+                        if (!reaction) {
+                            component.props.message.react(emoji);
+                        }
+                        def.resolve(true);
+                    },
                 },
-            });
+                { context: component, onClose: () => def.resolve(false) }
+            );
+            return def;
         },
         sequence: 10,
     })
@@ -52,17 +83,9 @@ messageActionsRegistry
         onClick: (component) => {
             const message = toRaw(component.props.message);
             const thread = toRaw(component.props.thread);
-            if (message.eq(thread.composer.replyToMessage)) {
-                thread.composer.replyToMessage = undefined;
-            } else {
-                thread.composer.replyToMessage = message;
-            }
+            component.props.messageToReplyTo.toggle(thread, message);
         },
-        sequence: (component) =>
-            component.props.thread?.eq(component.store.inbox) ||
-            component.props.message.isSelfAuthored
-                ? 55
-                : 20,
+        sequence: (component) => (component.props.thread?.eq(component.store.inbox) ? 55 : 20),
     })
     .add("toggle-star", {
         condition: (component) => component.props.message.canToggleStar,
@@ -86,7 +109,6 @@ messageActionsRegistry
         title: _t("View Reactions"),
         onClick: (component) => component.openReactionMenu(),
         sequence: 50,
-        mobileCloseAfterClick: false,
         dropdown: true,
     })
     .add("unfollow", {
@@ -96,15 +118,35 @@ messageActionsRegistry
         onClick: (component) => component.props.message.unfollow(),
         sequence: 60,
     })
+    .add("mark-as-unread", {
+        condition: (component) =>
+            component.props.thread?.model === "discuss.channel" &&
+            component.store.self.type === "partner" &&
+            component.props.message.persistent,
+        icon: "fa fa-eye-slash",
+        title: _t("Mark as Unread"),
+        onClick: (component) => component.props.message.onClickMarkAsUnread(component.props.thread),
+        sequence: 70,
+    })
     .add("edit", {
         condition: (component) => component.props.message.editable,
         icon: "fa fa-pencil",
         title: _t("Edit"),
         onClick: (component) => {
-            component.props.message.enterEditMode(component.props.thread);
-            component.optionsDropdown?.close();
+            const message = toRaw(component.props.message);
+            const text = convertBrToLineBreak(message.body);
+            message.composer = {
+                mentionedPartners: message.recipients,
+                text,
+                selection: {
+                    start: text.length,
+                    end: text.length,
+                    direction: "none",
+                },
+            };
+            component.state.isEditing = true;
         },
-        sequence: (component) => (component.props.message.isSelfAuthored ? 20 : 55),
+        sequence: 80,
     })
     .add("delete", {
         condition: (component) => component.props.message.editable,
@@ -118,7 +160,7 @@ messageActionsRegistry
                 discussComponentRegistry.get("MessageConfirmDialog"),
                 {
                     message,
-                    prompt: _t("Are you sure you want to bid farewell to this message forever?"),
+                    prompt: _t("Are you sure you want to delete this message?"),
                     onConfirm: () => {
                         def.resolve(true);
                         message.remove();
@@ -132,12 +174,11 @@ messageActionsRegistry
             const component = useComponent();
             component.dialog = useService("dialog");
         },
-        sequence: 120,
+        sequence: 90,
     })
     .add("download_files", {
         condition: (component) =>
-            component.message.attachment_ids.length > 1 &&
-            component.store.self.main_user_id?.share === false,
+            component.message.attachment_ids.length > 1 && component.store.self.isInternalUser,
         icon: "fa fa-download",
         title: _t("Download Files"),
         onClick: (component) =>
@@ -158,17 +199,11 @@ messageActionsRegistry
         onClick: (component) => component.onClickToggleTranslation(),
         sequence: 100,
     })
-    .add("copy-message", {
-        condition: (component) => isMobileOS() && !component.message.isBodyEmpty,
-        onClick: (component) => component.message.copyMessageText(),
-        title: _t("Copy to Clipboard"),
-        icon: "fa fa-copy",
-        sequence: 25,
-    })
     .add("copy-link", {
         condition: (component) =>
             component.message.message_type &&
-            component.message.message_type !== "user_notification",
+            component.message.message_type !== "user_notification" &&
+            (!component.props.thread.access_token || component.props.thread.hasReadAccess),
         icon: "fa fa-link",
         title: _t("Copy Link"),
         onClick: (component) => component.message.copyLink(),
@@ -187,7 +222,7 @@ function transformAction(component, id, action) {
         mobileCloseAfterClick: action.mobileCloseAfterClick ?? true,
         /** Condition to display this action. */
         get condition() {
-            return messageActionsInternal.condition(component, id, action);
+            return action.condition(component);
         },
         /** Icon for the button this action. */
         get icon() {
@@ -197,29 +232,31 @@ function transformAction(component, id, action) {
         get title() {
             return typeof action.title === "function" ? action.title(component) : action.title;
         },
+        callComponent: action.callComponent,
         get props() {
             return action.props(component);
         },
-        onClick(ev) {
-            return action.onClick?.(component, this, ev);
+        /**
+         * Action to execute when this action is click.
+         *
+         * @param {object} [param0]
+         * @param {boolean} [param0.keepPrevious] Whether the previous action
+         * should be kept so that closing the current action goes back
+         * to the previous one.
+         * */
+        onClick() {
+            return action.onClick?.(component);
         },
         /** Determines the order of this action (smaller first). */
         get sequence() {
-            return messageActionsInternal.sequence(component, id, action);
+            return typeof action.sequence === "function"
+                ? action.sequence(component)
+                : action.sequence;
         },
         /** Component setup to execute when this action is registered. */
         setup: action.setup,
     };
 }
-
-export const messageActionsInternal = {
-    condition(component, id, action) {
-        return action.condition(component);
-    },
-    sequence(component, id, action) {
-        return typeof action.sequence === "function" ? action.sequence(component) : action.sequence;
-    },
-};
 
 export function useMessageActions() {
     const component = useComponent();

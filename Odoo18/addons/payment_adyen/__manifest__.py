@@ -24,6 +24,5 @@
             'payment_adyen/static/src/js/payment_form.js',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

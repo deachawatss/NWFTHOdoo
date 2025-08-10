@@ -10,7 +10,6 @@ from odoo.tools import SQL
 
 from odoo.addons.payment.controllers import portal as payment_portal
 
-
 # TODO ANVFE part of payment routes ? /shop/payment ? express_checkout ?
 
 class PaymentPortal(payment_portal.PaymentPortal):
@@ -22,7 +21,7 @@ class PaymentPortal(payment_portal.PaymentPortal):
         """
         return
 
-    @route('/shop/payment/transaction/<int:order_id>', type='jsonrpc', auth='public', website=True)
+    @route('/shop/payment/transaction/<int:order_id>', type='json', auth='public', website=True)
     def shop_payment_transaction(self, order_id, access_token, **kwargs):
         """ Create a draft transaction and return its processing values.
 
@@ -32,8 +31,7 @@ class PaymentPortal(payment_portal.PaymentPortal):
         :return: The mandatory values for the processing of the transaction
         :rtype: dict
         :raise: UserError if the order has already been paid or has an ongoing transaction
-        :raise: ValidationError if the access token is invalid or the order is not in the expected
-            state/configuration.
+        :raise: ValidationError if the invoice id or the access token is invalid
         """
         # Check the order id and the access token
         # Then lock it during the transaction to prevent concurrent payments

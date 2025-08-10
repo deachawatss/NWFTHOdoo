@@ -6,19 +6,18 @@ from werkzeug.exceptions import NotFound
 
 from odoo import http, _
 from odoo.http import Controller, request, route, content_disposition
-from odoo.tools import consteq, format_datetime
+from odoo.tools import consteq
 
 
 class EventController(Controller):
 
     @route(['''/event/<model("event.event"):event>/ics'''], type='http', auth="public")
     def event_ics_file(self, event, **kwargs):
-        lang = request.env.context.get('lang', request.env.user.lang)
+        lang = request.context.get('lang', request.env.user.lang)
         if request.env.user._is_public():
             lang = request.cookies.get('frontend_lang')
         event = event.with_context(lang=lang)
-        slot_id = int(kwargs['slot_id']) if kwargs.get('slot_id') else False
-        files = event._get_ics_file(slot=request.env['event.slot'].sudo().browse(slot_id))
+        files = event._get_ics_file()
         if not event.id in files:
             return NotFound()
         content = files[event.id]
@@ -53,8 +52,7 @@ class EventController(Controller):
 
         event_registrations_sudo = event_sudo.registration_ids.filtered(lambda reg: reg.id in registration_ids)
         report_name_prefix = _("Ticket") if responsive_html else _("Badges") if badge_mode else _("Tickets")
-        report_date = format_datetime(request.env, event_registrations_sudo[0].event_begin_date, tz=event_sudo.date_tz, dt_format='medium')
-        report_name = f"{report_name_prefix} - {event_sudo.name} ({report_date})"
+        report_name = f"{report_name_prefix} - {event_sudo.name} ({event_sudo.date_begin_located})"
         if len(event_registrations_sudo) == 1:
             report_name += f" - {event_registrations_sudo[0].name}"
 
@@ -78,7 +76,7 @@ class EventController(Controller):
         ]
         return request.make_response(pdf, headers=pdfhttpheaders)
 
-    @http.route(['/event/init_barcode_interface'], type='jsonrpc', auth="user")
+    @http.route(['/event/init_barcode_interface'], type='json', auth="user")
     def init_barcode_interface(self, event_id):
         event = request.env['event.event'].browse(event_id).exists() if event_id else False
         if event:

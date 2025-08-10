@@ -1,21 +1,12 @@
 import { _t } from "@web/core/l10n/translation";
 import { sprintf } from "@web/core/utils/strings";
 import { browser } from "@web/core/browser/browser";
-import { fields, Record } from "./record";
+import { Record } from "./record";
 import { debounce } from "@web/core/utils/timing";
 import { rpc } from "@web/core/network/rpc";
 
-const MESSAGE_SOUND = "mail.user_setting.message_sound";
-
 export class Settings extends Record {
     id;
-
-    static new() {
-        const record = super.new(...arguments);
-        record.onStorage = record.onStorage.bind(record);
-        browser.addEventListener("storage", record.onStorage);
-        return record;
-    }
 
     setup() {
         super.setup();
@@ -30,40 +21,23 @@ export class Settings extends Record {
         this._loadLocalSettings();
     }
 
-    delete() {
-        browser.removeEventListener("storage", this.onStorage);
-        super.delete(...arguments);
-    }
-
     // Notification settings
     /**
      * @type {"mentions"|"all"|"no_notif"}
      */
-    channel_notifications = fields.Attr("mentions", {
+    channel_notifications = Record.attr("mentions", {
         compute() {
             return this.channel_notifications === false ? "mentions" : this.channel_notifications;
         },
     });
-    messageSound = fields.Attr(true, {
-        compute() {
-            return browser.localStorage.getItem(MESSAGE_SOUND) !== "false";
-        },
-        /** @this {import("models").Settings} */
-        onUpdate() {
-            if (this.messageSound) {
-                browser.localStorage.removeItem(MESSAGE_SOUND);
-            } else {
-                browser.localStorage.setItem(MESSAGE_SOUND, "false");
-            }
-        },
-    });
+    mute_until_dt = Record.attr(false, { type: "datetime" });
 
     // Voice settings
     // DeviceId of the audio input selected by the user
     audioInputDeviceId = "";
     use_push_to_talk = false;
     voice_active_duration = 200;
-    volumes = fields.Many("Volume");
+    volumes = Record.many("Volume");
     volumeSettingsTimeouts = new Map();
     // Normalized [0, 1] volume at which the voice activation system must consider the user as "talking".
     voiceActivationThreshold = 0.05;
@@ -345,11 +319,6 @@ export class Settings extends Record {
             [[this.id], partnerId, volume],
             { guest_id: guestId }
         );
-    }
-    onStorage(ev) {
-        if (ev.key === MESSAGE_SOUND) {
-            this.messageSound = ev.newValue !== "false";
-        }
     }
     /**
      * @private

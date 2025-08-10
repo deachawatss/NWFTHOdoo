@@ -1,4 +1,4 @@
-import { Loader } from "@point_of_sale/app/components/loader/loader";
+import { Loader } from "@point_of_sale/app/loader/loader";
 import { getTemplate } from "@web/core/templates";
 import { mount, reactive, whenReady } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
@@ -29,7 +29,7 @@ whenReady(() => {
         props: { disableLoader: () => (loader.isShown = false) },
     });
     window.addEventListener("beforeunload", function (event) {
-        if (app.env.services.pos_data.network.offline) {
+        if (!navigator.onLine) {
             var confirmationMessage = _t(
                 "You are currently offline. Reloading the page may cause you to lose unsaved data."
             );
@@ -52,17 +52,4 @@ whenReady(() => {
         classList.add("o_mobile_overscroll");
         document.documentElement.classList.add("o_mobile_overscroll");
     }
-
-    registerServiceWorker();
 })();
-
-function registerServiceWorker() {
-    // Register the service worker for the POS
-    const urlsToCache = JSON.parse(odoo.urls_to_cache);
-    urlsToCache.push("/web/static/lib/zxing-library/zxing-library.js");
-
-    navigator.serviceWorker?.register("/pos/service-worker.js").then((registration) => {
-        const worker = registration.installing || registration.waiting || registration.active;
-        worker.postMessage({ urlsToCache });
-    });
-}

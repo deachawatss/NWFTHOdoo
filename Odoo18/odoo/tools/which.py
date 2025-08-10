@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """ Which - locate a command
 
     * adapted from Brian Curtin's http://bugs.python.org/file15381/shutil_which.patch
@@ -39,7 +39,7 @@
 
 """
 __docformat__ = 'restructuredtext en'
-__all__ = ['F_OK', 'R_OK', 'W_OK', 'X_OK', 'defpath', 'defpathext', 'dirname', 'pathsep', 'which', 'which_files']
+__all__ = 'which which_files pathsep defpath defpathext F_OK R_OK W_OK X_OK'.split()
 
 import sys
 from os import access, defpath, pathsep, environ, F_OK, R_OK, W_OK, X_OK
@@ -70,15 +70,13 @@ def which_files(file, mode=F_OK | X_OK, path=None, pathext=None):
 
         >>> def test_which(expected, *args, **argd):
         ...     result = list(which_files(*args, **argd))
-        ...     assert all(path in result for path in expected) if expected else not result, 'which_files: %s != %s' % (result, expected)
+        ...     assert result == expected, 'which_files: %s != %s' % (result, expected)
         ...
         ...     try:
-        ...         result = which(*args, **argd)
-        ...         path = expected[0]
-        ...         assert split(result)[1] == split(expected[0])[1], 'which: %s not same binary %s' % (result, expected)
+        ...         result = [ which(*args, **argd) ]
         ...     except IOError:
-        ...         result = None
-        ...         assert not expected, 'which: expecting %s' % expected
+        ...         result = []
+        ...     assert result[:1] == expected[:1], 'which: %s != %s' % (result[:1], expected[:1])
 
         >>> if windows: cmd = environ['COMSPEC']
         >>> if windows: test_which([cmd], 'cmd')

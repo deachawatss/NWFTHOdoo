@@ -7,12 +7,10 @@ from PIL import Image
 
 from odoo.fields import Command
 from odoo.tests import HttpCase, tagged
-from odoo.addons.website.tests.common import HttpCaseWithWebsiteUser
-import unittest
 
 
 @tagged('post_install', '-at_install')
-class TestWebsiteSaleImage(HttpCaseWithWebsiteUser):
+class TestWebsiteSaleImage(HttpCase):
 
     # registry_test_mode = False  # uncomment to save the product to test in browser
 
@@ -222,7 +220,7 @@ class TestWebsiteSaleImage(HttpCaseWithWebsiteUser):
         # This ensures that tours with triggers on the amounts will run properly.
         self.env['product.pricelist'].search([]).action_archive()
 
-        self.start_tour("/", 'shop_zoom', login="website_user")
+        self.start_tour("/", 'shop_zoom', login="admin")
 
         # CASE: unlink move image to fallback if fallback image empty
         template.image_1920 = False
@@ -328,7 +326,7 @@ class TestWebsiteSaleImage(HttpCaseWithWebsiteUser):
         # when there are no template image but there are variants, the image must be obtained from the first variant
         self.assertEqual(product_red, template._get_image_holder())
 
-        product_red.action_archive()
+        product_red.toggle_active()
 
         # but when some variants are not available, the image must be obtained from the first available variant
         self.assertEqual(product_green, template._get_image_holder())
@@ -388,8 +386,6 @@ class TestWebsiteSaleRemoveImage(HttpCase):
             'image_1920': blue_image,
         })
 
-    # TODO master-mysterious-egg fix error
-    @unittest.skip("prepare mysterious-egg for merging")
     def test_website_sale_add_and_remove_main_product_image_no_variant(self):
         self.product = self.env['product.product'].create({
             'product_tmpl_id': self.template.id,

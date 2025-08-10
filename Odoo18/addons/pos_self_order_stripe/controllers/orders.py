@@ -6,16 +6,16 @@ from odoo.addons.pos_self_order.controllers.orders import PosSelfOrderController
 from werkzeug.exceptions import Unauthorized
 
 class PosSelfOrderControllerStripe(PosSelfOrderController):
-    @http.route("/pos-self-order/stripe-connection-token/", auth="public", type="jsonrpc", website=True)
+    @http.route("/pos-self-order/stripe-connection-token/", auth="public", type="json", website=True)
     def get_stripe_creditentials(self, access_token, payment_method_id):
         # stripe_connection_token
-        pos_config, _ = self._verify_authorization(access_token, "", {})
+        pos_config, _ = self._verify_authorization(access_token, "", False)
         payment_method = pos_config.payment_method_ids.filtered(lambda p: p.id == payment_method_id)
         return payment_method.stripe_connection_token()
 
-    @http.route("/pos-self-order/stripe-capture-payment/", auth="public", type="jsonrpc", website=True)
+    @http.route("/pos-self-order/stripe-capture-payment/", auth="public", type="json", website=True)
     def stripe_capture_payment(self, access_token, order_access_token, payment_intent_id, payment_method_id):
-        pos_config, _ = self._verify_authorization(access_token, "", {})
+        pos_config, _ = self._verify_authorization(access_token, "", False)
         stripe_confirmation = pos_config.env['pos.payment.method'].stripe_capture_payment(payment_intent_id)
         order = pos_config.env['pos.order'].search([('access_token', '=', order_access_token), ('config_id', '=', pos_config.id)])
 
@@ -47,15 +47,15 @@ class PosSelfOrderControllerStripe(PosSelfOrderController):
                 order.config_id._notify('PAYMENT_STATUS', {
                     'payment_result': 'Success',
                     'data': {
-                        'pos.order': order.read(order._load_pos_self_data_fields(order.config_id), load=False),
-                        'pos.order.line': order.lines.read(order._load_pos_self_data_fields(order.config_id), load=False),
+                        'pos.order': order.read(order._load_pos_self_data_fields(order.config_id.id), load=False),
+                        'pos.order.line': order.lines.read(order._load_pos_self_data_fields(order.config_id.id), load=False),
                     }
                 })
         else:
             order.config_id._notify('PAYMENT_STATUS', {
                 'payment_result': 'fail',
                 'data': {
-                    'pos.order': order.read(order._load_pos_self_data_fields(order.config_id), load=False),
-                    'pos.order.line': order.lines.read(order._load_pos_self_data_fields(order.config_id), load=False),
+                    'pos.order': order.read(order._load_pos_self_data_fields(order.config_id.id), load=False),
+                    'pos.order.line': order.lines.read(order._load_pos_self_data_fields(order.config_id.id), load=False),
                 }
             })

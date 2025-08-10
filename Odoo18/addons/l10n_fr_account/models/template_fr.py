@@ -1,5 +1,5 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
-from odoo import models
+from odoo import models, Command
 from odoo.addons.account.models.chart_template import template
 
 
@@ -12,7 +12,9 @@ class AccountChartTemplate(models.AbstractModel):
             'code_digits': 6,
             'property_account_receivable_id': 'fr_pcg_recv',
             'property_account_payable_id': 'fr_pcg_pay',
-            'downpayment_account_id': 'pcg_4191',
+            'property_account_expense_categ_id': 'pcg_607_account',
+            'property_account_income_categ_id': 'pcg_707_account',
+            'property_account_downpayment_categ_id': 'pcg_4191',
         }
 
     @template('fr', 'res.company')
@@ -35,8 +37,6 @@ class AccountChartTemplate(models.AbstractModel):
                 'l10n_fr_rounding_difference_profit_account_id': 'pcg_4778',
                 'account_sale_tax_id': 'tva_normale',
                 'account_purchase_tax_id': 'tva_acq_normale',
-                'expense_account_id': 'pcg_607_account',
-                'income_account_id': 'pcg_707_account',
             },
         }
 
@@ -47,12 +47,17 @@ class AccountChartTemplate(models.AbstractModel):
             'purchase': {'refund_sequence': True},
         }
 
-    def _get_bank_fees_reco_account(self, company):
-        # French account for the bank fees reco model. We need to be as precise
-        # as possible in case it's modified so it's missing and not replaced.
-        fr_account = self.env['account.account'].with_company(company).search([
-            ('code', '=', '627800'),
-            ('account_type', '=', 'expense'),
-            ('name', '=', 'Other expenses and commissions on services supplied'),
-        ], limit=1)
-        return fr_account or super()._get_bank_fees_reco_account(company)
+    @template('fr', 'account.reconcile.model')
+    def _get_fr_reconcile_model(self):
+        return {
+            'bank_charges_reconcile_model': {
+                'name': 'Bank fees',
+                'line_ids': [
+                    Command.create({
+                        'account_id': 'pcg_6278',
+                        'amount_type': 'percentage',
+                        'amount_string': '100',
+                    }),
+                ],
+            },
+        }

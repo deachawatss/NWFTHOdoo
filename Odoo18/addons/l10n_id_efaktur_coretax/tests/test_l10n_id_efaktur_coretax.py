@@ -446,7 +446,7 @@ class TestEfakturCoretax(AccountTestInvoicingCommon):
         """ Test XML content of an invoice containing multiple invoice lines (which also includes
         a "description" line.
 
-        Expected to see multiple <GoodService> within <ListOfGoodService> tag and the
+        Expected to see multiple <GoodService> within <ListOfGoodService> tag and the 
         line should be excluded from the XML description
         """
         product_2 = self.env['product.product'].create({'name': "Product B"})
@@ -546,7 +546,7 @@ class TestEfakturCoretax(AccountTestInvoicingCommon):
         """ Test to ensure that we are always using the address of the
         customer(partner_id) on the invoice while some legal fields
         (Is PKP, VAT, Document type, document number, ..) should use from main contact """
-
+        
         partner_a_invoice = self.env['res.partner'].create({
             "name": "partner_a invoice",
             "type": "invoice",
@@ -581,10 +581,10 @@ class TestEfakturCoretax(AccountTestInvoicingCommon):
         )
 
         self.assertXmlTreeEqual(result_tree, expected_tree)
-
+    
     def test_efaktur_tax_include(self):
         """ Test when tax configuration is tax included in price should affect price calculation """
-
+        
         # create invoice containing this
         move = self.env["account.move"].create({
             'move_type': 'out_invoice',

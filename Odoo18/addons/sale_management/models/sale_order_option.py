@@ -8,20 +8,17 @@ class SaleOrderOption(models.Model):
     _name = 'sale.order.option'
     _description = "Sale Options"
     _order = 'sequence, id'
-    _check_company_auto = True
 
     # FIXME ANVFE wtf is it not required ???
+    # TODO related to order.company_id and restrict product choice based on company
     order_id = fields.Many2one('sale.order', 'Sales Order Reference', ondelete='cascade', index=True)
-    company_id = fields.Many2one(related='order_id.company_id', depends=['order_id'])
 
     product_id = fields.Many2one(
         comodel_name='product.product',
         required=True,
-        domain=lambda self: self._domain_product_id(),
-        check_company=True,
-    )
+        domain=lambda self: self._product_id_domain())
     line_id = fields.Many2one(
-        comodel_name='sale.order.line', ondelete='set null', copy=False, index='btree_not_null')
+        comodel_name='sale.order.line', ondelete='set null', copy=False)
     sequence = fields.Integer(
         string='Sequence', help="Gives the sequence order when displaying a list of optional products.")
 
@@ -34,16 +31,16 @@ class SaleOrderOption(models.Model):
     quantity = fields.Float(
         string="Quantity",
         required=True,
-        digits='Product Unit',
+        digits='Product Unit of Measure',
         default=1)
-    allowed_uom_ids = fields.Many2many('uom.uom', compute='_compute_allowed_uom_ids')
     uom_id = fields.Many2one(
         comodel_name='uom.uom',
-        string="Unit",
+        string="Unit of Measure",
         compute='_compute_uom_id',
-        domain="[('id', 'in', allowed_uom_ids)]",
         store=True, readonly=False,
-        required=True, precompute=True)
+        required=True, precompute=True,
+        domain="[('category_id', '=', product_uom_category_id)]")
+    product_uom_category_id = fields.Many2one(related='product_id.uom_id.category_id')
 
     price_unit = fields.Float(
         string="Unit Price",
@@ -65,11 +62,6 @@ class SaleOrderOption(models.Model):
              "already present in the quotation.")
 
     #=== COMPUTE METHODS ===#
-
-    @api.depends('product_id', 'product_id.uom_id', 'product_id.uom_ids')
-    def _compute_allowed_uom_ids(self):
-        for option in self:
-            option.allowed_uom_ids = option.product_id.uom_id | option.product_id.uom_ids
 
     @api.depends('product_id')
     def _compute_name(self):
@@ -121,7 +113,7 @@ class SaleOrderOption(models.Model):
             'name': self.name,
             'product_id': self.product_id.id,
             'product_uom_qty': self.quantity,
-            'product_uom_id': self.uom_id.id,
+            'product_uom': self.uom_id.id,
             'discount': self.discount,
             'sequence': max(self.order_id.order_line.mapped('sequence'), default=0) + 1
         }
@@ -134,12 +126,12 @@ class SaleOrderOption(models.Model):
             option.is_present = bool(option.order_id.order_line.filtered(lambda l: l.product_id == option.product_id))
 
     def _search_is_present(self, operator, value):
-        if operator not in ('in', 'not in'):
-            return NotImplemented
-        return [('line_id', operator, [False])]
+        if (operator, value) in [('=', True), ('!=', False)]:
+            return [('line_id', '=', False)]
+        return [('line_id', '!=', False)]
 
     @api.model
-    def _domain_product_id(self):
+    def _product_id_domain(self):
         """ Returns the domain of the products that can be added as a sale order option. """
         return [('sale_ok', '=', True)]
 

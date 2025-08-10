@@ -9,7 +9,7 @@ import {
     start,
     startServer,
 } from "@mail/../tests/mail_test_helpers";
-import { describe, test, expect } from "@odoo/hoot";
+import { describe, test } from "@odoo/hoot";
 
 describe.current.tags("desktop");
 defineMailModels();
@@ -105,55 +105,12 @@ test("Attachments that have been unlinked from server should be visually unlinke
     await contains("button[aria-label='Attach files']", { text: "1" });
 });
 
-test("ellipsis button is not duplicated when switching from read to edit mode", async () => {
+test("read more/less links are not duplicated when switching from read to edit mode", async () => {
     const pyEnv = await startServer();
     const partnerId = pyEnv["res.partner"].create({});
     pyEnv["mail.message"].create({
         author_id: partnerId,
-        // "data-o-mail-quote" added by server is intended to be compacted in ellipsis block
-        body: `
-            <div>
-                Dear Joel Willis,<br>
-                Thank you for your enquiry.<br>
-                If you have any questions, please let us know.
-                <br><br>
-                Thank you,<br>
-                <div data-o-mail-quote="1">-- <br data-o-mail-quote="1">
-                    System
-                </div>
-            </div>`,
-        model: "res.partner",
-        res_id: partnerId,
-    });
-    await start();
-    await openFormView("res.partner", partnerId, {
-        arch: `
-            <form string="Partners">
-                <sheet>
-                    <field name="name"/>
-                </sheet>
-                <chatter/>
-            </form>`,
-    });
-    await contains(".o-mail-Chatter");
-    await contains(".o-mail-Message");
-    await contains(".o-mail-ellipsis");
-});
-
-test("[TECHNICAL] unfolded ellipsis button should not fold on message click besides that button", async () => {
-    // message click triggers a re-render. Before writing of this test, the
-    // insertion of ellipsis button were done during render. This meant
-    // any re-render would re-insert the ellipsis button. If some buttons
-    // were unfolded, any re-render would fold them again.
-    //
-    // This previous behavior is undesirable, and results to bothersome UX
-    // such as inability to copy/paste unfolded message content due to click
-    // from text selection automatically folding all ellipsis buttons.
-    const pyEnv = await startServer();
-    const partnerId = pyEnv["res.partner"].create({ display_name: "Someone" });
-    pyEnv["mail.message"].create({
-        author_id: partnerId,
-        // "data-o-mail-quote" added by server is intended to be compacted in ellipsis block
+        // "data-o-mail-quote" added by server is intended to be compacted in read more/less blocks
         body: `
             <div>
                 Dear Joel Willis,<br>
@@ -178,19 +135,101 @@ test("[TECHNICAL] unfolded ellipsis button should not fold on message click besi
                 <chatter/>
             </form>`,
     });
-    expect(".o-mail-Message-body span").toHaveCount(0);
-    await click(".o-mail-ellipsis");
-    expect(".o-mail-Message-body span").toHaveText('--\nSystem')
-    await click(".o-mail-Message");
-    expect(".o-mail-Message-body span").toHaveCount(1);
+    await contains(".o-mail-Chatter");
+    await contains(".o-mail-Message");
+    await contains(".o-mail-read-more-less");
 });
 
-test("ellipsis button on message of type notification", async () => {
+test("read more links becomes read less after being clicked", async () => {
+    const pyEnv = await startServer();
+    const partnerId = pyEnv["res.partner"].create({});
+    pyEnv["mail.message"].create([
+        {
+            author_id: partnerId,
+            // "data-o-mail-quote" added by server is intended to be compacted in read more/less blocks
+            body: `
+                <div>
+                    Dear Joel Willis,<br>
+                    Thank you for your enquiry.<br>
+                    If you have any questions, please let us know.
+                    <br><br>
+                    Thank you,<br>
+                    <span data-o-mail-quote="1">-- <br data-o-mail-quote="1">
+                        System
+                    </span>
+                </div>`,
+            model: "res.partner",
+            res_id: partnerId,
+        },
+    ]);
+    await start();
+    await openFormView("res.partner", partnerId, {
+        arch: `
+            <form string="Partners">
+                <sheet>
+                    <field name="name"/>
+                </sheet>
+                <chatter/>
+            </form>`,
+    });
+    await contains(".o-mail-Chatter");
+    await contains(".o-mail-Message");
+    await contains(".o-mail-read-more-less", { text: "Read More" });
+    await click(".o-mail-read-more-less");
+    await contains(".o-mail-read-more-less", { text: "Read Less" });
+});
+
+test("[TECHNICAL] unfolded read more/less links should not fold on message click besides those button links", async () => {
+    // message click triggers a re-render. Before writing of this test, the
+    // insertion of read more/less links were done during render. This meant
+    // any re-render would re-insert the read more/less links. If some button
+    // links were unfolded, any re-render would fold them again.
+    //
+    // This previous behavior is undesirable, and results to bothersome UX
+    // such as inability to copy/paste unfolded message content due to click
+    // from text selection automatically folding all read more/less links.
+    const pyEnv = await startServer();
+    const partnerId = pyEnv["res.partner"].create({ display_name: "Someone" });
+    pyEnv["mail.message"].create({
+        author_id: partnerId,
+        // "data-o-mail-quote" added by server is intended to be compacted in read more/less blocks
+        body: `
+            <div>
+                Dear Joel Willis,<br>
+                Thank you for your enquiry.<br>
+                If you have any questions, please let us know.
+                <br><br>
+                Thank you,<br>
+                <span data-o-mail-quote="1">-- <br data-o-mail-quote="1">
+                    System
+                </span>
+            </div>`,
+        model: "res.partner",
+        res_id: partnerId,
+    });
+    await start();
+    await openFormView("res.partner", partnerId, {
+        arch: `
+            <form string="Partners">
+                <sheet>
+                    <field name="name"/>
+                </sheet>
+                <chatter/>
+            </form>`,
+    });
+    await contains(".o-mail-read-more-less", { text: "Read More" });
+    await click(".o-mail-read-more-less");
+    await contains(".o-mail-read-more-less", { text: "Read Less" });
+    await click(".o-mail-Message");
+    await contains(".o-mail-read-more-less", { text: "Read Less" });
+});
+
+test("read more/less links on message of type notification", async () => {
     const pyEnv = await startServer();
     const partnerId = pyEnv["res.partner"].create({});
     pyEnv["mail.message"].create({
         author_id: partnerId,
-        // "data-o-mail-quote" enables ellipsis block
+        // "data-o-mail-quote" enables read more/less blocks
         body: `
             <div>
                 Dear Joel Willis,<br>
@@ -216,5 +255,5 @@ test("ellipsis button on message of type notification", async () => {
                 <chatter/>
             </form>`,
     });
-    await contains(".o-mail-ellipsis");
+    await contains(".o-mail-Message a", { text: "Read More" });
 });

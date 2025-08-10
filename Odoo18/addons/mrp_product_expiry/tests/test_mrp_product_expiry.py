@@ -50,10 +50,19 @@ class TestStockLot(TestStockCommon):
             'consumption': 'flexible',
             'type': 'normal',
             'bom_line_ids': [
-                (0, 0, {'product_id': cls.product_apple.id, 'product_qty': 3}),
+                (0, 0, {'product_id': cls.product_apple.id, 'product_qty': 3, 'manual_consumption': True}),
             ]})
 
         cls.location_stock = cls.env['stock.location'].browse(cls.stock_location)
+
+        # Creation of a routing
+        cls.workcenter = cls.env['mrp.workcenter'].create({
+            'name': 'Bakery',
+            'default_capacity': 2,
+            'time_start': 10,
+            'time_stop': 5,
+            'time_efficiency': 80,
+        })
 
     def test_01_product_produce(self):
         """ Checks user doesn't get a confirmation wizard when they produces with

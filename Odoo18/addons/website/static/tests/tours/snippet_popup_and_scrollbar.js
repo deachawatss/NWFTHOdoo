@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import {
     changeOption,
     insertSnippet,
@@ -54,7 +56,7 @@ registerWebsitePreviewTour("snippet_popup_and_scrollbar", {
     goBackToBlocks(),
     {
         content: "Drag the Content snippet group and drop it at the bottom of the popup.",
-        trigger: ".o_block_tab:not(.o_we_ongoing_insertion) #oe_snippets .oe_snippet[name='Content'] .oe_snippet_thumbnail",
+        trigger: '#oe_snippets .oe_snippet[name="Content"] .oe_snippet_thumbnail:not(.o_we_ongoing_insertion)',
         run: "drag_and_drop :iframe #wrap .s_popup .oe_drop_zone:last",
     },
     {
@@ -103,7 +105,7 @@ registerWebsitePreviewTour("snippet_popup_and_scrollbar", {
     goBackToBlocks(),
     {
         content: "Drag the Content snippet group and drop it at the bottom of the popup.",
-        trigger: ".o_block_tab:not(.o_we_ongoing_insertion) #oe_snippets .oe_snippet[name='Content'] .oe_snippet_thumbnail",
+        trigger: '#oe_snippets .oe_snippet[name="Content"] .oe_snippet_thumbnail:not(.o_we_ongoing_insertion)',
         run: "drag_and_drop :iframe #wrap .s_popup .oe_drop_zone:last",
     },
     {
@@ -132,7 +134,7 @@ registerWebsitePreviewTour("snippet_popup_and_scrollbar", {
     goBackToBlocks(),
     {
         content: "Drag the Content snippet group and drop it in the Cookies Bar.",
-        trigger: ".o_block_tab:not(.o_we_ongoing_insertion) #oe_snippets .oe_snippet[name='Content'] .oe_snippet_thumbnail",
+        trigger: '#oe_snippets .oe_snippet[name="Content"] .oe_snippet_thumbnail:not(.o_we_ongoing_insertion)',
         run: "drag_and_drop :iframe #website_cookies_bar .modal-content.oe_structure",
     },
     {

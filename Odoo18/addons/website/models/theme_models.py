@@ -1,7 +1,8 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import logging
-from odoo import api, fields, models, modules
+import threading
+from odoo import api, fields, models
 from odoo.tools.translate import xml_translate
 from odoo.modules.module import get_resource_from_path
 
@@ -10,7 +11,7 @@ from odoo.addons.base.models.ir_asset import AFTER_DIRECTIVE, APPEND_DIRECTIVE, 
 _logger = logging.getLogger(__name__)
 
 
-class ThemeIrAsset(models.Model):
+class ThemeAsset(models.Model):
     _name = 'theme.ir.asset'
     _description = 'Theme Asset'
 
@@ -48,14 +49,14 @@ class ThemeIrAsset(models.Model):
         return new_asset
 
 
-class ThemeIrUiView(models.Model):
+class ThemeView(models.Model):
     _name = 'theme.ir.ui.view'
     _description = 'Theme UI View'
 
     def compute_arch_fs(self):
-        if 'install_filename' not in self.env.context:
+        if 'install_filename' not in self._context:
             return ''
-        path_info = get_resource_from_path(self.env.context['install_filename'])
+        path_info = get_resource_from_path(self._context['install_filename'])
         if path_info:
             return '/'.join(path_info[0:2])
 
@@ -108,7 +109,7 @@ class ThemeIrUiView(models.Model):
         return new_view
 
 
-class ThemeIrAttachment(models.Model):
+class ThemeAttachment(models.Model):
     _name = 'theme.ir.attachment'
     _description = 'Theme Attachments'
 
@@ -132,13 +133,13 @@ class ThemeIrAttachment(models.Model):
         return new_attach
 
 
-class ThemeWebsiteMenu(models.Model):
+class ThemeMenu(models.Model):
     _name = 'theme.website.menu'
     _description = 'Website Theme Menu'
 
     name = fields.Char(required=True, translate=True)
     url = fields.Char(default='')
-    page_id = fields.Many2one('theme.website.page', ondelete='cascade', index='btree_not_null')
+    page_id = fields.Many2one('theme.website.page', ondelete='cascade')
     new_window = fields.Boolean('New Window')
     sequence = fields.Integer()
     parent_id = fields.Many2one('theme.website.menu', index=True, ondelete="cascade")
@@ -173,18 +174,21 @@ class ThemeWebsiteMenu(models.Model):
         return new_menu
 
 
-class ThemeWebsitePage(models.Model):
+class ThemePage(models.Model):
     _name = 'theme.website.page'
     _description = 'Website Theme Page'
-    _inherit = [
-        'website.page_options.mixin',
-    ]
 
     url = fields.Char()
-    view_id = fields.Many2one('theme.ir.ui.view', required=True, index=True, ondelete="cascade")
+    view_id = fields.Many2one('theme.ir.ui.view', required=True, ondelete="cascade")
     website_indexed = fields.Boolean('Page Indexed', default=True)
     is_published = fields.Boolean()
     is_new_page_template = fields.Boolean(string="New Page Template")
+
+    # Page options
+    header_overlay = fields.Boolean()
+    header_color = fields.Char()
+    header_visible = fields.Boolean(default=True)
+    footer_visible = fields.Boolean(default=True)
 
     copy_ids = fields.One2many('website.page', 'theme_template_id', 'Page using a copy of me', copy=False, readonly=True)
 
@@ -203,7 +207,6 @@ class ThemeWebsitePage(models.Model):
             'is_new_page_template': self.is_new_page_template,
             'header_overlay': self.header_overlay,
             'header_color': self.header_color,
-            'header_text_color': self.header_text_color,
             'header_visible': self.header_visible,
             'footer_visible': self.footer_visible,
             'theme_template_id': self.id,
@@ -211,7 +214,7 @@ class ThemeWebsitePage(models.Model):
         return new_page
 
 
-class ThemeUtils(models.AbstractModel):
+class Theme(models.AbstractModel):
     _name = 'theme.utils'
     _description = 'Theme Utils'
     _auto = False
@@ -289,8 +292,8 @@ class ThemeUtils(models.AbstractModel):
 
     @api.model
     def _toggle_asset(self, key, active):
-        ThemeIrAsset = self.env['theme.ir.asset'].sudo().with_context(active_test=False)
-        obj = ThemeIrAsset.search([('key', '=', key)])
+        ThemeAsset = self.env['theme.ir.asset'].sudo().with_context(active_test=False)
+        obj = ThemeAsset.search([('key', '=', key)])
         website = self.env['website'].get_current_website()
         if obj:
             obj = obj.copy_ids.filtered(lambda x: x.website_id == website)
@@ -353,13 +356,13 @@ class ThemeUtils(models.AbstractModel):
 class IrUiView(models.Model):
     _inherit = 'ir.ui.view'
 
-    theme_template_id = fields.Many2one('theme.ir.ui.view', copy=False, index='btree_not_null')
+    theme_template_id = fields.Many2one('theme.ir.ui.view', copy=False)
 
     def write(self, vals):
         # During a theme module update, theme views' copies receiving an arch
         # update should not be considered as `arch_updated`, as this is not a
         # user made change.
-        test_mode = modules.module.current_test
+        test_mode = getattr(threading.current_thread(), 'testing', False)
         if not (test_mode or self.pool._init):
             return super().write(vals)
         no_arch_updated_views = other_views = self.env['ir.ui.view']
@@ -380,23 +383,23 @@ class IrUiView(models.Model):
 class IrAsset(models.Model):
     _inherit = 'ir.asset'
 
-    theme_template_id = fields.Many2one('theme.ir.asset', copy=False, index='btree_not_null')
+    theme_template_id = fields.Many2one('theme.ir.asset', copy=False)
 
 
 class IrAttachment(models.Model):
     _inherit = 'ir.attachment'
 
     key = fields.Char(copy=False)
-    theme_template_id = fields.Many2one('theme.ir.attachment', copy=False, index='btree_not_null')
+    theme_template_id = fields.Many2one('theme.ir.attachment', copy=False)
 
 
 class WebsiteMenu(models.Model):
     _inherit = 'website.menu'
 
-    theme_template_id = fields.Many2one('theme.website.menu', copy=False, index='btree_not_null')
+    theme_template_id = fields.Many2one('theme.website.menu', copy=False)
 
 
 class WebsitePage(models.Model):
     _inherit = 'website.page'
 
-    theme_template_id = fields.Many2one('theme.website.page', copy=False, index='btree_not_null')
+    theme_template_id = fields.Many2one('theme.website.page', copy=False)

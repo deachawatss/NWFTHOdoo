@@ -1,10 +1,12 @@
+/** @odoo-module */
+
 import {
     clickOnEditAndWaitEditMode,
     clickOnElement,
     clickOnSave,
+    changeOption,
     insertSnippet,
     registerWebsitePreviewTour,
-    openLinkPopup,
 } from '@website/js/tours/tour_utils';
 import { browser } from "@web/core/browser/browser";
 
@@ -19,14 +21,10 @@ registerWebsitePreviewTour("snippet_popup_display_on_click", {
         trigger: ":iframe .s_popup .s_banner",
         run: "click",
     },
-    {
-        content: "Click on Display option",
-        trigger: ".o_customize_tab [data-container-title='Popup'] [data-label='Display'] .dropdown-toggle",
-        run: "click",
-    },
+    changeOption("SnippetPopup", 'we-select[data-attribute-name="display"] we-toggler'),
     {
         content: "Click on the display 'On Click' option",
-        trigger: ".o_popover [data-action-id='copyAnchor']",
+        trigger: "#oe_snippets we-button[data-name='onclick_opt']",
         async run(helpers) {
             // Patch and ignore write on clipboard in tour as we don't have permissions
             const oldWriteText = browser.navigator.clipboard.writeText;
@@ -48,19 +46,21 @@ registerWebsitePreviewTour("snippet_popup_display_on_click", {
         },
     },
     clickOnElement("button to close the popup", ":iframe .s_popup_close"),
-    ...openLinkPopup(":iframe .s_text_image a.btn-secondary", "Button", 1),
-    clickOnElement("text image snippet button", ".o-we-linkpopover .o_we_edit_link"),
+    clickOnElement("text image snippet button", ":iframe .s_text_image .btn-secondary"),
     {
-        content: "Add a link to the popup in the URL input",
-        trigger: ".o-we-linkpopover .o_we_href_input_link",
-        run: "edit #Win-%2420"
+        content: "Paste the popup anchor in the URL input",
+        trigger: "#o_link_dialog_url_input",
+        run: "edit #Win-%2420",
     },
     ...clickOnSave(),
+    {
+        trigger: "body .o_notification_manager:not(.o_upload_progress_toast):empty:hidden",
+    },
     {
         content: "Wait content of iframe is loaded",
         trigger: ":iframe main:contains(enhance your)",
     },
-    clickOnElement("text image snippet button", ":iframe .s_text_image .btn-fill-secondary"),
+    clickOnElement("text image snippet button", ":iframe .s_text_image .btn-secondary"),
     {
         content: "Verify that the popup opens after clicked the button.",
         trigger: ":iframe .s_popup .modal[id='Win-%2420'].show",
@@ -74,23 +74,30 @@ registerWebsitePreviewTour("snippet_popup_display_on_click", {
     },
     {
         content: "wait for the page to be loaded",
-        trigger: ":iframe [data-view-xmlid='website.contactus']",
+        trigger: ".o_website_preview[data-view-xmlid='website.contactus']",
     },
     ...clickOnEditAndWaitEditMode(),
     ...insertSnippet({id: "s_text_image", name: "Image - Text", groupName: "Content"}),
-    {
-        content: "Click on the text image snippet to edit it.",
-        trigger: ":iframe .s_text_image",
-        run: "click",
-    },
-    ...openLinkPopup(":iframe .s_text_image a.btn-secondary", "Button", 1),
-    clickOnElement("text image snippet button", ".o-we-linkpopover .o_we_edit_link"),
+    clickOnElement("text image snippet button", ":iframe .s_text_image .btn-secondary"),
     {
         content: "Add a link to the homepage in the URL input",
-        trigger: ".o-we-linkpopover .o_we_href_input_link",
-        run: "edit /#Win-%2420"
+        trigger: "#o_link_dialog_url_input",
+        run: "edit /",
+    },
+    {
+        content: "Open the page anchor selector",
+        trigger: ".o_link_dialog_page_anchor .dropdown-toggle",
+        run: "click",
+    },
+    {
+        content: "Click on the popup anchor to add it after the homepage link in the URL input",
+        trigger: ".o_link_dialog_page_anchor we-button:contains('#Win-%2420')",
+        run: "click",
     },
     ...clickOnSave(),
+    {
+        trigger: "body .o_notification_manager:not(.o_upload_progress_toast):empty:hidden",
+    },
     {
         content: "Wait content of iframe is loaded",
         trigger: ":iframe main:contains(enhance your)",
@@ -99,9 +106,9 @@ registerWebsitePreviewTour("snippet_popup_display_on_click", {
         content: "Wait form is patched",
         trigger: ":iframe form#contactus_form input[name=company]:value(yourcompany)",
     },
-    clickOnElement("text image snippet button", ":iframe .s_text_image .btn-fill-secondary"),
+    clickOnElement("text image snippet button", ":iframe .s_text_image .btn-secondary"),
     {
-        trigger: ":iframe [data-view-xmlid='website.homepage']",
+        trigger: ".o_website_preview[data-view-xmlid='website.homepage']",
     },
     {
         content: "Verify that the popup opens when the homepage page loads.",

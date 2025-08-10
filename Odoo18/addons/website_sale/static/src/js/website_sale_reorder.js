@@ -1,9 +1,11 @@
-import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
-import { formatCurrency } from "@web/core/currency";
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
-import { rpc } from "@web/core/network/rpc";
 import { debounce as debounceFn } from "@web/core/utils/timing";
 import publicWidget from "@web/legacy/js/public/public_widget";
+import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
+import { formatCurrency } from "@web/core/currency";
+import { rpc } from "@web/core/network/rpc";
 
 // Widget responsible for openingn the modal (giving out the sale order id)
 
@@ -27,9 +29,9 @@ publicWidget.registry.SaleOrderPortalReorderWidget = publicWidget.Widget.extend(
     },
 });
 
-import { Component, onWillStart } from "@odoo/owl";
-import { Dialog } from "@web/core/dialog/dialog";
 import { useService } from "@web/core/utils/hooks";
+import { Dialog } from "@web/core/dialog/dialog";
+import { Component, onWillStart } from "@odoo/owl";
 
 // Reorder Dialog
 
@@ -51,7 +53,6 @@ export class ReorderDialog extends Component {
     setup() {
         this.orm = useService("orm");
         this.dialogService = useService("dialog");
-        this.cart = useService("cart");
         this.formatCurrency = formatCurrency;
 
         onWillStart(this.onWillStartHandler.bind(this));
@@ -79,7 +80,7 @@ export class ReorderDialog extends Component {
     get total() {
         return this.content.products.reduce((total, product) => {
             if (product.add_to_cart_allowed) {
-                total += product.combinationInfo.price * product.quantity;
+                total += product.combinationInfo.price * product.qty;
             }
             return total;
         }, 0);
@@ -95,7 +96,7 @@ export class ReorderDialog extends Component {
                 product_template_id: comboItem.product_template_id,
                 product_id: comboItem.product_id,
                 combination: comboItem.combination,
-                add_qty: comboItem.quantity,
+                add_qty: comboItem.qty,
                 context: {
                     website_sale_no_images: true,
                 },
@@ -105,7 +106,7 @@ export class ReorderDialog extends Component {
             product_template_id: product.product_template_id,
             product_id: product.product_id,
             combination: product.combination,
-            add_qty: product.quantity,
+            add_qty: product.qty,
             context: {
                 website_sale_no_images: true,
             },
@@ -121,8 +122,8 @@ export class ReorderDialog extends Component {
 
     changeProductQty(product, newQty) {
         const productNewQty = Math.max(0, newQty);
-        const qtyChanged = productNewQty !== product.quantity;
-        product.quantity = productNewQty;
+        const qtyChanged = productNewQty !== product.qty;
+        product.qty = productNewQty;
         this.render(true);
         if (!qtyChanged) {
             return;
@@ -131,7 +132,7 @@ export class ReorderDialog extends Component {
     }
 
     onChangeProductQtyInput(ev, product) {
-        const newQty = parseFloat(ev.target.value) || product.quantity;
+        const newQty = parseFloat(ev.target.value) || product.qty;
         this.changeProductQty(product, newQty);
     }
 
@@ -165,21 +166,21 @@ export class ReorderDialog extends Component {
             if (!product.add_to_cart_allowed) {
                 continue;
             }
-
-            // must be awaited to ensure that all the products are added to the same cart when it
-            // has to be created on the fly because there weren't any open one for the customer.
-            await this.cart.add({
-                productTemplateId: product.product_template_id,
-                productId: product.product_id,
-                quantity: product.quantity,
-                productCustomAttributeValues: product.product_custom_attribute_values,
-                noVariantAttributeValues: product.no_variant_attribute_value_ids,
-                linked_products: product.selected_combo_items,
-            }, {
-                isBuyNow: true,
-                redirectToCart: false,
-                isConfigured: true,
-            });
+            if (product.selected_combo_items.length) {
+                await rpc("/website_sale/combo_configurator/update_cart", {
+                    combo_product_id: product.product_id,
+                    quantity: product.qty,
+                    selected_combo_items: product.selected_combo_items,
+                });
+            } else {
+                await rpc("/shop/cart/update_json", {
+                    product_id: product.product_id,
+                    add_qty: product.qty,
+                    no_variant_attribute_value_ids: product.no_variant_attribute_value_ids,
+                    product_custom_attribute_values: JSON.stringify(product.product_custom_attribute_values),
+                    display: false,
+                });
+            }
         }
     }
 }

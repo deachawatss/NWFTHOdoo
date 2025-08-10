@@ -72,11 +72,36 @@ class TestAccountEarlyPaymentDiscount(AccountTestInvoicingCommon):
                     fields.Date.from_string('2019-01-11') or False
                 )
 
+    def test_early_payment_date_eligibility(self):
+        """
+        Test to check early payment eligibility is based on the date stored
+        on the payment term line
+        """
+        inv = self.env['account.move'].create({
+            'move_type': 'in_invoice',
+            'partner_id': self.partner_a.id,
+            'invoice_date': '2019-01-01',
+            'date': '2019-01-01',
+            'invoice_line_ids': [Command.create({
+                'name': 'line', 'price_unit': 1200.0, 'tax_ids': []
+            })],
+            'invoice_payment_term_id': self.early_pay_10_percents_10_days.id,
+        })
+        inv.action_post()
+        self.assertTrue(inv._is_eligible_for_early_payment_discount(inv.currency_id, fields.Date.from_string('2019-01-10')))
+        self.assertFalse(inv._is_eligible_for_early_payment_discount(inv.currency_id, fields.Date.from_string('2019-01-12')))
+        # Changing number of days on payment term should not change the discount eligibility
+        self.early_pay_10_percents_10_days.discount_days = 5
+        self.assertTrue(inv._is_eligible_for_early_payment_discount(inv.currency_id, fields.Date.from_string('2019-01-10')))
+        self.assertFalse(inv._is_eligible_for_early_payment_discount(inv.currency_id, fields.Date.from_string('2019-01-12')))
+
     def test_invoice_report_without_invoice_date(self):
         """
         Ensure that an invoice with an early discount payment term
         and no invoice date can be previewed or printed.
         """
+        self.registry.enter_test_mode(self.cr)
+        self.addCleanup(self.registry.leave_test_mode)
         out_invoice = self.env['account.move'].create([{
             'move_type': 'out_invoice',
             'invoice_payment_term_id': self.early_pay_10_percents_10_days.id,
@@ -88,14 +113,12 @@ class TestAccountEarlyPaymentDiscount(AccountTestInvoicingCommon):
         # Assert that the invoice date is not set
         self.assertEqual(out_invoice.invoice_date, False)
 
-        with self.allow_pdf_render():
-            report = self.env['ir.actions.report'].with_context(force_report_rendering=True)._render_qweb_pdf('account.account_invoices', res_ids=out_invoice.id)
+        report = self.env['ir.actions.report'].with_context(force_report_rendering=True)._render_qweb_pdf('account.account_invoices', res_ids=out_invoice.id)
         self.assertTrue(report)
 
         #Test for invoices with multiple due dates and no early discount
         out_invoice.invoice_payment_term_id = self.pay_30_percents_now_balance_60_days
-        with self.allow_pdf_render():
-            new_report = self.env['ir.actions.report']._render_qweb_pdf('account.account_invoices', res_ids=out_invoice.id)
+        new_report = self.env['ir.actions.report']._render_qweb_pdf('account.account_invoices', res_ids=out_invoice.id)
         self.assertTrue(new_report)
 
     # ========================== Tests Taxes Amounts =============================
@@ -477,11 +500,11 @@ class TestAccountEarlyPaymentDiscount(AccountTestInvoicingCommon):
             })
 
     def test_intracomm_bill_with_early_payment_included(self):
-        tax_tags = self.env['account.account.tag'].create([{
+        tax_tags = self.env['account.account.tag'].create({
             'name': f'tax_tag_{i}',
             'applicability': 'taxes',
             'country_id': self.env.company.account_fiscal_country_id.id,
-        } for i in range(6)])
+        } for i in range(6))
 
         intracomm_tax = self.env['account.tax'].create({
             'name': 'tax20',

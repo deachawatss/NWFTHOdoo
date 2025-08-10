@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { ControlPanel } from "@web/search/control_panel/control_panel";
 import { kanbanView } from "@web/views/kanban/kanban_view";
 import { KanbanController } from "@web/views/kanban/kanban_controller";
@@ -26,6 +28,13 @@ class ThemePreviewControlPanel extends ControlPanel {
     close() {
         this.website.goToWebsite();
     }
+
+    get display() {
+        return {
+            layoutActions: false,
+            ...this.props.display,
+        };
+    }
 }
 class ThemePreviewKanbanrecord extends KanbanRecord {
 
@@ -47,6 +56,9 @@ const ThemePreviewKanbanView = {
     Controller: ThemePreviewKanbanController,
     ControlPanel: ThemePreviewControlPanel,
     Renderer: ThemePreviewKanbanRenderer,
+    display: {
+        controlPanel: {},
+    },
 };
 
 

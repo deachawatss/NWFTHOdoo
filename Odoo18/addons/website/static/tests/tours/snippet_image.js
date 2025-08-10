@@ -1,10 +1,12 @@
+/** @odoo-module **/
+
 import {insertSnippet, registerWebsitePreviewTour } from "@website/js/tours/tour_utils";
 
 registerWebsitePreviewTour("snippet_image", {
     url: "/",
     edition: true,
 }, () => [
-    ...insertSnippet({id: "s_image", name: "Image"}, { ignoreLoading: true }),
+    ...insertSnippet({id: "s_image", name: "Image"}),
 {
     content: "Verify if the media dialog opens",
     trigger: ".o_select_media_dialog",
@@ -18,7 +20,7 @@ registerWebsitePreviewTour("snippet_image", {
     content: "Verify if the image placeholder has been removed",
     trigger: ":iframe footer:not(:has(.s_image > svg))",
 },
-    ...insertSnippet({id: "s_image", name: "Image"}, { ignoreLoading: true }),
+    ...insertSnippet({id: "s_image", name: "Image"}),
 {
     content: "Verify that the image placeholder is within the page",
     trigger: ":iframe footer .s_image > svg",
@@ -34,7 +36,7 @@ registerWebsitePreviewTour("snippet_image", {
 },
 {
     content: "Click on the 'undo' button",
-    trigger: '.o-snippets-top-actions button.fa-undo',
+    trigger: '#oe_snippets button.fa-undo',
     run: "click",
 },
 {

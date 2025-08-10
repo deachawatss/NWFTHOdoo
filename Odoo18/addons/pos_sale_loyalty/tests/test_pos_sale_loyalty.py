@@ -31,10 +31,10 @@ class TestPoSSaleLoyalty(TestPointOfSaleHttpCommon):
                 }),
             ],
         })
-        self.env['sale.order'].sudo().create({
+        self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'order_line': [(0, 0, {
-                'product_id': self.desk_organizer.product_variant_id.id,
+                'product_id': self.desk_organizer.id,
                 'product_uom_qty': 1,
                 'price_unit': 100,
             })]
@@ -70,20 +70,15 @@ class TestPoSSaleLoyalty(TestPointOfSaleHttpCommon):
                 }),
             ],
         })
-        test_product = self.env['product.product'].create({
-            'name': 'Test Product',
-            'list_price': 100,
-            'taxes_id': [],
-        })
-        sale_order = self.env['sale.order'].sudo().create({
+        sale_order = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'order_line': [(0, 0, {
-                'product_id': test_product.id,
+                'product_id': self.desk_organizer.id,
                 'product_uom_qty': 1,
                 'price_unit': 100,
             })]
         })
         sale_order.action_open_reward_wizard()
-        self.assertEqual(sale_order.amount_total, 90)
+        self.assertEqual(sale_order.amount_total, 90.0)
         self.main_pos_config.open_ui()
         self.start_tour("/pos/web?config_id=%d" % self.main_pos_config.id, "test_pos_sale_loyalty_ignored_in_pos", login="accountman")

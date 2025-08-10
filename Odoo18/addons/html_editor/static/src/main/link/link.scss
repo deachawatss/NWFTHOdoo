@@ -6,11 +6,9 @@
 }
 
 .odoo-editor-editable {
-    &[contenteditable=true], [contenteditable=true] {
-        &.btn, .btn {
-            user-select: auto;
-            cursor: text;
-        }
+    .btn {
+        user-select: auto;
+        cursor: text;
     }
 
     [contenteditable=false] .btn {

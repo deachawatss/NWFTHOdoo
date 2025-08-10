@@ -19,7 +19,6 @@ try:
 except IOError:
     eslint = None
 
-
 @skipIf(eslint is None, "eslint tool not found on this system")
 @tagged("test_themes")
 class TestESLint(lint_case.LintCase):

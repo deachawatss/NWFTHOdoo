@@ -14,6 +14,8 @@ class AccountChartTemplate(models.AbstractModel):
             'code_digits': 6,
             'property_account_receivable_id': '3528',
             'property_account_payable_id': '4117',
+            'property_account_expense_categ_id': '2240',
+            'property_account_income_categ_id': '1420',
         }
 
     @template('ug', 'res.company')
@@ -36,7 +38,5 @@ class AccountChartTemplate(models.AbstractModel):
                 'fiscalyear_last_month': '6',
                 'deferred_expense_account_id': '352809',
                 'deferred_revenue_account_id': '411726',
-                'expense_account_id': '2240',
-                'income_account_id': '1420',
             }
         }

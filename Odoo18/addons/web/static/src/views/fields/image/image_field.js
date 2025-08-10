@@ -60,12 +60,12 @@ export class ImageField extends Component {
         }
         const field = this.props.record.fields[this.props.name];
         if (field.related?.includes(".")) {
-            this.uniqueId = DateTime.now();
+            this.lastUpdate = DateTime.now();
             let key = this.props.record.data[this.props.name];
             onWillRender(() => {
                 const nextKey = this.props.record.data[this.props.name];
                 if (key !== nextKey) {
-                    this.uniqueId = DateTime.now();
+                    this.lastUpdate = DateTime.now();
                 }
 
                 key = nextKey;
@@ -75,7 +75,7 @@ export class ImageField extends Component {
 
     get imgAlt() {
         if (this.fieldType === "many2one" && this.props.record.data[this.props.name]) {
-            return this.props.record.data[this.props.name].display_name;
+            return this.props.record.data[this.props.name][1];
         }
         return this.props.alt;
     }
@@ -89,7 +89,7 @@ export class ImageField extends Component {
     }
 
     get rawCacheKey() {
-        return this.uniqueId || this.props.record.data.write_date;
+        return this.lastUpdate || this.props.record.data.write_date;
     }
 
     get sizeStyle() {
@@ -129,7 +129,7 @@ export class ImageField extends Component {
         if (this.fieldType === "many2one") {
             this.lastURL = imageUrl(
                 this.props.record.fields[this.props.name].relation,
-                this.props.record.data[this.props.name].id,
+                this.props.record.data[this.props.name][0],
                 imageFieldName,
                 { unique: this.rawCacheKey }
             );

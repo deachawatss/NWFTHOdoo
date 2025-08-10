@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
 import {
     clickOnSave,
@@ -13,15 +15,15 @@ registerWebsitePreviewTour('website_crm_pre_tour', {
     run: "click",
 },
 {
-    trigger: ".o-snippets-menu .o-snippets-tabs [data-name='customize'].active",
+    trigger: "#oe_snippets .o_we_customize_snippet_btn.active",
 },
 {
     content: "Open action select",
-    trigger: ".o-snippets-menu [data-container-title='Block'] [data-label='Action'] .dropdown-toggle",
+    trigger: "we-select:has(we-button:contains('Create an Opportunity')) we-toggler",
     run: "click",
 }, {
     content: "Select 'Create an Opportunity' as form action",
-    trigger: ".o_popover [data-action-id='selectAction']:contains('Create an Opportunity')",
+    trigger: "we-select we-button:contains('Create an Opportunity')",
     run: "click",
 },
 ...clickOnSave(),

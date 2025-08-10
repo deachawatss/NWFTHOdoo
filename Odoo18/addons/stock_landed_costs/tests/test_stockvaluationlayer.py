@@ -75,6 +75,7 @@ class TestStockValuationLCCommon(TestStockLandedCostsCommon):
         """
         unit_cost = unit_cost or product.standard_price
         in_move = self.env['stock.move'].create({
+            'name': 'in %s units @ %s per unit' % (str(quantity), str(unit_cost)),
             'product_id': product.id,
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.company_data['default_warehouse'].lot_stock_id.id,
@@ -105,6 +106,7 @@ class TestStockValuationLCCommon(TestStockLandedCostsCommon):
         """ Helper to create and validate a delivery move.
         """
         out_move = self.env['stock.move'].create({
+            'name': 'out %s units' % str(quantity),
             'product_id': product.id,
             'location_id': self.company_data['default_warehouse'].lot_stock_id.id,
             'location_dest_id': self.env.ref('stock.stock_location_customers').id,
@@ -330,7 +332,7 @@ class TestStockValuationLCAVCO(TestStockValuationLCCommon):
             po_line.product_id = self.product1
             po_line.product_qty = 1
             po_line.price_unit = 10
-            po_line.tax_ids.clear()
+            po_line.taxes_id.clear()
         po = po_form.save()
         po.button_confirm()
 
@@ -383,7 +385,7 @@ class TestStockValuationLCFIFOVB(TestStockValuationLCCommon):
             po_line.product_id = self.product1
             po_line.product_qty = 10
             po_line.price_unit = 10
-            po_line.tax_ids.clear()
+            po_line.taxes_id.clear()
 
         rfq = rfq.save()
         rfq.button_confirm()
@@ -470,7 +472,7 @@ class TestStockValuationLCFIFOVB(TestStockValuationLCCommon):
             po_line.product_id = self.product1
             po_line.product_qty = 10
             po_line.price_unit = 10
-            po_line.tax_ids.clear()
+            po_line.taxes_id.clear()
 
         rfq = rfq.save()
         rfq.button_confirm()
@@ -522,7 +524,7 @@ class TestStockValuationLCFIFOVB(TestStockValuationLCCommon):
             po_line.product_id = self.product1
             po_line.product_qty = 10
             po_line.price_unit = 10
-            po_line.tax_ids.clear()
+            po_line.taxes_id.clear()
 
         rfq = rfq.save()
         rfq.button_confirm()
@@ -596,7 +598,7 @@ class TestStockValuationLCFIFOVB(TestStockValuationLCCommon):
         # create a vendor bill in EUR where base currency in USD
         company = self.env.user.company_id
         currency_grp = self.env.ref('base.group_multi_currency')
-        self.env.user.write({'group_ids': [(4, currency_grp.id)]})
+        self.env.user.write({'groups_id': [(4, currency_grp.id)]})
         usd_currency = self.env.ref('base.USD')
         eur_currency = self.env.ref('base.EUR')
         eur_currency.active = True

@@ -3,12 +3,11 @@
     <record id="hr_employee_skill_report_view_pivot" model="ir.ui.view">
         <field name="model">hr.employee.skill.report</field>
         <field name="arch" type="xml">
-            <pivot disable_linking="True" js_class="skill_pivot_view">
-                <field name="department_id" type="col"/>
-                <field name="employee_id" type="col"/>
-                <field name="skill_type_id" type="row"/>
-                <field name="skill_id" type="row"/>
-                <field name="level_progress" type="measure" widget="percentage" string="Current Level"/>
+            <pivot disable_linking="True">
+                <field name="employee_id" type="row"/>
+                <field name="skill_type_id" type="col"/>
+                <field name="skill_id" type="col"/>
+                <field name="level_progress" type="measure" widget="percentage"/>
             </pivot>
         </field>
     </record>
@@ -20,7 +19,7 @@
                 <field name="employee_id" type="row"/>
                 <field name="skill_type_id" type="col"/>
                 <field name="skill_id" type="col"/>
-                <field name="level_progress" type="measure" widget="percentage" string="Current Level"/>
+                <field name="level_progress" type="measure" widget="percentage"/>
             </graph>
         </field>
     </record>
@@ -29,7 +28,7 @@
         <field name="model">hr.employee.skill.report</field>
         <field name="arch" type="xml">
             <list expand="0" edit="1" editable="bottom">
-                <field name="employee_id" widget="many2one_avatar_employee" options="{'no_create': True, 'no_open': True}"/>
+                <field name="employee_id" widget="many2one_avatar_user" options="{'no_create': True, 'no_open': True}"/>
                 <field name="skill_type_id" options="{'no_create': True, 'no_open': True}"/>
                 <field name="skill_id" options="{'no_create': True, 'no_open': True}"/>
                 <field name="skill_level" options="{'no_create': True, 'no_open': True}"/>
@@ -47,11 +46,13 @@
                 <field name="skill_id"/>
                 <field name="skill_type_id"/>
                 <separator/>
+                <filter string="Employees with Skills" name="employees_with_skills" domain="[('skill_id', '!=', False)]"/>
+                <filter string="Employees without Skills" name="employees_without_skills" domain="[('skill_id', '=', False)]"/>
+                <separator/>
                 <filter string="Archived" name="archived" domain="[('active', '=', False)]"/>
                 <separator/>
                 <filter string="Employee" name="employee" context="{'group_by': 'employee_id'}"/>
                 <filter string="Department" name="department" context="{'group_by': 'department_id'}"/>
-                <filter string="Jobs" name="jobs" context="{'group_by': 'job_id'}"/>
                 <separator/>
                 <filter string="Skill Type" name="skill_type" context="{'group_by': 'skill_type_id'}"/>
                 <filter string="Skill" name="skill" context="{'group_by': 'skill_id'}"/>
@@ -60,13 +61,13 @@
     </record>
 
     <record id="hr_employee_skill_report_action" model="ir.actions.act_window">
-        <field name="name">Skills Inventory</field>
+        <field name="name">Employee Skills</field>
         <field name="res_model">hr.employee.skill.report</field>
         <field name="search_view_id" ref="hr_employee_skill_report_view_search"/>
         <field name="view_mode">list,pivot</field>
         <field name="context">{
-            'search_default_skill_type': 1,
-            'search_default_skill': 2,
+            'search_default_employee': 1,
+            'search_default_employees_with_skills': 1,
         }</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_empty_folder">
@@ -86,9 +87,9 @@
     </record>
 
     <menuitem
-        id="hr_employee_skill_inventory_report_menu"
-        name="Skills Inventory"
+        id="hr_employee_skill_report_menu"
+        name="Skills"
         action="hr_employee_skill_report_action"
-        parent="hr_skills.hr_employee_skill_report_menu"
+        parent="hr.hr_menu_hr_reports"
         sequence="15"/>
 </odoo>

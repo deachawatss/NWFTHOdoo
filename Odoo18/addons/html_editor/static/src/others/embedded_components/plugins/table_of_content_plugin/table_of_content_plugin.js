@@ -5,7 +5,6 @@ import {
     HEADINGS,
     TableOfContentManager,
 } from "@html_editor/others/embedded_components/core/table_of_content/table_of_content_manager";
-import { isHtmlContentSupported } from "@html_editor/core/selection_plugin";
 
 export class TableOfContentPlugin extends Plugin {
     static id = "tableOfContent";
@@ -14,11 +13,10 @@ export class TableOfContentPlugin extends Plugin {
         user_commands: [
             {
                 id: "insertTableOfContent",
-                title: _t("Table of Contents"),
-                description: _t("Highlight the structure (headings)"),
+                title: _t("Table Of Content"),
+                description: _t("Highlight the structure (headings) of this field"),
                 icon: "fa-bookmark",
                 run: this.insertTableOfContent.bind(this),
-                isAvailable: isHtmlContentSupported,
             },
         ],
         powerbox_items: [

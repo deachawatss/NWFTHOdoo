@@ -1,5 +1,3 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 import pytz
 from datetime import datetime, timedelta
 from markupsafe import Markup
@@ -11,7 +9,7 @@ from odoo import fields
 
 from odoo.tests.common import HttpCase
 
-from odoo.addons.microsoft_calendar.models.microsoft_sync import MicrosoftCalendarSync
+from odoo.addons.microsoft_calendar.models.microsoft_sync import MicrosoftSync
 
 def mock_get_token(user):
     return f"TOKEN_FOR_USER_{user.id}"
@@ -24,14 +22,14 @@ def _modified_date_in_the_future(event):
     return (event.write_date + timedelta(seconds=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 def patch_api(func):
-    @patch.object(MicrosoftCalendarSync, '_microsoft_insert', MagicMock())
-    @patch.object(MicrosoftCalendarSync, '_microsoft_delete', MagicMock())
-    @patch.object(MicrosoftCalendarSync, '_microsoft_patch', MagicMock())
+    @patch.object(MicrosoftSync, '_microsoft_insert', MagicMock())
+    @patch.object(MicrosoftSync, '_microsoft_delete', MagicMock())
+    @patch.object(MicrosoftSync, '_microsoft_patch', MagicMock())
     def patched(self, *args, **kwargs):
         return func(self, *args, **kwargs)
     return patched
 
-# By inheriting from TransactionCase, postcommit hooks (so methods tagged with `@after_commit` in MicrosoftCalendarSync),
+# By inheriting from TransactionCase, postcommit hooks (so methods tagged with `@after_commit` in MicrosoftSync),
 # are not called because no commit is done.
 # To be able to manually call these postcommit hooks, we need to inherit from HttpCase.
 # Note: as postcommit hooks are called separately, do not forget to invalidate cache for records read during the test.

@@ -1,14 +1,23 @@
-import { fields, Record } from "@mail/core/common/record";
+import { Record } from "@mail/core/common/record";
 
 import { _t } from "@web/core/l10n/translation";
 
 export class Notification extends Record {
-    static _name = "mail.notification";
     static id = "id";
+    /** @type {Object.<number, import("models").Notification>} */
+    static records = {};
+    /** @returns {import("models").Notification} */
+    static get(data) {
+        return super.get(data);
+    }
+    /** @returns {import("models").Notification|import("models").Notification[]} */
+    static insert(data) {
+        return super.insert(...arguments);
+    }
 
     /** @type {number} */
     id;
-    mail_message_id = fields.One("mail.message", {
+    message = Record.one("Message", {
         onDelete() {
             this.delete();
         },
@@ -17,20 +26,21 @@ export class Notification extends Record {
     notification_status;
     /** @type {string} */
     notification_type;
-    failure = fields.One("Failure", {
+    failure = Record.one("Failure", {
         inverse: "notifications",
         /** @this {import("models").Notification} */
         compute() {
-            const thread = this.mail_message_id?.thread;
-            if (!this.mail_message_id?.isSelfAuthored) {
+            const thread = this.message?.thread;
+            if (!this.message?.isSelfAuthored) {
                 return;
             }
-            const failure = Object.values(this.store.Failure.records).find(
-                (f) =>
+            const failure = Object.values(this.store.Failure.records).find((f) => {
+                return (
                     f.resModel === thread?.model &&
                     f.type === this.notification_type &&
                     (f.resModel !== "discuss.channel" || f.resIds.has(thread?.id))
-            );
+                );
+            });
             return this.isFailure
                 ? {
                       id: failure ? failure.id : this.store.Failure.nextId.value++,
@@ -41,25 +51,7 @@ export class Notification extends Record {
     });
     /** @type {string} */
     failure_type;
-    get failureMessage() {
-        switch (this.failure_type) {
-            case "mail_smtp":
-                return _t("Connection failed");
-            case "mail_bounce":
-                return _t("Bounce");
-            case "mail_email_invalid":
-                return _t("Invalid email address");
-            case "mail_email_missing":
-                return _t("Missing email address");
-            case "mail_from_invalid":
-                return _t("Invalid from address");
-            case "mail_from_missing":
-                return _t("Missing from address");
-            default:
-                return _t("Exception");
-        }
-    }
-    res_partner_id = fields.One("Persona");
+    persona = Record.one("Persona");
 
     get isFailure() {
         return ["exception", "bounce"].includes(this.notification_status);
@@ -76,12 +68,6 @@ export class Notification extends Record {
         return "";
     }
 
-    get isFollowerNotification() {
-        return this.mail_message_id.thread.followers.some(
-            (follower) => follower.partner_id.id === this.res_partner_id.id
-        );
-    }
-
     get statusIcon() {
         switch (this.notification_status) {
             case "process":
@@ -89,13 +75,13 @@ export class Notification extends Record {
             case "pending":
                 return "fa fa-paper-plane-o";
             case "sent":
-                return `fa ${!this.isFollowerNotification ? "fa-check" : "fa-user-o"}`;
+                return "fa fa-check";
             case "bounce":
                 return "fa fa-exclamation";
             case "exception":
-                return "fa fa-times text-danger";
+                return "fa fa-exclamation";
             case "ready":
-                return `fa ${!this.isFollowerNotification ? "fa-send-o" : "fa-user-o"}`;
+                return "fa fa-send-o";
             case "canceled":
                 return "fa fa-trash-o";
         }

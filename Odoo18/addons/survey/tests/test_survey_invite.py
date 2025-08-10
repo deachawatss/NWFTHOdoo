@@ -7,13 +7,13 @@ from lxml import etree
 
 from odoo import fields, Command
 from odoo.addons.survey.tests import common
-from odoo.addons.mail.tests.common import MailCase
+from odoo.addons.mail.tests.common import MailCommon
 from odoo.exceptions import UserError
 from odoo.tests import Form
 from odoo.tests.common import users
 
 
-class TestSurveyInvite(common.TestSurveyCommon, MailCase):
+class TestSurveyInvite(common.TestSurveyCommon, MailCommon):
 
     def setUp(self):
         res = super(TestSurveyInvite, self).setUp()
@@ -132,6 +132,7 @@ class TestSurveyInvite(common.TestSurveyCommon, MailCase):
             set([self.customer.email]))
         self.assertEqual(answers.mapped('partner_id'), self.customer)
         self.assertEqual(set(answers.mapped('deadline')), set([deadline]))
+        self.assertEqual(invite.subject, self.env["mail.template"].browse(invite_form._env.context['default_template_id']).subject)
 
         with self.subTest('Warning when inviting an already invited partner'):
             invite_form = Form.from_action(self.env, self.survey.action_send_survey())
@@ -198,14 +199,11 @@ class TestSurveyInvite(common.TestSurveyCommon, MailCase):
     @users('survey_manager')
     def test_survey_invite_email_from(self):
         # Verifies whether changing the value of the "email_from" field reflects on the receiving end.
-        # by default avoid rendering restriction complexity
-        self.env['ir.config_parameter'].sudo().set_param('mail.restrict.template.rendering', False)
-
         action = self.survey.action_send_survey()
         action['context']['default_send_email'] = True
         invite_form = Form.from_action(self.env, action)
         invite_form.partner_ids.add(self.survey_user.partner_id)
-        invite_form.template_id.write({'email_from': '{{ object.partner_id.email_formatted }}'})
+        invite_form.template_id.write({'email_from':'{{ object.partner_id.email_formatted }}'})
         invite = invite_form.save()
         with self.mock_mail_gateway():
             invite.action_invite()

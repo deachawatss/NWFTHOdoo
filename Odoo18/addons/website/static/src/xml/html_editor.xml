@@ -10,10 +10,10 @@
 
 <t t-name="website.AutoCompleteItem">
     <div t-att-class="{
-        'fw-bold text-capitalize p-2': option.data.isCategory,
+        'fw-bold text-capitalize p-2': option.separator,
     }">
-        <t t-if="option.data.icon">
-            <img t-att-src="option.data.icon" width="24px" height="24px" class="me-2 rounded"/>
+        <t t-if="option.icon and option.icon.length">
+            <img t-att-src="option.icon" width="24px" height="24px" class="me-2 rounded"/>
         </t>
         <t t-out="option.label"/>
     </div>
@@ -24,19 +24,14 @@
         sources="sources"
         value="state.url"
         input="urlRef"
+        onSelect.bind="onSelect"
         dropdown="true"
         autofocus="true"
         placeholder.translate="Type your URL"
-        inputClass="'o_we_href_input_link border-dark-subtle form-control form-control-sm'"
+        inputClass="'o_we_href_input_link form-control form-control-sm'"
         t-on-keydown="onKeydownEnter"
         updateValue.bind="updateValue"
-    >
-        <t t-set-slot="urlOption" t-slot-scope="urlOptionScope">
-            <t t-call="website.AutoCompleteItem">
-                <t t-set="option" t-value="urlOptionScope"/>
-            </t>
-        </t>
-    </AutoCompleteInLinkPopover>
+    />
 </t>
 
 <t t-name="website.linkPopover" t-inherit="html_editor.linkPopover" t-inherit-mode="primary">

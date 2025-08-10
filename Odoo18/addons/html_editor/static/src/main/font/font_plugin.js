@@ -2,16 +2,8 @@ import { Plugin } from "@html_editor/plugin";
 import { isBlock, closestBlock } from "@html_editor/utils/blocks";
 import { fillEmpty, unwrapContents } from "@html_editor/utils/dom";
 import { leftLeafOnlyNotBlockPath } from "@html_editor/utils/dom_state";
+import { isRedundantElement, isVisibleTextNode } from "@html_editor/utils/dom_info";
 import {
-    isParagraphRelatedElement,
-    isRedundantElement,
-    isEmptyBlock,
-    isVisibleTextNode,
-    isZWS,
-} from "@html_editor/utils/dom_info";
-import {
-    ancestors,
-    childNodes,
     closestElement,
     createDOMPathGenerator,
     descendants,
@@ -22,7 +14,6 @@ import {
     getCSSVariableValue,
     getHtmlStyle,
     getFontSizeDisplayValue,
-    FONT_SIZE_CLASSES,
 } from "@html_editor/utils/formatting";
 import { DIRECTIONS } from "@html_editor/utils/position";
 import { _t } from "@web/core/l10n/translation";
@@ -31,7 +22,7 @@ import { getBaseContainerSelector } from "@html_editor/utils/base_container";
 import { withSequence } from "@html_editor/utils/resource";
 import { reactive } from "@odoo/owl";
 import { FontSizeSelector } from "./font_size_selector";
-import { isHtmlContentSupported } from "@html_editor/core/selection_plugin";
+import { childNodes } from "../../utils/dom_traversal";
 
 export const fontItems = [
     {
@@ -91,7 +82,10 @@ export const fontItems = [
 ];
 
 export const fontSizeItems = [
-    { variableName: "display-1-font-size", className: "display-1-fs" },
+    {
+        variableName: "display-1-font-size",
+        className: "display-1-fs",
+    },
     { variableName: "display-2-font-size", className: "display-2-fs" },
     { variableName: "display-3-font-size", className: "display-3-fs" },
     { variableName: "display-4-font-size", className: "display-4-fs" },
@@ -125,7 +119,6 @@ export class FontPlugin extends Plugin {
                 description: _t("Big section heading"),
                 icon: "fa-header",
                 run: () => this.dependencies.dom.setTag({ tagName: "H1" }),
-                isAvailable: isHtmlContentSupported,
             },
             {
                 id: "setTagHeading2",
@@ -133,7 +126,6 @@ export class FontPlugin extends Plugin {
                 description: _t("Medium section heading"),
                 icon: "fa-header",
                 run: () => this.dependencies.dom.setTag({ tagName: "H2" }),
-                isAvailable: isHtmlContentSupported,
             },
             {
                 id: "setTagHeading3",
@@ -141,7 +133,6 @@ export class FontPlugin extends Plugin {
                 description: _t("Small section heading"),
                 icon: "fa-header",
                 run: () => this.dependencies.dom.setTag({ tagName: "H3" }),
-                isAvailable: isHtmlContentSupported,
             },
             {
                 id: "setTagParagraph",
@@ -153,7 +144,6 @@ export class FontPlugin extends Plugin {
                         tagName: this.dependencies.baseContainer.getDefaultNodeName(),
                     });
                 },
-                isAvailable: isHtmlContentSupported,
             },
             {
                 id: "setTagQuote",
@@ -161,7 +151,6 @@ export class FontPlugin extends Plugin {
                 description: _t("Add a blockquote section"),
                 icon: "fa-quote-right",
                 run: () => this.dependencies.dom.setTag({ tagName: "blockquote" }),
-                isAvailable: isHtmlContentSupported,
             },
             {
                 id: "setTagPre",
@@ -169,20 +158,21 @@ export class FontPlugin extends Plugin {
                 description: _t("Add a code section"),
                 icon: "fa-code",
                 run: () => this.dependencies.dom.setTag({ tagName: "pre" }),
-                isAvailable: isHtmlContentSupported,
             },
         ],
         toolbar_groups: [
             withSequence(10, {
                 id: "font",
             }),
+            withSequence(29, {
+                id: "font-size",
+            }),
         ],
         toolbar_items: [
-            withSequence(10, {
+            {
                 id: "font",
                 groupId: "font",
-                namespaces: ["compact", "expanded"],
-                description: _t("Select font style"),
+                title: _t("Font style"),
                 Component: FontSelector,
                 props: {
                     getItems: () => fontItems,
@@ -195,13 +185,11 @@ export class FontPlugin extends Plugin {
                         this.updateFontSelectorParams();
                     },
                 },
-                isAvailable: isHtmlContentSupported,
-            }),
-            withSequence(20, {
+            },
+            {
                 id: "font-size",
-                groupId: "font",
-                namespaces: ["compact", "expanded"],
-                description: _t("Select font size"),
+                groupId: "font-size",
+                title: _t("Font size"),
                 Component: FontSizeSelector,
                 props: {
                     getItems: () => this.fontSizeItems,
@@ -220,12 +208,12 @@ export class FontPlugin extends Plugin {
                         });
                         this.updateFontSizeSelectorParams();
                     },
+                    onBlur: () => this.dependencies.selection.focusEditable(),
                     document: this.document,
                 },
-                isAvailable: isHtmlContentSupported,
-            }),
+            },
         ],
-        powerbox_categories: withSequence(5, { id: "format", name: _t("Format") }),
+        powerbox_categories: withSequence(30, { id: "format", name: _t("Format") }),
         powerbox_items: [
             {
                 categoryId: "format",
@@ -244,11 +232,11 @@ export class FontPlugin extends Plugin {
                 commandId: "setTagParagraph",
             },
             {
-                categoryId: "format",
+                categoryId: "structure",
                 commandId: "setTagQuote",
             },
             {
-                categoryId: "format",
+                categoryId: "structure",
                 commandId: "setTagPre",
             },
         ],
@@ -288,12 +276,7 @@ export class FontPlugin extends Plugin {
         delete_backward_overrides: withSequence(20, this.handleDeleteBackward.bind(this)),
         delete_backward_word_overrides: this.handleDeleteBackward.bind(this),
 
-        /** Processors */
-        clipboard_content_processors: this.processContentForClipboard.bind(this),
         before_insert_processors: this.handleInsertWithinPre.bind(this),
-
-        format_splittable_class: (className) =>
-            [...FONT_SIZE_CLASSES, "o_default_font_size"].includes(className),
     };
 
     setup() {
@@ -318,9 +301,9 @@ export class FontPlugin extends Plugin {
         const block = closestBlock(anchorNode);
         const tagName = block.tagName.toLowerCase();
 
-        const matchingItems = fontItems.filter((item) =>
-            item.selector ? block.matches(item.selector) : item.tagName === tagName
-        );
+        const matchingItems = fontItems.filter((item) => {
+            return item.selector ? block.matches(item.selector) : item.tagName === tagName;
+        });
 
         const matchingItemsWitoutExtraClass = matchingItems.filter((item) => !item.extraClass);
 
@@ -373,8 +356,7 @@ export class FontPlugin extends Plugin {
         if (
             !closestPre ||
             (closestBlockNode.nodeName !== "PRE" &&
-                ((closestBlockNode.textContent && !isZWS(closestBlockNode)) ||
-                    closestBlockNode.nextSibling))
+                (closestBlockNode.textContent || closestBlockNode.nextSibling))
         ) {
             return;
         }
@@ -383,30 +365,19 @@ export class FontPlugin extends Plugin {
         const nodesAfterTarget = [...rightLeafOnlyNotBlockPath(targetNode, targetOffset)];
         if (
             !nodesAfterTarget.length ||
-            (nodesAfterTarget.length === 1 && nodesAfterTarget[0].nodeName === "BR") ||
-            isEmptyBlock(closestBlockNode)
+            (nodesAfterTarget.length === 1 && nodesAfterTarget[0].nodeName === "BR")
         ) {
             // Remove the last empty block node within pre tag
-            const [beforeElement, afterElement] = this.dependencies.split.splitElementBlock({
-                targetNode,
-                targetOffset,
-                blockToSplit: closestBlockNode,
-            });
-            const isPreBlock = beforeElement.nodeName === "PRE";
-            const baseContainer = isPreBlock
-                ? this.dependencies.baseContainer.createBaseContainer()
-                : afterElement;
-            if (isPreBlock) {
-                baseContainer.replaceChildren(...afterElement.childNodes);
-                afterElement.replaceWith(baseContainer);
-            } else {
-                beforeElement.remove();
-                closestPre.after(afterElement);
+            if (closestBlockNode.nodeName !== "PRE") {
+                closestBlockNode.remove();
             }
+            const baseContainer = this.dependencies.baseContainer.createBaseContainer();
             const dir = closestBlockNode.getAttribute("dir") || closestPre.getAttribute("dir");
             if (dir) {
                 baseContainer.setAttribute("dir", dir);
             }
+            closestPre.after(baseContainer);
+            fillEmpty(baseContainer);
             this.dependencies.selection.setCursorStart(baseContainer);
         } else {
             const lineBreak = this.document.createElement("br");
@@ -426,8 +397,7 @@ export class FontPlugin extends Plugin {
         if (
             !closestQuote ||
             (closestBlockNode.nodeName !== "BLOCKQUOTE" &&
-                ((closestBlockNode.textContent && !isZWS(closestBlockNode)) ||
-                    closestBlockNode.nextSibling))
+                (closestBlockNode.textContent || closestBlockNode.nextSibling))
         ) {
             return;
         }
@@ -436,30 +406,19 @@ export class FontPlugin extends Plugin {
         const nodesAfterTarget = [...rightLeafOnlyNotBlockPath(targetNode, targetOffset)];
         if (
             !nodesAfterTarget.length ||
-            (nodesAfterTarget.length === 1 && nodesAfterTarget[0].nodeName === "BR") ||
-            isEmptyBlock(closestBlockNode)
+            (nodesAfterTarget.length === 1 && nodesAfterTarget[0].nodeName === "BR")
         ) {
-            const [beforeElement, afterElement] = this.dependencies.split.splitElementBlock({
-                targetNode,
-                targetOffset,
-                blockToSplit: closestBlockNode,
-            });
-            const isQuoteBlock = beforeElement.nodeName === "BLOCKQUOTE";
-            const baseContainer = isQuoteBlock
-                ? this.dependencies.baseContainer.createBaseContainer()
-                : afterElement;
-
-            if (isQuoteBlock) {
-                baseContainer.replaceChildren(...afterElement.childNodes);
-                afterElement.replaceWith(baseContainer);
-            } else {
-                beforeElement.remove();
-                closestQuote.after(afterElement);
+            // Remove the last empty block node within blockquote tag
+            if (closestBlockNode.nodeName !== "BLOCKQUOTE") {
+                closestBlockNode.remove();
             }
+            const baseContainer = this.dependencies.baseContainer.createBaseContainer();
             const dir = closestBlockNode.getAttribute("dir") || closestQuote.getAttribute("dir");
             if (dir) {
                 baseContainer.setAttribute("dir", dir);
             }
+            closestQuote.after(baseContainer);
+            fillEmpty(baseContainer);
             this.dependencies.selection.setCursorStart(baseContainer);
             return true;
         }
@@ -490,8 +449,8 @@ export class FontPlugin extends Plugin {
                 if (dir) {
                     baseContainer.setAttribute("dir", dir);
                 }
-                baseContainer.replaceChildren(...newElement.childNodes);
                 newElement.replaceWith(baseContainer);
+                baseContainer.replaceChildren(this.document.createElement("br"));
                 this.dependencies.selection.setCursorStart(baseContainer);
             }
             return true;
@@ -565,30 +524,6 @@ export class FontPlugin extends Plugin {
 
     updateFontSizeSelectorParams() {
         this.fontSize.displayName = this.fontSizeName;
-    }
-
-    processContentForClipboard(clonedContents, selection) {
-        const commonAncestorElement = closestElement(selection.commonAncestorContainer);
-        if (commonAncestorElement && !isBlock(clonedContents.firstChild)) {
-            // Get the list of ancestor elements starting from the provided
-            // commonAncestorElement up to the block-level element.
-            const blockEl = closestBlock(commonAncestorElement);
-            const ancestorsList = [
-                commonAncestorElement,
-                ...ancestors(commonAncestorElement, blockEl),
-            ];
-            // Wrap rangeContent with clones of their ancestors to keep the styles.
-            for (const ancestor of ancestorsList) {
-                // Keep the formatting by keeping inline ancestors and paragraph
-                // related ones like headings etc.
-                if (!isBlock(ancestor) || isParagraphRelatedElement(ancestor)) {
-                    const clone = ancestor.cloneNode();
-                    clone.append(...childNodes(clonedContents));
-                    clonedContents.appendChild(clone);
-                }
-            }
-        }
-        return clonedContents;
     }
 
     handleInsertWithinPre(insertContainer, block) {

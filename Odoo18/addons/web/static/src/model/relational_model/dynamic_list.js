@@ -1,24 +1,17 @@
-import { AlertDialog, ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
+import { AlertDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { _t } from "@web/core/l10n/translation";
 import { unique } from "@web/core/utils/arrays";
 import { DataPoint } from "./datapoint";
-import { Record as RelationalRecord } from "./record";
+import { Record } from "./record";
 import { resequence } from "./utils";
-
-/**
- * @typedef {import("./record").Record} RelationalRecord
- */
 
 const DEFAULT_HANDLE_FIELD = "sequence";
 
-/**
- * @abstract
- */
 export class DynamicList extends DataPoint {
     /**
-     * @type {DataPoint["setup"]}
+     * @param {import("./relational_model").Config} config
      */
-    setup() {
+    setup(config) {
         super.setup(...arguments);
         this.handleField = Object.keys(this.activeFields).find(
             (fieldName) => this.activeFields[fieldName].isHandle
@@ -187,11 +180,7 @@ export class DynamicList extends DataPoint {
         return this.model.mutex.exec(() => {
             let orderBy = [...this.orderBy];
             if (orderBy.length && orderBy[0].name === fieldName) {
-                if (orderBy[0].asc) {
-                    orderBy[0] = { name: orderBy[0].name, asc: false };
-                } else {
-                    orderBy = [];
-                }
+                orderBy[0] = { name: orderBy[0].name, asc: !orderBy[0].asc };
             } else {
                 orderBy = orderBy.filter((o) => o.name !== fieldName);
                 orderBy.unshift({
@@ -211,21 +200,6 @@ export class DynamicList extends DataPoint {
         return this.model.mutex.exec(() => this._toggleArchive(isSelected, false));
     }
 
-    toggleArchiveWithConfirmation(archive, dialogProps = {}) {
-        const isSelected = this.isDomainSelected || this.selection.length > 0;
-        if (archive) {
-            const defaultProps = {
-                body: _t("Are you sure that you want to archive all the selected records?"),
-                cancel: () => {},
-                confirm: () => this.archive(isSelected),
-                confirmLabel: _t("Archive"),
-            };
-            this.model.dialog.add(ConfirmationDialog, { ...defaultProps, ...dialogProps });
-        } else {
-            this.unarchive(isSelected);
-        }
-    }
-
     // -------------------------------------------------------------------------
     // Protected
     // -------------------------------------------------------------------------
@@ -238,29 +212,15 @@ export class DynamicList extends DataPoint {
             resIds = await this.getResIds(true);
         }
 
-        const copy = async (resIds) => {
-            const copiedRecords = await this.model.orm.call(this.resModel, "copy", [resIds], {
-                context: this.context,
+        const duplicated = await this.model.orm.call(this.resModel, "copy", [resIds], {
+            context: this.context,
+        });
+        if (resIds.length > duplicated.length) {
+            this.model.notification.add(_t("Some records could not be duplicated"), {
+                title: _t("Warning"),
             });
-
-            if (resIds.length > copiedRecords.length) {
-                this.model.notification.add(_t("Some records could not be duplicated"), {
-                    title: _t("Warning"),
-                });
-            }
-            return this.model.load();
-        };
-
-        if (resIds.length > 1) {
-            this.model.dialog.add(ConfirmationDialog, {
-                body: _t("Are you sure that you want to duplicate all the selected records?"),
-                confirm: () => copy(resIds),
-                cancel: () => {},
-                confirmLabel: _t("Confirm"),
-            });
-        } else {
-            await copy(resIds);
         }
+        return this.model.load();
     }
 
     async _deleteRecords(records) {
@@ -304,16 +264,16 @@ export class DynamicList extends DataPoint {
         if (!Object.keys(changes).length || record === this._recordToDiscard) {
             return;
         }
-        const validSelection = this.selection.filter((record) =>
-            Object.keys(changes).every((fieldName) => {
+        const validSelection = this.selection.filter((record) => {
+            return Object.keys(changes).every((fieldName) => {
                 if (record._isReadonly(fieldName)) {
                     return false;
                 } else if (record._isRequired(fieldName) && !changes[fieldName]) {
                     return false;
                 }
                 return true;
-            })
-        );
+            });
+        });
         const canProceed = await this.model.hooks.onWillSaveMulti(record, changes, validSelection);
         if (canProceed === false) {
             return false;
@@ -368,12 +328,14 @@ export class DynamicList extends DataPoint {
             getSequence,
             getResId,
         });
-        for (const dpData of resequencedRecords) {
-            const dp = originalList.find((d) => getResId(d) === dpData.id);
-            if (dp instanceof RelationalRecord) {
-                dp._applyValues(dpData);
-            } else {
-                dp[handleField] = dpData[handleField];
+        if (resequencedRecords) {
+            for (const dpData of resequencedRecords) {
+                const dp = originalList.find((d) => getResId(d) === dpData.id);
+                if (dp instanceof Record) {
+                    dp._applyValues(dpData);
+                } else {
+                    dp[handleField] = dpData[handleField];
+                }
             }
         }
     }

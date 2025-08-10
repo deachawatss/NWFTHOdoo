@@ -1,6 +1,8 @@
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
 import { useService } from "@web/core/utils/hooks";
-import { Component, markup } from "@odoo/owl";
+import { Component } from "@odoo/owl";
 
 export class ForecastedButtons extends Component {
     static template = "stock.ForecastedButtons";
@@ -24,7 +26,7 @@ export class ForecastedButtons extends Component {
      * @param {Object | undefined} res
      */
     _onClose(res) {
-        return res?.special || !res?.noReload || this.props.reloadReport();
+        return res?.special || this.props.reloadReport();
     }
 
     async _onClickReplenish() {
@@ -48,12 +50,9 @@ export class ForecastedButtons extends Component {
     }
 
     async _onClickUpdateQuantity() {
-        const action = await this.orm.call(this.resModel, "action_open_quants", [[this.productId]]);
+        const action = await this.orm.call(this.resModel, "action_update_quantity_on_hand", [[this.productId]]);
         if (action.res_model === "stock.quant") { // Quant view in inventory mode.
             action.views = [[false, "list"]];
-        }
-        if (action.help) {
-            action.help = markup(action.help);
         }
         return this.actionService.doAction(action, { onClose: this._onClose.bind(this) });
     }

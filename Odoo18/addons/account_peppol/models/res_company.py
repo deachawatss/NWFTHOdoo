@@ -1,11 +1,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-import contextlib
 import re
-import requests
-from lxml import etree
 from stdnum import get_cc_module, ean
-from urllib.parse import urljoin
 
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
@@ -48,7 +44,6 @@ PEPPOL_ENDPOINT_SANITIZERS = {
     '0192': _re_sanitizer(r'\d{9}'),
     '0208': _re_sanitizer(r'\d{10}'),
 }
-TIMEOUT = 10
 
 
 class ResCompany(models.Model):
@@ -68,6 +63,7 @@ class ResCompany(models.Model):
     account_peppol_proxy_state = fields.Selection(
         selection=[
             ('not_registered', 'Not registered'),
+            ('in_verification', 'In verification'),
             ('sender', 'Can send but not receive'),
             ('smp_registration', 'Can send, pending registration to receive'),
             ('receiver', 'Can send and receive'),
@@ -79,15 +75,11 @@ class ResCompany(models.Model):
     peppol_endpoint = fields.Char(related='partner_id.peppol_endpoint', readonly=False)
     peppol_purchase_journal_id = fields.Many2one(
         comodel_name='account.journal',
-        string='Peppol Purchase Journal',
+        string='PEPPOL Purchase Journal',
         domain=[('type', '=', 'purchase')],
-        compute='_compute_peppol_purchase_journal_id',
-        store=True,
-        readonly=False,
+        compute='_compute_peppol_purchase_journal_id', store=True, readonly=False,
         inverse='_inverse_peppol_purchase_journal_id',
     )
-    peppol_external_provider = fields.Char(tracking=True)
-    peppol_can_send = fields.Boolean(compute='_compute_peppol_can_send')
 
     # -------------------------------------------------------------------------
     # HELPER METHODS
@@ -198,15 +190,20 @@ class ResCompany(models.Model):
                 except ValidationError:
                     continue
 
-    @api.depends('account_peppol_proxy_state')
-    def _compute_peppol_can_send(self):
-        can_send_domain = self.env['account_edi_proxy_client.user']._get_can_send_domain()
-        for company in self:
-            company.peppol_can_send = company.account_peppol_proxy_state in can_send_domain
-
     # -------------------------------------------------------------------------
     # LOW-LEVEL METHODS
     # -------------------------------------------------------------------------
+
+    @api.model
+    def _sanitize_peppol_endpoint(self, vals, eas=False, endpoint=False):
+        # TODO: remove in master
+        if not (peppol_eas := vals.get('peppol_eas', eas)) or not (peppol_endpoint := vals.get('peppol_endpoint', endpoint)):
+            return vals
+
+        if sanitizer := PEPPOL_ENDPOINT_SANITIZERS.get(peppol_eas):
+            vals['peppol_endpoint'] = sanitizer(peppol_endpoint)
+
+        return vals
 
     @api.model
     def _sanitize_peppol_endpoint_in_values(self, values):
@@ -286,57 +283,5 @@ class ResCompany(models.Model):
         config_param = self.env['ir.config_parameter'].sudo().get_param('account_peppol.edi.mode')
         # by design, we can only have zero or one proxy user per company with type Peppol
         peppol_user = self.sudo().account_edi_proxy_client_ids.filtered(lambda u: u.proxy_type == 'peppol')
-        return peppol_user.edi_mode or config_param or 'prod'
-
-    def _get_peppol_webhook_endpoint(self):
-        self.ensure_one()
-        return urljoin(self.get_base_url(), '/peppol/webhook')
-
-    def _get_company_info_on_peppol(self, edi_identification):
-
-        def _get_peppol_provider(participant_info):
-            service_metadata = participant_info.find('.//{*}ServiceMetadataReference')
-            service_href = ''
-            if service_metadata is not None:
-                service_href = service_metadata.attrib.get('href', '')
-            if not service_href:
-                return None
-
-            provider_name = None
-            with contextlib.suppress(requests.exceptions.RequestException, etree.XMLSyntaxError):
-                response = requests.get(service_href, timeout=TIMEOUT)
-                if response.status_code == 200:
-                    access_point_info = etree.fromstring(response.content)
-                    provider_name = access_point_info.findtext('.//{*}ServiceDescription')
-            return provider_name
-
-        self.ensure_one()
-        is_company_on_peppol = False
-        external_provider = None
-        error_msg = ''
-        if (
-            (participant_info := self.partner_id._get_participant_info(edi_identification)) is not None
-            and (is_company_on_peppol := self.partner_id._check_peppol_participant_exists(participant_info, edi_identification))
-        ):
-            error_msg = _(
-                "A participant with these details has already been registered on the network. "
-                "If you have previously registered to a Peppol service, please deregister."
-            )
-            if (external_provider := _get_peppol_provider(participant_info)) and "Odoo" not in external_provider:
-                error_msg += _("The Peppol service that is used is %s.", external_provider)
-        return {
-            'is_on_peppol': is_company_on_peppol,
-            'external_provider': external_provider,
-            'error_msg': error_msg,
-        }
-
-    def _account_peppol_send_welcome_email(self):
-        self.ensure_one()
-        if self.account_peppol_proxy_state not in ('sender', 'receiver'):
-            return
-
-        mail_template = self.env.ref('account_peppol.mail_template_peppol_registration', raise_if_not_found=False)
-        if not mail_template:
-            return
-
-        mail_template.send_mail(self.id, force_send=True)
+        demo_if_demo_identifier = 'demo' if self.peppol_eas == 'odemo' else False
+        return demo_if_demo_identifier or peppol_user.edi_mode or config_param or 'prod'

@@ -89,17 +89,6 @@ export class OdooPivotModel extends PivotModel {
         this.resetTableStructure();
     }
 
-    updateSortColumn(sortedColumn) {
-        this.definition.sortedColumn = sortedColumn;
-        this.resetTableStructure();
-    }
-
-    updateCollapsedDomains(collapsedDomains) {
-        console.log("updateCollapsedDomains", collapsedDomains);
-        this.definition.collapsedDomains = collapsedDomains;
-        this.resetTableStructure();
-    }
-
     getDefinition() {
         return this.definition;
     }
@@ -140,7 +129,7 @@ export class OdooPivotModel extends PivotModel {
         const { cols, rows } = this._getColsRowsValuesFromDomain(domain);
         const group = JSON.stringify([rows, cols]);
         const values = this.data.measurements[group];
-        const measurementId = this._getAggregateSpec(measure);
+        const measurementId = this._computeMeasurementId(measure);
 
         if (values && (values[0][measurementId] || values[0][measurementId] === 0)) {
             return values[0][measurementId];
@@ -231,24 +220,15 @@ export class OdooPivotModel extends PivotModel {
     }
 
     resetTableStructure() {
-        this._collapsedTableStructure = undefined;
-        this._expandedTableStructure = undefined;
+        this._tableStructure = undefined;
     }
 
-    getCollapsedTableStructure() {
-        if (this._collapsedTableStructure === undefined) {
+    getTableStructure() {
+        if (this._tableStructure === undefined) {
             // lazy build the structure
-            this._collapsedTableStructure = this._buildTableStructure("collapsed");
+            this._tableStructure = this._buildTableStructure();
         }
-        return this._collapsedTableStructure;
-    }
-
-    getExpandedTableStructure() {
-        if (this._expandedTableStructure === undefined) {
-            // lazy build the structure
-            this._expandedTableStructure = this._buildTableStructure("expanded");
-        }
-        return this._expandedTableStructure;
+        return this._tableStructure;
     }
 
     /**
@@ -283,11 +263,9 @@ export class OdooPivotModel extends PivotModel {
     }
 
     /**
-     * Build the table structure
-     * @param {"collapsed" | "expanded"} mode
      * @returns {SpreadsheetPivotTable}
      */
-    _buildTableStructure(mode) {
+    _buildTableStructure() {
         const cols = this._getSpreadsheetCols();
         const rows = this._getSpreadsheetRows(this.data.rowGroupTree);
         rows.push(rows.shift()); //Put the Total row at the end.
@@ -302,9 +280,7 @@ export class OdooPivotModel extends PivotModel {
         for (const row of this.getDefinition().rows) {
             fieldsType[row.fieldName] = row.type;
         }
-        const collapsedDomains =
-            mode === "collapsed" ? this.getDefinition().collapsedDomains : undefined;
-        return new SpreadsheetPivotTable(cols, rows, measures, fieldsType, collapsedDomains);
+        return new SpreadsheetPivotTable(cols, rows, measures, fieldsType);
     }
 
     //--------------------------------------------------------------------------
@@ -434,22 +410,22 @@ export class OdooPivotModel extends PivotModel {
      */
     _parsePivotFormulaWithPosition(dimensionWithGranularity, groupValueString, cols, rows) {
         const position = toNumber(groupValueString, DEFAULT_LOCALE) - 1;
-        const table = this.getExpandedTableStructure();
         let tree;
         if (this._isCol(dimensionWithGranularity)) {
-            tree = table.getColTree();
+            tree = this.data.colGroupTree;
             for (const col of cols) {
-                tree = tree && tree.find((child) => child.value === col)?.children;
+                tree = tree && tree.directSubTrees.get(col);
             }
         } else {
-            tree = table.getRowTree();
+            tree = this.data.rowGroupTree;
             for (const row of rows) {
-                tree = tree && tree.find((child) => child.value === row)?.children;
+                tree = tree && tree.directSubTrees.get(row);
             }
         }
         if (tree) {
-            const value = tree[position]?.value;
-            return value !== undefined ? value : NO_RECORD_AT_THIS_POSITION;
+            const treeKeys = tree.sortedKeys || [...tree.directSubTrees.keys()];
+            const sortedKey = treeKeys[position];
+            return sortedKey !== undefined ? sortedKey : NO_RECORD_AT_THIS_POSITION;
         }
         return NO_RECORD_AT_THIS_POSITION;
     }
@@ -589,28 +565,6 @@ export class OdooPivotModel extends PivotModel {
     }
 
     /**
-     * This method is used to compute the aggregate spec of a measurement in the
-     * data of the web model. It's needed since we support to define an
-     * aggregator for a field.
-     */
-    _getAggregateSpec(measure) {
-        if (measure.fieldName === "__count") {
-            return "__count";
-        }
-        if (measure.aggregator) {
-            return `${measure.fieldName}:${measure.aggregator}`;
-        }
-        if (measure.type === "many2one") {
-            return `${measure.fieldName}:count_distinct`;
-        }
-        const field = this.metaData.fields[measure.fieldName];
-        if (!field.aggregator) {
-            throw new Error(`Field ${measure.fieldName} doesn't have a default aggregator`);
-        }
-        return `${measure.fieldName}:${field.aggregator}`;
-    }
-
-    /**
      * @override
      * @protected
      * @return {string[]}
@@ -618,25 +572,50 @@ export class OdooPivotModel extends PivotModel {
     _getMeasureSpecs() {
         return this.getDefinition()
             .measures.filter((measure) => !measure.computedBy)
-            .map(this._getAggregateSpec, this);
+            .map((measure) => {
+                const measurementId = `${measure.fieldName}_${measure.aggregator}_id`;
+                if (measure.type === "many2one" && !measure.aggregator) {
+                    return `${measure.fieldName}:count_distinct`;
+                }
+                if (measure.fieldName === "__count") {
+                    // Remove aggregator that is not supported by python
+                    return "__count";
+                }
+                return measure.aggregator
+                    ? `${measurementId}:${measure.aggregator}(${measure.fieldName})`
+                    : measure.fieldName;
+            });
     }
 
     /**
      * @override to add the order by clause to the read_group kwargs
      */
-    async _getGroupsSubdivision(params, groupInfo) {
+    _getSubGroups(groupBys, params) {
         const { columns, rows } = this.getDefinition();
-        const allGroupBys = params.groupingSets.flat();
         const order = columns
             .concat(rows)
             .filter(
-                (dimension) =>
-                    dimension.order && allGroupBys.includes(dimension.nameWithGranularity)
+                (dimension) => dimension.order && groupBys.includes(dimension.nameWithGranularity)
             )
             .map((dimension) => `${dimension.nameWithGranularity} ${dimension.order}`)
             .join(",");
-        params.kwargs.order = order;
-        return super._getGroupsSubdivision(params, groupInfo);
+        params.kwargs.orderby = order;
+        return super._getSubGroups(groupBys, params);
+    }
+
+    /**
+     * This method is used to compute the identifier of a measurement in the
+     * data of the web model. It's needed since we support to define an
+     * aggregator for a field.
+     */
+    _computeMeasurementId(measure) {
+        if (measure.fieldName === "__count") {
+            return "__count";
+        }
+        if (measure.aggregator) {
+            return `${measure.fieldName}_${measure.aggregator}_id`;
+        }
+        return measure.fieldName;
     }
 
     /**
@@ -648,7 +627,7 @@ export class OdooPivotModel extends PivotModel {
         return this.getDefinition()
             .measures.filter((measure) => !measure.computedBy)
             .reduce((measurements, measure) => {
-                const measurementId = this._getAggregateSpec(measure);
+                const measurementId = this._computeMeasurementId(measure);
                 var measurement = group[measurementId];
                 if (measurement instanceof Array) {
                     // case field is many2one and used as measure and groupBy simultaneously
@@ -669,14 +648,14 @@ export class OdooPivotModel extends PivotModel {
      */
     _getCellValue(groupId, measureName, originIndexes, config) {
         const measure = this.getDefinition().measures.find((m) => m.fieldName === measureName);
-        const measurementId = this._getAggregateSpec(measure);
+        const measurementId = this._computeMeasurementId(measure);
         var key = JSON.stringify(groupId);
         if (!config.data.measurements[key]) {
             return;
         }
-        var values = originIndexes.map(
-            (originIndex) => config.data.measurements[key][originIndex][measurementId]
-        );
+        var values = originIndexes.map((originIndex) => {
+            return config.data.measurements[key][originIndex][measurementId];
+        });
         return values[0];
     }
 }

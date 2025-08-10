@@ -14,8 +14,11 @@ Auto-complete partner companies' data
         'iap_mail',
     ],
     'data': [
+        'security/ir.model.access.csv',
+        'views/res_partner_views.xml',
         'views/res_company_views.xml',
         'views/res_config_settings_views.xml',
+        'data/cron.xml',
         'data/iap_service_data.xml',
     ],
     'auto_install': True,
@@ -25,13 +28,12 @@ Auto-complete partner companies' data
             'partner_autocomplete/static/src/js/*',
             'partner_autocomplete/static/src/xml/*',
         ],
-        'web.jsvat_lib': [
+        'web.tests_assets': [
             'partner_autocomplete/static/lib/**/*',
         ],
-        'web.assets_unit_tests': [
+        'web.qunit_suite_tests': [
             'partner_autocomplete/static/tests/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

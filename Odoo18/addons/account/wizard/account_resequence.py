@@ -8,7 +8,7 @@ from collections import defaultdict
 import json
 
 
-class AccountResequenceWizard(models.TransientModel):
+class ReSequenceWizard(models.TransientModel):
     _name = 'account.resequence.wizard'
     _description = 'Remake the sequence of Journal Entries.'
 
@@ -22,9 +22,9 @@ class AccountResequenceWizard(models.TransientModel):
     preview_moves = fields.Text(compute='_compute_preview_moves')
 
     @api.model
-    def default_get(self, fields):
-        values = super().default_get(fields)
-        if 'move_ids' not in fields:
+    def default_get(self, fields_list):
+        values = super(ReSequenceWizard, self).default_get(fields_list)
+        if 'move_ids' not in fields_list:
             return values
         active_move_ids = self.env['account.move']
         if self.env.context['active_model'] == 'account.move' and 'active_ids' in self.env.context:

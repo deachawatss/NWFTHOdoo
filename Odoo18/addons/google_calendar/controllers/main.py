@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import http
@@ -9,7 +10,7 @@ from odoo.addons.google_account.models.google_service import _get_client_secret
 
 class GoogleCalendarController(CalendarController):
 
-    @http.route('/google_calendar/sync_data', type='jsonrpc', auth='user')
+    @http.route('/google_calendar/sync_data', type='json', auth='user')
     def google_calendar_sync_data(self, model, **kw):
         """ This route/function is called when we want to synchronize Odoo
             calendar with Google Calendar.

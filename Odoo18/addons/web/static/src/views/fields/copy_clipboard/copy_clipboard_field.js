@@ -45,17 +45,9 @@ class CopyClipboardField extends Component {
 export class CopyClipboardButtonField extends CopyClipboardField {
     static template = "web.CopyClipboardButtonField";
     static components = { CopyButton };
-    static props = {
-        ...CopyClipboardField.props,
-        btnClass: { type: String, optional: true },
-    };
-    static defaultProps = {
-        ...CopyClipboardField.defaultProps,
-        btnClass: "primary",
-    };
 
     get copyButtonClassName() {
-        return `o_btn_${this.type}_copy btn-${this.props.btnClass} rounded-2`;
+        return `o_btn_${this.type}_copy btn-primary rounded-2`;
     }
 }
 
@@ -63,7 +55,7 @@ export class CopyClipboardCharField extends CopyClipboardField {
     static components = { Field: CharField, CopyButton };
 
     get copyButtonIcon() {
-        return "fa-clipboard";
+        return "fa-clone";
     }
 }
 
@@ -77,9 +69,9 @@ export class CopyClipboardURLField extends CopyClipboardField {
 
 // ----------------------------------------------------------------------------
 
-function extractProps({ string, attrs }) {
+function extractProps({ attrs }) {
     return {
-        string,
+        string: attrs.string,
         disabledExpr: attrs.disabled,
     };
 }
@@ -87,10 +79,7 @@ function extractProps({ string, attrs }) {
 export const copyClipboardButtonField = {
     component: CopyClipboardButtonField,
     displayName: _t("Copy to Clipboard"),
-    extractProps: (fieldInfo) => ({
-        ...extractProps(fieldInfo),
-        btnClass: fieldInfo.options.btn_class,
-    }),
+    extractProps,
 };
 
 registry.category("fields").add("CopyClipboardButton", copyClipboardButtonField);

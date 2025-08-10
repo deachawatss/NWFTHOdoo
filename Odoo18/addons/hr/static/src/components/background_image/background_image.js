@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { registry } from '@web/core/registry';
 
 import { ImageField, imageField } from '@web/views/fields/image/image_field';

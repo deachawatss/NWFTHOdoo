@@ -1,8 +1,7 @@
 import { Attachment } from "@mail/core/common/attachment_model";
 import { patch } from "@web/core/utils/patch";
 
-/** @type {import("models").Attachment} */
-const attachmentPatch = {
+patch(Attachment.prototype, {
     get isViewable() {
         return !this.voice && super.isViewable;
     },
@@ -12,10 +11,4 @@ const attachmentPatch = {
         }
         super.delete(...arguments);
     },
-    onClickAttachment(attachment) {
-        if (!attachment.voice) {
-            super.onClickAttachment(attachment);
-        }
-    },
-};
-patch(Attachment.prototype, attachmentPatch);
+});

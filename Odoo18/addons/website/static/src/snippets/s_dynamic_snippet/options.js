@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import options from "@web_editor/js/editor/snippets.options";
 import { rpc } from "@web/core/network/rpc";
 
@@ -240,9 +242,6 @@ const dynamicSnippetOptions = options.Class.extend({
                 button.dataset.img = data[id].thumb;
             } else {
                 button.innerText = data[id].name;
-            }
-            if (data[id].help) {
-                button.title = data[id].help;
             }
             selectUserValueWidgetElement.appendChild(button);
         }

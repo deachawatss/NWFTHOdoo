@@ -1,9 +1,10 @@
-import { kanbanView } from "@web/views/kanban/kanban_view";
-import { ProjectTaskRelationalModel } from "@project/views/project_task_relational_model";
-import { ProjectTaskControlPanel } from "@project/views/project_task_control_panel/project_task_control_panel";
+/** @odoo-module */
 
-export class ProjectSharingTaskKanbanModel extends ProjectTaskRelationalModel {
-    async _webReadGroup(config) {
+import { kanbanView } from "@web/views/kanban/kanban_view";
+import { RelationalModel } from "@web/model/relational_model/relational_model";
+
+export class ProjectSharingTaskKanbanModel extends RelationalModel {
+    async _webReadGroup(config, firstGroupByName, orderBy) {
         config.context = {
             ...config.context,
             project_kanban: true,
@@ -12,5 +13,4 @@ export class ProjectSharingTaskKanbanModel extends ProjectTaskRelationalModel {
     }
 }
 
-kanbanView.ControlPanel = ProjectTaskControlPanel;
 kanbanView.Model = ProjectSharingTaskKanbanModel;

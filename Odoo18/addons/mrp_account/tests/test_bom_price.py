@@ -20,9 +20,9 @@ class TestBomPriceCommon(common.TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         # Required for `product_uom_id ` to be visible in the view
-        cls.env.user.group_ids += cls.env.ref('uom.group_uom')
+        cls.env.user.groups_id += cls.env.ref('uom.group_uom')
         # Required for `product_id ` to be visible in the view
-        cls.env.user.group_ids += cls.env.ref('product.group_product_variant')
+        cls.env.user.groups_id += cls.env.ref('product.group_product_variant')
         cls.Product = cls.env['product.product']
         cls.Bom = cls.env['mrp.bom']
 
@@ -116,6 +116,7 @@ class TestBomPrice(TestBomPriceCommon):
         workcenter_form1 = Form(self.env['mrp.workcenter'])
         workcenter_form1.name = 'Workcenter'
         workcenter_form1.time_efficiency = 80
+        workcenter_form1.default_capacity = 2
         workcenter_form1.oee_target = 100
         workcenter_form1.time_start = 15
         workcenter_form1.time_stop = 15

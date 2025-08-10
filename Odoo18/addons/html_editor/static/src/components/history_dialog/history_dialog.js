@@ -1,3 +1,4 @@
+/** @odoo-module **/
 import { Dialog } from "@web/core/dialog/dialog";
 import { Notebook } from "@web/core/notebook/notebook";
 import { formatDateTime } from "@web/core/l10n/dates";
@@ -6,7 +7,7 @@ import { memoize } from "@web/core/utils/functions";
 import { Component, onMounted, useState, markup } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { user } from "@web/core/user";
-import { HtmlViewer } from "@html_editor/components/html_viewer/html_viewer";
+import { HtmlViewer } from "@html_editor/fields/html_viewer";
 import { READONLY_MAIN_EMBEDDINGS } from "@html_editor/others/embedded_components/embedding_sets";
 
 const { DateTime } = luxon;
@@ -37,7 +38,6 @@ export class HistoryDialog extends Component {
         revisionContent: null,
         revisionComparison: null,
         revisionId: null,
-        revisionLoading: false,
     });
 
     setup() {
@@ -65,11 +65,11 @@ export class HistoryDialog extends Component {
         if (this.state.revisionId === revisionId) {
             return;
         }
-        this.state.revisionLoading = true;
+        this.env.services.ui.block();
         this.state.revisionId = revisionId;
         this.state.revisionContent = await this.getRevisionContent(revisionId);
         this.state.revisionComparison = await this.getRevisionComparison(revisionId);
-        this.state.revisionLoading = false;
+        this.env.services.ui.unblock();
     }
 
     getRevisionComparison = memoize(

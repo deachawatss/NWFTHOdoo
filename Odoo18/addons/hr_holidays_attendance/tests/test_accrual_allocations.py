@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import datetime
@@ -18,25 +19,24 @@ class TestAccrualAllocationsAttendance(TestHrHolidaysCommon):
         cls.leave_type = cls.env['hr.leave.type'].create({
             'name': 'Paid Time Off',
             'time_type': 'leave',
-            'requires_allocation': True,
+            'requires_allocation': 'yes',
             'allocation_validation_type': 'hr',
         })
 
     def test_frequency_hourly_attendance(self):
-        with freeze_time("2017-12-05"):
+        with freeze_time("2017-12-5"):
             accrual_plan = self.env['hr.leave.accrual.plan'].with_context(tracking_disable=True).create({
+                'name': 'Accrual Plan For Test',
                 'is_based_on_worked_time': True,
-                'can_be_carryover': True,
                 'level_ids': [(0, 0, {
-                    'milestone_date': 'after',
                     'start_count': 1,
                     'start_type': 'day',
                     'added_value': 1,
                     'added_value_type': 'day',
-                    'frequency': 'worked_hours',
+                    'frequency': 'hourly',
+                    'frequency_hourly_source': 'attendance',
                     'cap_accrued_time': True,
-                    'maximum_leave': 10000,
-                    'action_with_unused_accruals': 'all',
+                    'maximum_leave': 10000
                 })],
             })
             allocation = self.env['hr.leave.allocation'].with_user(self.user_hrmanager_id).with_context(tracking_disable=True).create({
@@ -47,7 +47,7 @@ class TestAccrualAllocationsAttendance(TestHrHolidaysCommon):
                 'number_of_days': 0,
                 'allocation_type': 'accrual',
             })
-            allocation.action_approve()
+            allocation.action_validate()
             self.assertFalse(allocation.nextcall, 'There should be no nextcall set on the allocation.')
             self.assertEqual(allocation.number_of_days, 0, 'There should be no days allocated yet.')
             allocation._update_accrual()
@@ -73,17 +73,15 @@ class TestAccrualAllocationsAttendance(TestHrHolidaysCommon):
             'name': 'Accrual Plan For Test',
             'is_based_on_worked_time': False,
             'accrued_gain_time': 'end',
-            'can_be_carryover': True,
             'carryover_date': 'year_start',
             'level_ids': [(0, 0, {
-                'milestone_date': 'after',
                 'start_count': 1,
                 'added_value': 1,
                 'added_value_type': 'hour',
-                'frequency': 'worked_hours',
+                'frequency': 'hourly',
                 'cap_accrued_time': True,
                 'maximum_leave': 100,
-                'action_with_unused_accruals': 'all',
+                'frequency_hourly_source': 'attendance'
             })],
         })
         self.env['hr.attendance'].create({

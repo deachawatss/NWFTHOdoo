@@ -1,4 +1,7 @@
+/** @odoo-module **/
+
 import CourseJoin from "@website_slides/js/slides_course_join";
+import wUtils from "@website/js/utils";
 
 const CourseJoinWidget = CourseJoin.courseJoinWidget;
 
@@ -26,18 +29,10 @@ CourseJoinWidget.include({
         if (this.channel.channelEnroll === 'payment' && !this.publicUser) {
             const self = this;
             this.beforeJoin().then(function () {
-                self.call('websiteSale', 'addToCart',
-                    {
-                        // TODO VCR Ensure productTemplateId is always provided to `addToCart`.
-                        // Currently, this works because the product configurator check is bypassed
-                        // when the `isBuyNow` option is `True`.
-                        productTemplateId: false,
-                        productId: self.productId,
-                    },
-                    {
-                        isBuyNow: true,
-                    },
-                );
+                wUtils.sendRequest('/shop/cart/update', {
+                    product_id: self.productId,
+                    express: 1,
+                });
             });
         } else {
             this._super.apply(this, arguments);

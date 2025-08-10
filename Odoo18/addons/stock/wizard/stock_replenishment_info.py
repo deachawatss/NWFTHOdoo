@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import babel.dates
@@ -7,8 +8,9 @@ from dateutil.relativedelta import relativedelta
 
 
 from odoo import api, fields, models, SUPERUSER_ID, _
-from odoo.fields import Domain
+from odoo.osv.expression import AND
 from odoo.tools.date_utils import get_month, subtract
+from odoo.tools.float_utils import float_compare
 from odoo.tools.misc import get_lang, format_date
 
 
@@ -49,13 +51,13 @@ class StockReplenishmentInfo(models.TransientModel):
                 'lead_days_description': lead_days_description,
                 'today': format_date(self.env, fields.Date.today()),
                 'trigger': orderpoint.trigger,
-                'qty_forecast': self.env['ir.qweb.field.float'].value_to_html(orderpoint.qty_forecast, {'decimal_precision': 'Product Unit'}),
-                'qty_to_order': self.env['ir.qweb.field.float'].value_to_html(orderpoint.qty_to_order, {'decimal_precision': 'Product Unit'}),
-                'product_min_qty': self.env['ir.qweb.field.float'].value_to_html(orderpoint.product_min_qty, {'decimal_precision': 'Product Unit'}),
-                'product_max_qty': self.env['ir.qweb.field.float'].value_to_html(orderpoint.product_max_qty, {'decimal_precision': 'Product Unit'}),
+                'qty_forecast': self.env['ir.qweb.field.float'].value_to_html(orderpoint.qty_forecast, {'decimal_precision': 'Product Unit of Measure'}),
+                'qty_to_order': self.env['ir.qweb.field.float'].value_to_html(orderpoint.qty_to_order, {'decimal_precision': 'Product Unit of Measure'}),
+                'product_min_qty': self.env['ir.qweb.field.float'].value_to_html(orderpoint.product_min_qty, {'decimal_precision': 'Product Unit of Measure'}),
+                'product_max_qty': self.env['ir.qweb.field.float'].value_to_html(orderpoint.product_max_qty, {'decimal_precision': 'Product Unit of Measure'}),
                 'product_uom_name': orderpoint.product_uom_name,
                 'virtual': orderpoint.trigger == 'manual' and orderpoint.create_uid.id == SUPERUSER_ID,
-                'visibility_days': orderpoint.visibility_days if orderpoint.product_uom.compare(orderpoint.qty_forecast, orderpoint.product_min_qty) < 0 else 0,
+                'visibility_days': orderpoint.visibility_days if float_compare(orderpoint.qty_forecast, orderpoint.product_min_qty, precision_rounding=orderpoint.product_uom.rounding) < 0 else 0,
                 'visibility_days_date': format_date(self.env, replenishment_report.orderpoint_id.lead_days_date + relativedelta(days=orderpoint.visibility_days))
             })
 
@@ -67,18 +69,18 @@ class StockReplenishmentInfo(models.TransientModel):
             first_month = subtract(today, months=2)
             date_from, dummy = get_month(first_month)
             dummy, date_to = get_month(today)
-            domain = Domain([
+            domain = [
                 ('product_id', '=', replenishment_report.product_id.id),
                 ('date', '>=', date_from),
                 ('date', '<=', datetime.combine(date_to, time.max)),
                 ('state', '=', 'done'),
                 ('company_id', '=', replenishment_report.orderpoint_id.company_id.id)
-            ])
+            ]
             quantity_by_month_out = self.env['stock.move']._read_group(
-                domain & Domain('location_dest_id.usage', '=', 'customer'),
+                AND([domain, [('location_dest_id.usage', '=', 'customer')]]),
                 ['date:month'], ['product_qty:sum'])
             quantity_by_month_returned = dict(self.env['stock.move']._read_group(
-                domain & Domain('location_id.usage', '=', 'customer'),
+                AND([domain, [('location_id.usage', '=', 'customer')]]),
                 ['date:month'], ['product_qty:sum']))
             locale = get_lang(self.env).code
             fmt = models.READ_GROUP_DISPLAY_FORMAT['month']

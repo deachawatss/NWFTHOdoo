@@ -1,46 +1,31 @@
 import { _t } from "@web/core/l10n/translation";
-import { Component, useState, onMounted, useRef, useEffect, useExternalListener } from "@odoo/owl";
-import { useService } from "@web/core/utils/hooks";
+import { Component, useState, onMounted, useRef } from "@odoo/owl";
+import { useAutofocus, useService } from "@web/core/utils/hooks";
 import { browser } from "@web/core/browser/browser";
 import { cleanZWChars, deduceURLfromText } from "./utils";
-import { useColorPicker } from "@web/core/color_picker/color_picker";
-import { CheckBox } from "@web/core/checkbox/checkbox";
-
-const DEFAULT_CUSTOM_TEXT_COLOR = "#714B67";
-const DEFAULT_CUSTOM_FILL_COLOR = "#ffffff";
 
 export class LinkPopover extends Component {
     static template = "html_editor.linkPopover";
     static props = {
-        document: { validate: (p) => p.nodeType === Node.DOCUMENT_NODE },
-        linkElement: { validate: (el) => el.nodeType === Node.ELEMENT_NODE },
+        linkEl: { validate: (el) => el.nodeType === Node.ELEMENT_NODE },
         onApply: Function,
-        onChange: Function,
-        onDiscard: Function,
         onRemove: Function,
         onCopy: Function,
         onClose: Function,
-        onEdit: Function,
         getInternalMetaData: Function,
         getExternalMetaData: Function,
         getAttachmentMetadata: Function,
         isImage: Boolean,
-        showReplaceTitleBanner: Boolean,
-        type: String,
         LinkPopoverState: Object,
+        type: String,
         recordInfo: Object,
         canEdit: { type: Boolean, optional: true },
-        canRemove: { type: Boolean, optional: true },
         canUpload: { type: Boolean, optional: true },
         onUpload: { type: Function, optional: true },
-        allowCustomStyle: { type: Boolean, optional: true },
-        allowTargetBlank: { type: Boolean, optional: true },
     };
     static defaultProps = {
         canEdit: true,
-        canRemove: true,
     };
-    static components = { CheckBox };
     colorsData = [
         { type: "", label: _t("Link"), btnPreview: "link" },
         { type: "primary", label: _t("Button Primary"), btnPreview: "primary" },
@@ -56,29 +41,21 @@ export class LinkPopover extends Component {
         { size: "", label: _t("Medium") },
         { size: "lg", label: _t("Large") },
     ];
-    borderData = [
-        { style: "solid", label: "━━━" },
-        { style: "dashed", label: "╌╌╌" },
-        { style: "dotted", label: "┄┄┄" },
-        { style: "double", label: "═══" },
+    buttonStylesData = [
+        { style: "fill", label: _t("Fill") },
+        { style: "fill,rounded-circle", label: _t("Fill + Rounded") },
+        { style: "outline", label: _t("Outline") },
+        { style: "outline,rounded-circle", label: _t("Outline + Rounded") },
     ];
     setup() {
         this.ui = useService("ui");
         this.notificationService = useService("notification");
         this.uploadService = useService("uploadLocalFiles");
 
-        const textContent = cleanZWChars(this.props.linkElement.textContent);
-        const labelEqualsUrl =
-            textContent === this.props.linkElement.getAttribute("href") ||
-            textContent + "/" === this.props.linkElement.getAttribute("href");
-        const computedStyle = this.props.document.defaultView.getComputedStyle(
-            this.props.linkElement
-        );
         this.state = useState({
             editing: this.props.LinkPopoverState.editing,
-            // `.getAttribute("href")` instead of `.href` to keep relative url
-            url: this.props.linkElement.getAttribute("href") || this.deduceUrl(textContent),
-            label: labelEqualsUrl ? "" : textContent,
+            url: this.props.linkEl.href || "",
+            label: cleanZWChars(this.props.linkEl.textContent),
             previewIcon: {
                 /** @type {'fa'|'imgSrc'|'mimetype'} */
                 type: "fa",
@@ -88,137 +65,43 @@ export class LinkPopover extends Component {
             urlDescription: "",
             linkPreviewName: "",
             imgSrc: "",
+            iconSrc: "",
+            classes:
+                this.props.type === "primary"
+                    ? "btn btn-primary"
+                    : this.props.linkEl.className || "",
             type:
                 this.props.type ||
-                this.props.linkElement.className
-                    .match(/btn(-[a-z0-9_-]*)(primary|secondary|custom)/)
-                    ?.pop() ||
+                this.props.linkEl.className.match(/btn(-[a-z0-9_-]*)(primary|secondary)/)?.pop() ||
                 "",
-            linkTarget: this.props.linkElement.target === "_blank" ? "_blank" : "",
-            directDownload: true,
-            isDocument: false,
-            buttonSize: this.props.linkElement.className.match(/btn-(sm|lg)/)?.[1] || "",
-            customBorderSize: computedStyle.borderWidth.replace("px", "") || "1",
-            customBorderStyle: computedStyle.borderStyle || "solid",
+            buttonSize: this.props.linkEl.className.match(/btn-(sm|lg)/)?.[1] || "",
+            buttonStyle: this.initButtonStyle(this.props.linkEl.className),
             isImage: this.props.isImage,
-            showReplaceTitleBanner: this.props.showReplaceTitleBanner,
-            showLabel: !this.props.linkElement.childElementCount,
+            showLabel: !this.props.linkEl.childElementCount,
         });
 
-        this.customTextColorState = useState({
-            selectedColor: computedStyle.color || DEFAULT_CUSTOM_TEXT_COLOR,
-            defaultTab: "solid",
-        });
-        this.customTextResetPreviewColor = this.customTextColorState.selectedColor;
-        this.customFillColorState = useState({
-            selectedColor: computedStyle.backgroundColor || DEFAULT_CUSTOM_FILL_COLOR,
-            defaultTab: "solid",
-        });
-        this.customFillResetPreviewColor = this.customFillColorState.selectedColor;
-        this.customBorderColorState = useState({
-            selectedColor: computedStyle.borderColor || DEFAULT_CUSTOM_TEXT_COLOR,
-            defaultTab: "solid",
-        });
-        this.customBorderResetPreviewColor = this.customBorderColorState.selectedColor;
-
-        if (this.props.allowCustomStyle) {
-            const createCustomColorPicker = (refName, colorStateRef, resetValueRef) =>
-                useColorPicker(
-                    refName,
-                    {
-                        state: this[colorStateRef],
-                        getUsedCustomColors: () => [],
-                        colorPrefix: "",
-                        applyColor: (colorValue) => {
-                            this[colorStateRef].selectedColor = colorValue;
-                            this[resetValueRef] = colorValue;
-                        },
-                        applyColorPreview: (colorValue) => {
-                            this[colorStateRef].selectedColor = colorValue;
-                        },
-                        applyColorResetPreview: () => {
-                            this[colorStateRef].selectedColor = this[resetValueRef];
-                        },
-                    },
-                    {
-                        onClose: this.onChange.bind(this),
-                    }
-                );
-            this.customTextColorPicker = createCustomColorPicker(
-                "customTextColorButton",
-                "customTextColorState",
-                "customTextResetPreviewColor"
-            );
-            this.customFillColorPicker = createCustomColorPicker(
-                "customFillColorButton",
-                "customFillColorState",
-                "customFillResetPreviewColor"
-            );
-            this.customBorderColorPicker = createCustomColorPicker(
-                "customBorderColorButton",
-                "customBorderColorState",
-                "customBorderResetPreviewColor"
-            );
-        }
-        this.updateDocumentState();
         this.editingWrapper = useRef("editing-wrapper");
-        this.inputRef = useRef(this.state.isImage ? "url" : "label");
-        useEffect(
-            (el) => {
-                if (el) {
-                    el.focus();
-                }
-            },
-            () => [this.inputRef.el]
-        );
+        useAutofocus({
+            refName: this.state.isImage || this.state.label !== "" ? "url" : "label",
+            mobile: true,
+        });
         onMounted(() => {
             if (!this.state.editing) {
                 this.loadAsyncLinkPreview();
             }
         });
-        const onPointerDown = (ev) => {
-            if (!this.state.url) {
-                this.props.onDiscard();
-            } else if (
-                this.editingWrapper?.el &&
-                !this.state.isImage &&
-                !this.editingWrapper.el.contains(ev.target)
-            ) {
-                this.onClickApply();
-            }
-        };
-        useExternalListener(this.props.document, "pointerdown", onPointerDown);
-        if (this.props.document !== document) {
-            // Listen to pointerdown outside the iframe
-            useExternalListener(document, "pointerdown", onPointerDown);
-        }
     }
-
-    onChange() {
-        // Apply changes to update the link preview.
-        this.props.onChange(
-            this.state.url,
-            this.state.label,
-            this.classes,
-            this.customStyles,
-            this.state.linkTarget,
-            this.state.attachmentId
-        );
-        this.updateDocumentState();
+    initButtonStyle(className) {
+        const styleArray = [
+            className.match(/btn-([a-z0-9_]+)-(primary|secondary)/)?.[1],
+            className.match(/rounded-circle/)?.pop(),
+        ];
+        return styleArray.every(Boolean)
+            ? styleArray.join(",")
+            : styleArray.join("") || className.match(/flat/)?.pop() || "";
     }
     onClickApply() {
         this.state.editing = false;
-        this.applyDeducedUrl();
-        this.props.onApply(
-            this.state.url,
-            this.state.label,
-            this.classes,
-            this.customStyles,
-            this.state.linkTarget,
-            this.state.attachmentId
-        );
-    }
-    applyDeducedUrl() {
         if (this.state.label === "") {
             this.state.label = this.state.url;
         }
@@ -226,24 +109,21 @@ export class LinkPopover extends Component {
         this.state.url = deducedUrl
             ? this.correctLink(deducedUrl)
             : this.correctLink(this.state.url);
+        this.props.onApply(
+            this.state.url,
+            this.state.label,
+            this.state.classes,
+            this.state.attachmentId
+        );
     }
     onClickEdit() {
         this.state.editing = true;
-        this.props.onEdit();
-        this.updateUrlAndLabel();
-    }
-    updateUrlAndLabel() {
-        this.state.url = this.props.linkElement.getAttribute("href");
-
-        const textContent = cleanZWChars(this.props.linkElement.textContent);
-        const labelEqualsUrl =
-            textContent === this.props.linkElement.getAttribute("href") ||
-            textContent + "/" === this.props.linkElement.getAttribute("href");
-        this.state.label = labelEqualsUrl ? "" : textContent;
+        this.state.url = this.props.linkEl.href;
+        this.state.label = cleanZWChars(this.props.linkEl.textContent);
     }
     async onClickCopy(ev) {
         ev.preventDefault();
-        await browser.navigator.clipboard.writeText(this.props.linkElement.href || "");
+        await browser.navigator.clipboard.writeText(this.props.linkEl.href || "");
         this.notificationService.add(_t("Link copied to clipboard."), {
             type: "success",
         });
@@ -255,7 +135,7 @@ export class LinkPopover extends Component {
 
     onKeydownEnter(ev) {
         const isAutoCompleteDropdownOpen = document.querySelector(".o-autocomplete--dropdown-menu");
-        if (ev.key === "Enter" && !isAutoCompleteDropdownOpen && this.state.url) {
+        if (ev.key === "Enter" && !isAutoCompleteDropdownOpen) {
             ev.preventDefault();
             this.onClickApply();
         }
@@ -264,7 +144,6 @@ export class LinkPopover extends Component {
     onKeydown(ev) {
         if (ev.key === "Escape") {
             ev.preventDefault();
-            ev.stopImmediatePropagation();
             this.props.onClose();
         }
     }
@@ -274,53 +153,9 @@ export class LinkPopover extends Component {
         this.onClickApply();
     }
 
-    onClickForceEditMode(ev) {
-        if (this.props.linkElement.href) {
-            const currentUrl = new URL(this.props.linkElement.href);
-            if (
-                browser.location.hostname === currentUrl.hostname &&
-                !currentUrl.pathname.startsWith("/@/")
-            ) {
-                ev.preventDefault();
-                currentUrl.pathname = `/@${currentUrl.pathname}`;
-                browser.open(currentUrl);
-            }
-        }
-    }
-
-    onClickDirectDownload(checked) {
-        this.state.directDownload = checked;
-        this.state.url = this.state.url.replace("&download=true", "");
-        if (this.state.directDownload) {
-            this.state.url += "&download=true";
-        }
-    }
-
-    onClickNewWindow(checked) {
-        this.state.linkTarget = checked ? "_blank" : "";
-    }
-
     /**
      * @private
      */
-    async updateDocumentState() {
-        const url = this.state.url;
-        const urlObject = URL.parse(url, this.props.document.URL);
-        if (
-            url &&
-            (url.startsWith("/web/content/") ||
-                (urlObject &&
-                    urlObject.pathname.startsWith("/web/content") &&
-                    urlObject.host === document.location.host))
-        ) {
-            const { type } = await this.props.getAttachmentMetadata(url);
-            this.state.isDocument = type !== "url";
-            this.state.directDownload = url.includes("&download=true");
-        } else {
-            this.state.isDocument = false;
-            this.state.directDownload = true;
-        }
-    }
     correctLink(url) {
         if (
             url &&
@@ -331,10 +166,7 @@ export class LinkPopover extends Component {
             !url.startsWith("#") &&
             !url.startsWith("${")
         ) {
-            url = "https://" + url;
-        }
-        if (url && (url.startsWith("http:") || url.startsWith("https:"))) {
-            url = URL.parse(url) ? url : "";
+            url = "http://" + url;
         }
         return url;
     }
@@ -344,7 +176,7 @@ export class LinkPopover extends Component {
             // Text begins with a known protocol, accept it as valid URL.
             return text;
         } else {
-            return deduceURLfromText(text, this.props.linkElement) || "";
+            return deduceURLfromText(text, this.props.linkEl) || "";
         }
     }
     /**
@@ -363,13 +195,6 @@ export class LinkPopover extends Component {
             this.state.previewIcon.value = "fa-question-circle-o";
             return;
         }
-        if (this.isLogoutUrl()) {
-            // The session ends if we fetch this url, so the preview is hardcoded
-            this.resetPreview();
-            this.state.urlTitle = _t("Logout");
-            this.state.previewIcon.value = "fa-sign-out";
-            return;
-        }
         if (this.isAttachmentUrl()) {
             const { name, mimetype } = await this.props.getAttachmentMetadata(this.state.url);
             this.resetPreview();
@@ -377,8 +202,9 @@ export class LinkPopover extends Component {
             this.state.previewIcon = { type: "mimetype", value: mimetype };
             return;
         }
+
         try {
-            url = new URL(this.state.url, this.props.document.URL); // relative to absolute
+            url = new URL(this.state.url); // relative to absolute
         } catch {
             // Invalid URL, might happen with editor unsuported protocol. eg type
             // `geo:37.786971,-122.399677`, become `http://geo:37.786971,-122.399677`
@@ -421,7 +247,7 @@ export class LinkPopover extends Component {
             // Set state based on cached link meta data
             // for record missing errors, we push a warning that the url is likely invalid
             // for other errors, we log them to not block the ui
-            const internalMetadata = await this.props.getInternalMetaData(url.href);
+            const internalMetadata = await this.props.getInternalMetaData(this.state.url);
             if (internalMetadata.favicon) {
                 this.state.previewIcon = {
                     type: "imgSrc",
@@ -459,33 +285,17 @@ export class LinkPopover extends Component {
         }
     }
 
-    get classes() {
-        let classes = [...this.props.linkElement.classList]
-            .filter((value) => !value.match(/btn(-[a-z0-9]+)*/))
-            .join(" ");
-
-        if (this.state.type) {
-            classes += ` btn btn-fill-${this.state.type}`;
-        }
-
-        if (this.state.buttonSize) {
-            classes += ` btn-${this.state.buttonSize}`;
-        }
-
-        return classes.trim();
-    }
-
-    get customStyles() {
-        if (!this.props.allowCustomStyle || this.state.type !== "custom") {
-            return false;
-        }
-        let customStyles = `color: ${this.customTextColorState.selectedColor}; `;
-        customStyles += `background-color: ${this.customFillColorState.selectedColor}; `;
-        customStyles += `border-width: ${this.state.customBorderSize}px; `;
-        customStyles += `border-color: ${this.customBorderColorState.selectedColor}; `;
-        customStyles += `border-style: ${this.state.customBorderStyle}; `;
-
-        return customStyles;
+    /**
+     * link style preview in editing mode
+     */
+    onChangeClasses() {
+        const shapes = this.state.buttonStyle ? this.state.buttonStyle.split(",") : [];
+        const style = ["outline", "fill"].includes(shapes[0]) ? `${shapes[0]}-` : "fill-";
+        const shapeClasses = shapes.slice(style ? 1 : 0).join(" ");
+        this.state.classes =
+            (this.state.type ? `btn btn-${style}${this.state.type}` : "") +
+            (this.state.type && shapeClasses ? ` ${shapeClasses}` : "") +
+            (this.state.type && this.state.buttonSize ? " btn-" + this.state.buttonSize : "");
     }
 
     async uploadFile() {
@@ -500,12 +310,8 @@ export class LinkPopover extends Component {
         this.state.url = getURL(attachment, { download: true, unique: true, accessToken: true });
         this.state.label ||= attachment.name;
         this.state.attachmentId = attachment.id;
-        this.onChange();
     }
 
-    isLogoutUrl() {
-        return !!this.state.url.match(/\/web\/session\/logout\b/);
-    }
     isAttachmentUrl() {
         return !!this.state.url.match(/\/web\/content\/\d+/);
     }

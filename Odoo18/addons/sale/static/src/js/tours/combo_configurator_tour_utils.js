@@ -1,4 +1,4 @@
-import { queryAll } from '@odoo/hoot-dom';
+import { queryAll, queryValue, waitUntil } from '@odoo/hoot-dom';
 
 function comboSelector(comboName) {
     return `
@@ -20,12 +20,9 @@ function assertComboCount(count) {
     return {
         content: `Assert that there are ${count} combos`,
         trigger: '.sale-combo-configurator-dialog',
-        run() {
-            const selector = `.sale-combo-configurator-dialog [name="sale_combo_configurator_title"]`;
-            if (queryAll(selector).length !== count) {
-                console.error(`Assertion failed`);
-            }
-        },
+        run: () => queryAll(
+            '.sale-combo-configurator-dialog [name="sale_combo_configurator_title"]'
+        ).length === count,
     };
 }
 
@@ -33,12 +30,9 @@ function assertComboItemCount(comboName, count) {
     return {
         content: `Assert that there are ${count} combo items in combo ${comboName}`,
         trigger: comboSelector(comboName),
-        run() {
-            const selector = `${comboSelector(comboName)} + .combo-item-grid .product-card`;
-            if (queryAll(selector).length !== count) {
-                console.error(`Assertion failed`);
-            }
-        },
+        run: () => queryAll(
+            `${comboSelector(comboName)} + .combo-item-grid .product-card`
+        ).length === count,
     };
 }
 
@@ -46,12 +40,9 @@ function assertSelectedComboItemCount(count) {
     return {
         content: `Assert that there are ${count} selected combo items`,
         trigger: '.sale-combo-configurator-dialog',
-        run() {
-            const selector = `.sale-combo-configurator-dialog .combo-item-grid .product-card.selected`;
-            if (queryAll(selector).length !== count) {
-                console.error(`Assertion failed`);
-            }
-        },
+        run: () => queryAll(
+            `.sale-combo-configurator-dialog .combo-item-grid .product-card.selected`
+        ).length === count,
     };
 }
 
@@ -95,9 +86,12 @@ function setQuantity(quantity) {
 }
 
 function assertQuantity(quantity) {
+    const quantitySelector = '.sale-combo-configurator-dialog input[name="sale_quantity"]';
     return {
         content: `Assert that the combo quantity is ${quantity}`,
-        trigger: `.sale-combo-configurator-dialog input[name="sale_quantity"]:value(${quantity})`,
+        trigger: quantitySelector,
+        run: async () =>
+            await waitUntil(() => queryValue(quantitySelector) === quantity, { timeout: 1000 }),
     };
 }
 

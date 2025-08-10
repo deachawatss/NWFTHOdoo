@@ -7,6 +7,8 @@ import { rpc, RPCError } from '@web/core/network/rpc';
 import paymentForm from '@payment/js/payment_form';
 
 paymentForm.include({
+    inlineFormValues: undefined,
+    paypalColor: 'blue',
     selectedOptionId: undefined,
     paypalData: undefined,
 
@@ -22,7 +24,8 @@ paymentForm.include({
     async _expandInlineForm(radio) {
         const providerCode = this._getProviderCode(radio);
         if (providerCode !== 'paypal') {
-            document.getElementById('o_paypal_button_container').classList.add('d-none');
+            document.getElementById('o_paypal_button')?.classList.add('d-none'); // TODO Compatibility layer; to remove in master.
+            document.getElementById('o_paypal_button_container')?.classList.add('d-none');
         }
         this._super(...arguments);
     },
@@ -62,7 +65,7 @@ paymentForm.include({
         this.paypalData ??= {}; // Store the component of each instantiated payment method.
         if (this.selectedOptionId && this.selectedOptionId !== paymentOptionId) {
             this.paypalData[this.selectedOptionId]['enabledButton'].hide()
-            this.paypalData[this.selectedOptionId]['disabledButton'].hide()
+            this.paypalData[this.selectedOptionId]['disabledButton']?.hide() // TODO Compatibility layer; remove the ? in master.
         }
         const currentPayPalData = this.paypalData[paymentOptionId]
         if (currentPayPalData && this.selectedOptionId !== paymentOptionId) {
@@ -70,21 +73,19 @@ paymentForm.include({
             const enabledButton = this.paypalData[paymentOptionId]['enabledButton']
             const disabledButton = this.paypalData[paymentOptionId]['disabledButton']
             await loadJS(paypalSDKURL);
-            enabledButton.show();
-            disabledButton.show();
+            enabledButton?.show();
+            disabledButton?.show(); // TODO Compatibility layer; remove the ? in master.
         }
         else if (!currentPayPalData) {
             this.paypalData[paymentOptionId] = {}
             const radio = document.querySelector('input[name="o_payment_radio"]:checked');
-            let inlineFormValues
-            let paypalColor = 'blue'
             if (radio) {
-                inlineFormValues = JSON.parse(radio.dataset['paypalInlineFormValues']);
-                paypalColor = radio.dataset['paypalColor']
+                this.inlineFormValues = JSON.parse(radio.dataset['paypalInlineFormValues']);
+                this.paypalColor = radio.dataset['paypalColor']
             }
 
             // https://developer.paypal.com/sdk/js/configuration/#link-queryparameters
-            const { client_id, currency_code } = inlineFormValues
+            const { client_id, currency_code } = this.inlineFormValues
             const paypalSDKURL = `https://www.paypal.com/sdk/js?client-id=${
                 client_id}&components=buttons&currency=${currency_code}&intent=capture`
             this.paypalData[paymentOptionId]['sdkURL'] = paypalSDKURL;
@@ -94,7 +95,7 @@ paymentForm.include({
             const enabledButton = paypal.Buttons({
                 fundingSource: paypal.FUNDING.PAYPAL,
                 style: { // https://developer.paypal.com/sdk/js/reference/#link-style
-                    color: paypalColor,
+                    color: this.paypalColor,
                     label: 'paypal',
                     disableMaxWidth: true,
                     borderRadius: 6,
@@ -104,24 +105,33 @@ paymentForm.include({
                 onCancel: this._paypalOnCancel.bind(this),
                 onError: this._paypalOnError.bind(this),
             });
-            enabledButton.render('#o_paypal_enabled_button');
+            const enabledButtonContainer = document.getElementById('o_paypal_enabled_button');
+            if (enabledButtonContainer) {
+                enabledButton.render('#o_paypal_enabled_button');
+            } else {
+                enabledButton.render('#o_paypal_button');  // TODO Compatibility layer; to remove in master.
+            }
             this.paypalData[paymentOptionId]['enabledButton'] = enabledButton;
 
-            const disabledButton = paypal.Buttons({
-                fundingSource: paypal.FUNDING.PAYPAL,
-                style: { // https://developer.paypal.com/sdk/js/reference/#link-style
-                    color: 'silver',
-                    label: 'paypal',
-                    disableMaxWidth: true,
-                    borderRadius: 6,
-                },
-                onInit: (data, actions) => actions.disable(),  // Permanently disable the button.
-            });
-            disabledButton.render('#o_paypal_disabled_button');
-            this.paypalData[paymentOptionId]['disabledButton'] = disabledButton;
+            const disabledButtonContainer = document.getElementById('o_paypal_disabled_button');
+            if (disabledButtonContainer) { // TODO Compatibility layer; to remove in master.
+                const disabledButton = paypal.Buttons({
+                    fundingSource: paypal.FUNDING.PAYPAL,
+                    style: { // https://developer.paypal.com/sdk/js/reference/#link-style
+                        color: 'silver',
+                        label: 'paypal',
+                        disableMaxWidth: true,
+                        borderRadius: 6,
+                    },
+                    onInit: (data, actions) => actions.disable(),  // Permanently disable the button.
+                });
+                disabledButton.render('#o_paypal_disabled_button');
+                this.paypalData[paymentOptionId]['disabledButton'] = disabledButton;
+            }
         }
         document.getElementById('o_paypal_loading').classList.add('d-none');
-        document.getElementById('o_paypal_button_container').classList.remove('d-none');
+        document.getElementById('o_paypal_button')?.classList.remove('d-none'); // TODO Compatibility layer; to remove in master.
+        document.getElementById('o_paypal_button_container')?.classList.remove('d-none');  // TODO Compatibility layer; remove the ? in master.
         this.selectedOptionId = paymentOptionId;
     },
 
@@ -156,8 +166,10 @@ paymentForm.include({
      */
     async _paypalOnApprove(data) {
         const orderID = data.orderID;
+        const { provider_id } = this.inlineFormValues
 
         await rpc('/payment/paypal/complete_order', {
+            'provider_id': provider_id,
             'order_id': orderID,
             'reference': this.paypalData[this.selectedOptionId].paypalTxRef,
         }).then(() => {

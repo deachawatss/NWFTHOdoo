@@ -5,10 +5,7 @@ export class DataServiceOptions {
         return {
             "pos.order": {
                 key: "uuid",
-                condition: (record) =>
-                    record.finalized &&
-                    typeof record.id === "number" &&
-                    record.pos_session_id !== parseInt(odoo.pos_session_id),
+                condition: (record) => record.finalized && typeof record.id === "number",
             },
             "pos.order.line": {
                 key: "uuid",
@@ -19,6 +16,20 @@ export class DataServiceOptions {
                 key: "uuid",
                 condition: (record) =>
                     record.pos_order_id?.finalized && typeof record.pos_order_id.id === "number",
+            },
+            "pos.pack.operation.lot": {
+                key: "id",
+                condition: (record) =>
+                    record.pos_order_line_id?.order_id?.finalized &&
+                    typeof record.pos_order_line_id.order_id.id === "number",
+            },
+            "product.attribute.custom.value": {
+                key: "id",
+                condition: (record) =>
+                    record.models["pos.order.line"].find((l) => {
+                        const customAttrIds = l.custom_attribute_value_ids.map((v) => v.id);
+                        return customAttrIds.includes(record.id);
+                    }),
             },
         };
     }
@@ -38,14 +49,13 @@ export class DataServiceOptions {
         const indexes = {
             "pos.order": ["uuid"],
             "pos.order.line": ["uuid"],
-            "pos.payment": ["uuid"],
-            "product.template": ["pos_categ_ids", "write_date"],
-            "product.product": ["pos_categ_ids", "barcode"],
+            "product.product": ["barcode", "pos_categ_ids", "write_date"],
             "account.fiscal.position": ["tax_ids"],
+            "product.packaging": ["barcode"],
+            "pos.payment": ["uuid"],
             "loyalty.program": ["trigger_product_ids"],
             "calendar.event": ["appointment_resource_ids"],
             "res.partner": ["barcode"],
-            "product.uom": ["barcode"],
         };
 
         for (const model in databaseTable) {
@@ -68,6 +78,7 @@ export class DataServiceOptions {
             "pos.session",
             "pos.config",
             "res.users",
+            "pos.order",
             "account.tax", // Cannot be auto-loaded because the record needs adaptions
         ];
     }
@@ -79,14 +90,6 @@ export class DataServiceOptions {
             "product.attribute.custom.value",
             "pos.pack.operation.lot",
         ];
-    }
-
-    get uniqueModels() {
-        return ["pos.session", "res.users", "res.company"];
-    }
-
-    get cleanupModels() {
-        return ["product.template"];
     }
 
     get prohibitedAutoLoadedFields() {

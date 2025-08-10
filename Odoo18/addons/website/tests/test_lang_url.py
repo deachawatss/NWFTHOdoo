@@ -4,7 +4,7 @@ import json
 import lxml.html
 from urllib.parse import urlparse
 
-from odoo.addons.http_routing.tests.common import MockRequest
+from odoo.addons.website.tools import MockRequest
 from odoo.tests import HttpCase, tagged
 
 
@@ -46,8 +46,8 @@ class TestLangUrl(HttpCase):
 
     def test_04_url_cook_lang_not_available(self):
         """ `nearest_lang` should filter out lang not available in frontend.
-        Eg: 1. go in backend in english -> request.env.context['lang'] = `en_US`
-            2. go in frontend, the request.env.context['lang'] is passed through
+        Eg: 1. go in backend in english -> request.context['lang'] = `en_US`
+            2. go in frontend, the request.context['lang'] is passed through
                `nearest_lang` which should not return english. More then a
                misbehavior it will crash in website language selector template.
         """
@@ -132,7 +132,7 @@ class TestControllerRedirect(TestLangUrl):
             if not msg:
                 msg = 'Url <%s> differ from <%s>.' % (url, expected_url)
 
-            r = self.url_open(url, method='HEAD', allow_redirects=False)
+            r = self.url_open(url, head=True)
             self.assertEqual(r.status_code, code)
             parsed_location = urlparse(r.headers.get('Location', ''))
             parsed_expected_url = urlparse(expected_url)

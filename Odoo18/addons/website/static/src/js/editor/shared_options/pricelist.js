@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
 import options from "@web_editor/js/editor/snippets.options";
 
@@ -21,7 +23,7 @@ options.registry.Pricelist = options.Class.extend({
                     description.classList.remove("d-none");
                 } else {
                     const descriptionEl = document.createElement("p");
-                    descriptionEl.classList.add(params.descriptionClass, "d-block", "pe-5", "text-muted");
+                    descriptionEl.classList.add(params.descriptionClass, "d-block", "pe-5", "text-muted", "o_default_snippet_text");
                     descriptionEl.textContent = _t("Add a description here");
                     el.appendChild(descriptionEl);
                 }
@@ -29,7 +31,9 @@ options.registry.Pricelist = options.Class.extend({
         } else {
             dishes.forEach((el) => {
                 description = el.querySelector("." + params.descriptionClass);
-                if (description) {
+                if (description && (description.classList.contains("o_default_snippet_text") || description.querySelector(".o_default_snippet_text"))) {
+                    description.remove();
+                } else if (description) {
                     description.classList.add("d-none");
                 }
             });

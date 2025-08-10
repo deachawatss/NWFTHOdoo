@@ -1,5 +1,7 @@
-import { registry } from "@web/core/registry";
+/** @odoo-modules */
+
 import { clickOnSave, clickOnEditAndWaitEditMode, registerWebsitePreviewTour } from '@website/js/tours/tour_utils';
+import { registry } from "@web/core/registry";
 
 
 registerWebsitePreviewTour('category_page_and_products_snippet_edition', {
@@ -7,20 +9,16 @@ registerWebsitePreviewTour('category_page_and_products_snippet_edition', {
 }, () => [
     {
         content: "Navigate to category",
-        trigger: ':iframe .o_wsale_filmstrip > li:contains("Test Category") > a',
+        trigger: ':iframe .o_wsale_filmstip > li:contains("Test Category") > a',
         run: "click",
-    },
-    {
-        content: "Wait for page to load",
-        trigger: ":iframe h1:contains('Test Category')",
     },
     ...clickOnEditAndWaitEditMode(),
     {
-        trigger: ".o-website-builder_sidebar .o_snippets_container .o_snippet",
+        trigger: ".o_website_preview.editor_enable.editor_has_snippets",
     },
     {
         content: "Drag and drop the Products snippet group inside the category area.",
-        trigger: ".o_block_tab:not(.o_we_ongoing_insertion) .o_snippet[name='Catalog'] .o_snippet_thumbnail",
+        trigger: '#oe_snippets .oe_snippet[name="Products"] .oe_snippet_thumbnail:not(.o_we_ongoing_insertion)',
         run: "drag_and_drop :iframe #category_header",
     },
     {
@@ -28,9 +26,7 @@ registerWebsitePreviewTour('category_page_and_products_snippet_edition', {
         trigger: ':iframe .o_snippet_preview_wrap[data-snippet-id="s_dynamic_snippet_products"]',
         run: "click",
     },
-    {
-        trigger: ":iframe:not(:has(.o_loading_screen))",
-    },
+
     {
         content: "Click on the product snippet to show its options",
         trigger: ':iframe #category_header .s_dynamic_snippet_products',
@@ -38,12 +34,12 @@ registerWebsitePreviewTour('category_page_and_products_snippet_edition', {
     },
     {
         content: "Open category option dropdown",
-        trigger: "button[id='product_category_opt']",
+        trigger: 'we-select[data-attribute-name="productCategoryId"] we-toggler',
         run: "click",
     },
     {
         content: "Choose the option to use the current page's category",
-        trigger: "div.o-dropdown-item:contains('Current Category or All')",
+        trigger: 'we-button[data-select-data-attribute="current"]',
         run: "click",
     },
     ...clickOnSave(),
@@ -54,7 +50,7 @@ registry.category("web_tour.tours").add('category_page_and_products_snippet_use'
     steps: () => [
     {
         content: "Navigate to category",
-        trigger: '.o_wsale_filmstrip > li:contains("Test Category") > a',
+        trigger: '.o_wsale_filmstip > li:contains("Test Category") > a',
         run: "click",
         expectUnloadPage: true,
     },
@@ -66,7 +62,7 @@ registry.category("web_tour.tours").add('category_page_and_products_snippet_use'
             // Fetch the category's id from the url.
             const productCategoryId = window.location.href.match('/shop/category/test-category-(\\d+)')[1]
             const productGridEl = this.anchor.closest('#products_grid');
-            const regex = new RegExp(`^/shop/test-category-${productCategoryId}/[\\w-/]+-(\\d+)$`);
+            const regex = new RegExp(`^/shop/[\\w-/]+-(\\d+)\\?category=${productCategoryId}$`);
             const allPageProductIDs = [...productGridEl.querySelectorAll('.oe_product_image_link')]
                 .map(el => el.getAttribute('href').match(regex)[1]);
 

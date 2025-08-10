@@ -1,32 +1,32 @@
 import {
+    SIZES,
+    assertSteps,
     click,
     contains,
     defineMailModels,
     insertText,
-    listenStoreFetch,
     onRpcBefore,
     openDiscuss,
+    openFormView,
     patchBrowserNotification,
     patchUiSize,
-    SIZES,
     start,
     startServer,
+    step,
     triggerEvents,
     triggerHotkey,
-    waitStoreFetch,
 } from "@mail/../tests/mail_test_helpers";
 import { mailDataHelpers } from "@mail/../tests/mock_server/mail_mock_server";
 
 import { describe, expect, test } from "@odoo/hoot";
 import { Deferred, mockUserAgent } from "@odoo/hoot-mock";
 import {
-    asyncStep,
     Command,
+    getService,
     makeKwArgs,
     mockService,
     patchWithCleanup,
     serverState,
-    waitForSteps,
     withUser,
 } from "@web/../tests/web_test_helpers";
 
@@ -167,7 +167,7 @@ test("rendering with PWA installation request", async () => {
     patchWithCleanup(browser.localStorage, {
         getItem(key) {
             if (key === "pwaService.installationState") {
-                asyncStep("getItem " + key);
+                step("getItem " + key);
                 // in this test, installation has not yet proceeded
                 return null;
             }
@@ -177,15 +177,15 @@ test("rendering with PWA installation request", async () => {
     const pyEnv = await startServer();
     const [odoobot] = pyEnv["res.partner"].read(serverState.odoobotId);
     await start();
-    mockService("pwa", {
+    patchWithCleanup(getService("pwa"), {
         show() {
-            asyncStep("show prompt");
+            step("show prompt");
         },
     });
     // This event must be triggered to initialize the pwa service properly
     // as if it was run by a browser supporting PWA (never triggered in a test otherwise).
     browser.dispatchEvent(new CustomEvent("beforeinstallprompt"));
-    await waitForSteps(["getItem pwaService.installationState"]);
+    await assertSteps(["getItem pwaService.installationState"]);
     await contains(".o-mail-MessagingMenu-counter");
     await contains(".o-mail-MessagingMenu-counter", { text: "1" });
     await click(".o_menu_systray i[aria-label='Messages']");
@@ -200,7 +200,7 @@ test("rendering with PWA installation request", async () => {
         text: "Come here often? Install the app for quick and easy access!",
     });
     await click(".o-mail-NotificationItem a.btn-primary");
-    await waitForSteps(["show prompt"]);
+    await assertSteps(["show prompt"]);
 });
 
 test("installation of the PWA request can be dismissed", async () => {
@@ -210,7 +210,7 @@ test("installation of the PWA request can be dismissed", async () => {
     patchWithCleanup(browser.localStorage, {
         getItem(key) {
             if (key === "pwaService.installationState") {
-                asyncStep("getItem " + key);
+                step("getItem " + key);
                 // in this test, installation has not yet proceeded
                 return null;
             }
@@ -218,24 +218,24 @@ test("installation of the PWA request can be dismissed", async () => {
         },
         setItem(key, value) {
             if (key === "pwaService.installationState") {
-                asyncStep("installationState value:  " + value);
+                step("installationState value:  " + value);
             }
             return super.setItem(key, value);
         },
     });
     await start();
-    mockService("pwa", {
+    patchWithCleanup(getService("pwa"), {
         show() {
-            asyncStep("show prompt should not be triggered");
+            step("show prompt should not be triggered");
         },
     });
     // This event must be triggered to initialize the pwa service properly
     // as if it was run by a browser supporting PWA (never triggered in a test otherwise).
     browser.dispatchEvent(new CustomEvent("beforeinstallprompt"));
-    await waitForSteps(["getItem pwaService.installationState"]);
+    await assertSteps(["getItem pwaService.installationState"]);
     await click(".o_menu_systray i[aria-label='Messages']");
     await click(".o-mail-NotificationItem .oi-close");
-    await waitForSteps([
+    await assertSteps([
         "getItem pwaService.installationState",
         'installationState value:  {"/odoo":"dismissed"}',
     ]);
@@ -250,7 +250,7 @@ test("rendering with PWA installation request (dismissed)", async () => {
     patchWithCleanup(browser.localStorage, {
         getItem(key) {
             if (key === "pwaService.installationState") {
-                asyncStep("getItem " + key);
+                step("getItem " + key);
                 // in this test, installation has been previously dismissed by the user
                 return `{"/odoo":"dismissed"}`;
             }
@@ -261,7 +261,7 @@ test("rendering with PWA installation request (dismissed)", async () => {
     // This event must be triggered to initialize the pwa service properly
     // as if it was run by a browser supporting PWA (never triggered in a test otherwise).
     browser.dispatchEvent(new CustomEvent("beforeinstallprompt"));
-    await waitForSteps(["getItem pwaService.installationState"]);
+    await assertSteps(["getItem pwaService.installationState"]);
     await contains(".o_menu_systray i[aria-label='Messages']");
     await contains(".o-mail-MessagingMenu-counter", { count: 0 });
     await click(".o_menu_systray i[aria-label='Messages']");
@@ -275,7 +275,7 @@ test("rendering with PWA installation request (already running as PWA)", async (
     patchWithCleanup(browser.localStorage, {
         getItem(key) {
             if (key === "pwaService.installationState") {
-                asyncStep("getItem " + key);
+                step("getItem " + key);
                 // in this test, we remove any value that could contain localStorage so the service would be allowed to prompt
                 return null;
             }
@@ -285,7 +285,7 @@ test("rendering with PWA installation request (already running as PWA)", async (
     await start();
     // The 'beforeinstallprompt' event is not triggered here, since the
     // browser wouldn't trigger it when the app is already launched
-    await waitForSteps(["getItem pwaService.installationState"]);
+    await assertSteps(["getItem pwaService.installationState"]);
     await contains(".o_menu_systray i[aria-label='Messages']");
     await contains(".o-mail-MessagingMenu-counter", { count: 0 });
     await click(".o_menu_systray i[aria-label='Messages']");
@@ -297,6 +297,18 @@ test("Is closed after clicking on new message", async () => {
     await click(".o_menu_systray i[aria-label='Messages']");
     await click("button", { text: "New Message" });
     await contains(".o-mail-MessagingMenu", { count: 0 });
+});
+
+test("no 'New Message' button when discuss is open", async () => {
+    await start();
+    await click(".o_menu_systray i[aria-label='Messages']");
+    await contains("button", { text: "New Message" });
+    await openDiscuss();
+    await contains("button", { count: 0, text: "New Message" });
+    await openFormView("res.partner");
+    await contains("button", { text: "New Message" });
+    await openDiscuss();
+    await contains("button", { count: 0, text: "New Message" });
 });
 
 test("grouped notifications by document", async () => {
@@ -365,7 +377,7 @@ test("grouped notifications by document model", async () => {
     ]);
     mockService("action", {
         doAction(action) {
-            asyncStep("do_action");
+            step("do_action");
             expect(action.name).toBe("Mail Failures");
             expect(action.type).toBe("ir.actions.act_window");
             expect(action.view_mode).toBe("kanban,list,form");
@@ -389,7 +401,7 @@ test("grouped notifications by document model", async () => {
         text: "Email Failure: Contact",
         contains: [".badge", { text: "2" }],
     });
-    await waitForSteps(["do_action"]);
+    await assertSteps(["do_action"]);
 });
 
 test("multiple grouped notifications by document model, sorted by the most recent message of each group", async () => {
@@ -476,13 +488,13 @@ test("mark unread channel as read", async () => {
         ["partner_id", "=", serverState.partnerId],
     ]);
     pyEnv["discuss.channel.member"].write([currentMemberId], { seen_message_id: messagId_1 });
-    onRpcBefore("/discuss/channel/mark_as_read", (args) => asyncStep("mark_as_read"));
+    onRpcBefore("/discuss/channel/mark_as_read", (args) => step("mark_as_read"));
     await start();
     await click(".o_menu_systray i[aria-label='Messages']");
     await triggerEvents(".o-mail-NotificationItem", ["mouseenter"]);
     await click(".o-mail-NotificationItem [title='Mark As Read']");
     await contains(".o-mail-NotificationItem.text-muted");
-    await waitForSteps(["mark_as_read"]);
+    await assertSteps(["mark_as_read"]);
     await triggerEvents(".o-mail-NotificationItem", ["mouseenter"]);
     await contains(".o-mail-NotificationItem [title='Mark As Read']", { count: 0 });
     await contains(".o-mail-ChatWindow", { count: 0 });
@@ -581,7 +593,7 @@ test("mobile: active icon is highlighted", async () => {
     await start();
     await click(".o_menu_systray i[aria-label='Messages']");
     await click(".o-mail-MessagingMenu-tab", { text: "Chat" });
-    await contains(".o-mail-MessagingMenu-tab.fw-bold", { text: "Chat" });
+    await contains(".o-mail-MessagingMenu-tab.fw-bolder", { text: "Chat" });
 });
 
 test("open chat window from preview", async () => {
@@ -591,6 +603,51 @@ test("open chat window from preview", async () => {
     await click(".o_menu_systray i[aria-label='Messages']");
     await click(".o-mail-NotificationItem");
     await contains(".o-mail-ChatWindow");
+});
+
+test('"Start a conversation" in mobile shows channel selector (+ click away)', async () => {
+    patchUiSize({ size: SIZES.SM });
+    await start();
+    await openDiscuss();
+    await contains("button.active", { text: "Inbox" });
+    await click("button", { text: "Chat" });
+    await contains("button", { text: "Start a conversation" });
+    await contains("input[placeholder='Start a conversation']", { count: 0 });
+    await click("button", { text: "Start a conversation" });
+    await contains("button", { count: 0, text: "Start a conversation" });
+    await contains("input[placeholder='Start a conversation']");
+    await click(".o-mail-MessagingMenu");
+    await contains("button", { text: "Start a conversation" });
+    await contains("input[placeholder='Start a conversation']", { count: 0 });
+});
+test('"New Channel" in mobile shows channel selector (+ click away)', async () => {
+    patchUiSize({ size: SIZES.SM });
+    await start();
+    await openDiscuss();
+    await contains("button.active", { text: "Inbox" });
+    await click("button", { text: "Channel" });
+    await contains("button", { text: "New Channel" });
+    await contains("input[placeholder='Add or join a channel']", { count: 0 });
+    await click("button", { text: "New Channel" });
+    await contains("button", { count: 0, text: "New Channel" });
+    await contains("input[placeholder='Add or join a channel']");
+    await click(".o-mail-MessagingMenu");
+    await contains("button", { text: "New Channel" });
+    await contains("input[placeholder='Add or join a channel']", { count: 0 });
+});
+
+test("'Start a conversation' button should open a thread in mobile", async () => {
+    const pyEnv = await startServer();
+    const partnerId = pyEnv["res.partner"].create({ name: "Demo" });
+    pyEnv["res.users"].create({ partner_id: partnerId });
+    patchUiSize({ size: SIZES.SM });
+    await start();
+    await click(".o_menu_systray i[aria-label='Messages']");
+    await click("button", { text: "Start a conversation" });
+    await insertText("input[placeholder='Start a conversation']", "demo");
+    await click(".o-discuss-ChannelSelector-suggestion", { text: "Demo" });
+    triggerHotkey("enter");
+    await contains(".o-mail-ChatWindow", { text: "Demo" });
 });
 
 test("Counter is updated when receiving new message", async () => {
@@ -878,7 +935,7 @@ test("click on expand from chat window should close the chat window and open the
     });
     mockService("action", {
         doAction(action) {
-            asyncStep("do_action");
+            step("do_action");
             expect(action.res_id).toBe(partnerId);
             expect(action.res_model).toBe("res.partner");
         },
@@ -886,14 +943,10 @@ test("click on expand from chat window should close the chat window and open the
     await start();
     await click(".o_menu_systray i[aria-label='Messages']");
     await click(".o-mail-NotificationItem", { text: "Frodo Baggins" });
-    // dropdown requires an extra delay before click (because handler is registered in useEffect)
-    await contains("[title='Open Actions Menu']");
     await click("[title='Open Actions Menu']");
     await click(".o-dropdown-item", { text: "Open Form View" });
     await contains(".o-mail-ChatWindow", { count: 0 });
-    await waitForSteps(["do_action"], {
-        message: "should have done an action to open the form view",
-    });
+    await assertSteps(["do_action"]);
 });
 
 test("preview should display last needaction message preview even if there is a more recent message that is not needaction in the thread", async () => {
@@ -922,135 +975,6 @@ test("preview should display last needaction message preview even if there is a 
     await click(".o_menu_systray i[aria-label='Messages']");
     await contains(".o-mail-NotificationItem-text", {
         text: "Stranger: I am the oldest but needaction",
-    });
-});
-
-test("Attachment-only message preview shows file type icon", async () => {
-    const pyEnv = await startServer();
-    const partners = pyEnv["res.partner"].create([
-        { name: "Partner1" },
-        { name: "Partner2" },
-        { name: "Partner3" },
-        { name: "Partner4" },
-        { name: "Partner5" },
-    ]);
-    const channelIds = pyEnv["discuss.channel"].create([
-        { name: "Channel1" },
-        { name: "Channel2" },
-        { name: "Channel3" },
-        { name: "Channel4" },
-        { name: "Channel5" },
-    ]);
-    const attachments = [
-        {
-            mimetype: "audio/mpeg",
-            name: "voicemessage",
-            icon: "fa-microphone",
-            text: "Voice Message",
-            voice_ids: [Command.create({ display_name: "voicemessage" })],
-        },
-        { mimetype: "video/mp4", name: "Video.mp4", icon: "fa-video-camera", text: "Video.mp4" },
-        { mimetype: "application/pdf", name: "File.pdf", icon: "fa-file", text: "File.pdf" },
-        { mimetype: "image/jpeg", name: "Image.jpeg", icon: "fa-picture-o", text: "Image.jpeg" },
-        { mimetype: "audio/mpeg", name: "Audio.mp3", icon: "fa-headphones", text: "Audio.mp3" },
-    ];
-
-    pyEnv["mail.message"].create(
-        attachments.map((attachment, i) => ({
-            attachment_ids: [
-                Command.create({
-                    mimetype: attachment.mimetype,
-                    name: attachment.name,
-                    res_id: channelIds[i],
-                    res_model: "discuss.channel",
-                    voice_ids: attachment.voice_ids || [],
-                }),
-            ],
-            author_id: partners[i],
-            body: "",
-            model: "discuss.channel",
-            res_id: channelIds[i],
-        }))
-    );
-    await start();
-    await click(".o_menu_systray i[aria-label='Messages']");
-    await contains(".o-mail-NotificationItem:eq(0) i.fa-microphone");
-    await contains(".o-mail-NotificationItem:eq(0)", { text: "Partner1: Voice Message" });
-    await contains(".o-mail-NotificationItem:eq(1) i.fa-video-camera");
-    await contains(".o-mail-NotificationItem:eq(1)", { text: "Partner2: Video.mp4" });
-    await contains(".o-mail-NotificationItem:eq(2) i.fa-file");
-    await contains(".o-mail-NotificationItem:eq(2)", { text: "Partner3: File.pdf" });
-    await contains(".o-mail-NotificationItem:eq(3) i.fa-picture-o");
-    await contains(".o-mail-NotificationItem:eq(3)", { text: "Partner4: Image.jpeg" });
-    await contains(".o-mail-NotificationItem:eq(4) i.fa-headphones");
-    await contains(".o-mail-NotificationItem:eq(4)", { text: "Partner5: Audio.mp3" });
-});
-
-test("Attachment-only message preview shows file names (2 files)", async () => {
-    const pyEnv = await startServer();
-    const partner1 = pyEnv["res.partner"].create({ name: "Partner" });
-    const channel1 = pyEnv["discuss.channel"].create({ name: "test" });
-    pyEnv["mail.message"].create({
-        attachment_ids: [
-            Command.create({
-                mimetype: "application/pdf",
-                name: "File.pdf",
-                res_id: channel1,
-                res_model: "discuss.channel",
-            }),
-            Command.create({
-                mimetype: "image/jpeg",
-                name: "Image.jpeg",
-                res_id: channel1,
-                res_model: "discuss.channel",
-            }),
-        ],
-        author_id: partner1,
-        body: "",
-        model: "discuss.channel",
-        res_id: channel1,
-    });
-    await start();
-    await click(".o_menu_systray i[aria-label='Messages']");
-    await contains(".o-mail-NotificationItem-text", {
-        text: "Partner: File.pdf and Image.jpeg",
-    });
-});
-
-test("Attachment-only message preview shows file names (3 files)", async () => {
-    const pyEnv = await startServer();
-    const partner1 = pyEnv["res.partner"].create({ name: "Partner" });
-    const channel1 = pyEnv["discuss.channel"].create({ name: "test" });
-    pyEnv["mail.message"].create({
-        attachment_ids: [
-            Command.create({
-                mimetype: "application/pdf",
-                name: "File.pdf",
-                res_id: channel1,
-                res_model: "discuss.channel",
-            }),
-            Command.create({
-                mimetype: "image/jpeg",
-                name: "Image.jpeg",
-                res_id: channel1,
-                res_model: "discuss.channel",
-            }),
-            Command.create({
-                mimetype: "video/mp4",
-                name: "Video.mp4",
-                res_id: channel1,
-                res_model: "discuss.channel",
-            }),
-        ],
-        author_id: partner1,
-        body: "",
-        model: "discuss.channel",
-        res_id: channel1,
-    });
-    await start();
-    await click(".o_menu_systray i[aria-label='Messages']");
-    await contains(".o-mail-NotificationItem-text", {
-        text: "Partner: File.pdf and 2 other attachments",
     });
 });
 
@@ -1123,7 +1047,7 @@ test("chat should show unread counter on receiving new messages", async () => {
     await contains(".o-mail-NotificationItem .badge", { text: "1" });
 });
 
-test("preview for channel shows deleted message preview when this is most recent", async () => {
+test("preview for channel should show latest non-deleted message", async () => {
     const pyEnv = await startServer();
     const partnerId = pyEnv["res.partner"].create({ name: "Partner1" });
     const channelId = pyEnv["discuss.channel"].create({ name: "Test" });
@@ -1150,9 +1074,7 @@ test("preview for channel shows deleted message preview when this is most recent
         body: "",
         attachment_ids: [],
     });
-    await contains(".o-mail-NotificationItem-text", {
-        text: "Partner1: This message has been removed",
-    });
+    await contains(".o-mail-NotificationItem-text", { text: "Partner1: message-1" });
 });
 
 test("failure notifications are shown before channel preview", async () => {
@@ -1224,18 +1146,14 @@ test("can open messaging menu even if messaging is not initialized", async () =>
     patchBrowserNotification("default");
     await startServer();
     const def = new Deferred();
-    listenStoreFetch("init_messaging", {
-        async onRpc() {
-            asyncStep("before init_messaging");
+    onRpcBefore("/mail/data", async (args) => {
+        if (args.init_messaging) {
             await def;
-        },
+        }
     });
     await start();
     await click(".o_menu_systray i[aria-label='Messages']");
     await contains(".o-mail-NotificationItem", { text: "Turn on notifications" });
-    await waitForSteps(["before init_messaging"]);
-    def.resolve();
-    await waitStoreFetch("init_messaging");
 });
 
 test("can open messaging menu even if channels are not fetched", async () => {
@@ -1243,18 +1161,20 @@ test("can open messaging menu even if channels are not fetched", async () => {
     const pyEnv = await startServer();
     pyEnv["discuss.channel"].create({ name: "General" });
     const def = new Deferred();
-    listenStoreFetch("channels_as_member", {
-        async onRpc() {
-            asyncStep("before channels_as_member");
+    onRpcBefore("/mail/action", async (args) => {
+        if (args.channels_as_member) {
             await def;
-        },
+        }
+    });
+    onRpcBefore("/mail/data", async (args) => {
+        if (args.channels_as_member) {
+            await def;
+        }
     });
     await start();
     await click(".o_menu_systray i[aria-label='Messages']");
     await contains(".o-mail-DiscussSystray", { text: "Loading…" });
-    await waitForSteps(["before channels_as_member"]);
     def.resolve();
-    await waitStoreFetch("channels_as_member");
     await contains(".o-mail-NotificationItem", { text: "General" });
 });
 
@@ -1306,6 +1226,9 @@ test("Can quick search when more than 20 items", async () => {
     await insertText(".o-mail-MessagingMenu input", "admin");
     await contains(".o-mail-NotificationItem", { count: 1 });
     await contains(".o-mail-NotificationItem", { text: "Mitchell Admin" });
+    await insertText(".o-mail-MessagingMenu input", "no threads", { replace: true });
+    await contains(".o-mail-MessagingMenu div.text-muted", { text: "No thread found." });
+    expect(".o-mail-MessagingMenu-list").toHaveText("No thread found."); // list should contain only this text
 });
 
 test("keyboard navigation", async () => {

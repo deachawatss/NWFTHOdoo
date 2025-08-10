@@ -10,7 +10,7 @@ class TestStockAccountProduct(TestStockValuationCommon):
         super().setUpClass()
         cls.fifo_category = cls.env['product.category'].create({
             'name': 'All/Saleable FIFO',
-            'parent_id': cls.env.ref('product.product_category_goods').id,
+            'parent_id': cls.env.ref('product.product_category_all').id,
             'property_cost_method': 'fifo',
         })
         cls.attribute_legs = cls.env['product.attribute'].create({
@@ -28,7 +28,7 @@ class TestStockAccountProduct(TestStockValuationCommon):
             'name': 'Table',
             'type': 'consu',
             'is_storable': True,
-            'categ_id': self.env.ref('product.product_category_goods').id,
+            'categ_id': self.env.ref('product.product_category_all').id,
             'attribute_line_ids': [
                 Command.create({
                     'attribute_id': self.attribute_legs.id,

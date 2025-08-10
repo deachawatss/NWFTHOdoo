@@ -7,8 +7,8 @@ from odoo.exceptions import ValidationError
 from .diff_utils import apply_patch, generate_comparison, generate_patch
 
 
-class HtmlFieldHistoryMixin(models.AbstractModel):
-    _name = 'html.field.history.mixin'
+class HtmlFieldHistory(models.AbstractModel):
+    _name = "html.field.history.mixin"
     _description = "Field html History"
     _html_field_history_size_limit = 300
 
@@ -40,8 +40,16 @@ class HtmlFieldHistoryMixin(models.AbstractModel):
                         history_metadata[field_name].append(metadata)
             rec.html_field_history_metadata = history_metadata
 
+    def copy_data(self, default=None):
+        vals = super().copy_data(default)
+        if 'html_field_history' in vals:
+            del vals['html_field_history']
+        return vals
+
     def write(self, vals):
         rec_db_contents = {}
+        if 'html_field_history' in vals:
+            del vals['html_field_history']
         versioned_fields = self._get_versioned_fields()
         vals_contain_versioned_fields = set(vals).intersection(versioned_fields)
 
@@ -62,7 +70,7 @@ class HtmlFieldHistoryMixin(models.AbstractModel):
             fields_data = self.env[rec._name]._fields
 
             if any(f in vals and not fields_data[f].sanitize for f in versioned_fields):
-                raise ValidationError(  # pylint: disable=missing-gettext
+                raise ValidationError(
                     "Ensure all versioned fields ( %s ) in model %s are declared as sanitize=True"
                     % (str(versioned_fields), rec._name)
                 )
@@ -100,7 +108,7 @@ class HtmlFieldHistoryMixin(models.AbstractModel):
             # Call super().write again to include the new revision
             if new_revisions:
                 extra_vals = {"html_field_history": history_revs}
-                write_result = super(HtmlFieldHistoryMixin, rec).write(extra_vals) and write_result
+                write_result = super(HtmlFieldHistory, rec).write(extra_vals) and write_result
 
         return write_result
 

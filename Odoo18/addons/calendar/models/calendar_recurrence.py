@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from datetime import datetime, time
@@ -90,7 +91,7 @@ def weekday_to_field(weekday_index):
     return RRULE_WEEKDAY_TO_FIELD.get(weekday_index)
 
 
-class CalendarRecurrence(models.Model):
+class RecurrenceRule(models.Model):
     _name = 'calendar.recurrence'
     _description = 'Event Recurrence Rule'
 
@@ -121,16 +122,15 @@ class CalendarRecurrence(models.Model):
     until = fields.Date('Repeat Until')
     trigger_id = fields.Many2one('ir.cron.trigger')
 
-    _month_day = models.Constraint("""CHECK (
-        rrule_type != 'monthly'
-        OR month_by != 'day'
-        OR day >= 1 AND day <= 31
-        OR weekday IN %s AND byday IN %s)""" % (
-            tuple(wd[0] for wd in WEEKDAY_SELECTION),
-            tuple(bd[0] for bd in BYDAY_SELECTION),
-        ),
-        "The day must be between 1 and 31",
-    )
+    _sql_constraints = [
+        ('month_day',
+         "CHECK (rrule_type != 'monthly' "
+                "OR month_by != 'day' "
+                "OR day >= 1 AND day <= 31 "
+                "OR weekday in %s AND byday in %s)"
+                % (tuple(wd[0] for wd in WEEKDAY_SELECTION), tuple(bd[0] for bd in BYDAY_SELECTION)),
+         "The day must be between 1 and 31"),
+    ]
 
     def _get_daily_recurrence_name(self):
         if self.end_type == 'count':
@@ -604,3 +604,18 @@ class CalendarRecurrence(models.Model):
             freq_to_rrule(freq), **rrule_params
         )
 
+    def _is_event_over(self):
+        """Check if all events in this recurrence are in the past.
+        :return: True if all events are over, False otherwise
+        """
+        self.ensure_one()
+        if not self.calendar_event_ids:
+            return False
+
+        now = fields.Datetime.now()
+        today = fields.Date.today()
+
+        return all(
+            (event.stop_date < today if event.allday else event.stop < now)
+            for event in self.calendar_event_ids
+        )

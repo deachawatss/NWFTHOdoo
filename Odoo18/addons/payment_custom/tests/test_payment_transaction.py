@@ -1,23 +1,22 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 import unittest
 
-from odoo import fields
-from odoo.fields import Command
+from odoo import Command, fields
 from odoo.tests import tagged
 
-from odoo.addons.payment_custom.tests.common import PaymentCustomCommon
+from odoo.addons.payment.tests.common import PaymentCommon
 
 
 @tagged('-at_install', 'post_install')
-class TestPaymentTransaction(PaymentCustomCommon):
-
+class TestPaymentTransaction(PaymentCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+
         if 'product.product' not in cls.env:
             raise unittest.SkipTest("requires product")
 
-        cls.provider = cls._prepare_provider(code='custom', custom_mode='wire_transfer')
+        cls.provider = cls._prepare_provider(code='custom')
         cls.product = cls.env['product.product'].create({
             'name': "test product", 'list_price': cls.amount
         })

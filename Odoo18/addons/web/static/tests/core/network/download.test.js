@@ -23,7 +23,7 @@ test("handles connection error when network unavailable", async () => {
 
 test("handles business error from server", async () => {
     const serverError = {
-        code: 0,
+        code: 200,
         data: {
             name: "odoo.exceptions.RedirectWarning",
             arguments: ["Business Error Message", "someArg"],

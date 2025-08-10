@@ -6,11 +6,6 @@ import odoo.tests
 @odoo.tests.common.tagged('post_install', '-at_install')
 class TestUnsplashBeacon(odoo.tests.HttpCase):
 
-    def fetch_proxy(self, url):
-        if 'unsplash.com' in url:
-            return self.make_fetch_proxy_response('{"success": true}')
-        return super().fetch_proxy(url)
-
     def test_01_beacon(self):
         self.env['ir.config_parameter'].sudo().set_param('unsplash.app_id', '123456')
         # Create page with unsplash image.
@@ -26,16 +21,25 @@ class TestUnsplashBeacon(odoo.tests.HttpCase):
                     production system.
                 -->
                 <script>
-                    window._oldFetch = window.fetch;
-                    // Patch fetch call.
-                    window.fetch = async (url, options) => {
-                        const result = await window._oldFetch(url, options);
-                        if (url.origin === "https://views.unsplash.com" &amp;&amp; url.pathname === "/v") {
-                            const imageEl = document.querySelector(`img[src^="/unsplash/${url.searchParams.get("photo_id")}/"]`);
-                            imageEl.dataset.beacon = "sent";
-                        }
-                        return result;
-                    };
+                    Object.defineProperty(window, "$", {
+                        get() {
+                            return this._patched$;
+                        },
+                        set(value) {
+                            delete this.$;
+                            this._patched$ = value;
+                            // Patch RPC call.
+                            const oldGet = value.get.bind(this);
+                            value.get = (url, data, success, dataType) => {
+                                if (url === "https://views.unsplash.com/v") {
+                                    const imageEl = document.querySelector(`img[src^="/unsplash/${data.photo_id}/"]`);
+                                    imageEl.dataset.beacon = "sent";
+                                    return;
+                                }
+                                return oldGet(url, data, success, dataType);
+                            };
+                        },
+                    });
                 </script>
             </div>
             </t>

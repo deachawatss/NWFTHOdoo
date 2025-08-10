@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from odoo import exceptions
 from odoo.addons.iap.tools import iap_tools
-from odoo.addons.iap.models.iap_enrich_api import IapEnrichApi
+from odoo.addons.iap.models.iap_enrich_api import IapEnrichAPI
 from odoo.tests import common
 
 
@@ -49,8 +49,11 @@ class MockIAPEnrich(common.TransactionCase):
                         result[str(lead_id)].update(email_data[email])
                 return result
 
-        with patch.object(IapEnrichApi, '_contact_iap', side_effect=_contact_iap):
-            yield
+        try:
+            with patch.object(IapEnrichAPI, '_contact_iap', side_effect=_contact_iap) as contact_iap_mock:
+                yield
+        finally:
+            pass
 
     @classmethod
     def _init_iap_mock(cls):

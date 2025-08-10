@@ -14,7 +14,6 @@ except ImportError:
     _logger.warning("The num2words python library is not installed, amount-to-text features won't be fully available.")
     num2words = None
 
-
 class AccountMove(models.Model):
     _inherit = 'account.move'
 
@@ -22,7 +21,7 @@ class AccountMove(models.Model):
 
     def _get_name_invoice_report(self):
         self.ensure_one()
-        if self.company_id.country_id and 'GCC' in self.company_id.country_id.country_group_codes:
+        if self.company_id.country_id in self.env.ref('base.gulf_cooperation_council').country_ids:
             return 'l10n_gcc_invoice.arabic_english_invoice'
         return super()._get_name_invoice_report()
 
@@ -39,7 +38,7 @@ class AccountMove(models.Model):
         if not self:
             return
         moves_to_fix = self.env['account.move']
-        for move in self.filtered(lambda m: m.narration and m.is_sale_document(include_receipts=True) and m.company_id.country_id and 'GCC' in m.company_id.country_id.country_group_codes):
+        for move in self.filtered(lambda m: m.narration and m.is_sale_document(include_receipts=True) and m.company_id.country_id in self.env.ref('base.gulf_cooperation_council').country_ids):
             lang = move.partner_id.lang or self.env.user.lang
             if move.company_id.terms_type == 'html' or move.narration != move.company_id.with_context(lang=lang).invoice_terms:
                 continue
@@ -65,7 +64,6 @@ class AccountMove(models.Model):
         super()._compute_narration()
         # Only update translations of real records
         self.filtered('id')._load_narration_translation()
-
 
 class AccountMoveLine(models.Model):
     _inherit = 'account.move.line'

@@ -11,36 +11,34 @@ registerWebsitePreviewTour(
         ...goToTheme(),
         {
             content: "Click on the heading font family selector",
-            trigger:
-                "[data-container-title='Headings'] [data-label='Font Family'] .dropdown-toggle",
+            trigger: "we-select[data-variable='headings-font']",
             run: "click",
         },
         {
             content: "Click on the 'Arvo' font we-button from the font selection list.",
-            trigger: `.o_popover [data-action-value="'Arvo'"]`,
+            trigger: "we-selection-items we-button[data-font-family='Arvo']",
             run: "click",
         },
         {
             content: "Verify that the 'Arvo' font family is correctly applied to the heading.",
-            trigger: "button.dropdown-toggle span[style*='font-family: Arvo;']",
+            trigger: "we-toggler[style*='font-family: Arvo;']",
         },
         {
             content: "Open the heading font family selector",
-            trigger: "button:has(span[style*='font-family: Arvo;'])",
+            trigger: "we-toggler[style*='font-family: Arvo;']",
             run: "click",
         },
         {
-            trigger:
-                "[data-container-title='Headings'] [data-label='Font Family'] .dropdown-toggle",
+            trigger: "we-select[data-variable='headings-font']",
             // This is a workaround to prevent the _reloadBundles method from being called.
             // It addresses the issue where selecting a we-button with data-no-bundle-reload,
             // such as o_we_add_font_btn.
             run: function () {
-                const options = odoo.loader.modules.get(
-                    "@website/builder/plugins/customize_website_plugin"
-                )["CustomizeWebsitePlugin"];
-                patch(options.prototype, {
-                    async reloadBundles() {
+                const options = odoo.loader.modules.get("@web_editor/js/editor/snippets.options")[
+                    Symbol.for("default")
+                ];
+                patch(options.Class.prototype, {
+                    async _refreshBundles() {
                         console.error("The font family selector value get reload to its default.");
                     },
                 });
@@ -48,7 +46,7 @@ registerWebsitePreviewTour(
         },
         {
             content: "Click on the 'Add a custom font' button",
-            trigger: ".o_popover .o_we_add_font_btn",
+            trigger: "we-select[data-variable='headings-font'] .o_we_add_font_btn",
             run: "click",
         },
         {
@@ -58,7 +56,7 @@ registerWebsitePreviewTour(
         },
         {
             content: "Check that 'Arvo' font family is still applied and not reverted",
-            trigger: "button:has(span[style*='font-family: Arvo;'])",
+            trigger: "we-toggler[style*='font-family: Arvo;']",
         },
     ]
 );

@@ -15,7 +15,10 @@ class ProductTemplate(models.Model):
             ('delivered_manual', _('Based on Delivered Quantity (Manual)')),
         ]
 
-        if self.env['res.groups']._is_feature_enabled('project.group_project_milestone'):
+        user = self.env['res.users'].sudo().browse(SUPERUSER_ID)
+        if (self.env.user.has_group('project.group_project_milestone') or
+                (self.env.user.has_group('base.group_public') and user.has_group('project.group_project_milestone'))
+        ):
             service_policies.insert(1, ('delivered_milestones', _('Based on Milestones')))
         return service_policies
 
@@ -31,11 +34,10 @@ class ProductTemplate(models.Model):
         },
     )
     project_id = fields.Many2one(
-        'project.project', 'Project', company_dependent=True, copy=True, domain='[("is_template", "=", False)]'
+        'project.project', 'Project', company_dependent=True, copy=True,
     )
     project_template_id = fields.Many2one(
         'project.project', 'Project Template', company_dependent=True, copy=True,
-        domain='[("is_template", "=", True)]',
     )
     service_policy = fields.Selection('_selection_service_policy', string="Service Invoicing Policy", compute_sudo=True, compute='_compute_service_policy', inverse='_inverse_service_policy', tracking=True)
     service_type = fields.Selection(selection_add=[

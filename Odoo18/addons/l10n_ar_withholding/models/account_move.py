@@ -3,6 +3,7 @@ from odoo import fields, models, api
 
 
 class AccountMove(models.Model):
+
     _inherit = 'account.move'
 
     l10n_ar_withholding_ids = fields.One2many(

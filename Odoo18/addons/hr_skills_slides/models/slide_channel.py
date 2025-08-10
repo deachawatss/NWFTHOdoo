@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from markupsafe import Markup
@@ -9,10 +10,8 @@ from odoo.tools import html2plaintext
 class SlideChannelPartner(models.Model):
     _inherit = 'slide.channel.partner'
 
-    def _post_completion_update_hook(self, completed=True):
-        res = super()._post_completion_update_hook(completed)
-        if not completed:
-            return res
+    def _recompute_completion(self):
+        res = super(SlideChannelPartner, self)._recompute_completion()
         completed_membership = self.filtered(lambda m: m.member_status == 'completed')
         if not completed_membership:
             return res
@@ -60,13 +59,12 @@ class SlideChannelPartner(models.Model):
             if self.env.user.employee_ids:
                 msg = _('The employee has completed the course %s',
                     Markup('<a href="%(link)s">%(course)s</a>') % {
-                        'link': scp.channel_id.website_absolute_url,
+                        'link': scp.channel_id.website_url,
                         'course': scp.channel_id.name,
                 })
                 self.env.user.employee_id.message_post(body=msg)
 
-
-class SlideChannel(models.Model):
+class Channel(models.Model):
     _inherit = 'slide.channel'
 
     def _action_add_members(self, target_partners, member_status='joined', raise_on_access=False):
@@ -76,7 +74,7 @@ class SlideChannel(models.Model):
                 channel._message_employee_chatter(
                     _('The employee subscribed to the course %s',
                         Markup('<a href="%(link)s">%(course)s</a>') % {
-                            'link': channel.website_absolute_url,
+                            'link': channel.website_url,
                             'course': channel.name
                     }),
                     target_partners
@@ -92,7 +90,7 @@ class SlideChannel(models.Model):
             channel._message_employee_chatter(
                 _('The employee left the course %s',
                     Markup('<a href="%(link)s">%(course)s</a>') % {
-                        'link': channel.website_absolute_url,
+                        'link': channel.website_url,
                         'course': channel.name,
                 }),
                 partners)

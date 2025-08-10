@@ -8,9 +8,7 @@
     'data': [
         'security/ir.model.access.csv',
         'view.xml',
-        'data/test_translation_import_data.xml',
-        'data/test.translation.import.model1.csv',
-        'data/test.translation.import.model1-translated.csv',
+        'data/test_translation_import_data.xml'
     ],
     'installable': True,
     'assets': {
@@ -18,6 +16,5 @@
             'test_translation_import/static/src/xml/js_templates.xml',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

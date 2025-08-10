@@ -18,7 +18,6 @@ from odoo.tools import py_to_js_locale
 from odoo.addons.payment import utils as payment_utils
 from odoo.addons.payment_adyen import utils as adyen_utils
 
-
 _logger = logging.getLogger(__name__)
 
 
@@ -26,7 +25,7 @@ class AdyenController(http.Controller):
 
     _webhook_url = '/payment/adyen/notification'
 
-    @http.route('/payment/adyen/payment_methods', type='jsonrpc', auth='public')
+    @http.route('/payment/adyen/payment_methods', type='json', auth='public')
     def adyen_payment_methods(self, provider_id, formatted_amount=None, partner_id=None):
         """ Query the available payment methods based on the payment context.
 
@@ -43,7 +42,7 @@ class AdyenController(http.Controller):
         # Adyen only supports a limited set of languages but, instead of looking for the closest
         # match in https://docs.adyen.com/checkout/components-web/localization-components, we simply
         # provide the lang string as is (after adapting the format) and let Adyen find the best fit.
-        lang_code = py_to_js_locale(request.env.context.get('lang')) or 'en-US'
+        lang_code = py_to_js_locale(request.context.get('lang')) or 'en-US'
         shopper_reference = partner_sudo and f'ODOO_PARTNER_{partner_sudo.id}'
         partner_country_code = (
             partner_sudo.country_id.code or provider_sudo.company_id.country_id.code or 'NL'
@@ -63,7 +62,7 @@ class AdyenController(http.Controller):
         response_content['country_code'] = partner_country_code
         return response_content
 
-    @http.route('/payment/adyen/payments', type='jsonrpc', auth='public')
+    @http.route('/payment/adyen/payments', type='json', auth='public')
     def adyen_payments(
         self, provider_id, reference, converted_amount, currency_id, partner_id, payment_method,
         access_token, browser_info=None
@@ -153,7 +152,7 @@ class AdyenController(http.Controller):
         )
         return response_content
 
-    @http.route('/payment/adyen/payments/details', type='jsonrpc', auth='public')
+    @http.route('/payment/adyen/payments/details', type='json', auth='public')
     def adyen_payment_details(self, provider_id, reference, payment_details):
         """ Submit the details of the additional actions and handle the notification data.
 

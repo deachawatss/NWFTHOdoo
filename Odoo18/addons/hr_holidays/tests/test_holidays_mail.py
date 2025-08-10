@@ -8,7 +8,7 @@ from freezegun import freeze_time
 from odoo import Command
 from odoo.tools import mute_logger
 
-from .common import TestHrHolidaysCommon
+from odoo.addons.hr_holidays.tests.common import TestHrHolidaysCommon
 from odoo.addons.mail.tests.common import MailCase
 
 
@@ -23,9 +23,9 @@ class TestHolidaysMail(TestHrHolidaysCommon, MailCase):
 
             holiday_status_paid_time_off = self.env['hr.leave.type'].create({
                 'name': 'Paid Time Off',
-                'requires_allocation': True,
-                'employee_requests': False,
-                'allocation_validation_type': 'hr',
+                'requires_allocation': 'yes',
+                'employee_requests': 'no',
+                'allocation_validation_type': 'officer',
                 'leave_validation_type': 'both',
                 'responsible_ids': [Command.link(self.env.ref('base.user_admin').id)],
             })
@@ -39,7 +39,7 @@ class TestHolidaysMail(TestHrHolidaysCommon, MailCase):
                     'state': 'confirm',
                     'date_from': time.strftime('%Y-%m-01'),
                 }
-            ]).action_approve()
+            ]).action_validate()
 
             leave_vals = {
                 'name': 'Sick Time Off',
@@ -51,7 +51,7 @@ class TestHolidaysMail(TestHrHolidaysCommon, MailCase):
             leave = self.env['hr.leave'].create(leave_vals)
             leave.action_approve()
             with self.mock_mail_gateway():
-                leave.action_approve()
+                leave.action_validate()
                 admin_emails = self._new_mails.filtered(lambda x: x.partner_ids.employee_ids.id == self.ref('hr.employee_admin'))
                 self.assertEqual(len(admin_emails), 1, "Mitchell Admin should receive an email")
                 self.assertTrue("has been accepted" in admin_emails.preview)

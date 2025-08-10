@@ -1,7 +1,7 @@
 import { Composer } from "@mail/core/common/composer";
 import { markEventHandled } from "@web/core/utils/misc";
 
-import { useRef } from "@odoo/owl";
+import { useRef, useState } from "@odoo/owl";
 
 import { useService } from "@web/core/utils/hooks";
 import { patch } from "@web/core/utils/patch";
@@ -11,7 +11,7 @@ const composerPatch = {
     setup() {
         this.gifButton = useRef("gif-button");
         super.setup();
-        this.ui = useService("ui");
+        this.ui = useState(useService("ui"));
     },
     get pickerSettings() {
         const setting = super.pickerSettings;
@@ -25,7 +25,7 @@ const composerPatch = {
     },
     get hasGifPicker() {
         return (
-            (this.store.hasGifPickerFeature || this.store.self.main_user_id?.is_admin) &&
+            (this.store.hasGifPickerFeature || this.store.self.isAdmin) &&
             !this.env.inChatter &&
             !this.props.composer.message
         );
@@ -38,7 +38,7 @@ const composerPatch = {
     },
     async sendGifMessage(gif) {
         await this._sendMessage(gif.url, {
-            parentId: this.props.composer.replyToMessage?.id,
+            parentId: this.props.messageToReplyTo?.message?.id,
         });
     },
 };

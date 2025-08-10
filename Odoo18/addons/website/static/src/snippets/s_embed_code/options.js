@@ -1,3 +1,4 @@
+/** @odoo-module **/
 import { Dialog } from "@web/core/dialog/dialog";
 import { CodeEditor } from "@web/core/code_editor/code_editor";
 import { useService } from "@web/core/utils/hooks";

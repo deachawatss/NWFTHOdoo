@@ -39,8 +39,7 @@
 
 .o_spreadsheet_dashboard_action {
     background-color: white;
-    height: 100dvh !important;
-    width: 100dvw !important;
+
     .o_renderer {
         height: 100%;
 
@@ -55,6 +54,10 @@
                 border-top: 0px;
             }
         }
+    }
+
+    .o_side_panel_filter_icon {
+        padding: 0;
     }
 
     .dashboard-loading-status {
@@ -107,23 +110,6 @@
 
         .o-filter-value-double-size {
             flex-basis: 200px;
-        }
-    }
-
-    .o_dashboard_star {
-        margin: auto 0;
-        @include o-hover-text-color($gray-400, $o-main-favorite-color);
-
-        &:hover:before {
-            content: "\f005";
-        }
-
-        &.favorite_button_enabled {
-            @include o-hover-text-color($o-main-favorite-color, $gray-400);
-
-            &:hover:before {
-                content: "\f006";
-            }
         }
     }
 }

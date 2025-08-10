@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
 import { pivotView } from "@web/views/pivot/pivot_view";
 import { ForecastSearchModel } from "@crm/views/forecast_search_model";

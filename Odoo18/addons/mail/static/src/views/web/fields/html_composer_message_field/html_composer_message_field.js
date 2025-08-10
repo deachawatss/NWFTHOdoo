@@ -1,10 +1,9 @@
-import { DYNAMIC_PLACEHOLDER_PLUGINS } from "@html_editor/backend/plugin_sets";
+import { DYNAMIC_PLACEHOLDER_PLUGINS } from "@html_editor/plugin_sets";
 import { isEmpty } from "@html_editor/utils/dom_info";
 import { registry } from "@web/core/registry";
 import { useBus } from "@web/core/utils/hooks";
 import { HtmlMailField, htmlMailField } from "../html_mail_field/html_mail_field";
 import { MentionPlugin } from "./mention_plugin";
-import { ContentExpandablePlugin } from "./content_expandable_plugin";
 import { SIGNATURE_CLASS } from "@html_editor/main/signature_plugin";
 import { fillEmpty } from "@html_editor/utils/dom";
 
@@ -25,9 +24,9 @@ export class HtmlComposerMessageField extends HtmlMailField {
                 this.editor.editable.after(elContent);
                 // TODO: the following legacy regex may not have the desired effect as it
                 // agglomerates multiple newLines together.
-                const text = elContent.innerText.replace(/(\t|\n)+/g, "\n");
+                const textValue = elContent.innerText.replace(/(\t|\n)+/g, "\n");
                 elContent.remove();
-                ev.detail.onSaveContent({ text, emailAddSignature });
+                ev.detail.onSaveContent(textValue, emailAddSignature);
             });
             useBus(this.env.fullComposerBus, "ATTACHMENT_REMOVED", (ev) => {
                 const attachmentElements = this.editor.editable.querySelectorAll(
@@ -46,9 +45,6 @@ export class HtmlComposerMessageField extends HtmlMailField {
     getConfig() {
         const config = super.getConfig(...arguments);
         config.Plugins = [...config.Plugins, MentionPlugin];
-        if (this.props.record.data.composition_comment_option === "reply_all") {
-            config.Plugins.push(ContentExpandablePlugin);
-        }
         if (!this.props.record.data.composition_batch) {
             config.Plugins = config.Plugins.filter(
                 (plugin) => !DYNAMIC_PLACEHOLDER_PLUGINS.includes(plugin)
@@ -78,7 +74,6 @@ export class HtmlComposerMessageField extends HtmlMailField {
 
 export const htmlComposerMessageField = {
     ...htmlMailField,
-    additionalClasses: [...htmlMailField.additionalClasses, "ps-0"],
     component: HtmlComposerMessageField,
 };
 

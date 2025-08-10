@@ -28,10 +28,9 @@ const ANONYMOUS_PROCESS_ID = 'ANONYMOUS_PROCESS_ID';
 
 export const websiteService = {
     dependencies: ['orm', 'action', 'hotkey'],
-    start(env, { orm, action, hotkey }) {
+    async start(env, { orm, action, hotkey }) {
         let websites = [];
         let currentWebsiteId;
-        let currentWebsiteIdList = [];
         let currentMetadata = {};
         let fullscreen;
         let pageDocument;
@@ -82,34 +81,13 @@ export const websiteService = {
             Component: WebsiteLoader,
             props: { bus },
         });
-
-        function addWebsiteId(id) {
-            if (!currentWebsiteIdList.length) {
-                currentWebsiteId = id;
-            }
-            currentWebsiteIdList.push(id);
-        }
-
-        function removeWebsiteId() {
-            currentWebsiteIdList.shift();
-            if (currentWebsiteIdList.length) {
-                currentWebsiteId = currentWebsiteIdList[0];
-            } else {
-                currentWebsiteId = null;
-            }
-        }
-
         return {
             set currentWebsiteId(id) {
-                if (id === null) {
-                    removeWebsiteId();
-                    return;
-                }
                 if (id && id !== lastWebsiteId) {
                     invalidateSnippetCache = true;
                     lastWebsiteId = id;
                 }
-                addWebsiteId(id);
+                currentWebsiteId = id;
                 websiteSystrayRegistry.trigger('EDIT-WEBSITE');
             },
             /**
@@ -124,9 +102,6 @@ export const websiteService = {
                     currentWebsite.metadata = currentMetadata;
                 }
                 return currentWebsite;
-            },
-            get currentWebsiteId(){
-                return currentWebsiteId;
             },
             get websites() {
                 return websites;
@@ -217,19 +192,6 @@ export const websiteService = {
             get isDesigner() {
                 return isDesigner === true;
             },
-            get is404() {
-                return currentMetadata.viewXmlid === "website.page_404";
-            },
-            get currentLocation() {
-                const path = decodeURIComponent(this.contentWindow.location.pathname);
-                if (!this.currentWebsite.metadata.translatable) {
-                    return path;
-                }
-                // If the website is translatable, remove the /lang in the
-                // location pathname, e.g. /fr/hello-page -> /hello-page
-                const lang = path.split("/")[1];
-                return path.slice(lang.length + 1);
-            },
             get hasMultiWebsites() {
                 return hasMultiWebsites === true;
             },
@@ -252,13 +214,15 @@ export const websiteService = {
                     invalidateSnippetCache = true;
                     path = `/website/lang/${encodeURIComponent(lang)}?r=${encodeURIComponent(path)}`;
                 }
-                action.doAction("website.website_preview", {
+                action.doAction('website.website_preview', {
                     clearBreadcrumbs: true,
-                    props: {
-                        websiteId: websiteId || currentWebsiteId,
-                        path: path || (contentWindow && contentWindow.location.href) || '/',
-                        enableEditor: edition,
-                        editTranslations: translation,
+                    additionalContext: {
+                        params: {
+                            website_id: websiteId || currentWebsiteId,
+                            path: path || (contentWindow && contentWindow.location.href) || '/',
+                            enable_editor: edition,
+                            edit_translations: translation,
+                        },
                     },
                 });
             },
@@ -271,17 +235,7 @@ export const websiteService = {
                 ]);
             },
             async fetchWebsites() {
-                websites = (
-                    await orm.webSearchRead("website", [], {
-                        specification: {
-                            domain: {},
-                            id: {},
-                            name: {},
-                            language_ids: {},
-                            default_lang_id: { fields: { code: {} } },
-                        },
-                    })
-                ).records;
+                websites = [...(await orm.searchRead('website', [], ['domain', 'id', 'name']))];
             },
             async loadWysiwyg() {
                 await ensureJQuery();

@@ -13,9 +13,7 @@ class BaseTestUi(AccountTestMockOnlineSyncCommon):
 
     def main_flow_tour(self):
         # Disable all onboarding tours
-        self.env.ref('base.user_admin').write({
-            'email': 'mitchell.admin@example.com',
-        })
+        self.env.ref('base.user_admin').tour_enabled = False
         # Enable Make to Order
         self.env.ref('stock.route_warehouse0_mto').active = True
 
@@ -52,16 +50,16 @@ class BaseTestUi(AccountTestMockOnlineSyncCommon):
             'name': 'Bank Current Account - (test)',
             'account_type': 'asset_cash',
         })
-        self.env.company.expense_account_id = a_expense
-        self.env.company.income_account_id = a_sale
 
         IrDefault = self.env['ir.default']
         IrDefault.set('res.partner', 'property_account_receivable_id', a_recv.id, company_id=self.env.company.id)
         IrDefault.set('res.partner', 'property_account_payable_id', a_pay.id, company_id=self.env.company.id)
         IrDefault.set('res.partner', 'property_account_position_id', False, company_id=self.env.company.id)
+        IrDefault.set('product.category', 'property_account_expense_categ_id', a_expense.id, company_id=self.env.company.id)
+        IrDefault.set('product.category', 'property_account_income_categ_id', a_sale.id, company_id=self.env.company.id)
 
         self.expenses_journal = self.env['account.journal'].create({
-            'name': 'Purchases - Test',
+            'name': 'Vendor Bills - Test',
             'code': 'TEXJ',
             'type': 'purchase',
             'refund_sequence': True,
@@ -77,7 +75,7 @@ class BaseTestUi(AccountTestMockOnlineSyncCommon):
         self.bank_journal.inbound_payment_method_line_ids.payment_account_id = a_sale
 
         self.sales_journal = self.env['account.journal'].create({
-            'name': 'Sales - Test',
+            'name': 'Customer Invoices - Test',
             'code': 'TINV',
             'type': 'sale',
             'default_account_id': a_sale.id,
@@ -92,7 +90,8 @@ class BaseTestUi(AccountTestMockOnlineSyncCommon):
 
         self.start_tour("/odoo", 'main_flow_tour', login="admin", timeout=180)
 
-@odoo.tests.tagged('post_install', '-at_install')
+
+@odoo.tests.tagged('post_install', '-at_install', 'is_tour')
 class TestUi(BaseTestUi):
 
     def test_01_main_flow_tour(self):
@@ -188,9 +187,10 @@ class TestUi(BaseTestUi):
 
         current_companies = "%s-%s" % (company1.id, company2.id)
         with mute_logger("odoo.http"):
-            self.start_tour(f"/odoo/action-{act_window.id}?debug=assets", "test_company_switch_access_error", login="admin", cookies={"cids": current_companies})
+            self.start_tour(f"/odoo/action-{act_window.id}?debug=assets&cids={current_companies}", "test_company_switch_access_error", login="admin")
 
-@odoo.tests.tagged('post_install', '-at_install')
+
+@odoo.tests.tagged('post_install', '-at_install', 'is_tour')
 class TestUiMobile(BaseTestUi):
 
     browser_size = '375x667'

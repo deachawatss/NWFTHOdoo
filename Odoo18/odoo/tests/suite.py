@@ -16,11 +16,11 @@ to minimise the code to maintain
 import logging
 import sys
 
-import odoo
 from . import case
 from .common import HttpCase
 from .result import stats_logger
 from unittest import util, BaseTestSuite, TestCase
+from odoo.modules import module
 
 __unittest = True
 
@@ -38,7 +38,7 @@ class TestSuite(BaseTestSuite):
             if result.shouldStop:
                 break
             assert isinstance(test, (TestCase))
-            odoo.modules.module.current_test = test
+            module.current_test = test
             self._tearDownPreviousClass(test, result)
             self._handleClassSetUp(test, result)
             result._previousTestClass = test.__class__

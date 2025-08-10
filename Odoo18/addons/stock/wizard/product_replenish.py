@@ -1,22 +1,25 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
+
+import datetime
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
-from odoo.fields import Domain
+from odoo.osv import expression
 from odoo.tools.misc import clean_context
 
 
 class ProductReplenish(models.TransientModel):
     _name = 'product.replenish'
-    _inherit = ['stock.replenish.mixin']
+    _inherit = 'stock.replenish.mixin'
     _description = 'Product Replenish'
     _check_company_auto = True
 
     product_id = fields.Many2one('product.product', string='Product', required=True)
     product_tmpl_id = fields.Many2one('product.template', string='Product Template', required=True)
     product_has_variants = fields.Boolean('Has variants', default=False, required=True)
-    allowed_uom_ids = fields.Many2many('uom.uom', compute='_compute_allowed_uom_ids')
-    product_uom_id = fields.Many2one('uom.uom', string='Unity of measure', domain="[('id', 'in', allowed_uom_ids)]", required=True)
+    product_uom_category_id = fields.Many2one('uom.category', related='product_id.uom_id.category_id', readonly=True, required=True)
+    product_uom_id = fields.Many2one('uom.uom', string='Unity of measure', required=True)
     forecast_uom_id = fields.Many2one(related='product_id.uom_id')
     quantity = fields.Float('Quantity', default=1, required=True)
     date_planned = fields.Datetime('Scheduled Date', required=True, compute="_compute_date_planned", readonly=False,
@@ -32,11 +35,6 @@ class ProductReplenish(models.TransientModel):
     def _onchange_product_id(self):
         if not self.env.context.get('default_quantity'):
             self.quantity = abs(self.forecasted_quantity) if self.forecasted_quantity < 0 else 1
-
-    @api.depends('product_id', 'product_id.uom_id', 'product_id.uom_ids', 'product_id.seller_ids', 'product_id.seller_ids.product_uom_id')
-    def _compute_allowed_uom_ids(self):
-        for rec in self:
-            rec.allowed_uom_ids = rec.product_id.uom_id | rec.product_id.uom_ids | rec.product_id.seller_ids.product_uom_id
 
     @api.depends('warehouse_id', 'product_id')
     def _compute_forecasted_quantity(self):
@@ -90,13 +88,15 @@ class ProductReplenish(models.TransientModel):
     def launch_replenishment(self):
         if not self.route_id:
             raise UserError(_("You need to select a route to replenish your products"))
+        uom_reference = self.product_id.uom_id
+        self.quantity = self.product_uom_id._compute_quantity(self.quantity, uom_reference, rounding_method='HALF-UP')
         try:
             now = self.env.cr.now()
             self.env['procurement.group'].with_context(clean_context(self.env.context)).run([
                 self.env['procurement.group'].Procurement(
                     self.product_id,
                     self.quantity,
-                    self.product_uom_id,
+                    uom_reference,
                     self.warehouse_id.lot_stock_id,  # Location
                     _("Manual Replenishment"),  # Name
                     _("Manual Replenishment"),  # Origin
@@ -167,7 +167,8 @@ class ProductReplenish(models.TransientModel):
 
     def _get_route_domain(self, product_tmpl_id):
         company = product_tmpl_id.company_id or self.env.company
-        domain = Domain.AND([self._get_allowed_route_domain(), self.env['stock.route']._check_company_domain(company)])
+        domain = expression.AND([self._get_allowed_route_domain(), self.env['stock.route']._check_company_domain(company)])
+        domain = expression.AND([domain, [('id', 'not in', self.env['stock.warehouse'].search([]).crossdock_route_id.ids)]])
         if product_tmpl_id.route_ids:
-            domain &= Domain('product_ids', '=', product_tmpl_id.id)
+            domain = expression.AND([domain, [('product_ids', '=', product_tmpl_id.id)]])
         return domain

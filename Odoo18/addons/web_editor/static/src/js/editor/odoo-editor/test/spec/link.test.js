@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import {
     URL_REGEX,
     descendants,

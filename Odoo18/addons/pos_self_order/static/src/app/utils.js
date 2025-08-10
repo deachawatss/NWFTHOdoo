@@ -41,8 +41,8 @@ export const attributeFormatter = (attrById, values, customValues = []) => {
     return Object.values(selectedValue);
 };
 
-export const attributeFlatter = (attribute) =>
-    Object.values(attribute)
+export const attributeFlatter = (attribute) => {
+    return Object.values(attribute)
         .map((v) => {
             if (v instanceof Object) {
                 return Object.entries(v)
@@ -54,3 +54,4 @@ export const attributeFlatter = (attribute) =>
         })
         .flat()
         .map((v) => parseInt(v));
+};

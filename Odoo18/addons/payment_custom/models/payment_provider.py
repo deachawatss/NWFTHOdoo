@@ -1,7 +1,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import _, api, fields, models
-from odoo.fields import Domain
+from odoo.osv.expression import AND
 
 from odoo.addons.payment_custom import const
 
@@ -9,10 +9,11 @@ from odoo.addons.payment_custom import const
 class PaymentProvider(models.Model):
     _inherit = 'payment.provider'
 
-    _custom_providers_setup = models.Constraint(
+    _sql_constraints = [(
+        'custom_providers_setup',
         "CHECK(custom_mode IS NULL OR (code = 'custom' AND custom_mode IS NOT NULL))",
-        'Only custom providers should have a custom mode.',
-    )
+        "Only custom providers should have a custom mode."
+    )]
 
     code = fields.Selection(
         selection_add=[('custom', "Custom")], ondelete={'custom': 'set default'}
@@ -26,8 +27,8 @@ class PaymentProvider(models.Model):
         string="Enable QR Codes", help="Enable the use of QR-codes when paying by wire transfer.")
 
     @api.model_create_multi
-    def create(self, vals_list):
-        providers = super().create(vals_list)
+    def create(self, values_list):
+        providers = super().create(values_list)
         providers.filtered(lambda p: p.custom_mode == 'wire_transfer').pending_msg = None
         return providers
 
@@ -51,10 +52,10 @@ class PaymentProvider(models.Model):
                     f'</div>'
 
     @api.model
-    def _get_provider_domain(self, provider_code, *, custom_mode='', **kwargs):
-        res = super()._get_provider_domain(provider_code, custom_mode=custom_mode, **kwargs)
+    def _get_removal_domain(self, provider_code, custom_mode='', **kwargs):
+        res = super()._get_removal_domain(provider_code, custom_mode=custom_mode, **kwargs)
         if provider_code == 'custom' and custom_mode:
-            return Domain.AND([res, [('custom_mode', '=', custom_mode)]])
+            return AND([res, [('custom_mode', '=', custom_mode)]])
         return res
 
     @api.model

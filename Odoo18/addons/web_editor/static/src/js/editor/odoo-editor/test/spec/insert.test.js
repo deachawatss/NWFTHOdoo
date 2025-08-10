@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { parseHTML, setCursorEnd } from '../../src/utils/utils.js';
 import {
     BasicEditor,

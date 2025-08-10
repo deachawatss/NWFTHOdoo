@@ -4,7 +4,7 @@
 from odoo import _, fields, models
 
 
-class ResUsers(models.Model):
+class Users(models.Model):
     _inherit = 'res.users'
 
     create_date = fields.Datetime('Create Date', readonly=True, index=True)

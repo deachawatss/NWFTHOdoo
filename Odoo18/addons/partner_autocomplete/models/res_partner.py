@@ -3,13 +3,17 @@ import re
 
 from stdnum.eu.vat import check_vies
 
-from odoo import api, models, _
+from odoo import api, fields, models, _
 
 _logger = logging.getLogger(__name__)
 
 
 class ResPartner(models.Model):
+    _name = 'res.partner'
     _inherit = 'res.partner'
+
+    partner_gid = fields.Integer('Company database ID')
+    additional_info = fields.Char('Additional info')
 
     @api.model
     def _iap_replace_location_codes(self, iap_data):
@@ -56,6 +60,25 @@ class ResPartner(models.Model):
         self._iap_replace_language_codes(iap_data)
         return iap_data
 
+    # Deprecated since DnB
+    @api.model
+    def autocomplete(self, query, timeout=15):
+        return []
+
+    # Deprecated since DnB
+    @api.model
+    def enrich_company(self, company_domain, partner_gid, vat, timeout=15):
+        return {}
+
+    # Deprecated since DnB
+    @api.model
+    def read_by_vat(self, vat, timeout=15):
+        return []
+
+    # Deprecated since DnB
+    def check_gst_in(self, vat):
+        return False
+
     @api.model
     def autocomplete_by_name(self, query, query_country_id, timeout=15):
         if query_country_id is False:  # If it's 0, we purposely do not want to filter on the country
@@ -89,6 +112,7 @@ class ResPartner(models.Model):
         else:
             vies_result = None
             try:
+                _logger.info('Calling VIES service to check VAT for autocomplete: %s', vat)
                 vies_result = check_vies(vat, timeout=timeout)
             except Exception:
                 _logger.warning("Failed VIES VAT check.", exc_info=True)
@@ -156,7 +180,7 @@ class ResPartner(models.Model):
         }, timeout=timeout)
         return self._process_enriched_response(response, error)
 
-    def iap_partner_autocomplete_get_tag_ids(self, unspsc_codes):
+    def iap_partner_autocomplete_add_tags(self, unspsc_codes):
         """Called by JS to create the activity tags from the UNSPSC codes"""
         # If the UNSPSC module is installed, we might have a translation, so let's use it
         if self.env['ir.module.module']._get('product_unspsc').state == 'installed':
@@ -181,7 +205,7 @@ class ResPartner(models.Model):
         arch, view = super()._get_view(view_id, view_type, **options)
 
         if view_type == 'form':
-            for node in arch.xpath("//field[@name='name' or @name='vat' or @name='duns']"):
+            for node in arch.xpath("//field[@name='name' or @name='vat']"):
                 node.set('widget', 'field_partner_autocomplete')
 
         return arch, view

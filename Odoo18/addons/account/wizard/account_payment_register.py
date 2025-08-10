@@ -141,6 +141,7 @@ class AccountPaymentRegister(models.TransientModel):
         comodel_name='account.account',
         string="Difference Account",
         copy=False,
+        domain="[('deprecated', '=', False)]",
         check_company=True,
     )
     writeoff_label = fields.Char(string='Journal Item Label', default='Write-Off',
@@ -625,7 +626,7 @@ class AccountPaymentRegister(models.TransientModel):
         for batch_result in batch_results:
             all_lines |= batch_result['lines']
         all_lines = all_lines.sorted(key=lambda line: (line.move_id, line.date_maturity))
-        for lines in all_lines.grouped('move_id').values():
+        for move, lines in all_lines.grouped('move_id').items():
             installments = lines._get_installments_data(payment_currency=self.currency_id, payment_date=self.payment_date, next_payment_date=next_payment_date)
             last_installment_mode = False
             for installment in installments:
@@ -913,18 +914,18 @@ class AccountPaymentRegister(models.TransientModel):
     # -------------------------------------------------------------------------
 
     @api.model
-    def default_get(self, fields):
+    def default_get(self, fields_list):
         # OVERRIDE
-        res = super().default_get(fields)
+        res = super().default_get(fields_list)
 
-        if 'line_ids' in fields and 'line_ids' not in res:
+        if 'line_ids' in fields_list and 'line_ids' not in res:
 
             # Retrieve moves to pay from the context.
 
-            if self.env.context.get('active_model') == 'account.move':
-                lines = self.env['account.move'].browse(self.env.context.get('active_ids', [])).line_ids
-            elif self.env.context.get('active_model') == 'account.move.line':
-                lines = self.env['account.move.line'].browse(self.env.context.get('active_ids', []))
+            if self._context.get('active_model') == 'account.move':
+                lines = self.env['account.move'].browse(self._context.get('active_ids', [])).line_ids
+            elif self._context.get('active_model') == 'account.move.line':
+                lines = self.env['account.move.line'].browse(self._context.get('active_ids', []))
             else:
                 raise UserError(_(
                     "The register payment wizard should only be called on account.move or account.move.line records."
@@ -954,7 +955,7 @@ class AccountPaymentRegister(models.TransientModel):
 
             # Check.
             if not available_lines:
-                raise UserError(_("There's nothing left to pay for the selected journal items, so no payment registration is necessary. You've got your finances under control like a boss!"))
+                raise UserError(_("You can't register a payment because there is nothing left to pay on the selected journal items."))
             if len(lines.company_id.root_id) > 1:
                 raise UserError(_("You can't create payments for entries belonging to different companies."))
             if self._from_sibling_companies(lines) and lines.company_id.root_id not in self.env.user.company_ids:
@@ -1162,7 +1163,7 @@ class AccountPaymentRegister(models.TransientModel):
         payments = self.env['account.payment']
         for vals in to_process:
             payments |= vals['payment']
-        payments.action_post()
+        payments.with_context(skip_sale_auto_invoice_send=True).action_post()
 
     def _reconcile_payments(self, to_process, edit_mode=False):
         """ Reconcile the payments.
@@ -1191,6 +1192,7 @@ class AccountPaymentRegister(models.TransientModel):
                     .filtered_domain([
                         ('account_id', '=', account.id),
                         ('reconciled', '=', False),
+                        ('parent_state', '=', 'posted'),
                     ])\
                     .reconcile()
             lines.move_id.matched_payment_ids += payment
@@ -1261,7 +1263,7 @@ class AccountPaymentRegister(models.TransientModel):
         if from_sibling_companies and lines.company_id.root_id not in self.env.companies:
             # Payment made for sibling companies, we don't want to redirect to the payments
             # to avoid access error, as it will be created as parent company.
-            self.env(context={**self.env.context, "dont_redirect_to_payments": True})
+            self.env.context = {**self.env.context, "dont_redirect_to_payments": True}
 
         wizard = self.sudo() if from_sibling_companies else self
 
@@ -1282,7 +1284,7 @@ class AccountPaymentRegister(models.TransientModel):
             self.payment_difference_handling = 'open'
         payments = self._create_payments()
 
-        if self.env.context.get('dont_redirect_to_payments'):
+        if self._context.get('dont_redirect_to_payments'):
             return True
 
         action = {

@@ -2,15 +2,14 @@ import {
     click,
     contains,
     defineMailModels,
-    listenStoreFetch,
+    onRpcBefore,
     openFormView,
     start,
     startServer,
-    waitStoreFetch,
 } from "@mail/../tests/mail_test_helpers";
 import { describe, test } from "@odoo/hoot";
 import { Deferred, advanceTime } from "@odoo/hoot-mock";
-import { asyncStep, waitForSteps } from "@web/../tests/web_test_helpers";
+import { onRpc } from "@web/../tests/web_test_helpers";
 
 import { DELAY_FOR_SPINNER } from "@mail/chatter/web_portal/chatter";
 
@@ -25,7 +24,7 @@ test("base rendering", async () => {
     await contains(".o-mail-Chatter-topbar");
     await contains("button", { text: "Send message" });
     await contains("button", { text: "Log note" });
-    await contains("button", { text: "Activity" });
+    await contains("button", { text: "Activities" });
     await contains("button[aria-label='Attach files']");
     await contains(".o-mail-Followers");
 });
@@ -140,44 +139,28 @@ test("attachment counter with attachments", async () => {
 });
 
 test("attachment counter while loading attachments", async () => {
-    const def = new Deferred();
     const pyEnv = await startServer();
     const partnerId = pyEnv["res.partner"].create({});
-    listenStoreFetch("mail.thread", {
-        async onRpc() {
-            asyncStep("before mail.thread");
-            await def;
-        },
-    });
+    onRpc("/mail/thread/data", async () => await new Deferred()); // simulate long loading
     await start();
     await openFormView("res.partner", partnerId);
     await contains("button[aria-label='Attach files']");
     await advanceTime(DELAY_FOR_SPINNER);
     await contains("button[aria-label='Attach files'] .fa-spin");
     await contains("button[aria-label='Attach files']", { count: 0, text: "0" });
-    await waitForSteps(["before mail.thread"]);
-    def.resolve();
-    await waitStoreFetch("mail.thread");
 });
 
 test("attachment counter transition when attachments become loaded", async () => {
-    const def = new Deferred();
     const pyEnv = await startServer();
     const partnerId = pyEnv["res.partner"].create({});
-    listenStoreFetch("mail.thread", {
-        async onRpc() {
-            asyncStep("before mail.thread");
-            await def;
-        },
-    });
+    const deferred = new Deferred();
+    onRpcBefore("/mail/thread/data", async () => await deferred);
     await start();
     await openFormView("res.partner", partnerId);
     await contains("button[aria-label='Attach files']");
     await advanceTime(DELAY_FOR_SPINNER);
     await contains("button[aria-label='Attach files'] .fa-spin");
-    await waitForSteps(["before mail.thread"]);
-    def.resolve();
-    await waitStoreFetch("mail.thread");
+    deferred.resolve();
     await contains("button[aria-label='Attach files'] .fa-spin", { count: 0 });
 });
 

@@ -1,4 +1,7 @@
-import { Component, onWillStart, useState } from "@odoo/owl";
+/* @odoo-module */
+
+
+import { Component, useState } from "@odoo/owl";
 import { Dropdown } from "@web/core/dropdown/dropdown";
 import { DropdownItem } from "@web/core/dropdown/dropdown_item";
 import { useDropdownState } from "@web/core/dropdown/dropdown_hooks";
@@ -15,8 +18,7 @@ export class ActivityMenu extends Component {
     static template = "hr_attendance.attendance_menu";
 
     setup() {
-        this.ui = useService("ui");
-        this.lazySession = useService("lazy_session");
+        this.ui = useState(useService("ui"));
         this.employee = false;
         this.state = useState({
             checkedIn: false,
@@ -24,23 +26,14 @@ export class ActivityMenu extends Component {
         });
         this.date_formatter = registry.category("formatters").get("float_time")
         this.dropdown = useDropdownState();
-        onWillStart(()=> {
-            // access lazy session but do no wait for it, to prevent from delaying the whole webclient
-            this.lazySession.getValue("attendance_user_data", (employee) => {
-                if (employee) {
-                    this.employee = employee;
-                    this._searchReadEmployeeFill();
-                }
-            });
-        });
+        // load data but do not wait for it to render to prevent from delaying
+        // the whole webclient
+        this.searchReadEmployee();
     }
 
     async searchReadEmployee(){
-        this.employee = await rpc("/hr_attendance/attendance_user_data");
-        this._searchReadEmployeeFill();
-    }
-
-    _searchReadEmployeeFill() {
+        const result = await rpc("/hr_attendance/attendance_user_data");
+        this.employee = result;
         if (this.employee.id) {
             this.hoursToday = this.date_formatter(
                 this.employee.hours_today
@@ -65,23 +58,23 @@ export class ActivityMenu extends Component {
         if (!isIosApp()) { // iOS app lacks permissions to call `getCurrentPosition`
             navigator.geolocation.getCurrentPosition(
                 async ({coords: {latitude, longitude}}) => {
-                    this.employee = await rpc("/hr_attendance/systray_check_in_out", {
+                    await rpc("/hr_attendance/systray_check_in_out", {
                         latitude,
                         longitude
                     })
-                    this._searchReadEmployeeFill();
+                    await this.searchReadEmployee()
                 },
                 async err => {
-                    this.employee = await rpc("/hr_attendance/systray_check_in_out")
-                    this._searchReadEmployeeFill();
+                    await rpc("/hr_attendance/systray_check_in_out")
+                    await this.searchReadEmployee()
                 },
                 {
                     enableHighAccuracy: true,
                 }
             )
         } else {
-            this.employee = await rpc("/hr_attendance/systray_check_in_out")
-            this._searchReadEmployeeFill();
+            await rpc("/hr_attendance/systray_check_in_out")
+            await this.searchReadEmployee()
         }
     }
 }

@@ -17,7 +17,7 @@ class MailThread(models.AbstractModel):
         auto_join=True,
         help="Website communication history")
 
-    def _notify_get_recipients_groups(self, message, model_description, msg_vals=False):
+    def _notify_get_recipients_groups(self, message, model_description, msg_vals=None):
         groups = super()._notify_get_recipients_groups(
             message, model_description, msg_vals=msg_vals
         )
@@ -67,6 +67,9 @@ class MailThread(models.AbstractModel):
 
         This is used to determine who is opening the link
         to be able for the recipient to post messages on the document's portal view.
+
+        :param str email:
+            Email of the recipient that opened the link.
         """
         self.ensure_one()
         # check token field exists
@@ -90,14 +93,12 @@ class MailThread(models.AbstractModel):
         return False
 
     @api.model
-    def _get_allowed_access_params(self):
-        return super()._get_allowed_access_params() | {'hash', 'pid', 'token'}
-
-    @api.model
-    def _get_thread_with_access(self, thread_id, *, hash=None, pid=None, token=None, **kwargs):
-        if thread := super()._get_thread_with_access(thread_id, hash=hash, pid=pid, token=token, **kwargs):
+    def _get_thread_with_access(self, thread_id, mode="read", **kwargs):
+        if thread := super()._get_thread_with_access(thread_id, mode, **kwargs):
             return thread
         thread = self.browse(thread_id).sudo()
-        if validate_thread_with_hash_pid(thread, hash, pid) or validate_thread_with_token(thread, token):
+        if validate_thread_with_hash_pid(thread, kwargs.get("hash"), kwargs.get("pid")):
+            return thread
+        if validate_thread_with_token(thread, kwargs.get("token")):
             return thread
         return self.browse()

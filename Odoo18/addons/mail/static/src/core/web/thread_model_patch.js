@@ -1,18 +1,16 @@
 import { Thread } from "@mail/core/common/thread_model";
 
 import { patch } from "@web/core/utils/patch";
-import { fields } from "../common/record";
+import { Record } from "../common/record";
 import { compareDatetime } from "@mail/utils/common/misc";
-import { rpc } from "@web/core/network/rpc";
 
-/** @type {import("models").Thread} */
-const threadPatch = {
+patch(Thread.prototype, {
+    /** @type {integer|undefined} */
+    recipientsCount: undefined,
     setup() {
         super.setup();
-        /** @type {number|undefined} */
-        this.recipientsCount = undefined;
-        this.recipients = fields.Many("mail.followers");
-        this.activities = fields.Many("mail.activity", {
+        this.recipients = Record.many("Follower");
+        this.activities = Record.many("Activity", {
             sort: (a, b) => compareDatetime(a.date_deadline, b.date_deadline) || a.id - b.id,
             onDelete(r) {
                 r.remove();
@@ -22,6 +20,10 @@ const threadPatch = {
     get recipientsFullyLoaded() {
         return this.recipientsCount === this.recipients.length;
     },
+    closeChatWindow() {
+        const chatWindow = this.store.ChatWindow.get({ thread: this });
+        chatWindow?.close({ notifyState: false });
+    },
     computeIsDisplayed() {
         if (this.store.discuss.isActive && !this.store.env.services.ui.isSmall) {
             return this.eq(this.store.discuss.thread);
@@ -29,7 +31,7 @@ const threadPatch = {
         return super.computeIsDisplayed();
     },
     async leave() {
-        await this.closeChatWindow();
+        this.closeChatWindow();
         super.leave(...arguments);
     },
     async loadMoreFollowers() {
@@ -69,21 +71,11 @@ const threadPatch = {
             });
             return;
         }
-        super.open(...arguments);
+        super.open();
     },
     async unpin() {
-        await this.store.chatHub.initPromise;
         const chatWindow = this.store.ChatWindow.get({ thread: this });
         await chatWindow?.close();
-        await super.unpin(...arguments);
+        super.unpin(...arguments);
     },
-    async follow() {
-        const data = await rpc("/mail/thread/subscribe", {
-            res_model: this.model,
-            res_id: this.id,
-            partner_ids: [this.store.self.id],
-        });
-        this.store.insert(data);
-    }
-};
-patch(Thread.prototype, threadPatch);
+});

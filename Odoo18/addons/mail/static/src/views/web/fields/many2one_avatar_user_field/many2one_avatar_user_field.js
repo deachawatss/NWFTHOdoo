@@ -1,54 +1,107 @@
 import { useAssignUserCommand } from "@mail/views/web/fields/assign_user_command_hook";
 
-import { Component } from "@odoo/owl";
+import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
-import { computeM2OProps, Many2One } from "@web/views/fields/many2one/many2one";
 import {
-    buildM2OFieldDescription,
-    extractM2OFieldProps,
-    Many2OneField,
-} from "@web/views/fields/many2one/many2one_field";
-import { Avatar } from "../avatar/avatar";
+    Many2OneAvatarField,
+    many2OneAvatarField,
+    KanbanMany2OneAvatarField,
+    kanbanMany2OneAvatarField,
+} from "@web/views/fields/many2one_avatar/many2one_avatar_field";
+import { usePopover } from "@web/core/popover/popover_hook";
+import { AvatarCardPopover } from "@mail/discuss/web/avatar_card/avatar_card_popover";
 
-export class Many2OneAvatarUserField extends Component {
-    static template = "mail.Many2OneAvatarUserField";
-    static components = { Avatar, Many2One };
-    static props = {
-        ...Many2OneField.props,
-        withCommand: { type: Boolean },
+const WithUserChatter = (T) =>
+    class extends T {
+        setup() {
+            super.setup(...arguments);
+            if (this.props.withCommand) {
+                useAssignUserCommand();
+            }
+            this.avatarCard = usePopover(AvatarCardPopover);
+        }
+
+        get displayAvatarCard() {
+            return this.relation === "res.users";
+        }
+
+        getAvatarCardProps() {
+            return {
+                id: this.props.record.data[this.props.name][0] ?? false,
+            };
+        }
+
+        onClickAvatar(ev) {
+            const id = this.props.record.data[this.props.name][0] ?? false;
+            if (id !== false) {
+                if (!this.displayAvatarCard) {
+                    return;
+                }
+                const target = ev.currentTarget;
+                if (!this.avatarCard.isOpen) {
+                    this.avatarCard.open(target, this.getAvatarCardProps());
+                }
+            }
+        }
     };
 
-    setup() {
-        if (this.props.withCommand) {
-            useAssignUserCommand();
-        }
-    }
+export class Many2OneAvatarUserField extends WithUserChatter(Many2OneAvatarField) {
+    static template = "mail.Many2OneAvatarUserField";
+    static props = {
+        ...Many2OneAvatarField.props,
+        withCommand: { type: Boolean, optional: true },
+    };
+}
 
-    get m2oProps() {
-        return computeM2OProps(this.props);
-    }
+export const many2OneAvatarUserField = {
+    ...many2OneAvatarField,
+    component: Many2OneAvatarUserField,
+    additionalClasses: ["o_field_many2one_avatar"],
+    listViewWidth: [110],
+    extractProps(fieldInfo, dynamicInfo) {
+        const props = many2OneAvatarField.extractProps(...arguments);
+        props.withCommand = fieldInfo.viewType === "form" || fieldInfo.viewType === "list";
+        return props;
+    },
+};
 
-    get relation() {
-        // This getter is used by `useAssignUserCommand`
-        return this.props.record.fields[this.props.name].relation;
-    }
+registry.category("fields").add("many2one_avatar_user", many2OneAvatarUserField);
 
-    get value() {
-        return this.props.record.data[this.props.name];
+export class KanbanMany2OneAvatarUserField extends WithUserChatter(KanbanMany2OneAvatarField) {
+    static template = "mail.KanbanMany2OneAvatarUserField";
+    static props = {
+        ...KanbanMany2OneAvatarField.props,
+        displayAvatarName: { type: Boolean, optional: true },
+    };
+    /**
+     * All props are normally passed to the Many2OneField however since
+     * we add a new one, we need to filter it out.
+     */
+    get popoverProps() {
+        const props = super.popoverProps;
+        delete props.displayAvatarName;
+        return props;
     }
 }
 
-registry.category("fields").add("many2one_avatar_user", {
-    ...buildM2OFieldDescription(Many2OneAvatarUserField),
-    additionalClasses: ["o_field_many2one_avatar"],
-    extractProps(staticInfo, dynamicInfo) {
-        return {
-            ...extractM2OFieldProps(staticInfo, dynamicInfo),
-            withCommand: ["form", "list"].includes(staticInfo.viewType),
-            canOpen: "no_open" in staticInfo.options
-                ? !staticInfo.options.no_open
-                : staticInfo.viewType === "form",
-        };
+export const kanbanMany2OneAvatarUserField = {
+    ...kanbanMany2OneAvatarField,
+    component: KanbanMany2OneAvatarUserField,
+    additionalClasses: [...kanbanMany2OneAvatarField.additionalClasses, "o_field_many2one_avatar"],
+    supportedOptions: [
+        ...(kanbanMany2OneAvatarField.supportedOptions || []),
+        {
+            label: _t("Display avatar name"),
+            name: "display_avatar_name",
+            type: "boolean",
+        },
+    ],
+    extractProps({ options }) {
+        const props = kanbanMany2OneAvatarField.extractProps(...arguments);
+        props.displayAvatarName = options.display_avatar_name || false;
+        return props;
     },
-    listViewWidth: [110],
-});
+};
+
+registry.category("fields").add("kanban.many2one_avatar_user", kanbanMany2OneAvatarUserField);
+registry.category("fields").add("activity.many2one_avatar_user", kanbanMany2OneAvatarUserField);

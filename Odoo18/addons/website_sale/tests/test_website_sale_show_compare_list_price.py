@@ -12,7 +12,7 @@ class WebsiteSaleShopPriceListCompareListPriceDispayTests(AccountTestInvoicingHt
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls._enable_pricelists()
+
         ProductTemplate = cls.env['product.template']
         Pricelist = cls.env['product.pricelist']
 
@@ -103,8 +103,9 @@ class WebsiteSaleShopPriceListCompareListPriceDispayTests(AccountTestInvoicingHt
         })
 
     def test_compare_list_price_price_list_display(self):
-        self.env['res.config.settings'].create({
-            'group_product_pricelist': True,
-            'group_product_price_comparison': True,
-        }).execute()
+        self.env.user.write({
+            'groups_id': [Command.link(
+                self.env.ref('website_sale.group_product_price_comparison').id
+            )],
+        })
         self.start_tour("/", 'compare_list_price_price_list_display', login=self.env.user.login)

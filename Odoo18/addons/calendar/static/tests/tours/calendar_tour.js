@@ -1,6 +1,8 @@
+/** @odoo-module **/
+
 import { waitFor } from "@odoo/hoot-dom";
 import { registry } from "@web/core/registry";
-import { stepUtils } from "@web_tour/tour_utils";
+import { stepUtils } from "@web_tour/tour_service/tour_utils";
 
 const todayDate = function () {
     const now = new Date();
@@ -93,6 +95,11 @@ const clickOnTheEvent = {
 
 registry.category("web_tour.tours").add("test_calendar_delete_tour", {
     steps: () => [
+        {
+            content: "Select filter (everybody)",
+            trigger: 'div[data-value="all"] input',
+            run: "click",
+        },
         clickOnTheEvent,
         {
             content: "Delete the event",
@@ -113,6 +120,31 @@ registry.category("web_tour.tours").add("test_calendar_decline_tour", {
         {
             content: "Delete the event",
             trigger: ".o_cw_popover_delete",
+            run: "click",
+        },
+        {
+            content: "Wait declined status",
+            trigger: ".o_attendee_status_declined",
+        },
+    ],
+});
+
+registry.category("web_tour.tours").add("test_calendar_decline_with_everybody_filter_tour", {
+    steps: () => [
+        {
+            content: "Select filter (everybody)",
+            trigger: 'div[data-value="all"] input',
+            run: "click",
+        },
+        clickOnTheEvent,
+        {
+            content: "Delete the event",
+            trigger: ".o_cw_popover_delete",
+            run: "click",
+        },
+        {
+            content: "Select filter (everybody)",
+            trigger: 'div[data-value="all"] input',
             run: "click",
         },
         {

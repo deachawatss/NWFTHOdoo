@@ -170,15 +170,6 @@ class TestTaskState(TestProjectCommon):
 
         self.assertEqual(task.state, '01_in_progress', "The task should be in progress")
 
-    def test_changing_parent_do_not_reset_task_state(self):
-        self.task_2.state = '04_waiting_normal'
-        self.task_2.parent_id = self.task_1
-        self.assertEqual(
-            self.task_2.state,
-            '04_waiting_normal',
-            "Changing the task's parent should not reset the task's state.",
-        )
-
     def test_state_dont_reset_when_enabling_task_dependencies(self):
         self.task_1.state = "03_approved"
         self.task_2.state = "02_changes_requested"

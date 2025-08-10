@@ -7,7 +7,7 @@ import { MainComponentsContainer } from "@web/core/main_components_container";
 import { View } from "@web/views/view";
 import { mountWithCleanup } from "./component_test_helpers";
 import { contains } from "./dom_test_helpers";
-import { getMockEnv, getService } from "./env_test_helpers";
+import { getService } from "./env_test_helpers";
 import { registerInlineViewArchs } from "./mock_server/mock_model";
 
 /**
@@ -120,10 +120,7 @@ export async function clickCancel(options) {
  * @param {SelectorOptions} [options]
  */
 export async function clickFieldDropdown(fieldName, options) {
-    const selector = getMockEnv().isSmall
-        ? `[name='${fieldName}'] input`
-        : `[name='${fieldName}'] .dropdown input`;
-    await contains(buildSelector(selector, options)).click();
+    await contains(buildSelector(`[name='${fieldName}'] .dropdown input`, options)).click();
 }
 
 /**
@@ -132,10 +129,6 @@ export async function clickFieldDropdown(fieldName, options) {
  * @param {SelectorOptions} [options]
  */
 export async function clickFieldDropdownItem(fieldName, itemContent, options) {
-    if (getMockEnv().isSmall) {
-        await contains(`.o_kanban_record:contains('${itemContent}')`).click();
-        return;
-    }
     const dropdowns = queryAll(
         buildSelector(`[name='${fieldName}'] .dropdown .dropdown-menu`, options)
     );

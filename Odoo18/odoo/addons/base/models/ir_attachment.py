@@ -14,13 +14,12 @@ import werkzeug
 
 from collections import defaultdict
 
-from odoo import api, fields, models, _
+from odoo import api, fields, models, SUPERUSER_ID, tools, _
 from odoo.exceptions import AccessError, ValidationError, UserError
-from odoo.fields import Domain
 from odoo.http import Stream, root, request
-from odoo.tools import config, consteq, human_size, image, split_every, str2bool
+from odoo.tools import config, human_size, image, str2bool, consteq
 from odoo.tools.mimetypes import guess_mimetype, fix_filename_extension
-from odoo.tools.misc import limited_field_access_token
+from odoo.osv import expression
 
 _logger = logging.getLogger(__name__)
 
@@ -57,7 +56,7 @@ class IrAttachment(models.Model):
 
     @api.model
     def _filestore(self):
-        return config.filestore(self.env.cr.dbname)
+        return config.filestore(self._cr.dbname)
 
     @api.model
     def _get_storage_domain(self):
@@ -75,7 +74,7 @@ class IrAttachment(models.Model):
 
         # Migrate only binary attachments and bypass the res_field automatic
         # filter added in _search override
-        self.search(Domain.AND([
+        self.search(expression.AND([
             self._get_storage_domain(),
             ['&', ('type', '=', 'binary'), '|', ('res_field', '=', False), ('res_field', '!=', False)]
         ]))._migrate()
@@ -83,6 +82,11 @@ class IrAttachment(models.Model):
     def _migrate(self):
         record_count = len(self)
         storage = self._storage().upper()
+        # When migrating to filestore verifying if the directory has write permission
+        if storage == 'FILE':
+            filestore = self._filestore()
+            if not os.access(filestore, os.W_OK):
+                raise PermissionError("Write permission denied for filestore directory.")
         for index, attach in enumerate(self):
             _logger.debug("Migrate attachment %s/%s to %s", index + 1, record_count, storage)
             # pass mimetype, to avoid recomputation
@@ -91,7 +95,7 @@ class IrAttachment(models.Model):
     @api.model
     def _full_path(self, path):
         # sanitize path
-        path = re.sub('[.:]', '', path)
+        path = re.sub('[.]', '', path)
         path = path.strip('/\\')
         return os.path.join(self._filestore(), path)
 
@@ -111,13 +115,13 @@ class IrAttachment(models.Model):
         return fname, full_path
 
     @api.model
-    def _file_read(self, fname, size=None):
+    def _file_read(self, fname):
         assert isinstance(self, IrAttachment)
         full_path = self._full_path(fname)
         try:
             with open(full_path, 'rb') as f:
-                return f.read(size)
-        except OSError:
+                return f.read()
+        except (IOError, OSError):
             _logger.info("_read_file reading %s", full_path, exc_info=True)
         return b''
 
@@ -131,9 +135,8 @@ class IrAttachment(models.Model):
                     fp.write(bin_value)
                 # add fname to checklist, in case the transaction aborts
                 self._mark_for_gc(fname)
-            except OSError:
-                _logger.info("_file_write writing %s", full_path)
-                raise
+            except IOError:
+                _logger.info("_file_write writing %s", full_path, exc_info=True)
         return fname
 
     @api.model
@@ -144,7 +147,7 @@ class IrAttachment(models.Model):
     def _mark_for_gc(self, fname):
         """ Add ``fname`` in a checklist for the filestore garbage collection. """
         assert isinstance(self, IrAttachment)
-        fname = re.sub('[.:]', '', fname).strip('/\\')
+        fname = re.sub('[.]', '', fname).strip('/\\')
         # we use a spooldir: add an empty file in the subdirectory 'checklist'
         full_path = os.path.join(self._full_path('checklist'), fname)
         if not os.path.exists(full_path):
@@ -168,7 +171,7 @@ class IrAttachment(models.Model):
         # the LOCK statement will wait until those concurrent transactions end.
         # But this transaction will not see the new attachements if it has done
         # other requests before the LOCK (like the method _storage() above).
-        cr = self.env.cr
+        cr = self._cr
         cr.commit()
 
         # prevent all concurrent updates on ir_attachment while collecting,
@@ -198,7 +201,7 @@ class IrAttachment(models.Model):
         # Clean up the checklist. The checklist is split in chunks and files are garbage-collected
         # for each chunk.
         removed = 0
-        for names in split_every(self.env.cr.IN_MAX, checklist):
+        for names in self.env.cr.split_for_in_conditions(checklist):
             # determine which files to keep among the checklist
             self.env.cr.execute("SELECT store_fname FROM ir_attachment WHERE store_fname IN %s", [names])
             whitelist = set(row[0] for row in self.env.cr.fetchall())
@@ -211,7 +214,7 @@ class IrAttachment(models.Model):
                         os.unlink(self._full_path(fname))
                         _logger.debug("_file_gc unlinked %s", self._full_path(fname))
                         removed += 1
-                    except OSError:
+                    except (OSError, IOError):
                         _logger.info("_file_gc could not unlink %s", self._full_path(fname), exc_info=True)
                 with contextlib.suppress(OSError):
                     os.unlink(filepath)
@@ -221,7 +224,7 @@ class IrAttachment(models.Model):
     @api.depends('store_fname', 'db_datas', 'file_size')
     @api.depends_context('bin_size')
     def _compute_datas(self):
-        if self.env.context.get('bin_size'):
+        if self._context.get('bin_size'):
             for attach in self:
                 attach.datas = human_size(attach.file_size)
             return
@@ -423,14 +426,20 @@ class IrAttachment(models.Model):
     mimetype = fields.Char('Mime Type', readonly=True)
     index_content = fields.Text('Indexed Content', readonly=True, prefetch=False)
 
-    _res_idx = models.Index("(res_model, res_id)")
+    def _auto_init(self):
+        res = super(IrAttachment, self)._auto_init()
+        tools.create_index(self._cr, 'ir_attachment_res_idx',
+                           self._table, ['res_model', 'res_id'])
+        return res
 
+    @api.constrains('type', 'url')
     def _check_serving_attachments(self):
         if self.env.is_admin():
             return
         for attachment in self:
             # restrict writing on attachments that could be served by the
             # ir.http's dispatch exception handling
+            # XDO note: this should be done in check(write), constraints for access rights?
             # XDO note: if read on sudo, read twice, one for constraints, one for _inverse_datas as user
             if attachment.type == 'binary' and attachment.url:
                 has_group = self.env.user.has_group
@@ -450,8 +459,8 @@ class IrAttachment(models.Model):
         if self:
             # DLE P173: `test_01_portal_attachment`
             self.env['ir.attachment'].flush_model(['res_model', 'res_id', 'create_uid', 'public', 'res_field'])
-            self.env.cr.execute('SELECT res_model, res_id, create_uid, public, res_field FROM ir_attachment WHERE id IN %s', [tuple(self.ids)])
-            for res_model, res_id, create_uid, public, res_field in self.env.cr.fetchall():
+            self._cr.execute('SELECT res_model, res_id, create_uid, public, res_field FROM ir_attachment WHERE id IN %s', [tuple(self.ids)])
+            for res_model, res_id, create_uid, public, res_field in self._cr.fetchall():
                 if public and mode == 'read':
                     continue
                 if not self.env.is_system():
@@ -459,7 +468,7 @@ class IrAttachment(models.Model):
                         raise AccessError(_("Sorry, you are not allowed to access this document."))
                     if res_field:
                         field = self.env[res_model]._fields[res_field]
-                        if not self._has_field_access(field, 'read'):
+                        if not field.is_accessible(self.env):
                             raise AccessError(_("Sorry, you are not allowed to access this document."))
                 if not (res_model and res_id):
                     continue
@@ -508,22 +517,17 @@ class IrAttachment(models.Model):
         return ret_attachments
 
     @api.model
-    def _search(self, domain, offset=0, limit=None, order=None, *, active_test=True, bypass_access=False):
+    def _search(self, domain, offset=0, limit=None, order=None):
         # add res_field=False in domain if not present; the arg[0] trick below
         # works for domain items and '&'/'|'/'!' operators too
-        assert not self._active_name, "active name not supported on ir.attachment"
         disable_binary_fields_attachments = False
-        domain = Domain(domain)
-        if (
-            not self.env.context.get('skip_res_field_check')
-            and not any(d.field_expr in ('id', 'res_field') for d in domain.iter_conditions())
-        ):
+        if not self.env.context.get('skip_res_field_check') and not any(arg[0] in ('id', 'res_field') for arg in domain):
             disable_binary_fields_attachments = True
-            domain &= Domain('res_field', '=', False)
+            domain = [('res_field', '=', False)] + domain
 
-        if self.env.is_superuser() or bypass_access:
+        if self.env.is_superuser():
             # rules do not apply for the superuser
-            return super()._search(domain, offset, limit, order, bypass_access=True)
+            return super()._search(domain, offset, limit, order)
 
         # For attachments, the permissions of the document they are attached to
         # apply, so we must remove attachments for which the user cannot access
@@ -577,8 +581,8 @@ class IrAttachment(models.Model):
         # reached the last page. To avoid an infinite recursion due to the
         # permission checks the sub-call need to be aware of the number of
         # expected records to retrieve
-        if len(all_ids) == limit and len(result) < self.env.context.get('need', limit):
-            need = self.env.context.get('need', limit) - len(result)
+        if len(all_ids) == limit and len(result) < self._context.get('need', limit):
+            need = self._context.get('need', limit) - len(result)
             more_ids = self.with_context(need=need)._search(
                 domain, offset + len(all_ids), limit, order,
             )
@@ -593,10 +597,7 @@ class IrAttachment(models.Model):
             vals.pop(field, False)
         if 'mimetype' in vals or 'datas' in vals or 'raw' in vals:
             vals = self._check_contents(vals)
-        res = super(IrAttachment, self).write(vals)
-        if 'url' in vals or 'type' in vals:
-            self._check_serving_attachments()
-        return res
+        return super(IrAttachment, self).write(vals)
 
     def copy_data(self, default=None):
         default = dict(default or {})
@@ -657,9 +658,7 @@ class IrAttachment(models.Model):
         Attachments = self.browse()
         for res_model, res_id in record_tuple_set:
             Attachments.check('create', values={'res_model':res_model, 'res_id':res_id})
-        records = super().create(vals_list)
-        records._check_serving_attachments()
-        return records
+        return super().create(vals_list)
 
     def _post_add_create(self, **kwargs):
         # TODO master: rename to _post_upload, better indicating its usage
@@ -675,15 +674,6 @@ class IrAttachment(models.Model):
             attachment.write({'access_token': access_token})
             tokens.append(access_token)
         return tokens
-
-    def _get_raw_access_token(self):
-        """Return a scoped access token for the `raw` field. The token can be
-        used with `ir_binary._find_record` to bypass access rights.
-
-        :rtype: str
-        """
-        self.ensure_one()
-        return limited_field_access_token(self, "raw", scope="binary")
 
     @api.model
     def create_unique(self, values_list):
@@ -713,6 +703,28 @@ class IrAttachment(models.Model):
     def _generate_access_token(self):
         return str(uuid.uuid4())
 
+    def validate_access(self, access_token):
+        self.ensure_one()
+        record_sudo = self.sudo()
+
+        if access_token:
+            tok = record_sudo.with_context(prefetch_fields=False).access_token
+            valid_token = consteq(tok or '', access_token)
+            if not valid_token:
+                raise AccessError("Invalid access token")
+            return record_sudo
+
+        if record_sudo.with_context(prefetch_fields=False).public:
+            return record_sudo
+
+        if self.env.user._is_portal():
+            # Check the read access on the record linked to the attachment
+            # eg: Allow to download an attachment on a task from /my/tasks/task_id
+            self.check('read')
+            return record_sudo
+
+        return self
+
     @api.model
     def action_get(self):
         return self.env['ir.actions.act_window']._for_xml_id('base.action_attachment')
@@ -729,7 +741,7 @@ class IrAttachment(models.Model):
             ("url", "=like", "/web/assets/%"),
             ('res_model', '=', 'ir.ui.view'),
             ('res_id', '=', 0),
-            ('create_uid', '=', api.SUPERUSER_ID),
+            ('create_uid', '=', SUPERUSER_ID),
         ]).unlink()
         self.env.registry.clear_cache('assets')
 
@@ -818,18 +830,3 @@ class IrAttachment(models.Model):
             stream.size = 0
 
         return stream
-
-    def _can_return_content(self, field_name=None, access_token=None):
-        attachment_sudo = self.sudo().with_context(prefetch_fields=False)
-        if access_token:
-            if not consteq(attachment_sudo.access_token or "", access_token):
-                raise AccessError("Invalid access token")  # pylint: disable=missing-gettext
-            return True
-        if attachment_sudo.public:
-            return True
-        if self.env.user._is_portal():
-            # Check the read access on the record linked to the attachment
-            # eg: Allow to download an attachment on a task from /my/tasks/task_id
-            self.check("read")
-            return True
-        return super()._can_return_content(field_name, access_token)

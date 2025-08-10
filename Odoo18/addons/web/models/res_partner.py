@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
+
 import logging
 from base64 import b64decode
 
@@ -9,7 +10,7 @@ from odoo.tools.facade import Proxy, ProxyAttr, ProxyFunc
 _logger = logging.getLogger(__name__)
 
 try:
-    import vobject.vcard
+    import vobject
 except ImportError:
     _logger.warning("`vobject` Python module not found, vcard file generation disabled. Consider installing this module if you want to generate vcard files")
     vobject = None
@@ -52,6 +53,8 @@ class ResPartner(models.Model):
         # Name
         n = vcard.add('n')
         n.value = vobject.vcard.Name(family=self.name or self.complete_name or '')
+        if self.title:
+            n.value.prefix = self.title.name
         # Formatted Name
         fn = vcard.add('fn')
         fn.value = self.name or self.complete_name or ''
@@ -72,6 +75,10 @@ class ResPartner(models.Model):
             tel = vcard.add('tel')
             tel.type_param = 'work'
             tel.value = self.phone
+        if self.mobile:
+            tel = vcard.add('tel')
+            tel.type_param = 'cell'
+            tel.value = self.mobile
         # URL
         if self.website:
             url = vcard.add('url')

@@ -1,16 +1,18 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from collections import defaultdict
 
 from odoo import _, Command, fields, models
-from odoo.fields import Domain
+from odoo.osv import expression
+from odoo.tools.float_utils import float_is_zero
 from odoo.tools.misc import OrderedSet
 
 
 class StockMoveLine(models.Model):
     _inherit = "stock.move.line"
 
-    batch_id = fields.Many2one(related='picking_id.batch_id')
+    batch_id = fields.Many2one(related='picking_id.batch_id', store=True)
 
     def action_open_add_to_wave(self):
         # This action can be called from the move line list view or from the 'Add to wave' wizard
@@ -41,9 +43,6 @@ class StockMoveLine(models.Model):
                 'user_id': self.env.context.get('active_owner_id'),
                 'description': description,
             })
-            notification_title = _('The following wave transfer has been created')
-        else:
-            notification_title = _('The following wave transfer has been updated')
         line_by_picking = defaultdict(lambda: self.env['stock.move.line'])
         for line in self:
             line_by_picking[line.picking_id] |= line
@@ -62,7 +61,7 @@ class StockMoveLine(models.Model):
             if lines == picking.move_line_ids and lines.move_id == picking.move_ids:
                 add_all_moves = True
                 for move, qty in qty_by_move.items():
-                    if move.product_uom.is_zero(qty):
+                    if float_is_zero(qty, precision_rounding=move.product_uom.rounding):
                         add_all_moves = False
                         break
                 if add_all_moves:
@@ -94,31 +93,11 @@ class StockMoveLine(models.Model):
             self.env['stock.picking'].create(picking_to_wave_vals_list)
         if wave.picking_type_id.batch_auto_confirm:
             wave.action_confirm()
-        if not self.env.context.get('from_wave_form'):
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': notification_title,
-                    'message': '%s',
-                    'links': [{
-                        'label': wave.name,
-                        'url': f'/odoo/action-stock_picking_batch.action_picking_tree_wave/{wave.id}',
-                    }],
-                    'sticky': False,
-                    'next': {'type': 'ir.actions.act_window_close'},
-                }
-            }
-        else:
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'soft_reload',
-            }
 
     def _is_auto_waveable(self):
         self.ensure_one()
         if not self.picking_id \
-           or (self.picking_id.state != 'assigned' or self.product_uom_id.is_zero(self.quantity)) and not self.env.context.get('skip_auto_waveable')  \
+           or (self.picking_id.state != 'assigned' or float_is_zero(self.quantity, precision_rounding=self.product_uom_id.rounding)) and not self.env.context.get('skip_auto_waveable')  \
            or self.batch_id.is_wave \
            or not self.picking_type_id._is_auto_wave_grouped() \
            or (self.picking_type_id.wave_group_by_category and self.product_id.categ_id not in self.picking_type_id.wave_category_ids):  # noqa: SIM103
@@ -165,25 +144,25 @@ class StockMoveLine(models.Model):
         remaining_lines = OrderedSet()
         for (picking_type, lines) in self.grouped(lambda l: l.picking_type_id).items():
             if lines:
-                domains = [
-                    Domain('picking_type_id', '=', picking_type.id),
-                    Domain('company_id', 'in', lines.mapped('company_id').ids),
-                    Domain('is_wave', '=', True),
+                domain = [
+                    ('picking_type_id', '=', picking_type.id),
+                    ('company_id', 'in', lines.mapped('company_id').ids),
+                    ('is_wave', '=', True)
                 ]
                 if picking_type.batch_auto_confirm:
-                    domains.append(Domain('state', 'not in', ['done', 'cancel']))
+                    domain = expression.AND([domain, [('state', 'not in', ['done', 'cancel'])]])
                 else:
-                    domains.append(Domain('state', '=', 'draft'))
+                    domain = expression.AND([domain, [('state', '=', 'draft')]])
                 if picking_type.batch_group_by_partner:
-                    domains.append(Domain('picking_ids.partner_id', 'in', lines.move_id.partner_id.ids))
+                    domain = expression.AND([domain, [('picking_ids.partner_id', 'in', lines.move_id.partner_id.ids)]])
                 if picking_type.batch_group_by_destination:
-                    domains.append(Domain('picking_ids.partner_id.country_id', 'in', lines.move_id.partner_id.country_id.ids))
+                    domain = expression.AND([domain, [('picking_ids.partner_id.country_id', 'in', lines.move_id.partner_id.country_id.ids)]])
                 if picking_type.batch_group_by_src_loc:
-                    domains.append(Domain('picking_ids.location_id', 'in', lines.location_id.ids))
+                    domain = expression.AND([domain, [('picking_ids.location_id', 'in', lines.location_id.ids)]])
                 if picking_type.batch_group_by_dest_loc:
-                    domains.append(Domain('picking_ids.location_dest_id', 'in', lines.location_dest_id.ids))
+                    domain = expression.AND([domain, [('picking_ids.location_dest_id', 'in', lines.location_dest_id.ids)]])
 
-                potential_waves = self.env['stock.picking.batch'].search(Domain.AND(domains))
+                potential_waves = self.env['stock.picking.batch'].search(domain)
                 wave_to_new_lines = defaultdict(set)
 
                 # These dictionaries are used to enforce batch max lines/transfers/weight limits
@@ -253,31 +232,31 @@ class StockMoveLine(models.Model):
         picking_types = self.picking_type_id
         for picking_type in picking_types:
             lines = self.filtered(lambda l: l.picking_type_id == picking_type)
-            domains = [Domain([
+            domain = [
                 ('id', 'in', lines.ids),
                 ('company_id', 'in', self.company_id.ids),
                 ('picking_id.state', '=', 'assigned'),
                 ('picking_type_id', '=', picking_type.id),
                 '|',
                 ('batch_id', '=', False),
-                ('batch_id.is_wave', '=', False),
-            ])]
+                ('batch_id.is_wave', '=', False)
+            ]
             if picking_type.batch_group_by_partner:
-                domains.append(Domain('move_id.partner_id', 'in', lines.move_id.partner_id.ids))
+                domain = expression.AND([domain, [('move_id.partner_id', 'in', lines.move_id.partner_id.ids)]])
             if picking_type.batch_group_by_destination:
-                domains.append(Domain('move_id.partner_id.country_id', 'in', lines.move_id.partner_id.country_id.ids))
+                domain = expression.AND([domain, [('move_id.partner_id.country_id', 'in', lines.move_id.partner_id.country_id.ids)]])
             if picking_type.batch_group_by_src_loc:
-                domains.append(Domain('location_id', 'in', lines.location_id.ids))
+                domain = expression.AND([domain, [('location_id', 'in', lines.location_id.ids)]])
             if picking_type.batch_group_by_dest_loc:
-                domains.append(Domain('location_dest_id', 'in', lines.location_dest_id.ids))
+                domain = expression.AND([domain, [('location_dest_id', 'in', lines.location_dest_id.ids)]])
             if picking_type.wave_group_by_product:
-                domains.append(Domain('product_id', 'in', lines.product_id.ids))
+                domain = expression.AND([domain, [('product_id', 'in', lines.product_id.ids)]])
             if picking_type.wave_group_by_category:
-                domains.append(Domain('product_id.categ_id', 'in', lines.product_id.categ_id.ids))
+                domain = expression.AND([domain, [('product_id.categ_id', 'in', lines.product_id.categ_id.ids)]])
             if picking_type.wave_group_by_location:
-                domains.append(Domain('location_id', 'child_of', picking_type.wave_location_ids.ids))
+                domain = expression.AND([domain, [('location_id', 'child_of', picking_type.wave_location_ids.ids)]])
 
-            potential_lines = self.env['stock.move.line'].search(Domain.AND(domains))
+            potential_lines = self.env['stock.move.line'].search(domain)
             lines_nearest_parent_locations = defaultdict(int)
             if picking_type.wave_group_by_location:
                 for line in potential_lines:

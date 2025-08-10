@@ -15,7 +15,7 @@ class TestUsersHttp(HttpCase):
             'name': login,
             'login': login,
             'password': login,
-            'group_ids': [Command.set([self.env.ref('base.group_portal').id])],
+            'groups_id': [Command.set([self.env.ref('base.group_portal').id])],
         })
         self.env['res.users.apikeys'].with_user(portal_user)._generate(
             None,

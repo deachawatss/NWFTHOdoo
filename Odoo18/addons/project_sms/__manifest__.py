@@ -5,7 +5,7 @@
     'name': "Project - SMS",
     'summary': 'Send text messages when project/task stage move',
     'description': "Send text messages when project/task stage move",
-    'category': 'Services/Project',
+    'category': 'Hidden',
     'version': '1.0',
     'depends': ['project', 'sms'],
     'data': [
@@ -17,6 +17,5 @@
         'security/project_sms_security.xml',
     ],
     'auto_install': True,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

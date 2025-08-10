@@ -1,23 +1,22 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import logging
-import werkzeug
 from collections import defaultdict, OrderedDict
 
 from odoo import api, fields, models
 from odoo.addons.base.models.ir_model import MODULE_UNINSTALL_FLAG
 from odoo.exceptions import MissingError
 from odoo.http import request
-from odoo.modules import Manifest
+from odoo.modules.module import get_manifest
 from odoo.tools import escape_psql, split_every, SQL
 
 _logger = logging.getLogger(__name__)
 
 
 class IrModuleModule(models.Model):
-    _name = 'ir.module.module'
+    _name = "ir.module.module"
     _description = 'Module'
-    _inherit = ['ir.module.module']
+    _inherit = _name
 
     # The order is important because of dependencies (page need view, menu need page)
     _theme_model_names = OrderedDict([
@@ -33,7 +32,7 @@ class IrModuleModule(models.Model):
     }
 
     image_ids = fields.One2many('ir.attachment', 'res_id',
-                                domain=[('res_model', '=', 'ir.module.module'), ('mimetype', '=like', 'image/%')],
+                                domain=[('res_model', '=', _name), ('mimetype', '=like', 'image/%')],
                                 string='Screenshots', readonly=True)
     # for kanban view
     is_installed_on_current_website = fields.Boolean(compute='_compute_is_installed_on_current_website')
@@ -76,7 +75,7 @@ class IrModuleModule(models.Model):
 
                     -> We want to upgrade every website using this theme.
         """
-        if request and request.db and request.env and request.env.context.get('apply_new_theme'):
+        if request and request.db and request.env and request.context.get('apply_new_theme'):
             self = self.with_context(apply_new_theme=True)
 
         for module in self:
@@ -104,18 +103,13 @@ class IrModuleModule(models.Model):
                 (the name must be one of the keys present in ``_theme_model_names``)
             :return: recordset of theme template models (of type defined by ``model_name``)
         """
-        if not self.env.user.has_group('website.group_website_restricted_editor'):
-            raise werkzeug.exceptions.Forbidden()
+        theme_model_name = self._theme_model_names[model_name]
+        IrModelData = self.env['ir.model.data']
+        records = self.env[theme_model_name]
 
-        self_sudo = self.sudo()
-
-        theme_model_name = self_sudo._theme_model_names[model_name]
-        IrModelData = self_sudo.env['ir.model.data']
-        records = self_sudo.env[theme_model_name]
-
-        for module in self_sudo:
+        for module in self:
             imd_ids = IrModelData.search([('module', '=', module.name), ('model', '=', theme_model_name)]).mapped('res_id')
-            records |= self_sudo.env[theme_model_name].with_context(active_test=False).browse(imd_ids)
+            records |= self.env[theme_model_name].with_context(active_test=False).browse(imd_ids)
         return records
 
     def _update_records(self, model_name, website):
@@ -243,7 +237,7 @@ class IrModuleModule(models.Model):
             for model_name in self._theme_model_names:
                 module._update_records(model_name, website)
 
-            if self.env.context.get('apply_new_theme'):
+            if self._context.get('apply_new_theme'):
                 # Both the theme install and upgrade flow ends up here.
                 # The _post_copy() is supposed to be called only when the theme
                 # is installed for the first time on a website.
@@ -264,11 +258,11 @@ class IrModuleModule(models.Model):
         for module in self:
             _logger.info('Unload theme %s for website %s from template.' % (self.mapped('name'), website.id))
 
-            for model_name in module._theme_model_names:
-                template = module._get_module_data(model_name)
+            for model_name in self._theme_model_names:
+                template = self._get_module_data(model_name)
                 models = template.with_context(**{'active_test': False, MODULE_UNINSTALL_FLAG: True}).mapped('copy_ids').filtered(lambda m: m.website_id == website)
                 models.unlink()
-                module._theme_cleanup(model_name, website)
+                self._theme_cleanup(model_name, website)
 
     def _theme_cleanup(self, model_name, website):
         """
@@ -289,17 +283,14 @@ class IrModuleModule(models.Model):
             :param website: ``website`` model for which the models have to be cleaned
 
         """
-        if not self.env.user.has_group('website.group_website_restricted_editor'):
-            raise werkzeug.exceptions.Forbidden()
-
         self.ensure_one()
-        model_sudo = self.env[model_name].sudo()
+        model = self.env[model_name]
 
         if model_name in ('website.page', 'website.menu'):
-            return model_sudo
+            return model
         # use active_test to also unlink archived models
         # and use MODULE_UNINSTALL_FLAG to also unlink inherited models
-        orphans = model_sudo.with_context(**{'active_test': False, MODULE_UNINSTALL_FLAG: True}).search([
+        orphans = model.with_context(**{'active_test': False, MODULE_UNINSTALL_FLAG: True}).search([
             ('key', '=like', self.name + '.%'),
             ('website_id', '=', website.id),
             ('theme_template_id', '=', False),
@@ -358,16 +349,13 @@ class IrModuleModule(models.Model):
 
     def _theme_upgrade_upstream(self):
         """ Upgrade the upstream dependencies of a theme, and install it if necessary. """
-        if not self.env.user.has_group('website.group_website_restricted_editor'):
-            raise werkzeug.exceptions.Forbidden()
-
         def install_or_upgrade(theme):
             if theme.state != 'installed':
                 theme.button_install()
             themes = theme + theme._theme_get_upstream()
             themes.filtered(lambda m: m.state == 'installed').button_upgrade()
 
-        self.sudo()._button_immediate_function(install_or_upgrade)
+        self._button_immediate_function(install_or_upgrade)
 
     @api.model
     def _theme_remove(self, website):
@@ -416,6 +404,7 @@ class IrModuleModule(models.Model):
         self._theme_upgrade_upstream()
 
         result = website.button_go_website()
+        result['context']['params']['with_loader'] = True
         return result
 
     def button_remove_theme(self):
@@ -492,9 +481,9 @@ class IrModuleModule(models.Model):
             self.pool.website_views_to_adapt.clear()
 
     @api.model
-    def _load_module_terms(self, modules, langs, overwrite=False):
+    def _load_module_terms(self, modules, langs, overwrite=False, imported_module=False):
         """ Add missing website specific translation """
-        res = super()._load_module_terms(modules, langs, overwrite=overwrite)
+        res = super()._load_module_terms(modules, langs, overwrite=overwrite, imported_module=imported_module)
 
         if not langs or langs == ['en_US'] or not modules:
             return res
@@ -503,6 +492,7 @@ class IrModuleModule(models.Model):
 
         # use the translation dic of the generic to translate the specific
         self.env.cr.flush()
+        cache = self.env.cache
         View = self.env['ir.ui.view']
         field = self.env['ir.ui.view']._fields['arch_db']
         # assume there are not too many records
@@ -536,7 +526,7 @@ class IrModuleModule(models.Model):
             for lang in langs_update:
                 specific_arch_db[lang] = field.translate(
                     lambda term: specific_translation_dictionary.get(term, {lang: None})[lang], specific_arch_db_en)
-            field._update_cache(View.with_context(prefetch_langs=True).browse(specific_id), specific_arch_db, dirty=True)
+            cache.update_raw(View.browse(specific_id), field, [specific_arch_db], dirty=True)
 
         default_menu = self.env.ref('website.main_menu', raise_if_not_found=False)
         if not default_menu:
@@ -667,7 +657,7 @@ class IrModuleModule(models.Model):
             return set(items)
 
         create_count = 0
-        manifest = Manifest.for_addon(self.name)
+        manifest = get_manifest(self.name)
 
         # ------------------------------------------------------------
         # Configurator
@@ -739,7 +729,7 @@ class IrModuleModule(models.Model):
     def _generate_primary_page_templates(self):
         """ Generates page templates based on manifest entries. """
         View = self.env['ir.ui.view']
-        manifest = Manifest.for_addon(self.name)
+        manifest = get_manifest(self.name)
         templates = manifest['new_page_templates']
 
         # TODO Find a way to create theme and other module's template patches

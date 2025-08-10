@@ -1,9 +1,8 @@
-import { fields, Record } from "@mail/core/common/record";
+import { Record } from "@mail/core/common/record";
 import { htmlToTextContentInline } from "@mail/utils/common/format";
 import { _t } from "@web/core/l10n/translation";
 
 export class ScheduledMessage extends Record {
-    static _name = "mail.scheduled.message";
     static id = "id";
     /** @type {Object.<number, import("models").ScheduledMessage>} */
     static records = {};
@@ -13,15 +12,16 @@ export class ScheduledMessage extends Record {
     }
     /** @type {number} */
     id;
-    attachment_ids = fields.Many("ir.attachment");
-    author_id = fields.One("Persona");
-    body = fields.Html("");
+    attachment_ids = Record.many("Attachment");
+    author = Record.one("Persona");
+    body = Record.attr("", { html: true });
     /** @type {boolean} */
     composition_batch;
-    scheduled_date = fields.Datetime();
+    /** @type {luxon.DateTime} */
+    scheduled_date = Record.attr(undefined, { type: "datetime" });
     /** @type {boolean} */
     is_note;
-    textContent = fields.Attr(false, {
+    textContent = Record.attr(false, {
         compute() {
             if (!this.body) {
                 return "";
@@ -29,24 +29,22 @@ export class ScheduledMessage extends Record {
             return htmlToTextContentInline(this.body);
         },
     });
-    thread = fields.One("Thread");
+    thread = Record.one("Thread");
     // Editors of the records can delete scheduled messages
     get deletable() {
-        return this.store.self.main_user_id?.is_admin || this.thread.hasWriteAccess;
+        return this.store.self.isAdmin || this.thread.hasWriteAccess;
     }
 
     get editable() {
-        return this.store.self.main_user_id?.is_admin || this.isSelfAuthored;
+        return this.store.self.isAdmin || this.isSelfAuthored;
     }
 
     get isSelfAuthored() {
-        return this.author_id.eq(this.store.self);
+        return this.author.eq(this.store.self);
     }
 
     get isSubjectThreadName() {
-        return (
-            this.thread.display_name?.trim().toLowerCase() === this.subject?.trim().toLowerCase()
-        );
+        return this.thread.name?.trim().toLowerCase() === this.subject?.trim().toLowerCase();
     }
 
     /**
@@ -67,14 +65,14 @@ export class ScheduledMessage extends Record {
             action = await this.store.env.services.orm.call(
                 "mail.scheduled.message",
                 "open_edit_form",
-                [this.id]
+                [this.id],
             );
         } catch {
             this.notifyAlreadySent();
             return;
         }
         return new Promise((resolve) =>
-            this.store.env.services.action.doAction(action, { onClose: resolve })
+            this.store.env.services.action.doAction(action, { onClose: resolve }),
         );
     }
 
@@ -89,9 +87,7 @@ export class ScheduledMessage extends Record {
      */
     async send() {
         try {
-            await this.store.env.services.orm.call("mail.scheduled.message", "post_message", [
-                this.id,
-            ]);
+            await this.store.env.services.orm.call("mail.scheduled.message", "post_message", [this.id]);
         } catch {
             // already sent (by someone else or by cron)
             return;

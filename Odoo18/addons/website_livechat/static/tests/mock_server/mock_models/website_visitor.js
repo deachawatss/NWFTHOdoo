@@ -1,10 +1,15 @@
 import { mailDataHelpers } from "@mail/../tests/mock_server/mail_mock_server";
 
-import { Command, serverState } from "@web/../tests/web_test_helpers";
-import { websiteModels } from "@website/../tests/helpers";
+import { Command, fields, models, serverState } from "@web/../tests/web_test_helpers";
 
-export class WebsiteVisitor extends websiteModels.WebsiteVisitor {
-    _inherit = "website.visitor";
+export class WebsiteVisitor extends models.ServerModel {
+    _name = "website.visitor";
+
+    country_id = fields.Many2one({ relation: "res.country", string: "Country" }); // FIXME: somehow not fetched properly
+    history = fields.Char();
+    lang_id = fields.Many2one({ relation: "res.lang", string: "Language" }); // FIXME: somehow not fetched properly
+    name = fields.Char({ string: "Name" }); // FIXME: somehow not fetched
+    partner_id = fields.Many2one({ relation: "res.partner", string: "Contact" }); // FIXME: somehow not fetched properly
 
     /** @param {integer[]} ids */
     action_send_chat_request(ids) {
@@ -40,14 +45,11 @@ export class WebsiteVisitor extends websiteModels.WebsiteVisitor {
                 });
             }
             const [partner] = ResPartner.read(serverState.partnerId);
-            const channel = DiscussChannel.browse(livechatId);
             // notify operator
             BusBus._sendone(
                 partner,
-                "mail.record/insert",
-                new mailDataHelpers.Store(channel)
-                    .add(channel, { open_chat_window: true })
-                    .get_result()
+                "website_livechat.send_chat_request",
+                new mailDataHelpers.Store(DiscussChannel.browse(livechatId)).get_result()
             );
         }
     }

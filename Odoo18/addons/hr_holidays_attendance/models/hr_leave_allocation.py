@@ -1,23 +1,23 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from datetime import datetime
 
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
-from odoo.fields import Domain
+from odoo.osv import expression
 
 
-class HrLeaveAllocation(models.Model):
+class HolidaysAllocation(models.Model):
     _inherit = 'hr.leave.allocation'
 
-    @api.model
     def default_get(self, fields):
         res = super().default_get(fields)
         if 'holiday_status_id' in fields and self.env.context.get('deduct_extra_hours'):
-            domain = Domain('overtime_deductible', '=', True) & Domain('requires_allocation', '=', True)
+            domain = [('overtime_deductible', '=', True), ('requires_allocation', '=', 'yes')]
             if self.env.context.get('deduct_extra_hours_employee_request', False):
                 # Prevent loading manager allocated time off type in self request contexts
-                domain &= Domain('employee_requests', '=', True)
+                domain = expression.AND([domain, [('employee_requests', '=', 'yes')]])
             leave_type = self.env['hr.leave.type'].search(domain, limit=1)
             res['holiday_status_id'] = leave_type.id
         return res
@@ -37,7 +37,7 @@ class HrLeaveAllocation(models.Model):
         for allocation in res:
             if allocation.overtime_deductible:
                 duration = allocation.number_of_hours_display
-                if duration > allocation.employee_id.sudo().total_overtime:
+                if duration > allocation.employee_id.total_overtime:
                     raise ValidationError(_('The employee does not have enough overtime hours to request this leave.'))
                 if not allocation.overtime_id:
                     allocation.sudo().overtime_id = self.env['hr.attendance.overtime'].sudo().create({
@@ -71,7 +71,7 @@ class HrLeaveAllocation(models.Model):
 
     def _get_accrual_plan_level_work_entry_prorata(self, level, start_period, start_date, end_period, end_date):
         self.ensure_one()
-        if level.frequency != 'worked_hours':
+        if level.frequency != 'hourly' or level.frequency_hourly_source != 'attendance':
             return super()._get_accrual_plan_level_work_entry_prorata(level, start_period, start_date, end_period, end_date)
         datetime_min_time = datetime.min.time()
         start_dt = datetime.combine(start_date, datetime_min_time)

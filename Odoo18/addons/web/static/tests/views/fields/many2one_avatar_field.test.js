@@ -12,7 +12,6 @@ import {
     models,
     mountView,
     patchWithCleanup,
-    stepAllNetworkCalls,
 } from "@web/../tests/web_test_helpers";
 import { registry } from "@web/core/registry";
 
@@ -72,7 +71,7 @@ test("basic form view flow", async () => {
     expect('.o_m2o_avatar > img[data-src="/web/image/res.users/1/avatar_128"]').toHaveCount(1);
 
     await clickFieldDropdown("user_id");
-    expect(".o_field_many2one_selection .o_avatar_many2x_autocomplete").toHaveCount(2);
+    expect(".o_field_many2one_selection .o_avatar_many2x_autocomplete").toHaveCount(3);
     await clickFieldDropdownItem("user_id", "Christine");
 
     expect('.o_m2o_avatar > img[data-src="/web/image/res.users/2/avatar_128"]').toHaveCount(1);
@@ -250,6 +249,7 @@ test("click on many2one_avatar in an editable list view (editable top)", async (
             </list>`,
     });
 
+    await contains(".o_data_row:eq(0) .o_list_record_selector input").click();
     await contains(".o_data_row .o_data_cell [name='user_id']").click();
     expect(".o_data_row:eq(0)").toHaveClass("o_selected_row");
 
@@ -275,27 +275,6 @@ test("readonly many2one_avatar in list view should not contain a link", async ()
     });
 
     expect("[name='user_id'] a").toHaveCount(0);
-});
-
-test("readonly many2one_avatar in form view with no_open set to true", async () => {
-    await mountView({
-        type: "form",
-        resModel: "partner",
-        resId: 1,
-        arch: `<form><field name="user_id" widget="many2one_avatar" readonly="1" options="{'no_open': 1}"/></form>`,
-    });
-
-    expect("[name='user_id'] a").toHaveCount(0);
-});
-
-test("readonly many2one_avatar in list view with no_open set to false", async () => {
-    await mountView({
-        type: "list",
-        resModel: "partner",
-        arch: `<list><field name="user_id" widget="many2one_avatar" options="{'no_open': 0}"/></list>`,
-    });
-
-    expect("[name='user_id'] a").toHaveCount(3);
 });
 
 test.tags("desktop");
@@ -369,6 +348,8 @@ test("widget many2one_avatar in kanban view (load more dialog)", async () => {
 });
 
 test("widget many2one_avatar in kanban view", async () => {
+    expect.assertions(5);
+
     await mountView({
         type: "kanban",
         resModel: "partner",
@@ -383,8 +364,6 @@ test("widget many2one_avatar in kanban view", async () => {
                 </templates>
             </kanban>`,
     });
-    stepAllNetworkCalls();
-
     expect(
         ".o_kanban_record:nth-child(1) .o_field_many2one_avatar .o_m2o_avatar > img"
     ).toHaveAttribute("data-src", "/web/image/res.users/1/avatar_128");
@@ -396,10 +375,8 @@ test("widget many2one_avatar in kanban view", async () => {
         ".o_kanban_record:nth-child(4) .o_field_many2one_avatar .o_m2o_avatar > .o_quick_assign"
     ).click();
     expect(".o-overlay-container input").toBeFocused();
-    expect.verifySteps(["web_name_search"]);
     // select first input
     await contains(".o-overlay-container .o-autocomplete--dropdown-item").click();
-    expect.verifySteps(["web_save"]);
     expect(
         ".o_kanban_record:nth-child(4) .o_field_many2one_avatar .o_m2o_avatar > img"
     ).toHaveAttribute("data-src", "/web/image/res.users/1/avatar_128");

@@ -4,7 +4,6 @@
 from odoo import fields, models, api, _
 from odoo.exceptions import ValidationError
 
-
 class AccountJournal(models.Model):
     _inherit = 'account.journal'
 
@@ -17,7 +16,7 @@ class AccountJournal(models.Model):
             raise ValidationError(_("This journal is associated with a payment method. You cannot modify its type"))
 
     def _check_no_active_payments(self):
-        hanging_journal_entries = self.env['pos.payment'].sudo().search(
+        hanging_journal_entries = self.env['pos.payment'].search(
         [
             ('payment_method_id', 'in', self.pos_payment_method_ids.ids),
             ('session_id.state', '=', 'opened')

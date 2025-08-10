@@ -22,7 +22,7 @@ const { DEFAULT_LOCALE: locale } = spreadsheet.constants;
 const serverData = getAccountingData();
 
 test("Basic evaluation", async () => {
-    const { model } = await createModelWithDataSource({
+    const model = await createModelWithDataSource({
         mockRPC: async function (route, args) {
             if (args.method === "spreadsheet_fetch_debit_credit") {
                 expect.step("spreadsheet_fetch_debit_credit");
@@ -41,7 +41,7 @@ test("Basic evaluation", async () => {
 });
 
 test("evaluation with reference to a month period", async () => {
-    const { model } = await createModelWithDataSource({
+    const model = await createModelWithDataSource({
         mockRPC: async function (route, args) {
             if (args.method === "spreadsheet_fetch_debit_credit") {
                 expect(args.args[0]).toEqual([
@@ -74,7 +74,7 @@ test("evaluation with reference to a month period", async () => {
 });
 
 test("Functions are correctly formatted", async () => {
-    const { model } = await createModelWithDataSource();
+    const model = await createModelWithDataSource();
     setCellContent(model, "A1", `=ODOO.CREDIT("100", "2022")`);
     setCellContent(model, "A2", `=ODOO.DEBIT("100", "2022")`);
     setCellContent(model, "A3", `=ODOO.BALANCE("100", "2022")`);
@@ -85,7 +85,7 @@ test("Functions are correctly formatted", async () => {
 });
 
 test("Functions with a wrong company id is correctly in error", async () => {
-    const { model } = await createModelWithDataSource({
+    const model = await createModelWithDataSource({
         mockRPC: async function (route, args) {
             if (args.method === "get_company_currency_for_spreadsheet") {
                 return false;
@@ -98,7 +98,7 @@ test("Functions with a wrong company id is correctly in error", async () => {
 });
 
 test("formula with invalid date", async () => {
-    const { model } = await createModelWithDataSource();
+    const model = await createModelWithDataSource();
     setCellContent(model, "A1", `=ODOO.CREDIT("100",)`);
     setCellContent(model, "A2", `=ODOO.DEBIT("100", 0)`);
     setCellContent(model, "A3", `=ODOO.BALANCE("100", -1)`);
@@ -118,7 +118,7 @@ test("formula with invalid date", async () => {
 });
 
 test("Evaluation with multiple account codes", async () => {
-    const { model } = await createModelWithDataSource({
+    const model = await createModelWithDataSource({
         mockRPC: async function (route, args) {
             if (args.method === "spreadsheet_fetch_debit_credit") {
                 expect.step("spreadsheet_fetch_debit_credit");
@@ -147,7 +147,7 @@ test("Evaluation with multiple account codes", async () => {
 });
 
 test("Handle error evaluation", async () => {
-    const { model } = await createModelWithDataSource({
+    const model = await createModelWithDataSource({
         mockRPC: async function (route, args) {
             if (args.method === "spreadsheet_fetch_debit_credit") {
                 throw makeServerError({ description: "a nasty error" });
@@ -162,12 +162,12 @@ test("Handle error evaluation", async () => {
 });
 
 test("Server requests", async () => {
-    const { model } = await createModelWithDataSource({
+    const model = await createModelWithDataSource({
         mockRPC: async function (route, args) {
             if (args.method === "spreadsheet_fetch_debit_credit") {
                 const blobs = args.args[0];
                 for (const blob of blobs) {
-                    expect.step(blob);
+                    expect.step(JSON.stringify(blob));
                 }
                 return new Array(blobs.length).fill({ credit: 0, debit: 0 });
             }
@@ -186,71 +186,89 @@ test("Server requests", async () => {
     await waitForDataLoaded(model);
 
     expect.verifySteps([
-        camelToSnakeObject({
-            dateRange: parseAccountingDate({ value: "2022" }, locale),
-            codes: ["100"],
-            companyId: null,
-            includeUnposted: false,
-        }),
-        camelToSnakeObject({
-            dateRange: parseAccountingDate({ value: "01/2022" }, locale),
-            codes: ["100"],
-            companyId: null,
-            includeUnposted: false,
-        }),
-        camelToSnakeObject({
-            dateRange: parseAccountingDate({ value: "Q2/2022" }, locale),
-            codes: ["100"],
-            companyId: null,
-            includeUnposted: false,
-        }),
-        camelToSnakeObject({
-            dateRange: parseAccountingDate({ value: "2021" }, locale),
-            codes: ["10"],
-            companyId: null,
-            includeUnposted: false,
-        }),
-        camelToSnakeObject({
-            dateRange: parseAccountingDate({ value: "2021" }, locale),
-            codes: ["5"],
-            companyId: 2,
-            includeUnposted: false,
-        }),
-        camelToSnakeObject({
-            dateRange: parseAccountingDate({ value: "05/04/2022" }, locale),
-            codes: ["5"],
-            companyId: null,
-            includeUnposted: false,
-        }),
-        camelToSnakeObject({
-            dateRange: parseAccountingDate({ value: "2022" }, locale),
-            codes: ["5"],
-            companyId: null,
-            includeUnposted: false,
-        }),
-        camelToSnakeObject({
-            dateRange: parseAccountingDate({ value: "05/05/2022" }, locale),
-            codes: ["100"],
-            companyId: null,
-            includeUnposted: true,
-        }),
-        camelToSnakeObject({
-            dateRange: parseAccountingDate({ value: "2019" }, locale),
-            codes: ["33"],
-            companyId: null,
-            includeUnposted: false,
-        }),
+        JSON.stringify(
+            camelToSnakeObject({
+                dateRange: parseAccountingDate({ value: "2022" }, locale),
+                codes: ["100"],
+                companyId: null,
+                includeUnposted: false,
+            })
+        ),
+        JSON.stringify(
+            camelToSnakeObject({
+                dateRange: parseAccountingDate({ value: "01/2022" }, locale),
+                codes: ["100"],
+                companyId: null,
+                includeUnposted: false,
+            })
+        ),
+        JSON.stringify(
+            camelToSnakeObject({
+                dateRange: parseAccountingDate({ value: "Q2/2022" }, locale),
+                codes: ["100"],
+                companyId: null,
+                includeUnposted: false,
+            })
+        ),
+        JSON.stringify(
+            camelToSnakeObject({
+                dateRange: parseAccountingDate({ value: "2021" }, locale),
+                codes: ["10"],
+                companyId: null,
+                includeUnposted: false,
+            })
+        ),
+        JSON.stringify(
+            camelToSnakeObject({
+                dateRange: parseAccountingDate({ value: "2021" }, locale),
+                codes: ["5"],
+                companyId: 2,
+                includeUnposted: false,
+            })
+        ),
+        JSON.stringify(
+            camelToSnakeObject({
+                dateRange: parseAccountingDate({ value: "05/04/2022" }, locale),
+                codes: ["5"],
+                companyId: null,
+                includeUnposted: false,
+            })
+        ),
+        JSON.stringify(
+            camelToSnakeObject({
+                dateRange: parseAccountingDate({ value: "2022" }, locale),
+                codes: ["5"],
+                companyId: null,
+                includeUnposted: false,
+            })
+        ),
+        JSON.stringify(
+            camelToSnakeObject({
+                dateRange: parseAccountingDate({ value: "05/05/2022" }, locale),
+                codes: ["100"],
+                companyId: null,
+                includeUnposted: true,
+            })
+        ),
+        JSON.stringify(
+            camelToSnakeObject({
+                dateRange: parseAccountingDate({ value: "2019" }, locale),
+                codes: ["33"],
+                companyId: null,
+                includeUnposted: false,
+            })
+        ),
     ]);
 });
 
 test("Server requests with multiple account codes", async () => {
-    const { model } = await createModelWithDataSource({
+    const model = await createModelWithDataSource({
         mockRPC: async function (route, args) {
             if (args.method === "spreadsheet_fetch_debit_credit") {
                 expect.step("spreadsheet_fetch_debit_credit");
                 const blobs = args.args[0];
                 for (const blob of blobs) {
-                    expect.step(blob);
+                    expect.step(JSON.stringify(blob));
                 }
             }
         },
@@ -262,24 +280,26 @@ test("Server requests with multiple account codes", async () => {
 
     expect.verifySteps([
         "spreadsheet_fetch_debit_credit",
-        camelToSnakeObject({
-            dateRange: parseAccountingDate({ value: "2022" }, locale),
-            codes: ["100", "200"],
-            companyId: null,
-            includeUnposted: false,
-        }),
+        JSON.stringify(
+            camelToSnakeObject({
+                dateRange: parseAccountingDate({ value: "2022"}, locale),
+                codes: ["100", "200"],
+                companyId: null,
+                includeUnposted: false,
+            })
+        ),
     ]);
 });
 
 test("account group formula as input to balance formula", async () => {
-    const { model } = await createModelWithDataSource({
+    const model = await createModelWithDataSource({
         serverData,
         mockRPC: async function (route, args) {
             if (args.method === "spreadsheet_fetch_debit_credit") {
                 expect.step("spreadsheet_fetch_debit_credit");
                 const blobs = args.args[0];
                 for (const blob of blobs) {
-                    expect.step(blob);
+                    expect.step(JSON.stringify(blob));
                 }
             }
         },
@@ -293,24 +313,26 @@ test("account group formula as input to balance formula", async () => {
     expect(getCellValue(model, "A2")).toBe(0);
     expect.verifySteps([
         "spreadsheet_fetch_debit_credit",
-        camelToSnakeObject({
-            dateRange: parseAccountingDate({ value: "2022" }, locale),
-            codes: ["100104", "200104"],
-            companyId: null,
-            includeUnposted: false,
-        }),
+        JSON.stringify(
+            camelToSnakeObject({
+                dateRange: parseAccountingDate({ value: "2022"}, locale),
+                codes: ["100104", "200104"],
+                companyId: null,
+                includeUnposted: false,
+            })
+        ),
     ]);
 });
 
 test("two concurrent requests on different accounts", async () => {
-    const { model } = await createModelWithDataSource({
+    const model = await createModelWithDataSource({
         serverData,
         mockRPC: async function (route, args) {
             if (args.method === "spreadsheet_fetch_debit_credit") {
                 expect.step("spreadsheet_fetch_debit_credit");
                 const blobs = args.args[0];
                 for (const blob of blobs) {
-                    expect.step(blob);
+                    expect.step(JSON.stringify(blob));
                 }
             }
         },
@@ -331,24 +353,28 @@ test("two concurrent requests on different accounts", async () => {
     expect(getCellValue(model, "A3")).toBe(0);
     expect.verifySteps([
         "spreadsheet_fetch_debit_credit",
-        camelToSnakeObject({
-            dateRange: parseAccountingDate({ value: "2022" }, locale),
-            codes: ["100"],
-            companyId: null,
-            includeUnposted: false,
-        }),
+        JSON.stringify(
+            camelToSnakeObject({
+                dateRange: parseAccountingDate({ value: "2022" }, locale),
+                codes: ["100"],
+                companyId: null,
+                includeUnposted: false,
+            })
+        ),
         "spreadsheet_fetch_debit_credit",
-        camelToSnakeObject({
-            dateRange: parseAccountingDate({ value: "2022" }, locale),
-            codes: ["100104", "200104"],
-            companyId: null,
-            includeUnposted: false,
-        }),
+        JSON.stringify(
+            camelToSnakeObject({
+                dateRange: parseAccountingDate({ value: "2022" }, locale),
+                codes: ["100104", "200104"],
+                companyId: null,
+                includeUnposted: false,
+            })
+        ),
     ]);
 });
 
 test("date with non-standard locale", async () => {
-    const { model } = await createModelWithDataSource({
+    const model = await createModelWithDataSource({
         mockRPC: async function (route, { method, args }) {
             if (method === "spreadsheet_fetch_debit_credit") {
                 expect.step("spreadsheet_fetch_debit_credit");

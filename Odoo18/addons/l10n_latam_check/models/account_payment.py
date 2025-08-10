@@ -57,8 +57,7 @@ class AccountPayment(models.Model):
                 payment.l10n_latam_move_check_ids = False
         msgs = self._get_blocking_l10n_latam_warning_msg()
         if msgs:
-            error_msg = "\n".join(f"* {msg}" for msg in msgs)
-            raise ValidationError(error_msg)
+            raise ValidationError('* %s' % '\n* '.join(msgs))
         super().action_post()
         self._l10n_latam_check_split_move()
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import _, fields, models
+from odoo import _, fields, models, tools
 from odoo.exceptions import UserError
 from odoo.tools import float_compare, float_is_zero
 
@@ -20,23 +20,20 @@ class StockValuationLayer(models.Model):
     _rec_name = 'product_id'
 
     company_id = fields.Many2one('res.company', 'Company', readonly=True, required=True)
-    product_id = fields.Many2one('product.product', 'Product', readonly=True, required=True, check_company=True, auto_join=True, index=True)
-    categ_id = fields.Many2one('product.category', related='product_id.categ_id')
+    product_id = fields.Many2one('product.product', 'Product', readonly=True, required=True, check_company=True, auto_join=True)
+    categ_id = fields.Many2one('product.category', related='product_id.categ_id', store=True)
     product_tmpl_id = fields.Many2one('product.template', related='product_id.product_tmpl_id')
-    quantity = fields.Float('Quantity', readonly=True, digits='Product Unit')
+    quantity = fields.Float('Quantity', readonly=True, digits='Product Unit of Measure')
     uom_id = fields.Many2one(related='product_id.uom_id', readonly=True, required=True)
     currency_id = fields.Many2one('res.currency', 'Currency', related='company_id.currency_id', readonly=True, required=True)
     unit_cost = fields.Float('Unit Value', digits='Product Price', readonly=True, aggregator=None)
     value = fields.Monetary('Total Value', readonly=True)
-    remaining_qty = fields.Float(readonly=True, digits='Product Unit')
+    remaining_qty = fields.Float(readonly=True, digits='Product Unit of Measure')
     remaining_value = fields.Monetary('Remaining Value', readonly=True)
     description = fields.Char('Description', readonly=True)
     stock_valuation_layer_id = fields.Many2one('stock.valuation.layer', 'Linked To', readonly=True, check_company=True, index=True)
     stock_valuation_layer_ids = fields.One2many('stock.valuation.layer', 'stock_valuation_layer_id')
     stock_move_id = fields.Many2one('stock.move', 'Stock Move', readonly=True, check_company=True, index=True)
-    picking_code = fields.Selection(related='stock_move_id.picking_code')
-    is_inventory = fields.Boolean(related='stock_move_id.is_inventory')
-    is_scrap = fields.Boolean(related="stock_move_id.scrapped")
     account_move_id = fields.Many2one('account.move', 'Journal Entry', readonly=True, check_company=True, index="btree_not_null")
     account_move_line_id = fields.Many2one('account.move.line', 'Invoice Line', readonly=True, check_company=True, index="btree_not_null")
     reference = fields.Char(related='stock_move_id.reference')
@@ -44,8 +41,15 @@ class StockValuationLayer(models.Model):
     warehouse_id = fields.Many2one('stock.warehouse', string="Receipt WH", compute='_compute_warehouse_id', search='_search_warehouse_id')
     lot_id = fields.Many2one('stock.lot', 'Lot/Serial Number', check_company=True, index=True)
 
-    _index = models.Index("(product_id, remaining_qty, stock_move_id, company_id, create_date)")
-    _company_product_index = models.Index("(product_id, company_id, id, value, quantity)")
+    def init(self):
+        tools.create_index(
+            self._cr, 'stock_valuation_layer_index',
+            self._table, ['product_id', 'remaining_qty', 'stock_move_id', 'company_id', 'create_date']
+        )
+        tools.create_index(
+            self._cr, 'stock_valuation_company_product_index',
+            self._table, ['product_id', 'company_id', 'id', 'value', 'quantity']
+        )
 
     def _compute_warehouse_id(self):
         for svl in self:
@@ -55,13 +59,14 @@ class StockValuationLayer(models.Model):
                 svl.warehouse_id = svl.stock_move_id.location_dest_id.warehouse_id.id
 
     def _search_warehouse_id(self, operator, value):
-        return [
+        layer_ids = self.search([
             '|',
             ('stock_move_id.location_dest_id.warehouse_id', operator, value),
             '&',
             ('stock_move_id.location_id.usage', '=', 'internal'),
             ('stock_move_id.location_id.warehouse_id', operator, value),
-        ]
+        ]).ids
+        return [('id', 'in', layer_ids)]
 
     def _candidate_sort_key(self):
         self.ensure_one()
@@ -138,24 +143,6 @@ class StockValuationLayer(models.Model):
             "target": "new",
             "type": "ir.actions.act_window",
             "context": context,
-        }
-
-    def action_stock_adjust_valuation(self):
-        """Perform Stock Valuation Adjustment from the stock valuation layer list view."""
-        if len(self.product_id) > 1:
-            raise UserError(_("You cannot revalue multiple products at once"))
-
-        return {
-            'name': _('Adjust Valuation - %s', self.product_id.display_name),
-            'view_mode': 'form',
-            'res_model': 'stock.valuation.layer.revaluation',
-            'view_id': self.env.ref('stock_account.stock_valuation_layer_revaluation_form_view').id,
-            'type': 'ir.actions.act_window',
-            'context': {
-                'active_model': 'stock.valuation.layer',
-                'active_ids': self.ids,
-            },
-            'target': 'new'
         }
 
     def action_open_reference(self):

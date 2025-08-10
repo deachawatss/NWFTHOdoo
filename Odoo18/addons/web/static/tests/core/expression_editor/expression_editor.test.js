@@ -11,18 +11,15 @@ import {
     addNewRule,
     clearNotSupported,
     clickOnButtonAddBranch,
-    clickOnButtonAddRule,
+    clickOnButtonAddNewRule,
     clickOnButtonDeleteNode,
     editValue,
-    formatExpr,
     getOperatorOptions,
     getTreeEditorContent,
     getValueOptions,
     isNotSupportedPath,
-    label,
     openModelFieldSelectorPopover,
     selectOperator,
-    toggleConnector,
     SELECTORS as treeEditorSELECTORS,
 } from "@web/../tests/core/tree_editor/condition_tree_editor_test_helpers";
 import {
@@ -50,6 +47,14 @@ async function editExpression(value) {
 
     await edit(value);
     await animationFrame();
+}
+
+/**
+ * @param {string} value
+ */
+async function selectConnector(value) {
+    await contains(`${SELECTORS.connector} .dropdown-toggle`).click();
+    await contains(`.dropdown-menu .dropdown-item:contains(${value})`).click();
 }
 
 async function makeExpressionEditor(params = {}) {
@@ -109,7 +114,7 @@ test("rendering of falsy values", async () => {
         await parent.set(expr);
         expect(getTreeEditorContent()).toEqual([
             { value: "all", level: 0 },
-            { value: ["0", label("="), "1"], level: 1 },
+            { value: ["0", "=", "1"], level: 1 },
         ]);
     }
 });
@@ -164,20 +169,11 @@ test("copy a complex condition", async () => {
         { value: "all", level: 0 },
         { value: "expr", level: 1 },
     ]);
-    await clickOnButtonAddBranch();
+    await clickOnButtonAddNewRule();
     expect(getTreeEditorContent()).toEqual([
-        { level: 0, value: "all" },
-        { level: 1, value: "expr" },
-        { level: 1, value: "any" },
-        { level: 2, value: "expr" },
-    ]);
-    await clickOnButtonAddRule();
-    expect(getTreeEditorContent()).toEqual([
-        { level: 0, value: "all" },
-        { level: 1, value: "expr" },
-        { level: 1, value: "any" },
-        { level: 2, value: "expr" },
-        { level: 2, value: "expr" },
+        { value: "all", level: 0 },
+        { value: "expr", level: 1 },
+        { value: "expr", level: 1 },
     ]);
 });
 
@@ -186,15 +182,16 @@ test("change path, operator and value", async () => {
     await makeExpressionEditor({ expression: `bar != "blabla"` });
     expect(getTreeEditorContent()).toEqual([
         { level: 0, value: "all" },
-        { level: 1, value: ["Bar", label("!="), "blabla"] },
+        { level: 1, value: ["Bar", "is not", "blabla"] },
     ]);
+    const tree = getTreeEditorContent({ node: true });
     await openModelFieldSelectorPopover();
     await contains(".o_model_field_selector_popover_item_name:eq(5)").click();
-    await selectOperator("=");
-    await editValue("Doku");
+    await selectOperator("not in", 0, tree[1].node);
+    await editValue(["Doku", "Lukaku", "KDB"]);
     expect(getTreeEditorContent()).toEqual([
         { level: 0, value: "all" },
-        { level: 1, value: ["Foo", label("="), "Doku"] },
+        { level: 1, value: ["Foo", "is not in", "Doku,Lukaku,KDB"] },
     ]);
 });
 
@@ -209,7 +206,8 @@ test("create a new branch from a complex condition control panel", async () => {
         { level: 0, value: "all" },
         { level: 1, value: "expr" },
         { level: 1, value: "any" },
-        { level: 2, value: "expr" },
+        { level: 2, value: ["Id", "=", "1"] },
+        { level: 2, value: ["Id", "=", "1"] },
     ]);
 });
 
@@ -217,12 +215,12 @@ test("rendering of a valid fieldName in fields", async () => {
     const parent = await makeExpressionEditor({ fieldFilters: ["foo"] });
 
     const toTests = [
-        { expr: `foo`, condition: ["Foo", label("set")] },
-        { expr: `foo == "a"`, condition: ["Foo", label("="), "a"] },
-        { expr: `foo != "a"`, condition: ["Foo", label("!="), "a"] },
+        { expr: `foo`, condition: ["Foo", "is set"] },
+        { expr: `foo == "a"`, condition: ["Foo", "=", "a"] },
+        { expr: `foo != "a"`, condition: ["Foo", "!=", "a"] },
         // { expr: `foo is "a"`, complexCondition: `foo is "a"` },
         // { expr: `foo is not "a"`, complexCondition: `foo is not "a"` },
-        { expr: `not foo`, condition: ["Foo", label("not set")] },
+        { expr: `not foo`, condition: ["Foo", "is not set"] },
         { expr: `foo + "a"`, complexCondition: `foo + "a"` },
     ];
 
@@ -249,18 +247,18 @@ test("rendering of simple conditions", async () => {
     const parent = await makeExpressionEditor({ fieldFilters: ["foo", "bar"] });
 
     const toTests = [
-        { expr: `bar == "a"`, condition: ["Bar", label("="), "a"] },
-        { expr: `foo == expr`, condition: ["Foo", label("="), "expr"] },
-        { expr: `"a" == foo`, condition: ["Foo", label("="), "a"] },
-        { expr: `expr == foo`, condition: ["Foo", label("="), "expr"] },
+        { expr: `bar == "a"`, condition: ["Bar", "=", "a"] },
+        { expr: `foo == expr`, condition: ["Foo", "=", "expr"] },
+        { expr: `"a" == foo`, condition: ["Foo", "=", "a"] },
+        { expr: `expr == foo`, condition: ["Foo", "=", "expr"] },
         { expr: `foo == bar`, complexCondition: `foo == bar` },
         { expr: `"a" == "b"`, complexCondition: `"a" == "b"` },
         { expr: `expr1 == expr2`, complexCondition: `expr1 == expr2` },
 
-        { expr: `foo < "a"`, condition: ["Foo", label("<"), "a"] },
-        { expr: `foo < expr`, condition: ["Foo", label("<"), "expr"] },
-        { expr: `"a" < foo`, condition: ["Foo", label(">"), "a"] },
-        { expr: `expr < foo`, condition: ["Foo", label(">"), "expr"] },
+        { expr: `foo < "a"`, condition: ["Foo", "<", "a"] },
+        { expr: `foo < expr`, condition: ["Foo", "<", "expr"] },
+        { expr: `"a" < foo`, condition: ["Foo", ">", "a"] },
+        { expr: `expr < foo`, condition: ["Foo", ">", "expr"] },
         { expr: `foo < bar`, complexCondition: `foo < bar` },
         { expr: `"a" < "b"`, complexCondition: `"a" < "b"` },
         { expr: `expr1 < expr2`, complexCondition: `expr1 < expr2` },
@@ -293,14 +291,14 @@ test("rendering of simple conditions", async () => {
 
 test("rendering of connectors", async () => {
     await makeExpressionEditor({ expression: `expr and foo == "abc" or not bar` });
-    expect(queryAllTexts(SELECTORS.connectorValue)).toEqual(["any", "all"]);
+    expect(queryAllTexts(`${SELECTORS.connector} .dropdown-toggle`)).toEqual(["any", "all"]);
     const tree = getTreeEditorContent();
     expect(tree).toEqual([
         { level: 0, value: "any" },
         { level: 1, value: "all" },
         { level: 2, value: "expr" },
-        { level: 2, value: ["Foo", label("="), "abc"] },
-        { level: 1, value: ["Bar", label("not set")] },
+        { level: 2, value: ["Foo", "=", "abc"] },
+        { level: 1, value: ["Bar", "is", "not set"] },
     ]);
 });
 
@@ -311,20 +309,21 @@ test("rendering of connectors (2)", async () => {
             expect.step(expression);
         },
     });
-    expect(SELECTORS.connectorValue).toHaveText("none");
+    expect(`${SELECTORS.connector} .dropdown-toggle:only`).toHaveText("none");
     expect(getTreeEditorContent()).toEqual([
         { level: 0, value: "none" },
         { level: 1, value: "expr" },
-        { level: 1, value: ["Foo", label("="), "abc"] },
+        { level: 1, value: ["Foo", "=", "abc"] },
     ]);
     expect.verifySteps([]);
     expect(queryOne(SELECTORS.debugArea)).toHaveValue(`not (expr or foo == "abc")`);
 
-    await toggleConnector();
+    await selectConnector("all");
+    expect(`${SELECTORS.connector} .dropdown-toggle:only`).toHaveText("all");
     expect(getTreeEditorContent()).toEqual([
         { level: 0, value: "all" },
         { level: 1, value: "expr" },
-        { level: 1, value: ["Foo", label("="), "abc"] },
+        { level: 1, value: ["Foo", "=", "abc"] },
     ]);
     expect.verifySteps([`expr and foo == "abc"`]);
     expect(queryOne(SELECTORS.debugArea)).toHaveValue(`expr and foo == "abc"`);
@@ -335,11 +334,11 @@ test("rendering of if else", async () => {
     expect(getTreeEditorContent()).toEqual([
         { level: 0, value: "any" },
         { level: 1, value: "all" },
-        { level: 2, value: ["0", label("="), "1"] },
-        { level: 2, value: ["1", label("="), "1"] },
+        { level: 2, value: ["0", "=", "1"] },
+        { level: 2, value: ["1", "=", "1"] },
         { level: 1, value: "all" },
-        { level: 2, value: ["1", label("="), "1"] },
-        { level: 2, value: ["0", label("="), "1"] },
+        { level: 2, value: ["1", "=", "1"] },
+        { level: 2, value: ["0", "=", "1"] },
     ]);
 });
 
@@ -351,7 +350,7 @@ test("check condition by default when creating a new rule", async () => {
     expect(getTreeEditorContent()).toEqual([
         { level: 0, value: "all" },
         { level: 1, value: "expr" },
-        { level: 1, value: ["Country ID", label("="), ""] },
+        { level: 1, value: ["Country ID", "=", ""] },
     ]);
 });
 
@@ -359,21 +358,21 @@ test("allow selection of boolean field", async () => {
     await makeExpressionEditor({ expression: "id" });
     expect(getTreeEditorContent()).toEqual([
         { level: 0, value: "all" },
-        { level: 1, value: ["Id", label("set")] },
+        { level: 1, value: ["Id", "is set"] },
     ]);
     await openModelFieldSelectorPopover();
     await contains(".o_model_field_selector_popover_item_name").click();
     expect(getTreeEditorContent()).toEqual([
         { level: 0, value: "all" },
-        { level: 1, value: ["Bar", label("set")] },
+        { level: 1, value: ["Bar", "is", "set"] },
     ]);
 });
 
 test("render false and true leaves", async () => {
     await makeExpressionEditor({ expression: `False and True` });
-    expect(getOperatorOptions()).toEqual([label("=")]);
+    expect(getOperatorOptions()).toEqual(["="]);
     expect(getValueOptions()).toEqual(["1"]);
-    expect(getOperatorOptions(-1)).toEqual([label("=")]);
+    expect(getOperatorOptions(-1)).toEqual(["="]);
     expect(getValueOptions(-1)).toEqual(["1"]);
 });
 
@@ -394,7 +393,7 @@ test("no field of type properties in model field selector", async () => {
     });
     expect(getTreeEditorContent()).toEqual([
         { level: 0, value: "all" },
-        { level: 1, value: ["Properties", label("set")] },
+        { level: 1, value: ["Properties", "is set"] },
     ]);
     expect(isNotSupportedPath()).toBe(true);
     await clearNotSupported();
@@ -407,19 +406,23 @@ test("no field of type properties in model field selector", async () => {
 test("no special fields in fields", async () => {
     serverState.debug = "";
     await makeExpressionEditor({
-        expression: `True`,
+        expression: `bar`,
         fieldFilters: ["foo", "bar", "properties"],
         update(expression) {
             expect.step(expression);
         },
     });
-    expect(getTreeEditorContent()).toEqual([{ level: 0, value: "all" }]);
+    expect(getTreeEditorContent()).toEqual([
+        { level: 0, value: "all" },
+        { level: 1, value: ["Bar", "is not", "not set"] },
+    ]);
     await addNewRule();
     expect(getTreeEditorContent()).toEqual([
         { level: 0, value: "all" },
-        { level: 1, value: ["Foo", label("="), ""] },
+        { level: 1, value: ["Bar", "is not", "not set"] },
+        { level: 1, value: ["Foo", "=", ""] },
     ]);
-    expect.verifySteps([`foo == ""`]);
+    expect.verifySteps([`bar and foo == ""`]);
 });
 
 test("between operator", async () => {
@@ -430,38 +433,17 @@ test("between operator", async () => {
         },
     });
     expect(getOperatorOptions()).toEqual([
-        label("="),
-        label("!="),
-        label("<"),
-        label(">"),
-        label("between"),
+        "=",
+        "!=",
+        ">",
+        ">=",
+        "<",
+        "<=",
+        "is between",
+        "is set",
+        "is not set",
     ]);
     expect.verifySteps([]);
     await selectOperator("between");
     expect.verifySteps([`id >= 1 and id <= 1`]);
-});
-
-test(`"in range" operator`, async () => {
-    await makeExpressionEditor({
-        expression: `date`,
-        update(expression) {
-            expect.step(expression);
-        },
-    });
-    await selectOperator("in range");
-    expect.verifySteps([
-        formatExpr(
-            `
-            date >= context_today().strftime("%Y-%m-%d")
-                and
-            date < (context_today() + relativedelta(days = 1)).strftime("%Y-%m-%d")`
-        ),
-    ]);
-    expect(getTreeEditorContent()).toEqual([
-        { level: 0, value: "all" },
-        {
-            level: 1,
-            value: ["Date", "is in", "Today"],
-        },
-    ]);
 });

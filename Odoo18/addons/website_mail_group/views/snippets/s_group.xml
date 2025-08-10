@@ -1,15 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <template id="s_group" name="Discussion Group">
-        <div class="s_group o_mail_group" data-object="mail.group" data-follow="off">
-            <div class="o_mg_subscribe_form">
-                <div class="d-flex justify-content-end">
-                    <button href="#" t-attf-class="d-none btn btn-outline-primary o_mg_subscribe_btn o_mg_unsubscribe_btn">Unsubscribe</button>
-                </div>
-                <div t-attf-class="o_mg_email_input_group input-group">
-                    <input type="email" name="email" t-attf-class="o_mg_subscribe_email form-control" t-att-value="email" placeholder="your email..."/>
-                    <button href="#" class="btn btn-primary o_mg_subscribe_btn">Subscribe</button>
-                </div>
+        <div class="s_group o_mail_group"
+             data-id="0" data-object="mail.group" data-follow="off">
+            <div class="input-group o_mg_subscribe_form">
+                <input class="o_mg_subscribe_email form-control" type="email" name="email" placeholder="your email..."/>
+                <button href="#" class="btn btn-primary o_mg_subscribe_btn">Subscribe</button>
             </div>
         </div>
     </template>
@@ -28,4 +24,9 @@
             </div>
         </xpath>
     </template>
+    <record id="website_mail_group.s_group_000_js" model="ir.asset">
+        <field name="name">Group 000 JS</field>
+        <field name="bundle">web.assets_frontend</field>
+        <field name="path">website_mail_group/static/src/snippets/s_group/000.js</field>
+    </record>
 </odoo>

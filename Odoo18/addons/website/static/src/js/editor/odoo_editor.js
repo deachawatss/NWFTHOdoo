@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { OdooEditor } from "@web_editor/js/editor/odoo-editor/src/OdooEditor";
 import { patch } from "@web/core/utils/patch";
 import { removeTextHighlight } from "@website/js/text_processing";

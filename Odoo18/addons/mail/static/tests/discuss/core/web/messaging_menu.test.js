@@ -9,9 +9,9 @@ import {
     patchUiSize,
     start,
     startServer,
+    triggerHotkey,
 } from "@mail/../tests/mail_test_helpers";
 import { describe, expect, test } from "@odoo/hoot";
-import { press } from "@odoo/hoot-dom";
 import { disableAnimations } from "@odoo/hoot-mock";
 import { Command, getService, serverState, withUser } from "@web/../tests/web_test_helpers";
 
@@ -20,7 +20,7 @@ import { rpc } from "@web/core/network/rpc";
 describe.current.tags("desktop");
 defineMailModels();
 
-test("can make DM chat in mobile", async () => {
+test('"Start a conversation" item selection opens chat', async () => {
     patchUiSize({ size: SIZES.SM });
     const pyEnv = await startServer();
     const partnerId = pyEnv["res.partner"].create({ name: "Gandalf" });
@@ -30,12 +30,14 @@ test("can make DM chat in mobile", async () => {
     await contains("button.active", { text: "Inbox" });
     await click("button", { text: "Chat" });
     await click("button", { text: "Start a conversation" });
-    await insertText("input[placeholder='Search a conversation']", "Gandalf");
-    await click(".o_command_name", { text: "Gandalf" });
+    await insertText("input[placeholder='Start a conversation']", "Gandalf");
+    await click(".o-discuss-ChannelSelector-suggestion");
+    await contains(".o-discuss-ChannelSelector-suggestion", { count: 0 });
+    triggerHotkey("Enter");
     await contains(".o-mail-ChatWindow", { text: "Gandalf" });
 });
 
-test("can search channel in mobile", async () => {
+test('"New channel" item selection opens channel (existing)', async () => {
     patchUiSize({ size: SIZES.SM });
     const pyEnv = await startServer();
     pyEnv["discuss.channel"].create({ name: "Gryffindors" });
@@ -43,33 +45,34 @@ test("can search channel in mobile", async () => {
     await openDiscuss();
     await contains("button.active", { text: "Inbox" });
     await click("button", { text: "Channel" });
-    await click("button", { text: "Start a conversation" });
-    await insertText("input[placeholder='Search a conversation']", "Gryff");
-    await click("a", { text: "Gryffindors" });
-    await contains(".o-mail-ChatWindow div[title='Gryffindors']");
+    await click("button", { text: "New Channel" });
+    await insertText("input[placeholder='Add or join a channel']", "Gryff");
+    await click(":nth-child(1 of .o-discuss-ChannelSelector-suggestion)");
+    await contains(".o-discuss-ChannelSelector-suggestion", { count: 0 });
+    await contains(".o-mail-ChatWindow", { text: "Gryffindors" });
 });
 
-test("can make new channel in mobile", async () => {
+test('"New channel" item selection opens channel (new)', async () => {
     patchUiSize({ size: SIZES.SM });
     await start();
     await openDiscuss();
     await contains("button.active", { text: "Inbox" });
     await click("button", { text: "Channel" });
-    await click("button", { text: "Start a conversation" });
-    await insertText("input[placeholder='Search a conversation']", "slytherins");
-    await click("a", { text: "Create Channel" });
+    await click("button", { text: "New Channel" });
+    await insertText("input[placeholder='Add or join a channel']", "slytherins");
+    await click(".o-discuss-ChannelSelector-suggestion");
+    await contains(".o-discuss-ChannelSelector-suggestion", { count: 0 });
     await contains(".o-mail-ChatWindow", { text: "slytherins" });
 });
 
-test("new message opens the @ command palette", async () => {
+test("new message [REQUIRE FOCUS]", async () => {
     await start();
     await click(".o_menu_systray .dropdown-toggle i[aria-label='Messages']");
     await click(".o-mail-MessagingMenu button", { text: "New Message" });
-    await contains(".o_command_palette_search .o_namespace", { text: "@" });
-    await contains(".o_command_palette input[placeholder='Search a conversation']");
+    await contains(".o-mail-ChatWindow .o-discuss-ChannelSelector input:focus");
 });
 
-test("channel preview show deleted messages", async () => {
+test("channel preview ignores empty message", async () => {
     const pyEnv = await startServer();
     const partnerId = pyEnv["res.partner"].create({ name: "Demo" });
     const channelId = pyEnv["discuss.channel"].create({
@@ -91,9 +94,7 @@ test("channel preview show deleted messages", async () => {
     await openDiscuss(channelId);
     await contains(".o-mail-Message", { text: "before last" });
     await click(".o_menu_systray .dropdown-toggle:has(i[aria-label='Messages'])");
-    await contains(".o-mail-NotificationItem-text", {
-        text: "Demo: This message has been removed",
-    });
+    await contains(".o-mail-NotificationItem-text", { text: "Demo: before last" });
 });
 
 test("channel preview ignores transient message", async () => {
@@ -111,7 +112,7 @@ test("channel preview ignores transient message", async () => {
     await start();
     await openDiscuss(channelId);
     await insertText(".o-mail-Composer-input", "/who");
-    await press("Enter");
+    await click(".o-mail-Composer-send:enabled");
     await contains(".o_mail_notification", { text: "You are alone in this channel." });
     await click(".o_menu_systray .dropdown-toggle:has(i[aria-label='Messages'])");
     await contains(".o-mail-NotificationItem-text", { text: "Demo: test" });
@@ -177,7 +178,11 @@ test("counter is taking into account non-fetched channels", async () => {
     const channelId = pyEnv["discuss.channel"].create({
         name: "General",
         channel_member_ids: [
-            Command.create({ message_unread_counter: 1, partner_id: serverState.partnerId }),
+            Command.create({
+                fold_state: "closed", // minimized channels are fetched at init
+                message_unread_counter: 1,
+                partner_id: serverState.partnerId,
+            }),
             Command.create({ partner_id: partnerId }),
         ],
     });
@@ -203,7 +208,10 @@ test("counter is updated on receiving message on non-fetched channels", async ()
     const channelId = pyEnv["discuss.channel"].create({
         name: "General",
         channel_member_ids: [
-            Command.create({ partner_id: serverState.partnerId }),
+            Command.create({
+                fold_state: "closed", // minimized channels are fetched at init
+                partner_id: serverState.partnerId,
+            }),
             Command.create({ partner_id: partnerId }),
         ],
     });

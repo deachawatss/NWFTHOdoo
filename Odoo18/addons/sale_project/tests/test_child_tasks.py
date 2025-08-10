@@ -229,6 +229,7 @@ class TestNestedTaskUpdate(TransactionCase):
             'child_ids': [
                 Command.create({
                     'name': 'Subtask 1',
+                    'display_in_project': True,
                     'project_id': self.project.id,
                 }),
                 Command.create({

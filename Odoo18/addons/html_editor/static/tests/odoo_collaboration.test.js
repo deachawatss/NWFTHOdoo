@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { stripHistoryIds } from "@html_editor/others/collaboration/collaboration_odoo_plugin";
 import { HISTORY_SNAPSHOT_INTERVAL } from "@html_editor/others/collaboration/collaboration_plugin";
 import { COLLABORATION_PLUGINS, MAIN_PLUGINS } from "@html_editor/plugin_sets";
@@ -1137,12 +1139,12 @@ describe("History steps Ids", () => {
         editor.shared.split.splitBlock();
         editor.shared.history.addStep();
         expect(getContent(editor.editable)).toBe(
-            `<p>a</p><p o-we-hint-text='Type "/" for commands' class="o-we-hint">[]<br></p>`
+            `<p>a</p><p placeholder='Type "/" for commands' class="o-we-hint">[]<br></p>`
         );
         editor.shared.split.splitBlock();
         editor.shared.history.addStep();
         expect(getContent(editor.editable)).toBe(
-            `<p>a</p><p><br></p><p o-we-hint-text='Type "/" for commands' class="o-we-hint">[]<br></p>`
+            `<p>a</p><p><br></p><p placeholder='Type "/" for commands' class="o-we-hint">[]<br></p>`
         );
         editor.destroy();
     });

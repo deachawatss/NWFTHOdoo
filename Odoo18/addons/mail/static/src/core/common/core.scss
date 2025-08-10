@@ -1,64 +1,44 @@
 $o-discuss-talkingColor: lighten($success, 10%);
 
 .o-mail-discussSidebarBgColor {
-    background-color: $white !important;
+    background-color: $white;
 }
 
 .o-mail-brighter {
     filter: brightness(1.2);
 }
 
-.o-mail-emoji {
-    font-size: 121%;
-    line-height: $display-line-height;
-}
-
 .o-bg-black {
     background-color: rgba(0, 0, 0, var(--bg-opacity, 1));
 }
 
-.o-bg-body {
-    background-color: $body-bg !important;
-}
-
-.o-border-opacity-50 {
-    --border-opacity: 0.5;
-}
-
 .o-discuss-badge {
-    &, & .o-innerBadge {
-        --o-discuss-badge-bg: #{$o-success}; // sync with --o-navbar-badge-bg
-        color: white !important;
-        background-color: var(--o-discuss-badge-bg) !important;
-        align-items: center;
-        justify-content: center;
-        padding: 3px 4px;
-    
-        &.o-muted {
-            --o-discuss-badge-bg: #{$gray-400};
-        }
-    }
+    --o-discuss-badge-bg: #{$o-success}; // sync with --o-navbar-badge-bg
+    color: white !important;
+    background-color: var(--o-discuss-badge-bg) !important;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 4px;
 
-    & .o-innerBadge {
-        min-width: 2.7ch; // same as .badge, without using .badge to keep semantics of a single .badge
+    &.o-muted {
+        --o-discuss-badge-bg: #{$gray-400};
     }
 }
 
 .o-discuss-mobileContextMenu {
     top: auto !important;
+    border-top: $border-width solid $border-color !important;
 }
 
 .o-discuss-separator {
-    opacity: $hr-opacity / 2;
+    opacity: $hr-opacity / 3;
 }
 
 .o-discuss-badge, .o-discuss-badgeShape {
-    &, & .o-innerBadge {
-        display: flex;
-        transform: translate(0, 0) !important; // cancel systray style on badge
-        font-size: .78572 * $font-size-base !important; // roughly 11px, small but readable
-        user-select: none;
-    }
+    display: flex;
+    transform: translate(0, 0) !important; // cancel systray style on badge
+    font-size: .78572 * $font-size-base !important; // roughly 11px, small but readable
+    user-select: none;
 }
 
 .o-min-height-0 {
@@ -73,35 +53,8 @@ $o-discuss-talkingColor: lighten($success, 10%);
     opacity: 35%;
 }
 
-.o-opacity-65 {
-    opacity: 65%;
-}
-
-.o-outline-secondary {
-    outline: 1px solid $o-gray-300;
-}
-
 .o-gap-0_5 {
     gap: map-get($spacers, 1) / 2;
-}
-
-.o-mx-0_5 {
-    margin-left: map-get($spacers, 1) / 2;
-    margin-right: map-get($spacers, 1) / 2;
-}
-
-.o-my-0_5 {
-    margin-top: map-get($spacers, 1) / 2;
-    margin-bottom: map-get($spacers, 1) / 2;
-}
-
-.o-mt-0_5 {
-    margin-top: map-get($spacers, 1) / 2;
-}
-
-.o-px-0_5 {
-    padding-left: map-get($spacers, 1) / 2;
-    padding-right: map-get($spacers, 1) / 2;
 }
 
 .o-py-0_5 {
@@ -109,62 +62,12 @@ $o-discuss-talkingColor: lighten($success, 10%);
     padding-bottom: map-get($spacers, 1) / 2;
 }
 
-.o-ps-1_5 {
-    padding-left: map-get($spacers, 1) + map-get($spacers, 1) / 2 !important;
-}
-
-.o-py-1_5 {
-    padding-top: map-get($spacers, 1) + map-get($spacers, 1) / 2 !important;
-    padding-bottom: map-get($spacers, 1) + map-get($spacers, 1) / 2 !important;
-}
-
-.o-p-1_5 {
-    padding: map-get($spacers, 1) + map-get($spacers, 1) / 2 !important;
-}
-
-.o-pt-0_5 {
-    padding-top: map-get($spacers, 1) / 2;
-}
-
-.o-p-1_5 {
-    padding: (map-get($spacers, 1) + map-get($spacers, 2)) / 2 !important;
-}
-
 .o-hover-text-underline:hover {
     text-decoration: underline;
 }
 
-.o-rounded-bubble {
-    border-radius: calc((#{$border-radius} + #{$border-radius-lg}) * 3 / 4) !important;
-}
-
-.o-rounded-top-bubble {
-    border-top-left-radius: calc((#{$border-radius} + #{$border-radius-lg}) * 3 / 4) !important;
-    border-top-right-radius: calc((#{$border-radius} + #{$border-radius-lg}) * 3 / 4) !important;
-}
-
-.o-rounded-end-bubble {
-    border-top-right-radius: calc((#{$border-radius} + #{$border-radius-lg}) * 3 / 4) !important;
-    border-bottom-right-radius: calc((#{$border-radius} + #{$border-radius-lg}) * 3 / 4) !important;
-}
-
-.o-rounded-bottom-bubble {
-    border-bottom-right-radius: calc((#{$border-radius} + #{$border-radius-lg}) * 3 / 4) !important;
-    border-bottom-left-radius: calc((#{$border-radius} + #{$border-radius-lg}) * 3 / 4) !important;
-}
-
-.o-rounded-start-bubble {
-    border-bottom-left-radius: calc((#{$border-radius} + #{$border-radius-lg}) * 3 / 4) !important;
-    border-top-left-radius: calc((#{$border-radius} + #{$border-radius-lg}) * 3 / 4) !important;
-}
-
-.o-scrollbar-thin {
-    scrollbar-width: thin;
-    scrollbar-color: $gray-400 transparent;
-}
-
 .o-text-white {
-    color: #FFF !important;
+    color: #FFF;
 }
 
 .o-xsmaller {
@@ -177,18 +80,6 @@ $o-discuss-talkingColor: lighten($success, 10%);
 
 .o-yellow {
     color: $yellow;
-}
-
-.o-info {
-    color: $o-info;
-}
-
-.o-secondary {
-    color: var(--o-secondary, mix($o-gray-200, $o-gray-300));
-}
-
-.o-warning {
-    color: $o-warning;
 }
 
 @mixin o-mail-call-bordered($opacity) {
@@ -211,7 +102,7 @@ $o-discuss-talkingColor: lighten($success, 10%);
     $disabled-border: $border,
     $disabled-color: color-contrast($disabled-background)
 ) {
-    color: #{$color} !important;
+    color: #{$color};
     background-color: #{$background};
     border-color: #{$border};
     &:hover {

@@ -44,7 +44,7 @@ CRC8_TABLE = [
 ]
 
 
-class L10n_Es_Edi_TbaiDocument(models.Model):
+class L10nEsEdiTbaiDocument(models.Model):
     _name = 'l10n_es_edi_tbai.document'
     _description = 'TicketBAI Document'
 
@@ -296,6 +296,7 @@ class L10n_Es_Edi_TbaiDocument(models.Model):
             'sender_vat': sender.vat[2:] if sender.vat.startswith('ES') else sender.vat,
             'fiscal_year': str(self.date.year),
             'freelancer': freelancer,
+            'is_freelancer': freelancer,  # For bugfix, will be removed in master
             'epigrafe': self.env['ir.config_parameter'].sudo().get_param('l10n_es_edi_tbai.epigrafe', '')
         }
         lroe_values.update({'tbai_b64_list': [base64.b64encode(self.xml_attachment_id.raw).decode()]})
@@ -401,7 +402,7 @@ class L10n_Es_Edi_TbaiDocument(models.Model):
         if not partner._l10n_es_is_foreign() and partner.vat:
             recipient_values['nif'] = partner.vat[2:] if partner.vat.startswith('ES') else partner.vat
 
-        elif partner.country_id and 'EU' in partner.country_id.country_group_codes:
+        elif partner.country_id in self.env.ref('base.europe').country_ids:
             recipient_values['alt_id_type'] = '02'
 
         else:
@@ -468,12 +469,13 @@ class L10n_Es_Edi_TbaiDocument(models.Model):
                 continue
 
             l10n_es_type = grouping_key['l10n_es_type']
+            sign = grouping_key['is_refund'] and -1 or 1
             encountered_l10n_es_type.add(l10n_es_type)
             if l10n_es_type in ('sujeto', 'sujeto_isp'):
                 tax_info = {
                     'TipoImpositivo': grouping_key['applied_tax_amount'],
-                    'BaseImponible': float_round(values['base_amount'], 2),
-                    'CuotaRepercutida': float_round(values['tax_amount'], 2),
+                    'BaseImponible': sign * float_round(values['base_amount'], 2),
+                    'CuotaRepercutida': sign * float_round(values['tax_amount'], 2),
                 }
                 sujeta_no_sujeta\
                     .setdefault('Sujeta', {})\
@@ -489,7 +491,7 @@ class L10n_Es_Edi_TbaiDocument(models.Model):
                     .setdefault('Sujeta', {})\
                     .setdefault('Exenta', {'DetalleExenta': []})['DetalleExenta']\
                     .append({
-                        'BaseImponible': float_round(values['base_amount'], 2),
+                        'BaseImponible': sign * float_round(values['base_amount'], 2),
                         'CausaExencion': grouping_key['l10n_es_exempt_reason'],
                     })
             elif l10n_es_type == 'recargo':
@@ -499,16 +501,16 @@ class L10n_Es_Edi_TbaiDocument(models.Model):
                     .get('DesgloseIVA', {})\
                     .get('DetalleIVA')
                 if detalle_iva:
-                    detalle_iva[-1]['CuotaRecargoEquivalencia'] = float_round(values['tax_amount'], 2)
-                    detalle_iva[-1]['TipoRecargoEquivalencia'] = grouping_key['applied_tax_amount']
+                    detalle_iva[-1]['CuotaRecargoEquivalencia'] = sign * float_round(values['tax_amount'], 2)
+                    detalle_iva[-1]['TipoRecargoEquivalencia'] = sign * grouping_key['applied_tax_amount']
             elif l10n_es_type == 'no_sujeto':
                 no_sujeta = sujeta_no_sujeta.setdefault('NoSujeta', {})
                 no_sujeta.setdefault('ImportePorArticulos7_14_Otros', 0.0)
-                no_sujeta['ImportePorArticulos7_14_Otros'] += float_round(values['base_amount'], 2)
+                no_sujeta['ImportePorArticulos7_14_Otros'] += sign * float_round(values['base_amount'], 2)
             elif l10n_es_type == 'no_sujeto_loc':
                 no_sujeta = sujeta_no_sujeta.setdefault('NoSujeta', {})
                 no_sujeta.setdefault('ImporteTAIReglasLocalizacion', 0.0)
-                no_sujeta['ImporteTAIReglasLocalizacion'] += float_round(values['base_amount'], 2)
+                no_sujeta['ImporteTAIReglasLocalizacion'] += sign * float_round(values['base_amount'], 2)
 
         if 'sujeto' in encountered_l10n_es_type and 'sujeto_isp' not in encountered_l10n_es_type:
             sujeta_no_sujeta['Sujeta']['NoExenta']['TipoNoExenta'] = 'S2'
@@ -539,6 +541,7 @@ class L10n_Es_Edi_TbaiDocument(models.Model):
                 'l10n_es_bien_inversion': tax.l10n_es_bien_inversion,
                 'is_reverse_charge': tax_data['is_reverse_charge'],
                 'tax_scope': tax.tax_scope,
+                'is_refund': base_line['is_refund'],
             }
 
         base_lines_aggregated_values = AccountTax._aggregate_base_lines_tax_details(base_lines, tax_details_info_grouping_function)
@@ -571,6 +574,10 @@ class L10n_Es_Edi_TbaiDocument(models.Model):
         for values in values_per_grouping_key.values():
             total_amount += values['base_amount']
 
+        if is_refund:
+            total_amount = -total_amount
+            total_retention = -total_retention
+
         return {
             'invoice_info': invoice_info,
             'total_amount': total_amount,
@@ -593,6 +600,7 @@ class L10n_Es_Edi_TbaiDocument(models.Model):
                 'l10n_es_bien_inversion': tax.l10n_es_bien_inversion,
                 'is_reverse_charge': tax_data['is_reverse_charge'],
                 'tax_scope': tax.tax_scope,
+                'is_refund': base_line['is_refund'],
             }
 
         base_lines_aggregated_values = AccountTax._aggregate_base_lines_tax_details(base_lines, tax_details_info_grouping_function)
@@ -630,6 +638,10 @@ class L10n_Es_Edi_TbaiDocument(models.Model):
 
         for values in values_per_grouping_key.values():
             total_amount += values['base_amount']
+
+        if is_refund:
+            total_amount = -total_amount
+            total_retention = -total_retention
 
         return {
             'invoice_info': invoice_info,
@@ -708,8 +720,8 @@ class L10n_Es_Edi_TbaiDocument(models.Model):
             'sender': sender,
             'sender_vat': sender.vat[2:] if sender.vat.startswith('ES') else sender.vat,
             'fiscal_year': str(self.date.year),
-            'epigrafe': self.env['ir.config_parameter'].sudo().get_param('l10n_es_edi_tbai.epigrafe', '')
-
+            'epigrafe': self.env['ir.config_parameter'].sudo().get_param('l10n_es_edi_tbai.epigrafe', ''),
+            'batuz_correction': self.env.context.get('batuz_correction'),
         }
         lroe_values.update(values)
         lroe_str = self.env['ir.qweb']._render('l10n_es_edi_tbai.template_LROE_240_main_recibidas', lroe_values)

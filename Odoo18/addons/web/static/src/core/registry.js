@@ -11,16 +11,12 @@ export class DuplicatedKeyError extends Error {}
 // Validation
 // -----------------------------------------------------------------------------
 
-const validateSchema = (name, key, value, schema) => {
+const validateSchema = (value, schema) => {
     if (!odoo.debug) {
         return;
     }
-    try {
-        validate(value, schema);
-    } catch (error) {
-        throw new Error(`Validation error for key "${key}" in registry "${name}": ${error}`);
-    }
-};
+    validate(value, schema);
+}
 
 // -----------------------------------------------------------------------------
 // Types
@@ -98,7 +94,7 @@ export class Registry extends EventBus {
      */
     add(key, value, { force, sequence } = {}) {
         if (this.validationSchema) {
-            validateSchema(this.name, key, value, this.validationSchema);
+            validateSchema(value, this.validationSchema);
         }
         if (!force && key in this.content) {
             throw new DuplicatedKeyError(
@@ -199,8 +195,8 @@ export class Registry extends EventBus {
             throw new Error("Validation schema already set on this registry");
         }
         this.validationSchema = schema;
-        for (const [key, value] of this.getEntries()) {
-            validateSchema(this.name, key, value, schema);
+        for (const value of this.getAll()) {
+            validateSchema(value, schema);
         }
     }
 }

@@ -2,11 +2,11 @@
 
 from odoo.fields import Command
 from odoo.tests import tagged
-from odoo.addons.purchase_stock.tests.common import PurchaseTestCommon
+from odoo.addons.stock.tests.common import TestStockCommon
 
 
 @tagged('post_install', '-at_install')
-class TestRepairPurchaseFlow(PurchaseTestCommon):
+class TestRepairPurchaseFlow(TestStockCommon):
 
     @classmethod
     def setUpClass(cls):
@@ -20,8 +20,10 @@ class TestRepairPurchaseFlow(PurchaseTestCommon):
         Validates that a repair order triggers a purchase order with correct product
         and quantity, and ensures proper linking via the procurement group.
         """
-        self.route_mto.active = True
-        rule = self.route_mto.rule_ids.filtered(lambda r: r.picking_type_id.code == 'repair_operation')
+        self.env.ref('stock.route_warehouse0_mto').active = True
+        mto_route = self.env['stock.route'].search([('name', '=', 'Replenish on Order (MTO)')])
+        buy_route = self.env['stock.route'].search([('name', '=', 'Buy')])
+        rule = mto_route.rule_ids.filtered(lambda r: r.picking_type_id.code == 'repair_operation')
         rule.update({'procure_method': 'make_to_order'})
 
         seller = self.env['res.partner'].create({
@@ -30,7 +32,7 @@ class TestRepairPurchaseFlow(PurchaseTestCommon):
 
         product = self.productA
         product.write({
-            'route_ids': [Command.set([self.route_mto.id, self.route_buy.id])],
+            'route_ids': [(4, mto_route.id), (4, buy_route.id)],
             'seller_ids': [
                 Command.create({
                     'partner_id': seller.id,

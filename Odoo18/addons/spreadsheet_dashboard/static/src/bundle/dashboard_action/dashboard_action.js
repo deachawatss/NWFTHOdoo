@@ -1,10 +1,13 @@
-import { _t } from "@web/core/l10n/translation";
+/** @odoo-module */
+
 import { registry } from "@web/core/registry";
 import { ControlPanel } from "@web/search/control_panel/control_panel";
 import { DashboardLoader, Status } from "./dashboard_loader";
 import { SpreadsheetComponent } from "@spreadsheet/actions/spreadsheet_component";
 import { useSetupAction } from "@web/search/action_hook";
 import { DashboardMobileSearchPanel } from "./mobile_search_panel/mobile_search_panel";
+import { MobileFigureContainer } from "./mobile_figure_container/mobile_figure_container";
+import { FilterValue } from "@spreadsheet/global_filters/components/filter_value/filter_value";
 import { useService } from "@web/core/utils/hooks";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 import { SpreadsheetShareButton } from "@spreadsheet/components/share_button/share_button";
@@ -13,7 +16,6 @@ import { Registry } from "@odoo/o-spreadsheet";
 import { router } from "@web/core/browser/router";
 
 import { Component, onWillStart, useState, useEffect } from "@odoo/owl";
-import { DashboardSearchBar } from "./dashboard_search_bar/dashboard_search_bar";
 
 export const dashboardActionRegistry = new Registry();
 
@@ -22,27 +24,24 @@ export class SpreadsheetDashboardAction extends Component {
     static components = {
         ControlPanel,
         SpreadsheetComponent,
+        FilterValue,
         DashboardMobileSearchPanel,
+        MobileFigureContainer,
         SpreadsheetShareButton,
-        DashboardSearchBar,
     };
     static props = { ...standardActionServiceProps };
-    static displayName = _t("Dashboards");
 
     setup() {
         this.Status = Status;
         this.controlPanelDisplay = {};
         this.orm = useService("orm");
         this.actionService = useService("action");
-        const geoJsonService = useService("geo_json_service");
         // Use the non-protected orm service (`this.env.services.orm` instead of `useService("orm")`)
         // because spreadsheets models are preserved across multiple components when navigating
         // with the breadcrumb
         // TODO write a test
         /** @type {DashboardLoader}*/
-        this.loader = useState(
-            new DashboardLoader(this.env, this.env.services.orm, geoJsonService)
-        );
+        this.loader = useState(new DashboardLoader(this.env, this.env.services.orm));
         onWillStart(async () => {
             if (this.props.state && this.props.state.dashboardLoader) {
                 const { groups, dashboards } = this.props.state.dashboardLoader;
@@ -74,10 +73,12 @@ export class SpreadsheetDashboardAction extends Component {
             }
         );
         useSetupAction({
-            getLocalState: () => ({
-                activeDashboardId: this.activeDashboardId,
-                dashboardLoader: this.loader.getState(),
-            }),
+            getLocalState: () => {
+                return {
+                    activeDashboardId: this.activeDashboardId,
+                    dashboardLoader: this.loader.getState(),
+                };
+            },
         });
         useSpreadsheetPrint(() => this.state.activeDashboard?.model);
         /** @type {{ activeDashboard: import("./dashboard_loader").Dashboard}} */
@@ -106,14 +107,6 @@ export class SpreadsheetDashboardAction extends Component {
         return dashboard.model.getters.getGlobalFilters();
     }
 
-    setGlobalFilterValue(id, value, displayNames) {
-        this.state.activeDashboard.model.dispatch("SET_GLOBAL_FILTER_VALUE", {
-            id,
-            value,
-            displayNames,
-        });
-    }
-
     /**
      * @private
      * @returns {number | undefined}
@@ -122,7 +115,7 @@ export class SpreadsheetDashboardAction extends Component {
         if (this.props.state && this.props.state.activeDashboardId) {
             return this.props.state.activeDashboardId;
         }
-        const params = this.props.action.params;
+        const params = this.props.action.params || this.props.action.context.params;
         if (params && params.dashboard_id) {
             return params.dashboard_id;
         }
@@ -167,25 +160,13 @@ export class SpreadsheetDashboardAction extends Component {
         return url;
     }
 
-    async toggleFavorite() {
-        if (!this.state.activeDashboard) {
-            return;
-        }
-
-        const { id, isFavorite } = this.state.activeDashboard;
-        await this.orm.call("spreadsheet.dashboard", "action_toggle_favorite", [id]);
-        this.state.activeDashboard.isFavorite = !isFavorite;
-    }
-
     toggleSidebar() {
         this.state.sidebarExpanded = !this.state.sidebarExpanded;
     }
 
     get activeDashboardGroupName() {
-        return this.getDashboardGroups().find(
-            (group) =>
-                group.id !== "favorites" && // Skip the FAVORITES group
-                group.dashboards.some((d) => d.id === this.activeDashboardId)
+        return this.getDashboardGroups().find((group) =>
+            group.dashboards.some((d) => d.id === this.activeDashboardId)
         )?.name;
     }
 }

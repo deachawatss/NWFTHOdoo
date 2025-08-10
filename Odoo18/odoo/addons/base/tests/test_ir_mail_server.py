@@ -9,7 +9,7 @@ from unittest.mock import patch
 import psycopg2.errors
 
 from odoo import tools
-from odoo.addons.base.tests import mail_examples
+from odoo.addons.base.tests import test_mail_examples
 from odoo.addons.base.tests.common import MockSmtplibCase
 from odoo.tests import tagged, users
 from odoo.tests.common import TransactionCase
@@ -108,8 +108,8 @@ class TestIrMailServer(TransactionCase, MockSmtplibCase):
             'content',
             '<p>content</p>',
             '<head><meta content="text/html; charset=utf-8" http-equiv="Content-Type"></head><body><p>content</p></body>',
-            mail_examples.MISC_HTML_SOURCE,
-            mail_examples.QUOTE_THUNDERBIRD_HTML,
+            test_mail_examples.MISC_HTML_SOURCE,
+            test_mail_examples.QUOTE_THUNDERBIRD_HTML,
         ]
         expected_list = [
             'content',
@@ -151,7 +151,6 @@ class TestIrMailServer(TransactionCase, MockSmtplibCase):
     def test_mail_server_get_test_email_from(self):
         """ Test the email used to test the mail server connection. Check
         from_filter parsing / default fallback value. """
-        self.env.user.email = 'mitchell.admin@example.com'
         test_server = self.env['ir.mail_server'].create({
             'from_filter': 'example_2.com, example_3.com',
             'name': 'Test Server',

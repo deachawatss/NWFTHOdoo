@@ -3,27 +3,27 @@
 from ast import literal_eval
 
 from odoo import models, fields, api, SUPERUSER_ID
-from odoo.fields import Domain
 from odoo.http import request
+from odoo.osv import expression
 
 
-class Website(models.Model):
+class website_form_config(models.Model):
     _inherit = 'website'
 
     def _website_form_last_record(self):
-        if request and request.session.get('form_builder_model_model'):
-            return request.env[request.session['form_builder_model_model']].browse(request.session['form_builder_id'])
+        if request and request.session.form_builder_model_model:
+            return request.env[request.session.form_builder_model_model].browse(request.session.form_builder_id)
         return False
 
 
-class IrModel(models.Model):
+class website_form_model(models.Model):
     _name = 'ir.model'
     _description = 'Models'
-    _inherit = ['ir.model']
+    _inherit = 'ir.model'
 
     website_form_access = fields.Boolean('Allowed to use in forms', help='Enable the form builder feature for this model.')
     website_form_default_field_id = fields.Many2one('ir.model.fields', 'Field for custom form data', domain="[('model', '=', model), ('ttype', '=', 'text')]", help="Specify the field which will contain meta and custom form fields datas.")
-    website_form_label = fields.Char("Label for form action", help="Form action label. Ex: crm.lead could be 'Send an e-mail' and project.issue could be 'Create an Issue'.", translate=True)
+    website_form_label = fields.Char("Label for form action", help="Form action label. Ex: crm.lead could be 'Send an e-mail' and project.issue could be 'Create an Issue'.")
     website_form_key = fields.Char(help='Used in FormBuilder Registry')
 
     def _get_form_writable_fields(self, property_origins=None):
@@ -54,7 +54,7 @@ class IrModel(models.Model):
         model = self.env[model_name]
         fields_get = model.fields_get()
 
-        for val in model._inherits.values():
+        for key, val in model._inherits.items():
             fields_get.pop(val, None)
 
         # Unrequire fields with default values
@@ -110,7 +110,7 @@ class IrModel(models.Model):
                             if 'domain' in property_definition and isinstance(property_definition['domain'], str):
                                 property_definition['domain'] = literal_eval(property_definition['domain'])
                                 try:
-                                    property_definition['domain'] = list(Domain(property_definition['domain']))
+                                    property_definition['domain'] = expression.normalize_domain(property_definition['domain'])
                                 except Exception:
                                     # Ignore non-fully defined properties
                                     continue
@@ -128,22 +128,23 @@ class IrModel(models.Model):
         )
 
 
-class IrModelFields(models.Model):
+class website_form_model_fields(models.Model):
     """ fields configuration for form builder """
+    _name = 'ir.model.fields'
     _description = 'Fields'
     _inherit = 'ir.model.fields'
 
     def init(self):
         # set all existing unset website_form_blacklisted fields to ``true``
         #  (so that we can use it as a whitelist rather than a blacklist)
-        self.env.cr.execute('UPDATE ir_model_fields'
+        self._cr.execute('UPDATE ir_model_fields'
                          ' SET website_form_blacklisted=true'
                          ' WHERE website_form_blacklisted IS NULL')
         # add an SQL-level default value on website_form_blacklisted to that
         # pure-SQL ir.model.field creations (e.g. in _reflect) generate
         # the right default value for a whitelist (aka fields should be
         # blacklisted by default)
-        self.env.cr.execute('ALTER TABLE ir_model_fields '
+        self._cr.execute('ALTER TABLE ir_model_fields '
                          ' ALTER COLUMN website_form_blacklisted SET DEFAULT true')
 
     @api.model

@@ -3,7 +3,6 @@
 import pytz
 
 from datetime import datetime, time, timedelta
-from freezegun import freeze_time
 from unittest.mock import patch
 
 from odoo import fields
@@ -30,7 +29,7 @@ class TestSupplier(TestsCommon):
     def test_send_email_cron(self):
         self.supplier_kothai.cron_id.ensure_one()
         self.assertEqual(self.supplier_kothai.cron_id.nextcall.time(), time(15, 0))
-        self.assertEqual(self.supplier_kothai.cron_id.sudo().code, f"""\
+        self.assertEqual(self.supplier_kothai.cron_id.code, f"""\
 # This cron is dynamically controlled by Lunch Supplier.
 # Do NOT modify this cron, modify the related record instead.
 env['lunch.supplier'].browse([{self.supplier_kothai.id}])._send_auto_email()""")
@@ -56,8 +55,7 @@ env['lunch.supplier'].browse([{self.supplier_kothai.id}])._send_auto_email()""")
     @common.users('cle-lunch-manager')
     def test_search_available_today(self):
         '''
-            This test checks that _search_available_today returns a valid domain.
-            The field is of type boolean, so it accepts only the '=' operator.
+            This test checks that _search_available_today returns a valid domain
         '''
         self.env.user.tz = 'Europe/Brussels'
         Supplier = self.env['lunch.supplier']
@@ -67,17 +65,19 @@ env['lunch.supplier'].browse([{self.supplier_kothai.id}])._send_auto_email()""")
                  (self.saturday_3am, 3.0, 'sat'), (self.saturday_10am, 10.0, 'sat'),
                  (self.saturday_1pm, 13.0, 'sat'), (self.saturday_8pm, 20.0, 'sat')]
 
-        for value, rvalue, dayname in tests:
-            with self.subTest(value=value), freeze_time(value):
-                self.assertEqual(
-                    list(Supplier._search_available_today('in', [True])),
-                    ['&', '|', ('recurrency_end_date', '=', False),
-                        ('recurrency_end_date', '>', value.astimezone(pytz.timezone(self.env.user.tz)).date()),
-                        (dayname, 'in', [True])],
-                )
+        # It should return an empty domain if we compare to values other than datetime
+        assert Supplier._search_available_today('>', 7) == []
+        assert Supplier._search_available_today('>', True) == []
 
-        with patch.object(fields.Datetime, 'now', return_value=self.monday_10am):
-            self.assertIn(self.supplier_pizza_inn, Supplier.search([('available_today', '=', True)]))
+        for value, rvalue, dayname in tests:
+            with patch.object(fields.Datetime, 'now', return_value=value) as _:
+                assert Supplier._search_available_today('=', True) == ['&', '|', ('recurrency_end_date', '=', False),
+                        ('recurrency_end_date', '>', value.replace(tzinfo=pytz.UTC).astimezone(pytz.timezone(self.env.user.tz))),
+                        (dayname, '=', True)],\
+                        'Wrong domain generated for values (%s, %s)' % (value, rvalue)
+
+        with patch.object(fields.Datetime, 'now', return_value=self.monday_10am) as _:
+            assert self.supplier_pizza_inn in Supplier.search([('available_today', '=', True)])
 
     @common.users('cle-lunch-manager')
     def test_auto_email_send(self):
@@ -173,7 +173,7 @@ env['lunch.supplier'].browse([{self.supplier_kothai.id}])._send_auto_email()""")
         self.assertTrue(cron_ny.active)
         self.assertEqual(cron_ny.name, "Lunch: send automatic email to Kothai")
         self.assertEqual(
-            [line for line in cron_ny.sudo().code.splitlines() if not line.lstrip().startswith("#")],
+            [line for line in cron_ny.code.splitlines() if not line.lstrip().startswith("#")],
             ["env['lunch.supplier'].browse([%i])._send_auto_email()" % self.supplier_kothai.id])
         self.assertEqual(cron_ny.nextcall, datetime(2021, 1, 29, 15, 0))  # New-york is UTC-5
 
@@ -244,3 +244,18 @@ env['lunch.supplier'].browse([{self.supplier_kothai.id}])._send_auto_email()""")
             'topping_ids_3': [(2, supplier.topping_ids_3.id)],
         })
         self.assertFalse(supplier.topping_ids_3)
+
+    def test_lunch_order_with_minimum_threshold(self):
+        """ Test that lunch order is allowed within the overdraft threshold. """
+
+        self.env.company.lunch_minimum_threshold = 200.0
+        order = self.env['lunch.order'].create({
+            'product_id': self.product_pizza.id,
+            'date': self.monday_1pm.date(),
+            'supplier_id': self.supplier_pizza_inn.id,
+            'quantity': 11,
+        })
+        self.assertTrue(order.display_add_button)
+
+        order.action_order()
+        self.assertEqual(order.state, "ordered")

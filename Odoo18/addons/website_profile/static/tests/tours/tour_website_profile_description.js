@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { registry } from "@web/core/registry";
 
 registry.category("web_tour.tours").add('website_profile_description', {
@@ -13,7 +15,7 @@ registry.category("web_tour.tours").add('website_profile_description', {
         run: "click",
     }, {
         content: "Add some content",
-        trigger: ".odoo-editor-editable",
+        trigger: ".odoo-editor-editable p",
         run: "editor content <p>code here</p>",
     }, {
         content: "Save changes",

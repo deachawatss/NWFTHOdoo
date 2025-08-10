@@ -8,10 +8,10 @@
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~18.3\n"
+"Project-Id-Version: Odoo Server 18.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-05-06 09:28+0000\n"
-"PO-Revision-Date: 2025-05-06 12:03+0000\n"
+"POT-Creation-Date: 2024-09-25 08:39+0000\n"
+"PO-Revision-Date: 2024-09-25 09:41+0000\n"
 "Last-Translator: Tony Ng, 2025\n"
 "Language-Team: Chinese (Taiwan) (https://app.transifex.com/odoo/teams/41243/zh_TW/)\n"
 "MIME-Version: 1.0\n"
@@ -51,16 +51,22 @@ msgid "<strong>Maintenance: </strong>"
 msgstr "<strong>維護</strong>："
 
 #. module: maintenance
-#: model:ir.model.fields,help:maintenance.field_maintenance_team__alias_defaults
+#: model:ir.model.fields,help:maintenance.field_maintenance_equipment_category__alias_defaults
 msgid ""
 "A Python dictionary that will be evaluated to provide default values when "
 "creating new records for this alias."
 msgstr "當建立別名的新記錄時，一個Python字典被提供作為預設值."
 
 #. module: maintenance
+#: model:maintenance.equipment,name:maintenance.equipment_computer3
+#: model:maintenance.equipment,name:maintenance.equipment_computer5
+msgid "Acer Laptop"
+msgstr "宏基筆記本電腦"
+
+#. module: maintenance
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment__message_needaction
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__message_needaction
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_request__message_needaction
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__message_needaction
 msgid "Action Needed"
 msgstr "需要採取行動"
 
@@ -134,47 +140,47 @@ msgid "Add a team in the maintenance request"
 msgstr "在維護請求中添加團隊"
 
 #. module: maintenance
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__alias_id
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__alias_id
 msgid "Alias"
 msgstr "別名"
 
 #. module: maintenance
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__alias_contact
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__alias_contact
 msgid "Alias Contact Security"
 msgstr "別名聯絡人安全"
 
 #. module: maintenance
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__alias_domain_id
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__alias_domain_id
 msgid "Alias Domain"
 msgstr "別名域"
 
 #. module: maintenance
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__alias_domain
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__alias_domain
 msgid "Alias Domain Name"
 msgstr "別名域名"
 
 #. module: maintenance
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__alias_full_name
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__alias_full_name
 msgid "Alias Email"
 msgstr "別名電子郵件"
 
 #. module: maintenance
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__alias_name
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__alias_name
 msgid "Alias Name"
 msgstr "別名"
 
 #. module: maintenance
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__alias_status
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__alias_status
 msgid "Alias Status"
 msgstr "別名狀態"
 
 #. module: maintenance
-#: model:ir.model.fields,help:maintenance.field_maintenance_team__alias_status
+#: model:ir.model.fields,help:maintenance.field_maintenance_equipment_category__alias_status
 msgid "Alias status assessed on the last message received."
 msgstr "根據最後收到的一則訊息評估的別名狀態。"
 
 #. module: maintenance
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__alias_model_id
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__alias_model_id
 msgid "Aliased Model"
 msgstr "別名的模型"
 
@@ -224,8 +230,8 @@ msgstr "分派給"
 
 #. module: maintenance
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment__message_attachment_count
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__message_attachment_count
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_request__message_attachment_count
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__message_attachment_count
 msgid "Attachment Count"
 msgstr "附件數目"
 
@@ -295,6 +301,11 @@ msgid "Computed as Latest Failure Date + MTBF"
 msgstr "按 最近故障日期 + MTBF 計算"
 
 #. module: maintenance
+#: model:maintenance.equipment.category,name:maintenance.equipment_computer
+msgid "Computers"
+msgstr "電腦"
+
+#. module: maintenance
 #: model:ir.model,name:maintenance.model_res_config_settings
 msgid "Config Settings"
 msgstr "配置設定"
@@ -356,7 +367,7 @@ msgid "Current Maintenance"
 msgstr "目前維護"
 
 #. module: maintenance
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__alias_bounced_content
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__alias_bounced_content
 msgid "Custom Bounced Message"
 msgstr "自訂彈跳訊息"
 
@@ -398,7 +409,7 @@ msgid "Days"
 msgstr "天"
 
 #. module: maintenance
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__alias_defaults
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__alias_defaults
 msgid "Default Values"
 msgstr "預設值"
 
@@ -417,11 +428,9 @@ msgstr "說明"
 #. module: maintenance
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment__display_name
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__display_name
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_mixin__display_name
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_request__display_name
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_stage__display_name
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_team__display_name
-#: model:ir.model.fields,field_description:maintenance.field_res_config_settings__display_name
 msgid "Display Name"
 msgstr "顯示名稱"
 
@@ -454,15 +463,17 @@ msgid "Effective Date"
 msgstr "實際日期"
 
 #. module: maintenance
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__alias_email
-#: model_terms:ir.ui.view,arch_db:maintenance.maintenance_team_view_form
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__alias_email
+#: model_terms:ir.ui.view,arch_db:maintenance.hr_equipment_category_view_form
 msgid "Email Alias"
 msgstr "郵箱別名"
 
 #. module: maintenance
-#: model:ir.model.fields,help:maintenance.field_maintenance_team__alias_id
-msgid "Email alias for this maintenance team."
-msgstr "此維護團隊的電郵別名。"
+#: model:ir.model.fields,help:maintenance.field_maintenance_equipment_category__alias_id
+msgid ""
+"Email alias for this equipment category. New emails will automatically "
+"create a new equipment under this category."
+msgstr "此設備類別的電子郵件別名。新電子郵件將自動在此類別下建立新設備。"
 
 #. module: maintenance
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_request__email_cc
@@ -471,7 +482,7 @@ msgid "Email cc"
 msgstr "電郵副本抄送"
 
 #. module: maintenance
-#: model:ir.model.fields,help:maintenance.field_maintenance_team__alias_domain
+#: model:ir.model.fields,help:maintenance.field_maintenance_equipment_category__alias_domain
 msgid "Email domain e.g. 'example.com' in 'odoo@example.com'"
 msgstr "電子郵件網域，例如 odoo@example.com 之內的「example.com」"
 
@@ -575,15 +586,15 @@ msgstr "跟進請求的處理，並且和合作者溝通。"
 
 #. module: maintenance
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment__message_follower_ids
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__message_follower_ids
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_request__message_follower_ids
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__message_follower_ids
 msgid "Followers"
 msgstr "關注人"
 
 #. module: maintenance
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment__message_partner_ids
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__message_partner_ids
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_request__message_partner_ids
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__message_partner_ids
 msgid "Followers (Partners)"
 msgstr "關注人（業務夥伴）"
 
@@ -623,9 +634,20 @@ msgid "Group by..."
 msgstr "分組依據⋯"
 
 #. module: maintenance
+#: model:maintenance.equipment,name:maintenance.equipment_printer1
+msgid "HP Inkjet printer"
+msgstr "HP 噴墨列印機"
+
+#. module: maintenance
+#: model:maintenance.equipment,name:maintenance.equipment_computer11
+#: model:maintenance.equipment,name:maintenance.equipment_computer9
+msgid "HP Laptop"
+msgstr "HP筆記本電腦"
+
+#. module: maintenance
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment__has_message
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__has_message
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_request__has_message
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__has_message
 msgid "Has Message"
 msgstr "有訊息"
 
@@ -642,16 +664,14 @@ msgstr "高優先順序"
 #. module: maintenance
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment__id
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__id
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_mixin__id
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_request__id
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_stage__id
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_team__id
-#: model:ir.model.fields,field_description:maintenance.field_res_config_settings__id
 msgid "ID"
 msgstr "識別號"
 
 #. module: maintenance
-#: model:ir.model.fields,help:maintenance.field_maintenance_team__alias_parent_thread_id
+#: model:ir.model.fields,help:maintenance.field_maintenance_equipment_category__alias_parent_thread_id
 msgid ""
 "ID of the parent record holding the alias (example: project holding the task"
 " creation alias)"
@@ -671,20 +691,20 @@ msgstr "用於指示異常活動的圖示。"
 
 #. module: maintenance
 #: model:ir.model.fields,help:maintenance.field_maintenance_equipment__message_needaction
+#: model:ir.model.fields,help:maintenance.field_maintenance_equipment_category__message_needaction
 #: model:ir.model.fields,help:maintenance.field_maintenance_request__message_needaction
-#: model:ir.model.fields,help:maintenance.field_maintenance_team__message_needaction
 msgid "If checked, new messages require your attention."
 msgstr "勾選代表有新訊息需要您留意。"
 
 #. module: maintenance
 #: model:ir.model.fields,help:maintenance.field_maintenance_equipment__message_has_error
+#: model:ir.model.fields,help:maintenance.field_maintenance_equipment_category__message_has_error
 #: model:ir.model.fields,help:maintenance.field_maintenance_request__message_has_error
-#: model:ir.model.fields,help:maintenance.field_maintenance_team__message_has_error
 msgid "If checked, some messages have a delivery error."
 msgstr "勾選代表有訊息發生傳送錯誤。"
 
 #. module: maintenance
-#: model:ir.model.fields,help:maintenance.field_maintenance_team__alias_bounced_content
+#: model:ir.model.fields,help:maintenance.field_maintenance_equipment_category__alias_bounced_content
 msgid ""
 "If set, this content will automatically be sent out to unauthorized users "
 "instead of the default message."
@@ -719,8 +739,8 @@ msgstr "內部備註"
 
 #. module: maintenance
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment__message_is_follower
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__message_is_follower
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_request__message_is_follower
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__message_is_follower
 msgid "Is Follower"
 msgstr "是關注人"
 
@@ -765,9 +785,14 @@ msgid "Latest Failure Date"
 msgstr "最近故障日期"
 
 #. module: maintenance
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__alias_incoming_local
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__alias_incoming_local
 msgid "Local-part based incoming detection"
 msgstr "基於本地部件的來件檢測"
+
+#. module: maintenance
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment__location
+msgid "Location"
+msgstr "地點"
 
 #. module: maintenance
 #: model:ir.ui.menu,name:maintenance.menu_m_reports_losses
@@ -797,7 +822,6 @@ msgstr "MTTR"
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_mixin__maintenance_ids
 #: model:ir.ui.menu,name:maintenance.menu_m_request
 #: model:ir.ui.menu,name:maintenance.menu_maintenance_title
-#: model:res.groups.privilege,name:maintenance.res_groups_privilege_maintenance
 #: model_terms:ir.ui.view,arch_db:maintenance.hr_equipment_category_view_form
 #: model_terms:ir.ui.view,arch_db:maintenance.hr_equipment_view_form
 #: model_terms:ir.ui.view,arch_db:maintenance.res_config_settings_view_form
@@ -834,7 +858,6 @@ msgstr "維護保養受維護項目"
 #. module: maintenance
 #: model:ir.model,name:maintenance.model_maintenance_request
 #: model:mail.activity.type,name:maintenance.mail_act_maintenance_request
-#: model:mail.activity.type,summary:maintenance.mail_act_maintenance_request
 #: model_terms:ir.ui.view,arch_db:maintenance.hr_equipment_request_view_form
 #: model_terms:ir.ui.view,arch_db:maintenance.maintenance_request_view_activity
 msgid "Maintenance Request"
@@ -871,16 +894,12 @@ msgstr "已建立維護請求"
 #: model:ir.actions.act_window,name:maintenance.hr_equipment_request_action_from_equipment
 #: model:ir.actions.act_window,name:maintenance.hr_equipment_request_action_link
 #: model:ir.actions.act_window,name:maintenance.hr_equipment_todo_request_action_from_dashboard
+#: model:ir.actions.act_window,name:maintenance.maintenance_request_action_reports
+#: model:ir.ui.menu,name:maintenance.maintenance_request_reporting
 #: model:ir.ui.menu,name:maintenance.menu_m_request_form
 #: model_terms:ir.ui.view,arch_db:maintenance.maintenance_team_kanban
 msgid "Maintenance Requests"
 msgstr "保養請求"
-
-#. module: maintenance
-#: model:ir.actions.act_window,name:maintenance.maintenance_request_action_reports
-#: model:ir.ui.menu,name:maintenance.maintenance_request_reporting
-msgid "Maintenance Requests Analysis"
-msgstr "維護請求分析"
 
 #. module: maintenance
 #: model:ir.model,name:maintenance.model_maintenance_stage
@@ -913,6 +932,11 @@ msgid "Maintenance Type"
 msgstr "維護類型"
 
 #. module: maintenance
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment__match_serial
+msgid "Match Serial"
+msgstr "配對序號"
+
+#. module: maintenance
 #: model_terms:ir.ui.view,arch_db:maintenance.hr_equipment_view_form
 msgid "Mean Time Between Failure"
 msgstr "平均故障間隔時間"
@@ -933,17 +957,22 @@ msgstr "平均修復時間"
 
 #. module: maintenance
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment__message_has_error
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__message_has_error
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_request__message_has_error
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__message_has_error
 msgid "Message Delivery error"
 msgstr "訊息遞送錯誤"
 
 #. module: maintenance
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment__message_ids
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__message_ids
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_request__message_ids
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__message_ids
 msgid "Messages"
 msgstr "訊息"
+
+#. module: maintenance
+#: model:maintenance.team,name:maintenance.equipment_team_metrology
+msgid "Metrology"
+msgstr "計量學"
 
 #. module: maintenance
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment__model
@@ -951,15 +980,14 @@ msgid "Model"
 msgstr "模型"
 
 #. module: maintenance
+#: model:maintenance.equipment.category,name:maintenance.equipment_monitor
+msgid "Monitors"
+msgstr "顯示器"
+
+#. module: maintenance
 #: model:ir.model.fields.selection,name:maintenance.selection__maintenance_request__repeat_unit__month
 msgid "Months"
 msgstr "月"
-
-#. module: maintenance
-#: model_terms:ir.ui.view,arch_db:maintenance.hr_equipment_request_view_search
-#: model_terms:ir.ui.view,arch_db:maintenance.hr_equipment_view_search
-msgid "My Activities"
-msgstr "我的活動"
 
 #. module: maintenance
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment__my_activity_date_deadline
@@ -1030,8 +1058,8 @@ msgstr "備註"
 
 #. module: maintenance
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment__message_needaction_counter
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__message_needaction_counter
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_request__message_needaction_counter
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__message_needaction_counter
 msgid "Number of Actions"
 msgstr "動作數量"
 
@@ -1062,27 +1090,27 @@ msgstr "高優先級的請求數量"
 
 #. module: maintenance
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment__message_has_error_counter
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__message_has_error_counter
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_request__message_has_error_counter
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__message_has_error_counter
 msgid "Number of errors"
 msgstr "錯誤數量"
 
 #. module: maintenance
 #: model:ir.model.fields,help:maintenance.field_maintenance_equipment__message_needaction_counter
+#: model:ir.model.fields,help:maintenance.field_maintenance_equipment_category__message_needaction_counter
 #: model:ir.model.fields,help:maintenance.field_maintenance_request__message_needaction_counter
-#: model:ir.model.fields,help:maintenance.field_maintenance_team__message_needaction_counter
 msgid "Number of messages requiring action"
 msgstr "需要採取行動的訊息數目"
 
 #. module: maintenance
 #: model:ir.model.fields,help:maintenance.field_maintenance_equipment__message_has_error_counter
+#: model:ir.model.fields,help:maintenance.field_maintenance_equipment_category__message_has_error_counter
 #: model:ir.model.fields,help:maintenance.field_maintenance_request__message_has_error_counter
-#: model:ir.model.fields,help:maintenance.field_maintenance_team__message_has_error_counter
 msgid "Number of messages with delivery error"
 msgstr "有發送錯誤的郵件數量"
 
 #. module: maintenance
-#: model:ir.model.fields,help:maintenance.field_maintenance_team__alias_force_thread_id
+#: model:ir.model.fields,help:maintenance.field_maintenance_equipment_category__alias_force_thread_id
 msgid ""
 "Optional ID of a thread (record) to which all incoming messages will be "
 "attached, even if they did not reply to it. If set, this will disable the "
@@ -1109,17 +1137,17 @@ msgid "PDF"
 msgstr "PDF"
 
 #. module: maintenance
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__alias_parent_model_id
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__alias_parent_model_id
 msgid "Parent Model"
 msgstr "上級模型"
 
 #. module: maintenance
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__alias_parent_thread_id
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__alias_parent_thread_id
 msgid "Parent Record Thread ID"
 msgstr "上級記錄線程ID"
 
 #. module: maintenance
-#: model:ir.model.fields,help:maintenance.field_maintenance_team__alias_parent_model_id
+#: model:ir.model.fields,help:maintenance.field_maintenance_equipment_category__alias_parent_model_id
 msgid ""
 "Parent model holding the alias. The model holding the alias reference is not"
 " necessarily the model given by alias_model_id (example: project "
@@ -1135,7 +1163,12 @@ msgid ""
 msgstr "貼上您的google幻燈片的網址.確保對文件的存取是公開的."
 
 #. module: maintenance
-#: model:ir.model.fields,help:maintenance.field_maintenance_team__alias_contact
+#: model:maintenance.equipment.category,name:maintenance.equipment_phone
+msgid "Phones"
+msgstr "電話"
+
+#. module: maintenance
+#: model:ir.model.fields,help:maintenance.field_maintenance_equipment_category__alias_contact
 msgid ""
 "Policy to post a message on the document using the mailgateway.\n"
 "- everyone: everyone can post\n"
@@ -1153,6 +1186,11 @@ msgid "Preventive"
 msgstr "預防性"
 
 #. module: maintenance
+#: model:maintenance.equipment.category,name:maintenance.equipment_printer
+msgid "Printers"
+msgstr "印表機"
+
+#. module: maintenance
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_request__priority
 msgid "Priority"
 msgstr "優先級"
@@ -1164,7 +1202,6 @@ msgstr "產品訊息"
 
 #. module: maintenance
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment__equipment_properties
-#: model_terms:ir.ui.view,arch_db:maintenance.hr_equipment_view_search
 msgid "Properties"
 msgstr "屬性"
 
@@ -1184,7 +1221,7 @@ msgid "Record Colour"
 msgstr "記錄顏色"
 
 #. module: maintenance
-#: model:ir.model.fields,field_description:maintenance.field_maintenance_team__alias_force_thread_id
+#: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment_category__alias_force_thread_id
 msgid "Record Thread ID"
 msgstr "記錄追蹤ID"
 
@@ -1278,6 +1315,13 @@ msgid "Responsible User"
 msgstr "責任使用者"
 
 #. module: maintenance
+#: model:maintenance.equipment,name:maintenance.equipment_monitor1
+#: model:maintenance.equipment,name:maintenance.equipment_monitor4
+#: model:maintenance.equipment,name:maintenance.equipment_monitor6
+msgid "Samsung Monitor 15\""
+msgstr "三星顯示器15\""
+
+#. module: maintenance
 #: model_terms:ir.ui.view,arch_db:maintenance.maintenance_team_kanban
 msgid "Scheduled"
 msgstr "已排程"
@@ -1311,6 +1355,7 @@ msgstr "序列號"
 
 #. module: maintenance
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment__serial_no
+#: model_terms:ir.ui.view,arch_db:maintenance.hr_equipment_view_form
 msgid "Serial Number"
 msgstr "序列號"
 
@@ -1329,8 +1374,13 @@ msgstr "設定"
 #. module: maintenance
 #: model_terms:ir.ui.view,arch_db:maintenance.hr_equipment_request_view_search
 #: model_terms:ir.ui.view,arch_db:maintenance.hr_equipment_view_search
-msgid "Show all records whose next activity date is past"
-msgstr "顯示下一活動日期已過的所有記錄"
+msgid "Show all records which has next action date is before today"
+msgstr "顯示在今天之前的下一個行動日期的所有記錄"
+
+#. module: maintenance
+#: model:maintenance.equipment.category,name:maintenance.equipment_software
+msgid "Software"
+msgstr "軟體"
 
 #. module: maintenance
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_request__stage_id
@@ -1366,6 +1416,11 @@ msgstr ""
 #: model:mail.message.subtype,description:maintenance.mt_req_status
 msgid "Status changed"
 msgstr "狀態已變更"
+
+#. module: maintenance
+#: model:maintenance.team,name:maintenance.equipment_team_subcontractor
+msgid "Subcontractor"
+msgstr "分包商"
 
 #. module: maintenance
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_request__name
@@ -1409,7 +1464,7 @@ msgid "Text"
 msgstr "文字"
 
 #. module: maintenance
-#: model:ir.model.fields,help:maintenance.field_maintenance_team__alias_model_id
+#: model:ir.model.fields,help:maintenance.field_maintenance_equipment_category__alias_model_id
 msgid ""
 "The model (Odoo Document Kind) to which this alias corresponds. Any incoming"
 " email that does not reply to an existing record will cause the creation of "
@@ -1418,17 +1473,11 @@ msgstr ""
 "相應於這個別名對應的模型(Odoo單據種類)。任何一封不屬於對某個已存在的記錄的到來信件，將導致此模組中新記錄的建立(例如，一個新專案任務)。"
 
 #. module: maintenance
-#: model:ir.model.fields,help:maintenance.field_maintenance_team__alias_name
+#: model:ir.model.fields,help:maintenance.field_maintenance_equipment_category__alias_name
 msgid ""
 "The name of the email alias, e.g. 'jobs' if you want to catch emails for "
 "<jobs@example.odoo.com>"
 msgstr "郵箱別名，例如填寫 jobs 表示你想捕捉寄往 jobs@example.com 的電郵。"
-
-#. module: maintenance
-#. odoo-python
-#: code:addons/maintenance/models/maintenance.py:0
-msgid "The repeat interval cannot be less than 1."
-msgstr "重複間隔不可小於 1。"
 
 #. module: maintenance
 #: model:res.groups,comment:maintenance.group_equipment_manager
@@ -1508,6 +1557,11 @@ msgid "Upload your PDF file."
 msgstr "上傳您的 PDF 檔。"
 
 #. module: maintenance
+#: model_terms:ir.ui.view,arch_db:maintenance.hr_equipment_view_form
+msgid "Used in location"
+msgstr "使用地點"
+
+#. module: maintenance
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment__partner_id
 #: model_terms:ir.ui.view,arch_db:maintenance.hr_equipment_view_search
 msgid "Vendor"
@@ -1522,14 +1576,6 @@ msgstr "供應商編碼"
 #: model:ir.model.fields.selection,name:maintenance.selection__maintenance_request__priority__0
 msgid "Very Low"
 msgstr "非常低"
-
-#. module: maintenance
-#: model_terms:ir.ui.view,arch_db:maintenance.hr_equipment_category_view_form
-#: model_terms:ir.ui.view,arch_db:maintenance.hr_equipment_view_form
-#: model_terms:ir.ui.view,arch_db:maintenance.maintenance_team_view_form
-#: model_terms:ir.ui.view,arch_db:maintenance.maintenance_team_view_tree
-msgid "Visible to all"
-msgstr "向全部人顯示"
 
 #. module: maintenance
 #: model:ir.model.fields,field_description:maintenance.field_maintenance_equipment__warranty_date
@@ -1560,7 +1606,7 @@ msgid "Your instructions"
 msgstr "你的指示"
 
 #. module: maintenance
-#: model_terms:ir.ui.view,arch_db:maintenance.maintenance_team_view_form
+#: model_terms:ir.ui.view,arch_db:maintenance.hr_equipment_category_view_form
 msgid "alias"
 msgstr "別名"
 
@@ -1590,7 +1636,7 @@ msgid "e.g. Screen not working"
 msgstr "例如：螢幕未能運作"
 
 #. module: maintenance
-#: model_terms:ir.ui.view,arch_db:maintenance.maintenance_team_view_form
+#: model_terms:ir.ui.view,arch_db:maintenance.hr_equipment_category_view_form
 msgid "e.g. mycompany.com"
 msgstr "例：mycompany.com"
 

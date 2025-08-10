@@ -3,7 +3,6 @@
 
 from odoo import models
 
-
 class ResUsers(models.Model):
     _inherit = 'res.users'
 
@@ -13,9 +12,9 @@ class ResUsers(models.Model):
         interviewer_group = self.env.ref('hr_recruitment.group_hr_recruitment_interviewer')
         recruitment_group = self.env.ref('hr_recruitment.group_hr_recruitment_user')
 
-        interviewers = self - recruitment_group.all_user_ids
+        interviewers = self - recruitment_group.users
         interviewers.sudo().write({
-            'group_ids': [(4, interviewer_group.id)]
+            'groups_id': [(4, interviewer_group.id)]
         })
 
     def _remove_recruitment_interviewers(self):
@@ -31,7 +30,7 @@ class ResUsers(models.Model):
         user_ids |= {interviewer.id for [interviewer] in application_interviewers}
 
         # Remove users that are no longer interviewers on at least a job or an application
-        users_to_remove = set(self.ids) - (user_ids | set(recruitment_group.all_user_ids.ids))
+        users_to_remove = set(self.ids) - (user_ids | set(recruitment_group.users.ids))
         self.env['res.users'].browse(users_to_remove).sudo().write({
-            'group_ids': [(3, interviewer_group.id)]
+            'groups_id': [(3, interviewer_group.id)]
         })

@@ -3,6 +3,7 @@
 import pytz
 import uuid
 from datetime import datetime, timedelta
+from functools import wraps
 
 from odoo.tools import consteq
 from odoo import _, api, fields, models
@@ -10,7 +11,33 @@ from odoo.http import request
 from odoo.addons.base.models.res_partner import _tz_get
 from odoo.exceptions import UserError
 from odoo.tools.misc import limited_field_access_token
+from odoo.addons.bus.websocket import wsrequest
 from odoo.addons.mail.tools.discuss import Store
+
+
+def add_guest_to_context(func):
+    """ Decorate a function to extract the guest from the request.
+    The guest is then available on the context of the current
+    request.
+    """
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        req = request or wsrequest
+        token = (
+            req.cookies.get(req.env["mail.guest"]._cookie_name, "")
+        )
+        guest = req.env["mail.guest"]._get_guest_from_token(token)
+        if guest and not guest.timezone and not req.env.cr.readonly:
+            timezone = req.env["mail.guest"]._get_timezone_from_request(req)
+            if timezone:
+                guest._update_timezone(timezone)
+        if guest:
+            req.update_context(guest=guest)
+            if hasattr(self, "env"):
+                self.env.context = {**self.env.context, "guest": guest}
+        return func(self, *args, **kwargs)
+
+    return wrapper
 
 
 class MailGuest(models.Model):
@@ -31,20 +58,14 @@ class MailGuest(models.Model):
     lang = fields.Selection(string="Language", selection=_lang_get)
     timezone = fields.Selection(string="Timezone", selection=_tz_get)
     channel_ids = fields.Many2many(string="Channels", comodel_name='discuss.channel', relation='discuss_channel_member', column1='guest_id', column2='channel_id', copy=False)
-    presence_ids = fields.One2many("mail.presence", "guest_id", groups="base.group_system")
-    # sudo: mail.guest - can access presence of accessible guest
-    im_status = fields.Char("IM Status", compute="_compute_im_status", compute_sudo=True)
-    offline_since = fields.Datetime("Offline since", compute="_compute_im_status", compute_sudo=True)
+    im_status = fields.Char('IM Status', compute='_compute_im_status')
 
-    @api.depends("presence_ids.status")
     def _compute_im_status(self):
+        # sudo - bus.presence: guests can access other guest's presences
+        presences = self.env["bus.presence"].sudo().search([("guest_id", "in", self.ids)])
+        im_status_by_guest = {presence.guest_id: presence.status for presence in presences}
         for guest in self:
-            guest.im_status = guest.presence_ids.status or "offline"
-            guest.offline_since = (
-                guest.presence_ids.last_poll
-                if guest.im_status == "offline"
-                else None
-            )
+            guest.im_status = im_status_by_guest.get(guest, "offline")
 
     def _get_guest_from_token(self, token=""):
         """Returns the guest record for the given token, if applicable."""
@@ -62,7 +83,6 @@ class MailGuest(models.Model):
         """Returns the current guest record from the context, if applicable."""
         guest = self.env.context.get('guest')
         if isinstance(guest, self.pool['mail.guest']):
-            assert len(guest) <= 1, "Context guest should be empty or a single record."
             return guest.sudo(False).with_context(guest=guest)
         return self.env['mail.guest']
 
@@ -78,8 +98,9 @@ class MailGuest(models.Model):
         if len(name) > 512:
             raise UserError(_("Guest's name is too long."))
         self.name = name
-        Store(self, ["avatar_128", "name"], bus_channel=self.channel_ids).bus_send()
-        Store(self, ["avatar_128", "name"], bus_channel=self).bus_send()
+        store = Store(self, fields=["avatar_128", "name"])
+        self.channel_ids._bus_send_store(store)
+        self._bus_send_store(store)
 
     def _update_timezone(self, timezone):
         query = """
@@ -92,30 +113,18 @@ class MailGuest(models.Model):
         """
         self.env.cr.execute(query, (timezone, self.id))
 
-    def _get_im_status_access_token(self):
-        """Return a scoped access token for the `im_status` field. The token is used in
-        `ir_websocket._prepare_subscribe_data` to grant access to presence channels.
-
-        :rtype: str
-        """
-        self.ensure_one()
-        return limited_field_access_token(self, "im_status", scope="mail.presence")
-
-    def _field_store_repr(self, field_name):
-        if field_name == "avatar_128":
-            return [
-                Store.Attr("avatar_128_access_token", lambda g: g._get_avatar_128_access_token()),
-                "write_date",
-            ]
-        if field_name == "im_status":
-            return [
-                "im_status",
-                Store.Attr("im_status_access_token", lambda g: g._get_im_status_access_token()),
-            ]
-        return [field_name]
-
-    def _to_store_defaults(self, target):
-        return ["avatar_128", "im_status", "name"]
+    def _to_store(self, store: Store, /, *, fields=None):
+        if fields is None:
+            fields = ["avatar_128", "im_status", "name"]
+        for guest in self:
+            data = guest._read_format(
+                [field for field in fields if field not in ["avatar_128"]],
+                load=False,
+            )[0]
+            if "avatar_128" in fields:
+                data["avatar_128_access_token"] = limited_field_access_token(guest, "avatar_128")
+                data["write_date"] = guest.write_date
+            store.add(guest, data)
 
     def _set_auth_cookie(self):
         """Add a cookie to the response to identify the guest. Every route
@@ -135,8 +144,8 @@ class MailGuest(models.Model):
     def _format_auth_cookie(self):
         """Format the cookie value for the given guest.
 
-        :return: formatted cookie value
-        :rtype: str
+        :param guest: guest to format the cookie value for
+        :return str: formatted cookie value
         """
         self.ensure_one()
         return f"{self.id}{self._cookie_separator}{self.access_token}"

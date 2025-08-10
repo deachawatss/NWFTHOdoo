@@ -7,7 +7,7 @@ from odoo import _, api, models
 from odoo.tools import float_compare, float_is_zero, format_date
 
 
-class ReportStockReport_Reception(models.AbstractModel):
+class ReceptionReport(models.AbstractModel):
     _name = 'report.stock.report_reception'
     _description = "Stock Reception Report"
 
@@ -111,7 +111,7 @@ class ReportStockReport_Reception(models.AbstractModel):
                 quantity = 0
                 for move_in_qty, move_in in product_to_qty_to_assign[out.product_id]:
                     moves_in_ids.append(move_in.id)
-                    if product_uom.compare(quantity + move_in_qty, qty_to_reserve) <= 0:
+                    if float_compare(quantity + move_in_qty, qty_to_reserve, precision_rounding=product_uom.rounding) <= 0:
                         qty_to_add = move_in_qty
                         move_in_qty = 0
                     else:
@@ -122,15 +122,16 @@ class ReportStockReport_Reception(models.AbstractModel):
                         product_to_qty_to_assign[out.product_id][0] = (move_in_qty, move_in)
                     else:
                         product_to_qty_to_assign[out.product_id] = product_to_qty_to_assign[out.product_id][1:]
-                    if product_uom.compare(qty_to_reserve, quantity) == 0:
+                    if float_compare(qty_to_reserve, quantity, precision_rounding=product_uom.rounding) == 0:
                         break
 
-                if not product_uom.is_zero(quantity):
+                if not float_is_zero(quantity, precision_rounding=product_uom.rounding):
                     sources_to_lines[source].append(self._prepare_report_line(quantity, product_id, out, source[0], move_ins=self.env['stock.move'].browse(moves_in_ids)))
 
                 # draft qtys can be shown but not assigned
                 qty_expected = product_to_qty_draft.get(product_id, 0)
-                if product_uom.compare(qty_to_reserve, quantity) > 0 and not product_uom.is_zero(qty_expected):
+                if float_compare(qty_to_reserve, quantity, precision_rounding=product_uom.rounding) > 0 and\
+                        not float_is_zero(qty_expected, precision_rounding=product_uom.rounding):
                     to_expect = min(qty_expected, qty_to_reserve - quantity)
                     sources_to_lines[source].append(self._prepare_report_line(to_expect, product_id, out, source[0], is_qty_assignable=False))
                     product_to_qty_draft[product_id] -= to_expect
@@ -142,7 +143,7 @@ class ReportStockReport_Reception(models.AbstractModel):
             out_moves = moves_in.move_dest_ids
 
             for out_move in out_moves:
-                if out_move.product_id.uom_id.is_zero(total_assigned):
+                if float_is_zero(total_assigned, precision_rounding=out_move.product_id.uom_id.rounding):
                     # it is possible there are different in moves linked to the same out moves due to batch
                     # => we guess as to which outs correspond to this report...
                     continue
@@ -157,7 +158,7 @@ class ReportStockReport_Reception(models.AbstractModel):
 
         # dates aren't auto-formatted when printed in report :(
         sources_to_formatted_scheduled_date = defaultdict(list)
-        for source in sources_to_lines:
+        for source, dummy in sources_to_lines.items():
             sources_to_formatted_scheduled_date[source] = self._get_formatted_scheduled_date(source[0])
 
         return {
@@ -165,7 +166,7 @@ class ReportStockReport_Reception(models.AbstractModel):
             'doc_ids': docids,
             'doc_model': self._get_doc_model(),
             'sources_to_lines': sources_to_lines,
-            'precision': self.env['decimal.precision'].precision_get('Product Unit'),
+            'precision': self.env['decimal.precision'].precision_get('Product Unit of Measure'),
             'docs': docs,
             'sources_to_formatted_scheduled_date': sources_to_formatted_scheduled_date,
         }
@@ -221,7 +222,7 @@ class ReportStockReport_Reception(models.AbstractModel):
         out_to_new_out = OrderedDict()
         new_move_vals = []
         for out, qty_to_link in zip(outs, qtys):
-            if out.product_id.uom_id.compare(out.product_qty, qty_to_link) == 1:
+            if float_compare(out.product_qty, qty_to_link, precision_rounding=out.product_id.uom_id.rounding) == 1:
                 new_move = out._split(out.product_qty - qty_to_link)
                 if new_move:
                     new_move[0]['reservation_date'] = out.reservation_date
@@ -254,13 +255,13 @@ class ReportStockReport_Reception(models.AbstractModel):
                             new_move_line.quantity -= out.product_id.uom_id._compute_quantity(move_line_id.quantity_product_uom, out.product_uom, rounding_method='HALF-UP')
                         move_line_id.move_id = out
                         assigned_amount += move_line_id.quantity_product_uom
-                        if out.product_id.uom_id.compare(assigned_amount, qty_to_link) == 0:
+                        if float_compare(assigned_amount, qty_to_link, precision_rounding=out.product_id.uom_id.rounding) == 0:
                             break
 
             for in_move in reversed(potential_ins):
                 move_quantity = in_move.product_qty or in_move.product_uom._compute_quantity(in_move.quantity, in_move.product_id.uom_id, rounding_method='HALF-UP')
                 quantity_remaining = move_quantity - sum(in_move.move_dest_ids.mapped('product_qty'))
-                if in_move.product_id != out.product_id or in_move.product_id.uom_id.compare(0, quantity_remaining) >= 0:
+                if in_move.product_id != out.product_id or float_compare(0, quantity_remaining, precision_rounding=in_move.product_id.uom_id.rounding) >= 0:
                     # in move is already completely linked (e.g. during another assign click) => don't count it again
                     potential_ins = potential_ins[1:]
                     continue
@@ -271,7 +272,7 @@ class ReportStockReport_Reception(models.AbstractModel):
                 out.procure_method = 'make_to_order'
                 quantity_remaining -= linked_qty
                 qty_to_link -= linked_qty
-                if out.product_id.uom_id.is_zero(qty_to_link):
+                if float_is_zero(qty_to_link, precision_rounding=out.product_id.uom_id.rounding):
                     break  # we have satistfied the qty_to_link
 
         (outs | new_outs)._recompute_state()
@@ -296,7 +297,7 @@ class ReportStockReport_Reception(models.AbstractModel):
             in_move.move_dest_ids -= out
             self._action_unassign(in_move, out)
             amount_unassigned += min(qty, move_quantity)
-            if out.product_id.uom_id.compare(qty, amount_unassigned) <= 0:
+            if float_compare(qty, amount_unassigned, precision_rounding=out.product_id.uom_id.rounding) <= 0:
                 break
         if out.move_orig_ids and out.state != 'done':
             # annoying use cases where we need to split the out move:

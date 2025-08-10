@@ -1,27 +1,20 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 from odoo.tests import HttpCase, tagged
 from odoo.tools import mute_logger
 
-from odoo.addons.base.tests.common import HttpCaseWithUserPortal
+from odoo.addons.base.tests.common import BaseUsersCommon, HttpCaseWithUserPortal
 from odoo.addons.sale.tests.common import SaleCommon
 
 
 @tagged('post_install', '-at_install')
-class TestAccessRightsControllers(HttpCase, SaleCommon):
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-
-        cls.user_portal = cls._create_new_portal_user()
+class TestAccessRightsControllers(BaseUsersCommon, HttpCase, SaleCommon):
 
     @mute_logger('odoo.addons.base.models.ir_model', 'odoo.addons.base.models.ir_rule')
     def test_access_controller(self):
         private_so = self.sale_order
         portal_so = self.sale_order.copy()
-        # set portal as customer to give portal access
-        portal_so.partner_id = self.user_portal.partner_id.id
+        portal_so.message_subscribe(self.user_portal.partner_id.ids)
 
         portal_so._portal_ensure_token()
         token = portal_so.access_token
@@ -73,14 +66,7 @@ class TestAccessRightsControllers(HttpCase, SaleCommon):
 
 
 @tagged('post_install', '-at_install')
-class TestSalesControllers(HttpCase, SaleCommon):
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-
-        cls.user_portal = cls._create_new_portal_user()
-
+class TestSalesControllers(BaseUsersCommon, HttpCase, SaleCommon):
     def test_sales_portal_report(self):
         portal_so = self.sale_order.copy()
         portal_so.message_subscribe(self.user_portal.partner_id.ids)
@@ -96,7 +82,7 @@ class TestSalesControllers(HttpCase, SaleCommon):
         self.assertEqual(req.headers['content-disposition'], f"attachment; filename*=UTF-8''Quotation_{portal_so.name}.pdf")
 
 
-@tagged('post_install', '-at_install', 'mail_flow')
+@tagged('post_install', '-at_install')
 class TestSaleSignature(HttpCaseWithUserPortal):
 
     def test_01_portal_sale_signature_tour(self):
@@ -114,7 +100,6 @@ class TestSaleSignature(HttpCaseWithUserPortal):
             'order_id': sales_order.id,
             'product_id': self.env['product.product'].create({'name': 'A product'}).id,
         })
-        self.assertFalse(sales_order.message_partner_ids)
 
         # must be sent to the user so he can see it
         email_act = sales_order.action_quotation_send()
@@ -123,8 +108,5 @@ class TestSaleSignature(HttpCaseWithUserPortal):
             self.env['mail.template'].browse(email_ctx.get('default_template_id')),
             subtype_xmlid='mail.mt_comment',
         )
-        self.assertFalse(
-            sales_order.message_partner_ids,
-            'Do not automatically set customer as follower, will be suggested recipient')
 
         self.start_tour("/", 'sale_signature', login="portal")

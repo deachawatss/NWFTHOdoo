@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
 import { rpc } from "@web/core/network/rpc";
 import { useAutofocus, useService } from '@web/core/utils/hooks';
@@ -104,9 +106,7 @@ export class VideoSelector extends Component {
             if (this.props.media) {
                 const src = this.props.media.dataset.oeExpression || this.props.media.dataset.src || (this.props.media.tagName === 'IFRAME' && this.props.media.getAttribute('src')) || '';
                 if (src) {
-                    if (!src.startsWith("http:") && !src.startsWith("https:")) {
-                        this.state.urlInput = "https:" + src;
-                    }
+                    this.state.urlInput = src;
                     await this.updateVideo();
 
                     this.state.options = this.state.options.map((option) => {

@@ -6,7 +6,7 @@ from ast import literal_eval
 from odoo import fields, models, api
 
 
-class StockQuantRelocate(models.TransientModel):
+class RelocateStockQuant(models.TransientModel):
     _name = 'stock.quant.relocate'
     _description = 'Stock Quantity Relocation'
 
@@ -72,5 +72,5 @@ class StockQuantRelocate(models.TransientModel):
         if self.env.context.get('default_lot_id', False) and len(lot_ids) == 1:
             return lot_ids.action_lot_open_quants()
         elif self.env.context.get('single_product', False) and len(product_ids) == 1:
-            return product_ids.action_open_quants()
+            return product_ids.action_update_quantity_on_hand()
         return self.quant_ids.with_context(always_show_loc=1).action_view_quants()

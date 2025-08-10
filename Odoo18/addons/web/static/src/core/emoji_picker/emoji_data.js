@@ -1483,8 +1483,7 @@ const _getEmojisData1 = () => `{
     ],
     "name": "` + _t("face with steam from nose") + `",
     "shortcodes": [
-        ":face_with_steam_from_nose:",
-        ":triumph:"
+        ":face_with_steam_from_nose:"
     ]
 },
 {
@@ -1913,7 +1912,6 @@ const _getEmojisData1 = () => `{
     ],
     "name": "` + _t("see-no-evil monkey") + `",
     "shortcodes": [
-        ":see_no_evil:",
         ":see-no-evil_monkey:"
     ]
 },
@@ -1933,7 +1931,6 @@ const _getEmojisData1 = () => `{
     ],
     "name": "` + _t("hear-no-evil monkey") + `",
     "shortcodes": [
-        ":hear_no_evil:",
         ":hear-no-evil_monkey:"
     ]
 },
@@ -1953,7 +1950,6 @@ const _getEmojisData1 = () => `{
     ],
     "name": "` + _t("speak-no-evil monkey") + `",
     "shortcodes": [
-        ":speak_no_evil:",
         ":speak-no-evil_monkey:"
     ]
 },
@@ -2468,7 +2464,6 @@ const _getEmojisData2 = () => `{
     ],
     "name": "` + _t("waving hand") + `",
     "shortcodes": [
-        ":wave:",
         ":waving_hand:"
     ]
 },
@@ -2757,7 +2752,6 @@ const _getEmojisData2 = () => `{
     ],
     "name": "` + _t("thumbs up") + `",
     "shortcodes": [
-        ":+1:",
         ":thumbs_up:"
     ]
 },
@@ -2933,7 +2927,6 @@ const _getEmojisData2 = () => `{
     ],
     "name": "` + _t("folded hands") + `",
     "shortcodes": [
-        ":pray:",
         ":folded_hands:"
     ]
 },
@@ -10367,7 +10360,6 @@ const _getEmojisData4 = () => `{
     ],
     "name": "` + _t("hot beverage") + `",
     "shortcodes": [
-        ":coffee:",
         ":hot_beverage:"
     ]
 },
@@ -13705,7 +13697,6 @@ const _getEmojisData5 = () => `{
     ],
     "name": "` + _t("high voltage") + `",
     "shortcodes": [
-        ":zap:",
         ":high_voltage:"
     ]
 },
@@ -13808,7 +13799,6 @@ const _getEmojisData5 = () => `{
     ],
     "name": "` + _t("water wave") + `",
     "shortcodes": [
-        ":ocean:",
         ":water_wave:"
     ]
 },`;
@@ -21860,6 +21850,42 @@ const _getEmojisData8 = () => `{
     "name": "` + _t("pirate flag") + `",
     "shortcodes": [
         ":pirate_flag:"
+    ]
+},
+{
+    "category": "Symbols",
+    "codepoints": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    "emoticons": [],
+    "keywords": [
+        "` + _t("flag") + `"
+    ],
+    "name": "` + _t("flag: England") + `",
+    "shortcodes": [
+        ":england:"
+    ]
+},
+{
+    "category": "Symbols",
+    "codepoints": "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+    "emoticons": [],
+    "keywords": [
+        "` + _t("flag") + `"
+    ],
+    "name": "` + _t("flag: Scotland") + `",
+    "shortcodes": [
+        ":scotland:"
+    ]
+},
+{
+    "category": "Symbols",
+    "codepoints": "🏴󠁧󠁢󠁷󠁬󠁳󠁿",
+    "emoticons": [],
+    "keywords": [
+        "` + _t("flag") + `"
+    ],
+    "name": "` + _t("flag: Wales") + `",
+    "shortcodes": [
+        ":wales:"
     ]
 }`;
 

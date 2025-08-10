@@ -1,14 +1,12 @@
 import { Store } from "@mail/core/common/store_service";
 import { compareDatetime } from "@mail/utils/common/misc";
-import { _t } from "@web/core/l10n/translation";
 
 import { patch } from "@web/core/utils/patch";
 
-/** @type {import("models").Store} */
-const storePatch = {
+patch(Store.prototype, {
     setup() {
         super.setup(...arguments);
-        this.livechatChannels = this.makeCachedFetchData("im_livechat.channel");
+        this.livechatChannels = this.makeCachedFetchData({ livechat_channels: true });
         this.has_access_livechat = false;
     },
     /**
@@ -25,10 +23,7 @@ const storePatch = {
         const [oldestUnreadThread] = this.discuss.livechats
             .filter((thread) => thread.isUnread)
             .sort(
-                (t1, t2) =>
-                    !t2.livechat_end_dt - !t1.livechat_end_dt ||
-                    compareDatetime(t1.lastInterestDt, t2.lastInterestDt) ||
-                    t1.id - t2.id
+                (t1, t2) => compareDatetime(t1.lastInterestDt, t2.lastInterestDt) || t1.id - t2.id
             );
         if (!oldestUnreadThread) {
             return false;
@@ -37,30 +32,10 @@ const storePatch = {
             oldestUnreadThread.setAsDiscussThread();
             return true;
         }
-        this.store.chatHub.initPromise.then(() => {
-            const chatWindow = this.ChatWindow.insert({ thread: oldestUnreadThread });
-            chatWindow.open({ focus: true, jumpToNewMessage: true });
-        });
+        const chatWindow = this.ChatWindow.insert({ thread: oldestUnreadThread });
+        chatWindow.open();
+        chatWindow.focus();
         return true;
-    },
-    get livechatStatusButtons() {
-        return [
-            {
-                label: _t("In progress"),
-                status: "in_progress",
-                icon: "fa fa-commenting-o",
-            },
-            {
-                label: _t("Waiting for customer"),
-                status: "waiting",
-                icon: "fa fa-hourglass-o",
-            },
-            {
-                label: _t("Looking for help"),
-                status: "need_help",
-                icon: "fa fa-exclamation",
-            },
-        ];
     },
     /**
      * @override
@@ -75,5 +50,4 @@ const storePatch = {
         }
         return threadTypes;
     },
-};
-patch(Store.prototype, storePatch);
+});

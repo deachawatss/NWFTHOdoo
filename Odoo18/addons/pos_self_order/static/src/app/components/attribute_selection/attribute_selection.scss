@@ -1,10 +1,11 @@
 .self_order_attribute_selection {
-    --gutter-y: 0.75rem;
-    --gutter-x: 0.75rem;
+    .self_order_attribute_selection_option {
+        @include media-breakpoint-down(sm) {
+            --aspect-ratio: #{map-get($aspect-ratios, "21x9")};
+        }
 
-    @include media-breakpoint-up(md) {
-        --gutter-y: 1rem;
-        --gutter-x: 1rem;
+        > .active {
+            transform: scale(.95);
+        }
     }
-
 }

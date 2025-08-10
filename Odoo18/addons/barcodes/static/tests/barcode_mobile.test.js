@@ -1,10 +1,10 @@
 /** @odoo-module **/
 
 import { beforeEach, expect, test } from "@odoo/hoot";
-import { getActiveElement, queryFirst, keyDown, click } from "@odoo/hoot-dom";
-import { mountWithCleanup, patchWithCleanup } from "@web/../tests/web_test_helpers";
 import { barcodeService } from "@barcodes/barcode_service";
+import { contains, mountWithCleanup, patchWithCleanup } from "@web/../tests/web_test_helpers";
 import { Component, xml } from "@odoo/owl";
+import { click, press } from "@odoo/hoot-dom";
 
 beforeEach(() => {
     patchWithCleanup(barcodeService, {
@@ -38,39 +38,34 @@ test("barcode field automatically focus behavior", async () => {
 
     // Some elements doesn't need to keep the focus
     await click(document.body);
-    await keyDown("a");
-    expect(getActiveElement()).toHaveProperty("name", "barcode", {
-        message: "hidden barcode input should have the focus",
-    });
+    await press("a");
+    //hidden barcode input should have the focus
+    expect(document.activeElement.name).toEqual("barcode");
 
-    let element = queryFirst("select");
-    await click(element);
-    await keyDown("b");
-    expect(getActiveElement()).toHaveProperty("name", "barcode", {
-        message: "hidden barcode input should have the focus",
-    });
+    await contains("select").click();
+    await press("b");
+
+    //hidden barcode input should have the focus
+    expect(document.activeElement.name).toEqual("barcode");
 
     // Those elements absolutely need to keep the focus:
     // inputs elements:
-    const keepFocusedElements = ["email", "number", "password", "tel", "text", "explicit_text"];
-    for (let i = 0; i < keepFocusedElements.length; ++i) {
-        element = queryFirst(`input[name=${keepFocusedElements[i]}]`);
-        await click(element);
-        await keyDown("c");
-        expect(`input[name=${keepFocusedElements[i]}]`).toBeFocused({
-            message: `input ${keepFocusedElements[i]} should keep focus`,
-        });
+    for (const inputName of ["email", "number", "password", "tel", "text", "explicit_text"]) {
+        const selector = `input[name="${inputName}"]`;
+        await contains(selector).click();
+        await press("c");
+        // input selector should keep focus
+        expect(selector).toBeFocused();
     }
+
     // textarea element
-    element = queryFirst(`textarea`);
-    await click(element);
-    await keyDown("d");
-    expect(`textarea`).toBeFocused({ message: "textarea should keep focus" });
+    await contains("textarea").click();
+    await press("d");
+    expect("textarea").toBeFocused();
+
     // contenteditable elements
-    element = queryFirst(`[contenteditable=true]`);
-    await click(element);
-    await keyDown("e");
-    expect(`[contenteditable=true]`).toBeFocused({
-        message: "contenteditable should keep focus",
-    });
+    await contains("[contenteditable=true]").click();
+    await press("e");
+    //contenteditable should keep focus
+    expect("[contenteditable=true]").toBeFocused();
 });

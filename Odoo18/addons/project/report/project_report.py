@@ -3,11 +3,10 @@
 
 from odoo import fields, models, tools
 
-from odoo.addons.rating.models.rating_data import RATING_LIMIT_MIN
-
+from odoo.addons.rating.models.rating_data import RATING_LIMIT_MIN, RATING_TEXT
 
 class ReportProjectTaskUser(models.Model):
-    _name = 'report.project.task.user'
+    _name = "report.project.task.user"
     _description = "Tasks Analysis"
     _order = 'name desc, project_id'
     _auto = False
@@ -20,7 +19,6 @@ class ReportProjectTaskUser(models.Model):
     date_end = fields.Datetime(string='Ending Date', readonly=True)
     date_deadline = fields.Datetime(string='Deadline', readonly=True)
     date_last_stage_update = fields.Datetime(string='Last Stage Update', readonly=True)
-    display_in_project = fields.Boolean(export_string_translation=False)
     project_id = fields.Many2one('project.project', string='Project', readonly=True)
     working_days_close = fields.Float(string='Working Days to Close',
         digits=(16, 2), readonly=True, aggregator="avg")
@@ -33,10 +31,8 @@ class ReportProjectTaskUser(models.Model):
     rating_last_value = fields.Float('Last Rating (1-5)', aggregator="avg", readonly=True, groups="project.group_project_rating")
     rating_avg = fields.Float('Average Rating (1-5)', readonly=True, aggregator='avg', groups="project.group_project_rating")
     priority = fields.Selection([
-        ('0', 'Low priority'),
-        ('1', 'Medium priority'),
-        ('2', 'High priority'),
-        ('3', 'Urgent'),
+        ('0', 'Low'),
+        ('1', 'High')
         ], readonly=True, string="Priority")
 
     state = fields.Selection([
@@ -52,6 +48,7 @@ class ReportProjectTaskUser(models.Model):
     partner_id = fields.Many2one('res.partner', string='Customer', readonly=True)
     stage_id = fields.Many2one('project.task.type', string='Stage', readonly=True)
     task_id = fields.Many2one('project.task', string='Tasks', readonly=True)
+    active = fields.Boolean(readonly=True)
     tag_ids = fields.Many2many('project.tags', relation='project_tags_project_task_rel',
         column1='project_task_id', column2='project_tags_id',
         string='Tags', readonly=True)
@@ -65,20 +62,18 @@ class ReportProjectTaskUser(models.Model):
         column2='task_id', string='Block', readonly=True,
         domain="[('allow_task_dependencies', '=', True), ('id', '!=', id)]")
     description = fields.Text(readonly=True)
-    # We exclude template tasks, but we still need the field for the views
-    is_template = fields.Boolean(readonly=True)
 
     def _select(self):
         return """
                 (select 1) AS nbr,
                 t.id as id,
                 t.id as task_id,
+                t.active,
                 t.create_date,
                 t.date_assign,
                 t.date_end,
                 t.date_last_stage_update,
                 t.date_deadline,
-                t.display_in_project,
                 t.project_id,
                 t.priority,
                 t.name as name,
@@ -98,13 +93,13 @@ class ReportProjectTaskUser(models.Model):
                 NULLIF(t.working_hours_open, 0) as working_hours_open,
                 NULLIF(t.working_hours_close, 0) as working_hours_close,
                 (extract('epoch' from (t.date_deadline-(now() at time zone 'UTC'))))/(3600*24) as delay_endings_days,
-                COUNT(td.task_id) as dependent_ids_count,
-                t.is_template
+                COUNT(td.task_id) as dependent_ids_count
         """
 
     def _group_by(self):
         return """
                 t.id,
+                t.active,
                 t.create_date,
                 t.date_assign,
                 t.date_end,
@@ -139,19 +134,16 @@ class ReportProjectTaskUser(models.Model):
                           AND pm.is_reached = False
                           AND pm.deadline <= CAST(now() AS DATE)
                     LEFT JOIN task_dependencies_rel td ON td.depends_on_id = t.id
-                    LEFT JOIN project_project p ON p.id = t.project_id
         """
 
     def _where(self):
         return """
                 t.project_id IS NOT NULL
-                AND t.is_template IS NOT TRUE
-                AND p.is_template IS NOT TRUE
         """
 
     def init(self):
-        tools.drop_view_if_exists(self.env.cr, self._table)
-        self.env.cr.execute("""
+        tools.drop_view_if_exists(self._cr, self._table)
+        self._cr.execute("""
     CREATE view %s as
          SELECT %s
            FROM %s

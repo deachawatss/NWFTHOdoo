@@ -2,7 +2,7 @@ from odoo import _, models
 from odoo.exceptions import UserError
 
 
-class AccountResequenceWizard(models.TransientModel):
+class ReSequenceWizard(models.TransientModel):
     _inherit = 'account.resequence.wizard'
 
     def _frozen_edi_documents(self):

@@ -9,10 +9,8 @@ import {
 import { DiscussChannel } from "./mock_server/mock_models/discuss_channel";
 import { DiscussChannelMember } from "./mock_server/mock_models/discuss_channel_member";
 import { LivechatChannel } from "./mock_server/mock_models/im_livechat_channel";
-import { LivechatChannelRule } from "./mock_server/mock_models/livechat_channel_rule";
-import { Im_LivechatExpertise } from "./mock_server/mock_models/im_livechat_expertise";
-import { ResGroupsPrivilege } from "./mock_server/mock_models/res_groups_privilege";
 import { ResGroups } from "./mock_server/mock_models/res_groups";
+import { ResLang } from "./mock_server/mock_models/res_lang";
 import { ResPartner } from "./mock_server/mock_models/res_partner";
 import { ResUsers } from "./mock_server/mock_models/res_users";
 import { session } from "@web/session";
@@ -26,12 +24,10 @@ export const livechatModels = {
     DiscussChannel,
     DiscussChannelMember,
     LivechatChannel,
-    LivechatChannelRule,
-    Im_LivechatExpertise,
     RatingRating,
+    ResLang,
     ResPartner,
     ResUsers,
-    ResGroupsPrivilege,
     ResGroups,
 };
 
@@ -49,7 +45,7 @@ export async function loadDefaultEmbedConfig() {
     });
     patchWithCleanup(session, {
         livechatData: {
-            can_load_livechat: true,
+            isAvailable: true,
             serverUrl: window.origin,
             options: {
                 header_background_color: "#875A7B",
@@ -62,7 +58,6 @@ export async function loadDefaultEmbedConfig() {
                 channel_name: "YourWebsite.com",
                 channel_id: livechatChannelId,
                 default_username: "Visitor",
-                review_link: "https://www.odoo.com",
             },
         },
     });

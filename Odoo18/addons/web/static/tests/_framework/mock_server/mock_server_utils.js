@@ -84,7 +84,7 @@ export function makeServerError({
     args,
 } = {}) {
     return makeErrorFromResponse({
-        code: code || 0,
+        code: code || 200,
         message: message || "Odoo Server Error",
         data: {
             name: errorName || `odoo.exceptions.${type || "UserError"}`,

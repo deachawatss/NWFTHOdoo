@@ -13,6 +13,5 @@
             'auth_password_policy/static/src/password_policy.js',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

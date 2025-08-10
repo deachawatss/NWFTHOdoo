@@ -5,8 +5,7 @@ import { url } from "@web/core/utils/urls";
 import { standardFieldProps } from "../standard_field_props";
 import { FileUploader } from "../file_handler";
 
-import { Component, onWillUpdateProps, useEffect, useRef, useState } from "@odoo/owl";
-import { hidePDFJSButtons } from "@web/core/utils/pdfjs";
+import { Component, onWillUpdateProps, useState } from "@odoo/owl";
 
 export class PdfViewerField extends Component {
     static template = "web.PdfViewerField";
@@ -19,39 +18,15 @@ export class PdfViewerField extends Component {
 
     setup() {
         this.notification = useService("notification");
-        this.action = useService("action");
         this.state = useState({
             isValid: true,
             objectUrl: "",
         });
-        this.iframeViewerPdfRef = useRef("iframeViewerPdf");
         onWillUpdateProps((nextProps) => {
             if (nextProps.readonly) {
                 this.state.objectUrl = "";
             }
         });
-        useEffect(
-            (el) => {
-                if (el) {
-                    hidePDFJSButtons(this.iframeViewerPdfRef.el, {
-                        hideDownload: true,
-                        hidePrint: true,
-                    });
-                }
-            },
-            () => [this.iframeViewerPdfRef.el]
-        );
-    }
-
-    get urlFile() {
-        return (
-            this.state.objectUrl ||
-            url("/web/content", {
-                model: this.props.record.resModel,
-                field: this.props.name,
-                id: this.props.record.resId,
-            })
-        );
     }
 
     get url() {
@@ -59,7 +34,14 @@ export class PdfViewerField extends Component {
             return null;
         }
         const page = this.props.record.data[`${this.props.name}_page`] || 1;
-        const file = encodeURIComponent(this.urlFile);
+        const file = encodeURIComponent(
+            this.state.objectUrl ||
+                url("/web/content", {
+                    model: this.props.record.resModel,
+                    field: this.props.name,
+                    id: this.props.record.resId,
+                })
+        );
         return `/web/static/lib/pdfjs/web/viewer.html?file=${file}#page=${page}`;
     }
 
@@ -71,14 +53,6 @@ export class PdfViewerField extends Component {
     onFileRemove() {
         this.state.isValid = true;
         this.update({});
-    }
-
-    onFileDownload() {
-        this.action.doAction({
-            type: "ir.actions.act_url",
-            url: this.urlFile,
-            target: "new",
-        });
     }
 
     onFileUploaded({ data, objectUrl }) {

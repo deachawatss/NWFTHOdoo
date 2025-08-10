@@ -6,6 +6,7 @@ from odoo.tools import float_repr
 from datetime import datetime
 from base64 import b64decode, b64encode
 from lxml import etree
+from odoo.exceptions import UserError
 
 
 class AccountMove(models.Model):
@@ -19,13 +20,6 @@ class AccountMove(models.Model):
         string="ZATCA chain index", copy=False, readonly=True,
         help="Invoice index in chain, set if and only if an in-chain XML was submitted and did not error",
     )
-    l10n_sa_edi_chain_head_id = fields.Many2one(
-      'account.move',
-      string="ZATCA chain stopping move",
-      copy=False,
-      readonly=True,
-      help="Technical field to know if the chain has been stopped by a previous invoice",
-  )
 
     def _l10n_sa_is_simplified(self):
         """
@@ -72,12 +66,12 @@ class AccountMove(models.Model):
         company_name_length_encoding = len(field).to_bytes(length=int_length, byteorder='big')
         return company_name_tag_encoding + company_name_length_encoding + field
 
-    def _l10n_sa_check_billing_reference(self):
+    def _l10n_sa_check_refund_reason(self):
         """
-            Make sure credit/debit notes have a either a reveresed move or debited move or a customer reference
+            Make sure credit/debit notes have a valid reason and reversal reference
         """
         self.ensure_one()
-        return self.debit_origin_id or self.reversed_entry_id or self.ref
+        return self.reversed_entry_id or self.ref
 
     @api.model
     def _l10n_sa_get_qr_code(self, journal_id, unsigned_xml, certificate, signature, is_b2c=False):
@@ -220,7 +214,7 @@ class AccountMove(models.Model):
             """) % (_('The invoice was accepted by ZATCA, but returned warnings. Please, check the response below:'),
                     f"[{status_code}] " if status_code else "",
                     Markup("<br/>").join([Markup("<b>%s</b> : %s") % (m['code'], m['message']) for m in response_data['validationResults']['warningMessages']]))
-        self.message_post(body=Markup("""
+        self.with_context(no_new_invoice=True).message_post(body=Markup("""
                 <div role='alert' class='alert alert-%s'>
                     <h4 class='alert-heading'>%s</h4>%s
                 </div>
@@ -265,25 +259,16 @@ class AccountMove(models.Model):
 
     def _get_l10n_sa_totals(self):
         self.ensure_one()
-        invoice_node = self.env['account.edi.xml.ubl_21.zatca']._get_invoice_node({'invoice': self})
+        invoice_vals = self.env['account.edi.xml.ubl_21.zatca']._export_invoice_vals(self)
         return {
-            'total_amount': invoice_node['cac:LegalMonetaryTotal']['cbc:TaxInclusiveAmount']['_text'],
-            'total_tax': invoice_node['cac:TaxTotal'][-1]['cbc:TaxAmount']['_text'],
+            'total_amount': invoice_vals['vals']['monetary_total_vals']['tax_inclusive_amount'],
+            'total_tax': invoice_vals['vals']['tax_total_vals'][-1]['tax_amount'],
         }
 
-    def _retry_edi_documents_error(self):
-        """
-            Hook to reset the chain head error prior to retrying the submission
-        """
-        self.filtered(lambda m: m.country_code == 'SA').write({'l10n_sa_edi_chain_head_id': False})
-        return super()._retry_edi_documents_error()
-
-    def action_show_chain_head(self):
-        """
-            Action to show the chain head of the invoice
-        """
-        self.ensure_one()
-        return self.l10n_sa_edi_chain_head_id._get_records_action(name=_("Chain Head"))
+    def action_post(self):
+        if self.filtered(lambda move: move.country_code == "SA" and move.move_type in ('out_invoice', 'out_refund') and move.company_id != move.journal_id.company_id):
+            raise UserError(_("Please make sure that the invoice company matches the journal company on all invoices you wish to confirm"))
+        return super().action_post()
 
 
 class AccountMoveLine(models.Model):

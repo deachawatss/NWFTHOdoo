@@ -1,6 +1,6 @@
 import logging
 
-from odoo import api, fields, models, _
+from odoo import fields, models, _
 from odoo.exceptions import AccessError, UserError
 
 from .mercado_pago_pos_request import MercadoPagoPosRequest
@@ -118,9 +118,8 @@ class PosPaymentMethod(models.Model):
 
         return records
 
-    @api.model_create_multi
-    def create(self, vals_list):
-        records = super().create(vals_list)
+    def create(self, vals):
+        records = super().create(vals)
 
         for record in records:
             if record.mp_bearer_token:

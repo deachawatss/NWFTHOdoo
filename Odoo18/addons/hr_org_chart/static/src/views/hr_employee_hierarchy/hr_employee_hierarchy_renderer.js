@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { Avatar } from "@mail/views/web/fields/avatar/avatar";
 
 import { HierarchyRenderer } from "@web_hierarchy/hierarchy_renderer";

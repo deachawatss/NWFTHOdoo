@@ -19,12 +19,12 @@ class TestSelfOrderCombo(SelfOrderCommonTest):
         )
         self.pos_config.write({
             'self_ordering_default_user_id': self.pos_admin.id,
+            'self_ordering_takeaway': False,
             'self_ordering_mode': 'mobile',
             'self_ordering_pay_after': 'each',
             'self_ordering_service_mode': 'counter',
-            'available_preset_ids': [(5, 0)],
         })
-        self.pos_admin.group_ids += self.env.ref('account.group_account_invoice')
+        self.pos_admin.groups_id += self.env.ref('account.group_account_invoice')
         self.pos_config.with_user(self.pos_user).open_ui()
         self.pos_config.current_session_id.set_opening_control(0, "")
         self_route = self.pos_config._get_self_order_route()
@@ -55,13 +55,11 @@ class TestSelfOrderCombo(SelfOrderCommonTest):
 
         self.pos_config.write({
             'self_ordering_default_user_id': self.pos_admin.id,
+            'self_ordering_takeaway': False,
             'self_ordering_mode': 'mobile',
-            'self_ordering_pay_after': 'each',
-            'self_ordering_service_mode': 'counter',
-            'available_preset_ids': [(5, 0)],
+            'limit_categories': True,
             'iface_available_categ_ids': category.ids,
         })
-
         self.pos_config.with_user(self.pos_user).open_ui()
         self.pos_config.current_session_id.set_opening_control(0, "")
         self_route = self.pos_config._get_self_order_route()

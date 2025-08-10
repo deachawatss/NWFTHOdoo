@@ -4,7 +4,8 @@
 from odoo import api, fields, models
 
 
-class ResPartner(models.Model):
+class Partner(models.Model):
+
     _inherit = 'res.partner'
 
     website_tag_ids = fields.Many2many(
@@ -20,11 +21,11 @@ class ResPartner(models.Model):
         return self.env.ref('contacts.menu_contacts').id
 
 
-class ResPartnerTag(models.Model):
-    _name = 'res.partner.tag'
+class Tags(models.Model):
 
+    _name = 'res.partner.tag'
     _description = 'Partner Tags - These tags can be used on website to find customers by sector, or ...'
-    _inherit = ['website.published.mixin']
+    _inherit = 'website.published.mixin'
 
     @api.model
     def get_selection_class(self):

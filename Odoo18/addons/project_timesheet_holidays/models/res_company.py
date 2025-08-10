@@ -4,7 +4,7 @@
 from odoo import fields, models, _
 
 
-class ResCompany(models.Model):
+class Company(models.Model):
     _inherit = 'res.company'
 
     leave_timesheet_task_id = fields.Many2one(

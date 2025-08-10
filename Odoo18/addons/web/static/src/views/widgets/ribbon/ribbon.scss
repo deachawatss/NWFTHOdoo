@@ -39,9 +39,12 @@
     }
 
     &-top-right {
+        --Ribbon-gap-top-default: calc(var(--formView-sheet-padding-y, 0) * -1 - #{$border-width});
+        --Ribbon-gap-right-default: -#{$border-width};
+
         pointer-events: none;
-        top: 0;
-        right: 0;
+        margin-top: var(--Ribbon-gap-top, var(--Ribbon-gap-top-default));
+        right: var(--Ribbon-gap-right, var(--Ribbon-gap-right-default));
 
         & span {
             --Ribbon-top-position-default: calc((var(--Ribbon-height-default) * -1));
@@ -64,6 +67,6 @@
     }
 }
 
-.modal .modal-dialog .o_form_sheet:has(> .o_widget_web_ribbon) {
-    position: static !important;
+.o_form_sheet .ribbon {
+   --Ribbon-z-index: 1;
 }

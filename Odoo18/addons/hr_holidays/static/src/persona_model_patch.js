@@ -5,23 +5,13 @@ import { patch } from "@web/core/utils/patch";
 
 const { DateTime } = luxon;
 
-/** @param {string} datetime */
-export function getOutOfOfficeDateEndText(datetime) {
-    const foptions = { ...DateTime.DATE_MED };
-    const dt = typeof datetime === "string" ? deserializeDateTime(datetime) : datetime;
-    if (dt.year === DateTime.now().year) {
-        foptions.year = undefined;
-    }
-    const fdate = dt.toLocaleString(foptions);
-    return _t("Back on %(date)s", { date: fdate });
-}
-
 patch(Persona.prototype, {
-    /** @returns {string} */
-    get outOfOfficeDateEndText() {
-        if (!this.main_user_id?.employee_id?.leave_date_to) {
+    get outOfOfficeText() {
+        if (!this.out_of_office_date_end) {
             return "";
         }
-        return getOutOfOfficeDateEndText(this.main_user_id.employee_id.leave_date_to);
+        const date = deserializeDateTime(this.out_of_office_date_end);
+        const fdate = date.toLocaleString(DateTime.DATE_MED);
+        return _t("Back on %s", fdate);
     },
 });

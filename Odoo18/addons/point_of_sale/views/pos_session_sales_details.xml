@@ -27,8 +27,7 @@
                 <div class="row">
                     <div class="col-12 text-end mt-2">
                         <span class="badge bg-light text-dark border border-dark p-2">
-                            <t t-set="date_format" t-value="env['res.lang']._get_data(code=env.user.lang).date_format"/>
-                            <strong>    As of <span t-esc="context_timestamp(datetime.datetime.now()).strftime(date_format)"/>
+                            <strong>    As of <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%m/%d/%Y')"/>
                             </strong>
                         </span>
                     </div>
@@ -60,7 +59,6 @@
                             <tr t-foreach="products" t-as="category" class="border-bottom border-secondary">
                                 <td class="ps-2 fw-bold"><span t-out="category['name']">Technical Stuffs</span></td>
                                 <td class="fw-bold"/>
-                                <td class="fw-bold"/>
                                 <td class="text-end fw-bold" ><span t-out="category['qty']">5</span></td>
                                 <td class="text-end fw-bold">
                                     <t t-if="currency['position']">
@@ -71,13 +69,9 @@
                                     </t>
                                 </td>
                                 <tr t-foreach="category['products']" t-as="line" class="border-bottom border-secondary">
-                                    <td class="ps-5"><span t-out="line['product_name']">Laptop model x</span><span t-if="line['combo_products_label']" t-out="line['combo_products_label']"/></td>
+                                    <t t-set="internal_reference" t-value="line['code'] and '[%s] ' % line['code'] or ''" />
+                                    <td class="ps-5"><span t-out="internal_reference">Ref 876787</span><span t-out="line['product_name']">Laptop model x</span></td>
                                     <td/>
-                                    <td class="text-end">
-                                        <t t-if="line['barcode']">
-                                            <img t-att-src="'/report/barcode/Code128/'+line['barcode']" style="width:230px; height:23px" alt="Barcode"/>
-                                        </t>
-                                    </td>
                                     <td class="text-end">
                                         <span t-out="line['quantity']">5</span>
                                         <t t-if='line["uom"] != "Units"'>
@@ -100,7 +94,6 @@
                             </tr>
                             <tr>
                                 <td><strong>Total</strong></td>
-                                <td/>
                                 <td/>
                                 <td class="text-end"><strong><span t-out="products_info['qty']">5</span></strong></td>
                                 <td class="text-end">
@@ -170,7 +163,7 @@
                             <tr t-foreach="refund_products" t-as="category" class="border-bottom border-secondary">
                                 <td class="ps-2 fw-bold"><span t-out="category['name']">Technical Stuff</span></td>
                                 <td class="fw-bold"/>
-                                <td class="fw-bold"/>
+                                <td class="text-end fw-bold"></td>
                                 <td class="text-end fw-bold">
                                     <span t-out="category['qty']">0</span>
                                 </td>
@@ -183,13 +176,8 @@
                                     </t>
                                 </td>
                                 <tr t-foreach="category['products']" t-as="line" class="border-bottom border-secondary">
-                                    <td class="ps-5"><span t-out="line['product_name']">Laptop</span><span t-if="line['combo_products_label']" t-out="line['combo_products_label']"/></td>
-                                    <td/>
-                                    <td class="text-end">
-                                        <t t-if="line['barcode']">
-                                            <img t-att-src="'/report/barcode/Code128/'+line['barcode']" style="width:230px; height:23px" alt="Barcode"/>
-                                        </t>
-                                    </td>
+                                    <t t-set="internal_reference" t-value="line['code'] and '[%s] ' % line['code'] or ''" />
+                                    <td class="ps-5"><span t-out="internal_reference">7897</span><span t-out="line['product_name']">Laptop</span></td>
                                     <td class="text-end">
                                         <span t-out="line['quantity']">0</span>
                                         <t t-if='line["uom"] != "Units"'>

@@ -1,17 +1,11 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from collections import defaultdict
-
 from odoo import models
-
 
 class SaleOrderLine(models.Model):
     _inherit = 'sale.order.line'
-
-    def _get_line_header(self):
-        if self.is_reward_line:
-            return self.name
-        return super()._get_line_header()
 
     def _show_in_cart(self):
         # Hide discount lines from website_order_line, see `order._compute_website_order_line`

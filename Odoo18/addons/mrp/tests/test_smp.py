@@ -31,6 +31,11 @@ class TestMrpSerialMassProduce(TestMrpCommon):
                 'location_id': mo.location_src_id.id,
             })._apply_inventory()
         mo.action_assign()
+        mo_form = Form(mo)
+        mo_form.qty_producing = 1
+        mo = mo_form.save()
+        self.assertEqual(len(mo.move_finished_ids.move_line_ids), 1)
+        mo.qty_producing = 0
         # Open the wizard
         action = mo.action_mass_produce()
         wizard_form = Form(self.env['mrp.batch.produce'].with_context(**action['context']))
@@ -40,9 +45,9 @@ class TestMrpSerialMassProduce(TestMrpCommon):
         wizard = wizard_form.save()
         wizard.action_generate_production_text()
         wizard.action_prepare()
-        # Initial MO should have a backorder-sequenced name and be in confirmed state
+        # Initial MO should have a backorder-sequenced name and be in progress state
         self.assertTrue("-001" in mo.name)
-        self.assertEqual(mo.state, "confirmed")
+        self.assertEqual(mo.state, "progress")
         # Each generated serial number should have its own mo
         self.assertEqual(len(mo.procurement_group_id.mrp_production_ids), count)
         # Check generated serial numbers
@@ -184,9 +189,9 @@ class TestMrpSerialMassProduce(TestMrpCommon):
             'name': 'SN2',
             'product_id': tracked_product.id,
         })
-        self.env['stock.quant']._update_available_quantity(tracked_product, self.shelf_1, 1, lot_id=sn_1)
-        self.env['stock.quant']._update_available_quantity(tracked_product, self.shelf_1, 1, lot_id=sn_2)
-        self.env['stock.quant']._update_available_quantity(component, self.shelf_1, 10)
+        self.env['stock.quant']._update_available_quantity(tracked_product, self.stock_location_14, 1, lot_id=sn_1)
+        self.env['stock.quant']._update_available_quantity(tracked_product, self.stock_location_14, 1, lot_id=sn_2)
+        self.env['stock.quant']._update_available_quantity(component, self.stock_location_14, 10)
         # create an MO to use the tracked product available in stock
         mo_form = Form(self.env['mrp.production'])
         mo_form.product_id = self.product_1
@@ -194,6 +199,7 @@ class TestMrpSerialMassProduce(TestMrpCommon):
         mo_form.product_uom_id = component.uom_id
         # use tracked  as component
         with mo_form.move_raw_ids.new() as move:
+            move.name = tracked_product.name
             move.product_id = tracked_product
             move.product_uom_qty = 2
             move.product_uom = tracked_product.uom_id
@@ -293,7 +299,6 @@ class TestMrpSerialMassProduce(TestMrpCommon):
         - Create a MO with 12 final products to produce.
         - update the component quantity to 100
         """
-        self.bom_1.product_uom_id = self.bom_1.product_id.uom_id
         self.bom_1.product_id.uom_id = self.ref('uom.product_uom_unit')
         self.bom_1.product_id.tracking = 'serial'
         self.bom_1.product_qty = 1
@@ -339,7 +344,7 @@ class TestMrpSerialMassProduce(TestMrpCommon):
         self.env['res.config.settings'].write({
             'group_stock_adv_location': True,
         })
-        self.warehouse_1.manufacture_steps = 'pbm'
+        self.env.ref('stock.warehouse0').manufacture_steps = 'pbm'
         mo = self.generate_mo(tracking_final='lot', tracking_base_1='lot')[0]
         # Make some stock and reserve
         for product in mo.move_raw_ids.product_id:

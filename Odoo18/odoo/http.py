@@ -35,6 +35,7 @@ Here be dragons:
         else:
             Request._serve_db
                 env['ir.http']._match
+
                 if not match:
                     Request._transactioning
                         model.retrying
@@ -127,9 +128,8 @@ endpoint
   The @route(...) decorated controller method.
 """
 
-import odoo.init  # import first for core setup
-
 import base64
+import collections
 import collections.abc
 import contextlib
 import functools
@@ -146,7 +146,6 @@ import re
 import threading
 import time
 import traceback
-import warnings
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from hashlib import sha512
@@ -179,11 +178,8 @@ import werkzeug.security
 import werkzeug.wrappers
 import werkzeug.wsgi
 from werkzeug.urls import URL, url_parse, url_encode, url_quote
-from werkzeug.exceptions import (
-    default_exceptions as werkzeug_default_exceptions,
-    HTTPException, NotFound, UnsupportedMediaType, UnprocessableEntity,
-    InternalServerError
-)
+from werkzeug.exceptions import (HTTPException, BadRequest, Forbidden,
+                                 NotFound, InternalServerError)
 try:
     from werkzeug.middleware.proxy_fix import ProxyFix as ProxyFix_
     ProxyFix = functools.partial(ProxyFix_, x_for=1, x_proto=1, x_host=1)
@@ -195,17 +191,16 @@ try:
 except ImportError:
     from .tools._vendor.send_file import send_file as _send_file
 
-import odoo.addons
+import odoo
 from .exceptions import UserError, AccessError, AccessDenied
-from .modules import module as module_manager
+from .modules.module import get_manifest
 from .modules.registry import Registry
 from .service import security, model as service_model
-from .service.server import thread_local
 from .tools import (config, consteq, file_path, get_lang, json_default,
                     parse_version, profiler, unique, exception_to_unicode)
+from .tools.func import filter_kwargs, lazy_property
+from .tools.misc import submap
 from .tools.facade import Proxy, ProxyAttr, ProxyFunc
-from .tools.func import filter_kwargs
-from .tools.misc import submap, real_time
 from .tools._vendor import sessions
 from .tools._vendor.useragents import UserAgent
 
@@ -221,7 +216,7 @@ _logger = logging.getLogger(__name__)
 CORS_MAX_AGE = 60 * 60 * 24
 
 # The HTTP methods that do not require a CSRF validation.
-SAFE_HTTP_METHODS = ('GET', 'HEAD', 'OPTIONS', 'TRACE')
+CSRF_FREE_METHODS = ('GET', 'HEAD', 'OPTIONS', 'TRACE')
 
 # The default csrf token lifetime, a salt against BREACH, one year
 CSRF_TOKEN_SALT = 60 * 60 * 24 * 365
@@ -249,6 +244,9 @@ DEFAULT_MAX_CONTENT_LENGTH = 128 * 1024 * 1024  # 128MiB
 if geoip2:
     GEOIP_EMPTY_COUNTRY = geoip2.models.Country({})
     GEOIP_EMPTY_CITY = geoip2.models.City({})
+
+# The request mimetypes that transport JSON in their body.
+JSON_MIMETYPES = ('application/json', 'application/json-rpc')
 
 MISSING_CSRF_WARNING = """\
 No CSRF validation token provided for path %r
@@ -384,7 +382,8 @@ def db_filter(dbs, host=None):
     if config['db_name']:
         # In case --db-filter is not provided and --database is passed, Odoo will
         # use the value of --database as a comma separated list of exposed databases.
-        return sorted(set(config['db_name']).intersection(dbs))
+        exposed_dbs = {db.strip() for db in config['db_name'].split(',')}
+        return sorted(exposed_dbs.intersection(dbs))
 
     return list(dbs)
 
@@ -512,8 +511,21 @@ class Stream:
     @classmethod
     def from_binary_field(cls, record, field_name):
         """ Create a :class:`~Stream`: from a binary field. """
-        data_b64 = record[field_name]
-        data = base64.b64decode(data_b64) if data_b64 else b''
+        data = record[field_name] or b''
+
+        # Image fields enforce base64 encoding. Binary fields don't
+        # enforce anything: raw bytes are fine, expected even.
+        # People nonetheless write base64 encoded bytes inside binary
+        # fields, and expect automatic decoding when read, crazy!
+        with contextlib.suppress(ValueError):
+            data = base64.b64decode(
+                # Some libs add linefeed every X (where X < 79) char in
+                # the base64, for email mime. validate=True would raise
+                # an error for those linefeeds so stip them.
+                data.replace(b'\r', b'').replace(b'\n', b''),
+                validate=True,
+            )
+
         return cls(
             type='data',
             data=data,
@@ -671,10 +683,6 @@ class Controller:
             module = path[2] if path[:2] == ['odoo', 'addons'] else ''
             Controller.children_classes[module].append(cls)
 
-    @property
-    def env(self):
-        return request.env if request else None
-
 
 def route(route=None, **routing):
     """
@@ -691,7 +699,7 @@ def route(route=None, **routing):
         route will be routed to this decorated method. See `werkzeug
         routing documentation <http://werkzeug.pocoo.org/docs/routing/>`_
         for the format of route expressions.
-    :param str type: The type of request, either ``'jsonrpc'`` or
+    :param str type: The type of request, either ``'json'`` or
         ``'http'``. It describes where to find the request parameters
         and how to serialize the response.
     :param str auth: The authentication method, one of the following:
@@ -716,41 +724,25 @@ def route(route=None, **routing):
     :param str cors: The Access-Control-Allow-Origin cors directive value.
     :param bool csrf: Whether CSRF protection should be enabled for the
         route. Enabled by default for ``'http'``-type requests, disabled
-        by default for ``'jsonrpc'``-type requests.
+        by default for ``'json'``-type requests.
     :param Union[bool, Callable[[registry, request], bool]] readonly:
         Whether this endpoint should open a cursor on a read-only
         replica instead of (by default) the primary read/write database.
     :param Callable[[Exception], Response] handle_params_access_error:
-        Implement a custom behavior if an error occurred when retrieving
-        the record from the URL parameters (access error or missing error).
-    :param str captcha: The action name of the captcha. When set the
-        request will be validated against a captcha implementation. Upon
-        failing these requests will return a UserError.
-    :param bool save_session: Whether it should set a session_id cookie
-        on the http response and save dirty session on disk. ``False``
-        by default for ``auth='bearer'``. ``True`` by default otherwise.
+        Implement a custom behavior if an error occurred when retrieving the record
+        from the URL parameters (access error or missing error).
     """
     def decorator(endpoint):
         fname = f"<function {endpoint.__module__}.{endpoint.__name__}>"
 
         # Sanitize the routing
-        if routing.get('type') == 'json':
-            warnings.warn(
-                "Since 19.0, @route(type='json') is a deprecated alias to @route(type='jsonrpc')",
-                DeprecationWarning,
-                stacklevel=3,
-            )
-            routing['type'] = 'jsonrpc'
-        assert routing.get('type', 'http') in _dispatchers.keys(), \
-            f"@route(type={routing['type']!r}) is not one of {_dispatchers.keys()}"
+        assert routing.get('type', 'http') in _dispatchers.keys()
         if route:
             routing['routes'] = [route] if isinstance(route, str) else route
         wrong = routing.pop('method', None)
         if wrong is not None:
             _logger.warning("%s defined with invalid routing parameter 'method', assuming 'methods'", fname)
             routing['methods'] = wrong
-        if routing.get('auth') == 'bearer':
-            routing.setdefault('save_session', False)  # stateless
 
         @functools.wraps(endpoint)
         def route_wrapper(self, *args, **params):
@@ -986,43 +978,6 @@ class FilesystemSessionStore(sessions.FilesystemSessionStore):
     def is_valid_key(self, key):
         return _base64_urlsafe_re.match(key) is not None
 
-    def get_missing_session_identifiers(self, identifiers):
-        """
-            :param identifiers: session identifiers whose file existence must be checked
-                                identifiers are a part session sid (first 42 chars)
-            :type identifiers: iterable
-            :return: the identifiers which are not present on the filesystem
-            :rtype: set
-
-            Note 1:
-            Working with identifiers 42 characters long means that
-            we don't have to work with the entire sid session,
-            while maintaining sufficient entropy to avoid collisions.
-            See details in ``generate_key``.
-
-            Note 2:
-            Scans the session store for inactive (GC'd) sessions.
-            Works even if GC is done externally (not via ``vacuum()``).
-            Performance is acceptable for an infrequent background job:
-                - listing ``directories``: 1-5s on SSD
-                - iterating sessions:
-                    - 25k on standard SSD: ~1.5 min
-                    - 2M on RAID10 SSD: ~25s
-        """
-        # There are a lot of session files.
-        # Use the param ``identifiers`` to select the necessary directories.
-        # In the worst case, we have 4096 directories (64^2).
-        identifiers = set(identifiers)
-        directories = {
-            os.path.normpath(os.path.join(self.path, identifier[:2]))
-            for identifier in identifiers
-        }
-        # Remove the identifiers for which a file is present on the filesystem.
-        for directory in directories:
-            with contextlib.suppress(OSError), os.scandir(directory) as session_files:
-                identifiers.difference_update(sf.name[:42] for sf in session_files)
-        return identifiers
-
     def delete_from_identifiers(self, identifiers):
         files_to_unlink = []
         for identifier in identifiers:
@@ -1053,6 +1008,9 @@ class Session(collections.abc.MutableMapping):
         self.should_rotate = False
         self.sid = sid
 
+    #
+    # MutableMapping implementation with DocDict-like extension
+    #
     def __getitem__(self, item):
         return self.__data[item]
 
@@ -1072,65 +1030,23 @@ class Session(collections.abc.MutableMapping):
     def __iter__(self):
         return iter(self.__data)
 
+    def __getattr__(self, attr):
+        return self.get(attr, None)
+
+    def __setattr__(self, key, val):
+        if key in self.__slots__:
+            super().__setattr__(key, val)
+        else:
+            self[key] = val
+
     def clear(self):
         self.__data.clear()
         self.is_dirty = True
 
     #
-    # Session properties
-    #
-    @property
-    def uid(self):
-        return self.get('uid')
-
-    @uid.setter
-    def uid(self, uid):
-        self['uid'] = uid
-
-    @property
-    def db(self):
-        return self.get('db')
-
-    @db.setter
-    def db(self, db):
-        self['db'] = db
-
-    @property
-    def login(self):
-        return self.get('login')
-
-    @login.setter
-    def login(self, login):
-        self['login'] = login
-
-    @property
-    def context(self):
-        return self.get('context')
-
-    @context.setter
-    def context(self, context):
-        self['context'] = context
-
-    @property
-    def debug(self):
-        return self.get('debug')
-
-    @debug.setter
-    def debug(self, debug):
-        self['debug'] = debug
-
-    @property
-    def session_token(self):
-        return self.get('session_token')
-
-    @session_token.setter
-    def session_token(self, session_token):
-        self['session_token'] = session_token
-
-    #
     # Session methods
     #
-    def authenticate(self, env, credential):
+    def authenticate(self, dbname, credential):
         """
         Authenticate the current user with the given db, login and
         credential. If successful, store the authentication parameters in
@@ -1150,24 +1066,28 @@ class Session(collections.abc.MutableMapping):
             'HTTP_HOST': request.httprequest.environ['HTTP_HOST'],
             'REMOTE_ADDR': request.httprequest.environ['REMOTE_ADDR'],
         }
-        env = env(user=None, su=False)
-        auth_info = env['res.users'].authenticate(credential, wsgienv)
+
+        registry = Registry(dbname)
+        auth_info = registry['res.users'].authenticate(dbname, credential, wsgienv)
         pre_uid = auth_info['uid']
 
         self.uid = None
-        self['pre_login'] = credential['login']
-        self['pre_uid'] = pre_uid
+        self.pre_login = credential['login']
+        self.pre_uid = pre_uid
 
-        env = env(user=pre_uid)
+        with registry.cursor() as cr:
+            env = odoo.api.Environment(cr, pre_uid, {})
 
-        # if 2FA is disabled we finalize immediately
-        user = env['res.users'].browse(pre_uid)
-        if auth_info.get('mfa') == 'skip' or not user._mfa_url():
-            self.finalize(env)
+            # if 2FA is disabled we finalize immediately
+            user = env['res.users'].browse(pre_uid)
+            if auth_info.get('mfa') == 'skip' or not user._mfa_url():
+                self.finalize(env)
 
-        if request and request.session is self and request.db == env.registry.db_name:
-            request.env = env(user=self.uid, context=self.context)
+        if request and request.session is self and request.db == dbname:
+            request.env = odoo.api.Environment(request.env.cr, self.uid, self.context)
             request.update_context(lang=get_lang(request.env(user=pre_uid)).code)
+            # request env needs to be able to access the latest changes from the auth layers
+            request.env.cr.commit()
 
         return auth_info
 
@@ -1209,7 +1129,7 @@ class Session(collections.abc.MutableMapping):
         """
             :return: dict if a device log has to be inserted, ``None`` otherwise
         """
-        if self.get('_trace_disable'):
+        if self._trace_disable:
             # To avoid generating useless logs, e.g. for automated technical sessions,
             # a session can be flagged with `_trace_disable`. This should never be done
             # without a proper assessment of the consequences for auditability.
@@ -1224,7 +1144,7 @@ class Session(collections.abc.MutableMapping):
         browser = user_agent.browser
         ip_address = request.httprequest.remote_addr
         now = int(datetime.now().timestamp())
-        for trace in self['_trace']:
+        for trace in self._trace:
             if trace['platform'] == platform and trace['browser'] == browser and trace['ip_address'] == ip_address:
                 # If the device logs are not up to date (i.e. not updated for one hour or more)
                 if bool(now - trace['last_activity'] >= 3600):
@@ -1239,7 +1159,7 @@ class Session(collections.abc.MutableMapping):
             'first_activity': now,
             'last_activity': now
         }
-        self['_trace'].append(new_trace)
+        self._trace.append(new_trace)
         self.is_dirty = True
         return new_trace
 
@@ -1278,7 +1198,7 @@ class GeoIP(collections.abc.Mapping):
     def __init__(self, ip):
         self.ip = ip
 
-    @functools.cached_property
+    @lazy_property
     def _city_record(self):
         try:
             return root.geoip_city_db.city(self.ip)
@@ -1287,7 +1207,7 @@ class GeoIP(collections.abc.Mapping):
         except geoip2.errors.AddressNotFoundError:
             return GEOIP_EMPTY_CITY
 
-    @functools.cached_property
+    @lazy_property
     def _country_record(self):
         if '_city_record' in vars(self):
             # the City class inherits from the Country class and the
@@ -1706,17 +1626,8 @@ class Request:
 
         dbname = None
         host = self.httprequest.environ['HTTP_HOST']
-        header_dbname = self.httprequest.headers.get('X-Odoo-Database')
         if session.db and db_filter([session.db], host=host):
             dbname = session.db
-            if header_dbname and header_dbname != dbname:
-                e = ("Cannot use both the session_id cookie and the "
-                     "x-odoo-database header.")
-                raise werkzeug.exceptions.Forbidden(e)
-        elif header_dbname:
-            session.can_save = False  # stateless
-            if db_filter([header_dbname], host=host):
-                dbname = header_dbname
         else:
             all_dbs = db_list(force=True, host=host)
             if len(all_dbs) == 1:
@@ -1734,11 +1645,13 @@ class Request:
     def _open_registry(self):
         try:
             registry = Registry(self.db)
-            cr_readonly = registry.cursor(readonly=True)
-            registry = registry.check_signaling(cr_readonly)
+            # use a RW cursor! Sequence data is not replicated and would
+            # be invalid if accessed on a readonly replica. Cfr task-4399456
+            cr_readwrite = registry.cursor(readonly=False)
+            registry = registry.check_signaling(cr_readwrite)
         except (AttributeError, psycopg2.OperationalError, psycopg2.ProgrammingError) as e:
             raise RegistryError(f"Cannot get registry {self.db}") from e
-        return registry, cr_readonly
+        return registry, cr_readwrite
 
     # =====================================================
     # Getters and setters
@@ -1747,13 +1660,12 @@ class Request:
         """ Update the environment of the current request.
 
         :param user: optional user/user id to change the current user
-        :type user: int or :class:`res.users record<~odoo.addons.base.models.res_users.ResUsers>`
+        :type user: int or :class:`res.users record<~odoo.addons.base.models.res_users.Users>`
         :param dict context: optional context dictionary to change the current context
         :param bool su: optional boolean to change the superuser mode
         """
         cr = None  # None is a sentinel, it keeps the same cursor
         self.env = self.env(cr, user, context, su)
-        self.env.transaction.default_env = self.env
         threading.current_thread().uid = self.env.uid
 
     def update_context(self, **overrides):
@@ -1766,7 +1678,6 @@ class Request:
 
     @property
     def context(self):
-        warnings.warn("Since 19.0, use request.env.context directly", DeprecationWarning, stacklevel=2)
         return self.env.context
 
     @context.setter
@@ -1775,7 +1686,6 @@ class Request:
 
     @property
     def uid(self):
-        warnings.warn("Since 19.0, use request.env.uid directly", DeprecationWarning, stacklevel=2)
         return self.env.uid
 
     @uid.setter
@@ -1784,7 +1694,6 @@ class Request:
 
     @property
     def cr(self):
-        warnings.warn("Since 19.0, use request.env.cr directly", DeprecationWarning, stacklevel=2)
         return self.env.cr
 
     @cr.setter
@@ -1795,7 +1704,7 @@ class Request:
 
     _cr = cr
 
-    @functools.cached_property
+    @lazy_property
     def best_lang(self):
         lang = self.httprequest.accept_languages.best
         if not lang:
@@ -1811,7 +1720,7 @@ class Request:
         except (ValueError, KeyError):
             return None
 
-    @functools.cached_property
+    @lazy_property
     def cookies(self):
         cookies = werkzeug.datastructures.MultiDict(self.httprequest.cookies)
         if self.registry:
@@ -1907,10 +1816,10 @@ class Request:
         URL is profile-safe. Otherwise, get a context-manager that does
         nothing.
         """
-        if self.session.get('profile_session') and self.db:
-            if self.session['profile_expiration'] < str(datetime.now()):
+        if self.session.profile_session and self.db:
+            if self.session.profile_expiration < str(datetime.now()):
                 # avoid having session profiling for too long if user forgets to disable profiling
-                self.session['profile_session'] = None
+                self.session.profile_session = None
                 _logger.warning("Profiling expiration reached, disabling profiling")
             elif 'set_profiling' in self.httprequest.path:
                 _logger.debug("Profiling disabled on set_profiling route")
@@ -1924,13 +1833,13 @@ class Request:
                     return profiler.Profiler(
                         db=self.db,
                         description=self.httprequest.full_path,
-                        profile_session=self.session['profile_session'],
-                        collectors=self.session['profile_collectors'],
-                        params=self.session['profile_params'],
+                        profile_session=self.session.profile_session,
+                        collectors=self.session.profile_collectors,
+                        params=self.session.profile_params,
                     )._get_cm_proxy()
                 except Exception:
                     _logger.exception("Failure during Profiler creation")
-                    self.session['profile_session'] = None
+                    self.session.profile_session = None
 
         return contextlib.nullcontext()
 
@@ -2046,34 +1955,21 @@ class Request:
         threading.current_thread().url = httprequest.url
         self.httprequest = httprequest
 
-    def _save_session(self, env=None):
-        """
-        Save a modified session on disk.
-
-        :param env: an environment to compute the session token.
-            MUST be left ``None`` (in which case it uses the request's
-            env) UNLESS the database changed.
-        """
+    def _save_session(self):
+        """ Save a modified session on disk. """
         sess = self.session
-        if env is None:
-            env = self.env
 
         if not sess.can_save:
             return
 
         if sess.should_rotate:
-            root.session_store.rotate(sess, env)  # it saves
+            root.session_store.rotate(sess, self.env)  # it saves
         elif sess.is_dirty:
             root.session_store.save(sess)
 
         cookie_sid = self.cookies.get('session_id')
         if sess.is_dirty or cookie_sid != sess.sid:
-            self.future_response.set_cookie(
-                'session_id',
-                sess.sid,
-                max_age=get_session_max_inactivity(env),
-                httponly=True
-            )
+            self.future_response.set_cookie('session_id', sess.sid, max_age=get_session_max_inactivity(self.env), httponly=True)
 
     def _set_request_dispatcher(self, rule):
         routing = rule.endpoint.routing
@@ -2085,13 +1981,7 @@ class Request:
                 for disp in _dispatchers.values()
                 if disp.is_compatible_with(self)
             ]
-            e = (f"Request inferred type is compatible with {compatible_dispatchers} "
-                 f"but {routing['routes'][0]!r} is type={routing['type']!r}.")
-            # werkzeug doesn't let us add headers to UnsupportedMediaType
-            # so use the following (ugly) to still achieve what we want
-            res = UnsupportedMediaType(e).get_response()
-            res.headers['Accept'] = ', '.join(dispatcher_cls.mimetypes)
-            raise UnsupportedMediaType(response=res)
+            raise BadRequest(f"Request inferred type is compatible with {compatible_dispatchers} but {routing['routes'][0]!r} is type={routing['type']!r}.")
         self.dispatcher = dispatcher_cls(self)
 
     # =====================================================
@@ -2101,9 +1991,7 @@ class Request:
         """ Serve a static file from the file system. """
         module, _, path = self.httprequest.path[1:].partition('/static/')
         try:
-            directory = root.static_path(module)
-            if not directory:
-                raise NotFound(f'Module "{module}" not found.\n')
+            directory = root.statics[module]
             filepath = werkzeug.security.safe_join(directory, path)
             debug = (
                 'assets' in self.session.debug and
@@ -2115,6 +2003,8 @@ class Request:
             )
             root.set_csp(res)
             return res
+        except KeyError:
+            raise NotFound(f'Module "{module}" not found.\n')
         except OSError:  # cover both missing file and invalid permissions
             raise NotFound(f'File "{path}" not found in module {module}.\n')
 
@@ -2136,7 +2026,7 @@ class Request:
         Prepare the user session and load the ORM before forwarding the
         request to ``_serve_ir_http``.
         """
-        cr_readonly = None
+        cr_readwrite = None
         rule = None
         args = None
         not_found = None
@@ -2144,16 +2034,16 @@ class Request:
         # reuse the same cursor for building+checking the registry and
         # for matching the controller endpoint
         try:
-            self.registry, cr_readonly = self._open_registry()
+            self.registry, cr_readwrite = self._open_registry()
             threading.current_thread().dbname = self.registry.db_name
-            self.env = odoo.api.Environment(cr_readonly, self.session.uid, self.session.context)
+            self.env = odoo.api.Environment(cr_readwrite, self.session.uid, self.session.context)
             try:
                 rule, args = self.registry['ir.http']._match(self.httprequest.path)
             except NotFound as not_found_exc:
                 not_found = not_found_exc
         finally:
-            if cr_readonly is not None:
-                cr_readonly.close()
+            if cr_readwrite is not None:
+                cr_readwrite.close()
 
         if not_found:
             # no controller endpoint matched -> fallback or 404
@@ -2166,7 +2056,7 @@ class Request:
         self._set_request_dispatcher(rule)
         readonly = rule.endpoint.routing['readonly']
         if callable(readonly):
-            readonly = readonly(rule.endpoint.func.__self__, rule, args)
+            readonly = readonly(rule.endpoint.func.__self__)
         return self._transactioning(
             functools.partial(self._serve_ir_http, rule, args),
             readonly=readonly,
@@ -2180,7 +2070,6 @@ class Request:
         provided a response, a generic 404 - Not Found page is returned.
         """
         self.params = self.get_http_params()
-        self.registry['ir.http']._auth_method_public()
         response = self.registry['ir.http']._serve_fallback()
         if response:
             self.registry['ir.http']._post_dispatch(response)
@@ -2238,14 +2127,9 @@ class Request:
                 except Exception as exc:
                     if isinstance(exc, HTTPException) and exc.code is None:
                         raise  # bubble up to odoo.http.Application.__call__
-                    if (
-                        'werkzeug' in config['dev_mode']
-                        and self.dispatcher.routing_type != JsonRPCDispatcher.routing_type
-                    ):
+                    if 'werkzeug' in config['dev_mode'] and self.dispatcher.routing_type != 'json':
                         raise  # bubble up to werkzeug.debug.DebuggedApplication
                     if not hasattr(exc, 'error_response'):
-                        if isinstance(exc, AccessDenied):
-                            exc.suppress_traceback()
                         exc.error_response = self.registry['ir.http']._handle_error(exc)
                     raise
 
@@ -2258,7 +2142,6 @@ _dispatchers = {}
 
 class Dispatcher(ABC):
     routing_type: str
-    mimetypes: collections.abc.Collection[str] = ()
 
     @classmethod
     def __init_subclass__(cls):
@@ -2284,14 +2167,14 @@ class Dispatcher(ABC):
         to save them in the session or in the context.
         """
         routing = rule.endpoint.routing
-        self.request.session.can_save &= routing.get('save_session', True)
+        self.request.session.can_save = routing.get('save_session', True)
 
         set_header = self.request.future_response.headers.set
         cors = routing.get('cors')
         if cors:
             set_header('Access-Control-Allow-Origin', cors)
             set_header('Access-Control-Allow-Methods', (
-                'POST' if routing['type'] == JsonRPCDispatcher.routing_type
+                'POST' if routing['type'] == 'json'
                 else ', '.join(routing['methods'] or ['GET', 'POST'])
             ))
 
@@ -2336,8 +2219,6 @@ class Dispatcher(ABC):
 class HttpDispatcher(Dispatcher):
     routing_type = 'http'
 
-    mimetypes = ('application/x-www-form-urlencoded', 'multipart/form-data', '*/*')
-
     @classmethod
     def is_compatible_with(cls, request):
         return True
@@ -2354,7 +2235,7 @@ class HttpDispatcher(Dispatcher):
         self.request.params = dict(self.request.get_http_params(), **args)
 
         # Check for CSRF token for relevant requests
-        if self.request.httprequest.method not in SAFE_HTTP_METHODS and endpoint.routing.get('csrf', True):
+        if self.request.httprequest.method not in CSRF_FREE_METHODS and endpoint.routing.get('csrf', True):
             if not self.request.db:
                 return self.request.redirect('/web/database/selector')
 
@@ -2392,21 +2273,15 @@ class HttpDispatcher(Dispatcher):
                 response.set_cookie('session_id', session.sid, max_age=get_session_max_inactivity(self.env), httponly=True)
             return response
 
-        if isinstance(exc, HTTPException):
-            return exc
-
-        if isinstance(exc, UserError):
-            try:
-                return werkzeug_default_exceptions[exc.http_status](exc.args[0])
-            except (KeyError, AttributeError):
-                return UnprocessableEntity(exc.args[0])
-
-        return InternalServerError()
+        return (exc if isinstance(exc, HTTPException)
+           else Forbidden(exc.args[0]) if isinstance(exc, (AccessDenied, AccessError))
+           else BadRequest(exc.args[0]) if isinstance(exc, UserError)
+           else InternalServerError()  # hide the real error
+        )
 
 
 class JsonRPCDispatcher(Dispatcher):
-    routing_type = 'jsonrpc'
-    mimetypes = ('application/json', 'application/json-rpc')
+    routing_type = 'json'
 
     def __init__(self, request):
         super().__init__(request)
@@ -2415,7 +2290,7 @@ class JsonRPCDispatcher(Dispatcher):
 
     @classmethod
     def is_compatible_with(cls, request):
-        return request.httprequest.mimetype in cls.mimetypes
+        return request.httprequest.mimetype in JSON_MIMETYPES
 
     def dispatch(self, endpoint, args):
         """
@@ -2468,7 +2343,7 @@ class JsonRPCDispatcher(Dispatcher):
     def handle_error(self, exc: Exception) -> collections.abc.Callable:
         """
         Handle any exception that occurred while dispatching a request to
-        a `type='jsonrpc'` route. Also handle exceptions that occurred when
+        a `type='json'` route. Also handle exceptions that occurred when
         no route matched the request path, that no fallback page could
         be delivered and that the request ``Content-Type`` was json.
 
@@ -2476,7 +2351,10 @@ class JsonRPCDispatcher(Dispatcher):
         :returns: a WSGI application
         """
         error = {
-            'code': 0,  # we don't care of this code
+            'code': 200,  # this code is the JSON-RPC level code, it is
+                          # distinct from the HTTP status code. This
+                          # code is ignored and the value 200 (while
+                          # misleading) is totally arbitrary.
             'message': "Odoo Server Error",
             'data': serialize_exception(exc),
         }
@@ -2507,24 +2385,22 @@ class Application:
     """ Odoo WSGI application """
     # See also: https://www.python.org/dev/peps/pep-3333
 
-    def initialize(self):
-        """
-        Initialize the application.
-
-        This is to be called when setting up a WSGI application after
-        initializing the configuration values.
-        """
-        module_manager.initialize_sys_path()
-        from odoo.service.server import load_server_wide_modules  # noqa: PLC0415
-        load_server_wide_modules()
-
-    def static_path(self, module_name: str) -> str | None:
+    @lazy_property
+    def statics(self):
         """
         Map module names to their absolute ``static`` path on the file
         system.
         """
-        manifest = module_manager.Manifest.for_addon(module_name, display_warning=False)
-        return manifest.static_path if manifest is not None else None
+        mod2path = {}
+        for addons_path in odoo.addons.__path__:
+            for module in os.listdir(addons_path):
+                manifest = get_manifest(module)
+                static_path = opj(addons_path, module, 'static')
+                if (manifest
+                        and (manifest['installable'] or manifest['assets'])
+                        and os.path.isdir(static_path)):
+                    mod2path[module] = static_path
+        return mod2path
 
     def get_static_file(self, url, host=''):
         """
@@ -2548,22 +2424,18 @@ class Application:
         if ((netloc and netloc != host) or (path_netloc and path_netloc != host)):
             return None
 
-        if not (static == 'static' and resource):
-            return None
-
-        static_path = self.static_path(module)
-        if not static_path:
+        if (module not in self.statics or static != 'static' or not resource):
             return None
 
         try:
-            return file_path(opj(static_path, resource))
+            return file_path(f'{module}/static/{resource}')
         except FileNotFoundError:
             return None
 
-    @functools.cached_property
+    @lazy_property
     def nodb_routing_map(self):
         nodb_routing_map = werkzeug.routing.Map(strict_slashes=False, converters=None)
-        for url, endpoint in _generate_routing_rules([''] + config['server_wide_modules'], nodb_only=True):
+        for url, endpoint in _generate_routing_rules([''] + odoo.conf.server_wide_modules, nodb_only=True):
             routing = submap(endpoint.routing, ROUTING_KEYS)
             if routing['methods'] is not None and 'OPTIONS' not in routing['methods']:
                 routing['methods'] = [*routing['methods'], 'OPTIONS']
@@ -2573,7 +2445,7 @@ class Application:
 
         return nodb_routing_map
 
-    @functools.cached_property
+    @lazy_property
     def session_store(self):
         path = odoo.tools.config.session_dir
         _logger.debug('HTTP sessions stored in: %s', path)
@@ -2584,7 +2456,7 @@ class Application:
             return self.nodb_routing_map
         return request.env['ir.http'].routing_map()
 
-    @functools.cached_property
+    @lazy_property
     def geoip_city_db(self):
         try:
             return geoip2.database.Reader(config['geoip_city_db'])
@@ -2595,7 +2467,7 @@ class Application:
             )
             raise
 
-    @functools.cached_property
+    @lazy_property
     def geoip_country_db(self):
         try:
             return geoip2.database.Reader(config['geoip_country_db'])
@@ -2629,13 +2501,12 @@ class Application:
         current_thread = threading.current_thread()
         current_thread.query_count = 0
         current_thread.query_time = 0
-        current_thread.perf_t0 = real_time()
+        current_thread.perf_t0 = time.time()
         current_thread.cursor_mode = None
         if hasattr(current_thread, 'dbname'):
             del current_thread.dbname
         if hasattr(current_thread, 'uid'):
             del current_thread.uid
-        thread_local.rpc_model_method = ''
 
         if odoo.tools.config['proxy_mode'] and environ.get("HTTP_X_FORWARDED_HOST"):
             # The ProxyFix middleware has a side effect of updating the
@@ -2698,8 +2569,6 @@ class Application:
 
                 # Ensure there is always a WSGI handler attached to the exception.
                 if not hasattr(exc, 'error_response'):
-                    if isinstance(exc, AccessDenied):
-                        exc.suppress_traceback()
                     exc.error_response = request.dispatcher.handle_error(exc)
 
                 return exc.error_response(environ, start_response)

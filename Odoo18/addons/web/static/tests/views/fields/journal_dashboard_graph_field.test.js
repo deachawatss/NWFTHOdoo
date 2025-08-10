@@ -74,13 +74,7 @@ class Partner extends models.Model {
         },
     ];
 }
-class User extends models.Model {
-    _name = "res.users";
-    has_group() {
-        return true;
-    }
-}
-defineModels([Partner, User]);
+defineModels([Partner]);
 
 // Kanban
 // WOWL remove this helper and user the control panel instead

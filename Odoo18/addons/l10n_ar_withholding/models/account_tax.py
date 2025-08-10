@@ -3,6 +3,7 @@ from odoo import api, fields, models
 
 
 class AccountTax(models.Model):
+
     _inherit = 'account.tax'
 
     l10n_ar_type_tax_use = fields.Selection(

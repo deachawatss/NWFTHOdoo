@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo.tests import common
@@ -8,7 +9,6 @@ class ChatbotCase(common.HttpCase):
     @classmethod
     def setUpClass(cls):
         super(ChatbotCase, cls).setUpClass()
-        cls.maxDiff = None
 
         cls.chatbot_script = cls.env['chatbot.script'].create({
             'title': 'Testing Bot',
@@ -143,29 +143,14 @@ class ChatbotCase(common.HttpCase):
             })]
         })
 
-    def _post_answer_and_trigger_next_step(
-        self, discuss_channel, body=None, email=None, chatbot_script_answer=None
-    ):
-        data = self.make_jsonrpc_request(
-            "/mail/message/post",
-            {
-                "thread_model": "discuss.channel",
-                "thread_id": discuss_channel.id,
-                "post_data": {"body": body or email or chatbot_script_answer.name},
-            },
-        )
-        if email:
-            self.make_jsonrpc_request(
-                "/chatbot/step/validate_email", {"channel_id": discuss_channel.id}
-            )
+    @classmethod
+    def _post_answer_and_trigger_next_step(cls, discuss_channel, answer, chatbot_script_answer=False):
+        mail_message = discuss_channel.message_post(body=answer)
         if chatbot_script_answer:
-            message = self.env["mail.message"].browse(data["mail.message"][0]["id"])
-            self.make_jsonrpc_request(
-                "/chatbot/answer/save",
-                {
-                    "channel_id": discuss_channel.id,
-                    "message_id": message.id,
-                    "selected_answer_id": chatbot_script_answer.id,
-                },
-            )
-        self.make_jsonrpc_request("/chatbot/step/trigger", {"channel_id": discuss_channel.id})
+            cls.env['chatbot.message'].search([
+                ('mail_message_id', '=', mail_message.id)
+            ], limit=1).user_script_answer_id = chatbot_script_answer.id
+
+        # sudo: chatbot.script.step - members of a channel can access the current chatbot step
+        next_step = discuss_channel.chatbot_current_step_id.sudo()._process_answer(discuss_channel, mail_message.body)
+        next_step._process_step(discuss_channel)

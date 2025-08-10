@@ -116,7 +116,7 @@ class AccountMoveSend(models.AbstractModel):
                     }
 
                 if self._can_commit():
-                    self.env.cr.commit()
+                    self._cr.commit()
 
     def _call_web_service_after_invoice_pdf_render(self, invoices_data):
         # EXTENDS 'account'
@@ -171,10 +171,10 @@ class AccountMoveSend(models.AbstractModel):
                 ])
 
                 # Log the new attachment in the chatter for reference. Make sure to add the JSON file.
-                invoice.message_post(
+                invoice.with_context(no_new_invoice=True).message_post(
                     body=_('Invoice sent to SInvoice'),
                     attachment_ids=attachments.ids + invoice.l10n_vn_edi_sinvoice_file_id.ids,
                 )
 
             if self._can_commit():
-                self.env.cr.commit()
+                self._cr.commit()

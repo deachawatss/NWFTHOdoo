@@ -73,7 +73,6 @@ export class SelectMenu extends Component {
         autoSort: { type: Boolean, optional: true },
         placeholder: { type: String, optional: true },
         searchPlaceholder: { type: String, optional: true },
-        searchClass: { type: String, optional: true },
         value: { optional: true },
         multiSelect: { type: Boolean, optional: true },
         onInput: { type: Function, optional: true },
@@ -122,21 +121,6 @@ export class SelectMenu extends Component {
             () => [this.props.choices, this.props.groups]
         );
         useAutofocus({ refName: "inputRef" });
-
-        this.navigationOptions = {
-            virtualFocus: this.props.searchable,
-            hotkeys: {
-                enter: {
-                    isAvailable: ({ navigator }) => navigator.items.length > 0,
-                    callback: (navigator) => {
-                        const item = navigator.activeItem || navigator.items[0];
-                        if (item) {
-                            item.select();
-                        }
-                    },
-                },
-            },
-        };
     }
 
     get displayValue() {
@@ -148,15 +132,17 @@ export class SelectMenu extends Component {
     }
 
     get multiSelectChoices() {
-        return this.selectedChoice.map((c) => ({
-            id: c.value,
-            text: c.label,
-            onDelete: () => {
-                const values = [...this.props.value];
-                values.splice(values.indexOf(c.value), 1);
-                this.props.onSelect(values);
-            },
-        }));
+        return this.selectedChoice.map((c) => {
+            return {
+                id: c.value,
+                text: c.label,
+                onDelete: () => {
+                    const values = [...this.props.value];
+                    values.splice(values.indexOf(c.value), 1);
+                    this.props.onSelect(values);
+                },
+            };
+        });
     }
 
     get menuClass() {
@@ -171,7 +157,15 @@ export class SelectMenu extends Component {
     }
 
     async onBeforeOpen() {
-        await this.onInput("");
+        if (this.state.searchValue.length) {
+            this.state.searchValue = "";
+            if (this.props.onInput) {
+                // This props can be used by the parent to fetch items dynamically depending
+                // the search value. It must be called with the empty search value.
+                await this.executeOnInput("");
+            }
+        }
+        this.filterOptions();
     }
 
     onStateChanged(open) {
@@ -200,7 +194,11 @@ export class SelectMenu extends Component {
         }
     }
 
-    async onInput(searchString) {
+    async executeOnInput(searchString) {
+        await this.props.onInput(searchString);
+    }
+
+    onInput(searchString) {
         this.filterOptions(searchString);
         this.state.searchValue = searchString;
 
@@ -210,7 +208,7 @@ export class SelectMenu extends Component {
             inputEl.parentNode.scrollTo(0, 0);
         }
         if (this.props.onInput) {
-            await this.props.onInput(searchString);
+            this.executeOnInput(searchString);
         }
     }
 
@@ -224,9 +222,9 @@ export class SelectMenu extends Component {
         // Combine previously selected choices + newly selected choice from
         // the searched choices and then filter the choices based on
         // props.value i.e. valueSet.
-        return [...(this.selectedChoice || []), ...choices].filter(
-            (c, index, self) =>
-                valueSet.has(c.value) && self.findIndex((t) => t.value === c.value) === index
+        return [...(this.selectedChoice || []), ...choices].filter((c, index, self) =>
+            valueSet.has(c.value)
+            && self.findIndex((t) => t.value === c.value) === index
         );
     }
 

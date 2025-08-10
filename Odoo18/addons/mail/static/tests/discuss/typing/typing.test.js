@@ -1,4 +1,5 @@
 import {
+    assertSteps,
     click,
     contains,
     defineMailModels,
@@ -7,16 +8,11 @@ import {
     openDiscuss,
     start,
     startServer,
+    step,
 } from "@mail/../tests/mail_test_helpers";
 import { describe, test } from "@odoo/hoot";
 import { advanceTime } from "@odoo/hoot-mock";
-import {
-    asyncStep,
-    Command,
-    serverState,
-    waitForSteps,
-    withUser,
-} from "@web/../tests/web_test_helpers";
+import { Command, serverState, withUser } from "@web/../tests/web_test_helpers";
 
 import { Store } from "@mail/core/common/store_service";
 import { LONG_TYPING, SHORT_TYPING } from "@mail/discuss/typing/common/composer_patch";
@@ -223,13 +219,13 @@ test("current partner notify is typing to other thread members", async () => {
     let testEnded = false;
     onRpcBefore("/discuss/channel/notify_typing", (args) => {
         if (!testEnded) {
-            asyncStep(`notify_typing:${args.is_typing}`);
+            step(`notify_typing:${args.is_typing}`);
         }
     });
     await start();
     await openDiscuss(channelId);
     await insertText(".o-mail-Composer-input", "a");
-    await waitForSteps(["notify_typing:true"]);
+    await assertSteps(["notify_typing:true"]);
     testEnded = true;
 });
 
@@ -239,21 +235,21 @@ test("current partner notify is typing again to other members for long continuou
     let testEnded = false;
     onRpcBefore("/discuss/channel/notify_typing", (args) => {
         if (!testEnded) {
-            asyncStep(`notify_typing:${args.is_typing}`);
+            step(`notify_typing:${args.is_typing}`);
         }
     });
     await start();
     await openDiscuss(channelId);
     await advanceTime(Store.FETCH_DATA_DEBOUNCE_DELAY);
     await insertText(".o-mail-Composer-input", "a");
-    await waitForSteps(["notify_typing:true"]);
+    await assertSteps(["notify_typing:true"]);
     // simulate current partner typing a character for a long time.
     const elapseTickTime = SHORT_TYPING / 2;
     for (let i = 0; i <= LONG_TYPING / elapseTickTime; i++) {
         await insertText(".o-mail-Composer-input", "a");
         await advanceTime(elapseTickTime);
     }
-    await waitForSteps(["notify_typing:true"]);
+    await assertSteps(["notify_typing:true"]);
     testEnded = true;
 });
 
@@ -261,15 +257,15 @@ test("current partner notify no longer is typing to thread members after 5 secon
     const pyEnv = await startServer();
     const channelId = pyEnv["discuss.channel"].create({ name: "general" });
     onRpcBefore("/discuss/channel/notify_typing", (args) =>
-        asyncStep(`notify_typing:${args.is_typing}`)
+        step(`notify_typing:${args.is_typing}`)
     );
     await start();
     await openDiscuss(channelId);
     await advanceTime(Store.FETCH_DATA_DEBOUNCE_DELAY);
     await insertText(".o-mail-Composer-input", "a");
-    await waitForSteps(["notify_typing:true"]);
+    await assertSteps(["notify_typing:true"]);
     await advanceTime(SHORT_TYPING);
-    await waitForSteps(["notify_typing:false"]);
+    await assertSteps(["notify_typing:false"]);
 });
 
 test("current partner is typing should not translate on textual typing status", async () => {
@@ -278,13 +274,13 @@ test("current partner is typing should not translate on textual typing status", 
     let testEnded = false;
     onRpcBefore("/discuss/channel/notify_typing", (args) => {
         if (!testEnded) {
-            asyncStep(`notify_typing:${args.is_typing}`);
+            step(`notify_typing:${args.is_typing}`);
         }
     });
     await start();
     await openDiscuss(channelId);
     await insertText(".o-mail-Composer-input", "a");
-    await waitForSteps(["notify_typing:true"]);
+    await assertSteps(["notify_typing:true"]);
     await contains(".o-discuss-Typing");
     await contains(".o-discuss-Typing", { count: 0, text: "Demo is typing...)" });
     testEnded = true;
@@ -413,13 +409,13 @@ test("switching to another channel triggers notify_typing to stop", async () => 
     });
     pyEnv["discuss.channel"].create({ name: "general" });
     onRpcBefore("/discuss/channel/notify_typing", (args) =>
-        asyncStep(`notify_typing:${args.is_typing}`)
+        step(`notify_typing:${args.is_typing}`)
     );
     await start();
     await openDiscuss(chatId);
     await insertText(".o-mail-Composer-input", "a");
-    await waitForSteps(["notify_typing:true"]);
+    await assertSteps(["notify_typing:true"]);
     await click(".o-mail-DiscussSidebar-item", { text: "general" });
     await advanceTime(SHORT_TYPING / 2);
-    await waitForSteps(["notify_typing:false"]);
+    await assertSteps(["notify_typing:false"]);
 });

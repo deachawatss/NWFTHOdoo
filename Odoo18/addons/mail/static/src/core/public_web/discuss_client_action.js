@@ -1,6 +1,6 @@
 import { Discuss } from "@mail/core/public_web/discuss";
 
-import { Component, onMounted, onWillStart, onWillUnmount, onWillUpdateProps } from "@odoo/owl";
+import { Component, onWillStart, onWillUpdateProps, useState } from "@odoo/owl";
 
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
@@ -21,7 +21,7 @@ export class DiscussClientAction extends Component {
 
     setup() {
         super.setup();
-        this.store = useService("mail.store");
+        this.store = useState(useService("mail.store"));
         onWillStart(() => {
             // bracket to avoid blocking rendering with restore promise
             this.restoreDiscussThread(this.props);
@@ -30,8 +30,6 @@ export class DiscussClientAction extends Component {
             // bracket to avoid blocking rendering with restore promise
             this.restoreDiscussThread(nextProps);
         });
-        onMounted(() => (this.store.discuss.isActive = true));
-        onWillUnmount(() => (this.store.discuss.isActive = false));
     }
 
     getActiveId(props) {

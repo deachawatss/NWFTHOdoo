@@ -411,7 +411,7 @@ describe("deleteSelection", () => {
                         `<div class="container o_text_columns o-contenteditable-false" contenteditable="false">
                             <div class="row">
                                 <div class="col-6 o-contenteditable-true" contenteditable="true">a[]</div>
-                                <div class="col-6 o-contenteditable-true" contenteditable="true"><p o-we-hint-text="Empty column" class="o-we-hint"><br></p></div>
+                                <div class="col-6 o-contenteditable-true" contenteditable="true"><p><br></p></div>
                             </div>
                         </div>
                         <p>i</p>`

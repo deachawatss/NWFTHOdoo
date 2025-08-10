@@ -1,14 +1,14 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from collections import defaultdict
 from datetime import date
 
 from odoo import api, models
-from odoo.fields import Domain
-from odoo.tools import float_is_zero, format_date
+from odoo.osv.expression import AND
+from odoo.tools import float_is_zero, format_date, float_round, float_compare
 
-
-class StockForecasted_Product_Product(models.AbstractModel):
+class StockForecasted(models.AbstractModel):
     _name = 'stock.forecasted_product_product'
     _description = "Stock Replenishment Report"
 
@@ -19,7 +19,7 @@ class StockForecasted_Product_Product(models.AbstractModel):
             'doc_ids': docids,
             'doc_model': 'product.product',
             'docs': self._get_report_data(product_ids=docids),
-            'precision': self.env['decimal.precision'].precision_get('Product Unit'),
+            'precision': self.env['decimal.precision'].precision_get('Product Unit of Measure'),
         }
 
     def _product_domain(self, product_template_ids, product_ids):
@@ -115,7 +115,7 @@ class StockForecasted_Product_Product(models.AbstractModel):
         assert product_template_ids or product_ids
         res = {}
 
-        warehouse = self.env['stock.warehouse'].browse(self.env.context.get('warehouse_id', False)) or self.env['stock.warehouse'].search([['active', '=', True]])[0]
+        warehouse = self.env['stock.warehouse'].browse(self.env['stock.warehouse']._get_warehouse_id_from_context()) or self.env['stock.warehouse'].search([['active', '=', True]])[0]
         wh_location_ids = [loc['id'] for loc in self.env['stock.location'].search_read(
             [('id', 'child_of', warehouse.view_location_id.id)],
             ['id'],
@@ -147,7 +147,7 @@ class StockForecasted_Product_Product(models.AbstractModel):
             },
             'replenishment_filled': replenishment_filled,
             'is_late': is_late,
-            'quantity': product.uom_id.round(quantity),
+            'quantity': float_round(quantity, precision_rounding=product.uom_id.rounding),
             'move_out': move_out,
             'move_in': move_in,
             'reservation': self._get_reservation_data(reserved_move) if reserved_move else False,
@@ -187,15 +187,9 @@ class StockForecasted_Product_Product(models.AbstractModel):
     def _get_report_moves_fields(self):
         return ['id', 'date']
 
-    def _get_products_to_always_include(self, products, product_templates):
-        return self.env['product.product']
-
-    def _get_quant_domain(self, location_ids, products):
-        return [('location_id', 'in', location_ids), ('quantity', '>', 0), ('product_id', 'in', products.ids)]
-
     def _get_report_lines(self, product_template_ids, product_ids, wh_location_ids, wh_stock_location, read=True):
 
-        def _get_out_move_reserved_data(out, linked_moves, used_reserved_moves, currents, wh_stock_location, wh_stock_sub_location_ids):
+        def _get_out_move_reserved_data(out, linked_moves, used_reserved_moves, currents):
             reserved_out = 0
             # the move to show when qty is reserved
             reserved_move = self.env['stock.move']
@@ -211,11 +205,8 @@ class StockForecasted_Product_Product(models.AbstractModel):
                 # add to reserved line data
                 reserved_out += reserved
                 used_reserved_moves[move] += reserved
-                # any sublocation qties needs to be reserved to the main stock location qty as well
-                if move.location_id.id in wh_stock_sub_location_ids:
-                    currents[out.product_id.id, wh_stock_location.id] -= reserved
                 currents[(out.product_id.id, move.location_id.id)] -= reserved
-                if move.product_id.uom_id.compare(reserved_out, out.product_qty) >= 0:
+                if float_compare(reserved_out, out.product_qty, precision_rounding=move.product_id.uom_id.rounding) >= 0:
                     break
 
             return {
@@ -224,7 +215,7 @@ class StockForecasted_Product_Product(models.AbstractModel):
                 'linked_moves': linked_moves,
             }
 
-        def _get_out_move_taken_from_stock_data(out, currents, reserved_data, wh_stock_location, wh_stock_sub_location_ids):
+        def _get_out_move_taken_from_stock_data(out, currents, reserved_data):
             reserved_out = reserved_data['reserved']
             demand_out = out.product_qty - reserved_out
             linked_moves = reserved_data['linked_moves']
@@ -236,7 +227,7 @@ class StockForecasted_Product_Product(models.AbstractModel):
                 demand = max(move.product_qty - reserved, 0)
                 # to make sure we don't demand more than the out (useful when same pick/pack goes to multiple out)
                 demand = min(demand, demand_out)
-                if move.product_id.uom_id.is_zero(demand):
+                if float_is_zero(demand, precision_rounding=move.product_id.uom_id.rounding):
                     continue
                 # check available qty for move if chained, move available is what was move by orig moves
                 if move.move_orig_ids:
@@ -250,9 +241,6 @@ class StockForecasted_Product_Product(models.AbstractModel):
                 # this can happen if stock adjustment is done after orig moves are done
                 taken_from_stock = min(demand, move_available_qty, currents[(out.product_id.id, move.location_id.id)])
                 if taken_from_stock > 0:
-                    # any sublocation qties needs to be removed to the main stock location qty as well
-                    if move.location_id.id in wh_stock_sub_location_ids:
-                        currents[out.product_id.id, wh_stock_location.id] -= taken_from_stock
                     currents[(out.product_id.id, move.location_id.id)] -= taken_from_stock
                     taken_from_stock_out += taken_from_stock
                 demand_out -= taken_from_stock
@@ -286,8 +274,8 @@ class StockForecasted_Product_Product(models.AbstractModel):
         past_domain = [('reservation_date', '<=', date.today())]
         future_domain = ['|', ('reservation_date', '>', date.today()), ('reservation_date', '=', False)]
 
-        past_outs = self.env['stock.move'].search(Domain.AND([out_domain, past_domain]), order='priority desc, date, id')
-        future_outs = self.env['stock.move'].search(Domain.AND([out_domain, future_domain]), order='reservation_date, priority desc, date, id')
+        past_outs = self.env['stock.move'].search(AND([out_domain, past_domain]), order='priority desc, date, id')
+        future_outs = self.env['stock.move'].search(AND([out_domain, future_domain]), order='reservation_date, priority desc, date, id')
 
         outs = past_outs | future_outs
 
@@ -331,39 +319,36 @@ class StockForecasted_Product_Product(models.AbstractModel):
                 'move_dests': in_._rollup_move_dests()
             })
 
-        qties = self.env['stock.quant']._read_group(
-            self._get_quant_domain(wh_location_ids, outs.product_id | self._get_products_to_always_include(product_ids, product_template_ids)),
-            ['product_id', 'location_id'], ['quantity:sum']
-        )
+        qties = self.env['stock.quant']._read_group([('location_id', 'in', wh_location_ids), ('quantity', '>', 0), ('product_id', 'in', outs.product_id.ids)],
+                                                    ['product_id', 'location_id'], ['quantity:sum'])
         wh_stock_sub_location_ids = set(
-            (wh_stock_location.search([('id', 'child_of', wh_stock_location.id)]) - wh_stock_location)._ids
+            wh_stock_location.search([('id', 'child_of', wh_stock_location.id)])._ids
         )
         currents = defaultdict(float)
         for product, location, quantity in qties:
             location_id = location.id
-            # any sublocation qties will be added to the main stock location qty as well
+            # any sublocation qties will be added to the main stock location qty
             if location_id in wh_stock_sub_location_ids:
-                currents[product.id, wh_stock_location.id] += quantity
+                location_id = wh_stock_location.id
             currents[(product.id, location_id)] += quantity
         moves_data = {}
-        for out_moves in outs_per_product.values():
+        for _, out_moves in outs_per_product.items():
             # to handle multiple out wtih same in (ex: same pick/pack for 2 outs)
             used_reserved_moves = defaultdict(float)
             # for all out moves, check for linked moves and count reserved quantity
             for out in out_moves:
                 moves_data[out] = _get_out_move_reserved_data(
-                    out, linked_moves_per_out[out], used_reserved_moves, currents, wh_stock_location, wh_stock_sub_location_ids
+                    out, linked_moves_per_out[out], used_reserved_moves, currents
                 )
             # another loop to remove qty from current stock after reserved is counted for
             for out in out_moves:
-                data = _get_out_move_taken_from_stock_data(out, currents, moves_data[out], wh_stock_location, wh_stock_sub_location_ids)
+                data = _get_out_move_taken_from_stock_data(out, currents, moves_data[out])
                 moves_data[out].update(data)
         product_sum = defaultdict(float)
         for product_loc, quantity in currents.items():
-            if product_loc[1] not in wh_stock_sub_location_ids:
-                product_sum[product_loc[0]] += quantity
+            product_sum[product_loc[0]] += quantity
         lines = []
-        for product in (ins | outs).product_id | self._get_products_to_always_include(product_ids, product_template_ids):
+        for product in (ins | outs).product_id:
             product_rounding = product.uom_id.rounding
             unreconciled_outs = []
             # remaining stock
@@ -419,19 +404,14 @@ class StockForecasted_Product_Product(models.AbstractModel):
                 lines.append(self._prepare_report_line(transit_stock, product=product, in_transit=True, read=read))
 
             # Unused remaining stock.
-            lines += self._free_stock_lines(product, free_stock, moves_data, wh_location_ids, read)
-
+            if not float_is_zero(free_stock, precision_rounding=product_rounding):
+                lines.append(self._prepare_report_line(free_stock, product=product, read=read))
             # In moves not used.
             for in_ in ins_per_product[product.id]:
                 if float_is_zero(in_['qty'], precision_rounding=product_rounding):
                     continue
                 lines.append(self._prepare_report_line(in_['qty'], move_in=in_['move'], read=read))
         return lines
-
-    def _free_stock_lines(self, product, free_stock, moves_data, wh_location_ids, read):
-        if not float_is_zero(free_stock, precision_rounding=product.uom_id.rounding):
-            return [self._prepare_report_line(free_stock, product=product, read=read)]
-        return []
 
     @api.model
     def action_reserve_linked_picks(self, move_id):
@@ -451,10 +431,10 @@ class StockForecasted_Product_Product(models.AbstractModel):
         return move_ids
 
 
-class StockForecasted_Product_Template(models.AbstractModel):
+class StockForecastedTemplate(models.AbstractModel):
     _name = 'stock.forecasted_product_template'
     _description = "Stock Replenishment Report"
-    _inherit = ['stock.forecasted_product_product']
+    _inherit = 'stock.forecasted_product_product'
 
     @api.model
     def get_report_values(self, docids, data=None):
@@ -463,5 +443,5 @@ class StockForecasted_Product_Template(models.AbstractModel):
             'doc_ids': docids,
             'doc_model': 'product.template',
             'docs': self._get_report_data(product_template_ids=docids),
-            'precision': self.env['decimal.precision'].precision_get('Product Unit'),
+            'precision': self.env['decimal.precision'].precision_get('Product Unit of Measure'),
         }

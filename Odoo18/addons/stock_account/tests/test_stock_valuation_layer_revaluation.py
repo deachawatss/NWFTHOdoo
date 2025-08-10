@@ -12,7 +12,7 @@ class TestStockValuationLayerRevaluation(TestStockValuationCommon):
     @classmethod
     def setUpClass(cls):
         super(TestStockValuationLayerRevaluation, cls).setUpClass()
-        cls.stock_input_account, cls.stock_output_account, cls.stock_valuation_account, cls.expense_account, cls.income_account, cls.stock_journal = _create_accounting_data(cls.env)
+        cls.stock_input_account, cls.stock_output_account, cls.stock_valuation_account, cls.expense_account, cls.stock_journal = _create_accounting_data(cls.env)
         cls.product1.write({
             'property_account_expense_id': cls.expense_account.id,
         })
@@ -246,6 +246,7 @@ class TestStockValuationLayerRevaluation(TestStockValuationCommon):
         product2 = self.env['product.product'].create({
             'name': 'product2',
             'is_storable': True,
+            'categ_id': self.env.ref('product.product_category_all').id,
         })
 
         self._make_in_move(self.product1, 5, unit_cost=4)
@@ -264,7 +265,7 @@ class TestStockValuationLayerRevaluation(TestStockValuationCommon):
         # Adjusting layers for multiple products at once: raise
         with self.assertRaises(UserError):
             Form(self.env['stock.valuation.layer.revaluation'].with_context({
-                'active_ids': self.env['stock.valuation.layer'].search([]).ids,
+                'active_ids': self.env['stock.valuation.layer'].search([]).mapped("id"),
                 'active_model': 'stock.valuation.layer'
             })).save()
 
@@ -350,6 +351,7 @@ class TestStockValuationLayerRevaluation(TestStockValuationCommon):
             'location_id': self.supplier_location.id,
             'location_dest_id': self.stock_location.id,
             'move_ids': [Command.create({
+                'name': 'test fifo',
                 'product_id': product.id,
                 'location_id': self.supplier_location.id,
                 'location_dest_id': self.stock_location.id,

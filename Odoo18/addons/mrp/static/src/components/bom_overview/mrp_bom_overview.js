@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
 import { useService, useBus } from "@web/core/utils/hooks";
 import { BomOverviewControlPanel } from "../bom_overview_control_panel/mrp_bom_overview_control_panel";
@@ -21,12 +23,16 @@ export class BomOverviewComponent extends Component {
         this.warehouses = [];
         this.showVariants = false;
         this.uomName = "";
+        this.extraColumnCount = 0;
         this.unfoldedIds = new Set();
 
         this.state = useState({
             showOptions: {
-                mode: this.props.action.context.mode || 'overview',
                 uom: false,
+                availabilities: false || Boolean(this.props.action.context.activate_availabilities),
+                costs: true,
+                operations: true,
+                leadTimes: true,
                 attachments: false,
             },
             currentWarehouse: null,
@@ -34,7 +40,6 @@ export class BomOverviewComponent extends Component {
             bomData: {},
             precision: 2,
             bomQuantity: null,
-            foldable: true,
             allFolded: true,
         });
 
@@ -74,7 +79,6 @@ export class BomOverviewComponent extends Component {
             this.state.currentVariantId ||= Object.keys(this.variants)[0];
         }
         this.state.precision = bomData["precision"];
-        this.state.foldable = bomData["lines"]["foldable"];
     }
 
     async getBomData() {
@@ -115,8 +119,8 @@ export class BomOverviewComponent extends Component {
         ids.forEach(id => this.unfoldedIds[operation](id));
     }
 
-    onChangeMode(mode) {
-        this.state.showOptions.mode = mode;
+    onChangeDisplay(displayInfo) {
+        this.state.showOptions[displayInfo] = !this.state.showOptions[displayInfo];
     }
 
     async onChangeBomQuantity(newQuantity) {
@@ -159,7 +163,10 @@ export class BomOverviewComponent extends Component {
 
     getReportName(printAll) {
         let reportName = "mrp.report_bom_structure?docids=" + this.activeId +
-                         "&mode=" + this.state.showOptions.mode +
+                         "&availabilities=" + this.state.showOptions.availabilities +
+                         "&costs=" + this.state.showOptions.costs +
+                         "&operations=" + this.state.showOptions.operations +
+                         "&lead_times=" + this.state.showOptions.leadTimes +
                          "&quantity=" + (this.state.bomQuantity || 1) +
                          "&unfolded_ids=" + JSON.stringify(Array.from(this.unfoldedIds)) +
                          "&warehouse_id=" + (this.state.currentWarehouse ? this.state.currentWarehouse.id : false);

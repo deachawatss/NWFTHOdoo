@@ -37,12 +37,12 @@ msgstr ""
 
 #. module: l10n_eg
 #: model:account.tax.report,name:l10n_eg.tax_report_vat_return
-msgid "VAT Return"
+msgid "1. VAT Return"
 msgstr "اقرار ضريبة القيمة المضافة"
 
 #. module: l10n_eg
 #: model:account.tax.report,name:l10n_eg.tax_report_withholding_tax
-msgid "WH Tax"
+msgid "2. Withholding Tax"
 msgstr "ضرائب خصم المنبع"
 
 #. module: l10n_eg
@@ -71,12 +71,12 @@ msgstr "3. المبيعات معفاة من الضريبة (ضريبة)"
 
 #. module: l10n_eg
 #: model:account.tax.report,name:l10n_eg.tax_report_schedule_tax
-msgid "Schedule Tax"
+msgid "3. Schedule Tax"
 msgstr "ضرائب الجدول"
 
 #. module: l10n_eg
 #: model:account.tax.report,name:l10n_eg.tax_report_other_taxes
-msgid "Other Taxes"
+msgid "4. Other Taxes"
 msgstr "ضرائب اخرى"
 
 #. module: l10n_eg

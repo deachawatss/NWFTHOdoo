@@ -7,7 +7,6 @@
 GCC POS Localization
 =======================================================
     """,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
     'depends': ['point_of_sale', 'l10n_gcc_invoice'],
     'assets': {

@@ -3,16 +3,16 @@
 # 	* crm_iap_mine
 # 
 # Translators:
-# Tony Ng, 2025
 # Wil Odoo, 2025
+# Tony Ng, 2025
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~18.3\n"
+"Project-Id-Version: Odoo Server 18.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-05-09 20:36+0000\n"
-"PO-Revision-Date: 2025-05-06 12:03+0000\n"
-"Last-Translator: Wil Odoo, 2025\n"
+"POT-Creation-Date: 2024-12-16 13:40+0000\n"
+"PO-Revision-Date: 2024-09-25 09:41+0000\n"
+"Last-Translator: Tony Ng, 2025\n"
 "Language-Team: Chinese (Taiwan) (https://app.transifex.com/odoo/teams/41243/zh_TW/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -194,11 +194,6 @@ msgid "Create a Lead Mining Request"
 msgstr "建立潛在客戶挖掘請求"
 
 #. module: crm_iap_mine
-#: model:ir.model,website_form_label:crm_iap_mine.model_crm_lead
-msgid "Create an Opportunity"
-msgstr "建立銷售機會"
-
-#. module: crm_iap_mine
 #: model:ir.model.fields,field_description:crm_iap_mine.field_crm_iap_lead_helpers__create_uid
 #: model:ir.model.fields,field_description:crm_iap_mine.field_crm_iap_lead_industry__create_uid
 #: model:ir.model.fields,field_description:crm_iap_mine.field_crm_iap_lead_mining_request__create_uid
@@ -232,7 +227,6 @@ msgstr "預設標籤"
 #: model:ir.model.fields,field_description:crm_iap_mine.field_crm_iap_lead_mining_request__display_name
 #: model:ir.model.fields,field_description:crm_iap_mine.field_crm_iap_lead_role__display_name
 #: model:ir.model.fields,field_description:crm_iap_mine.field_crm_iap_lead_seniority__display_name
-#: model:ir.model.fields,field_description:crm_iap_mine.field_crm_lead__display_name
 msgid "Display Name"
 msgstr "顯示名稱"
 
@@ -378,7 +372,6 @@ msgstr "IAP 潛在客戶生成通知"
 #: model:ir.model.fields,field_description:crm_iap_mine.field_crm_iap_lead_mining_request__id
 #: model:ir.model.fields,field_description:crm_iap_mine.field_crm_iap_lead_role__id
 #: model:ir.model.fields,field_description:crm_iap_mine.field_crm_iap_lead_seniority__id
-#: model:ir.model.fields,field_description:crm_iap_mine.field_crm_lead__id
 msgid "ID"
 msgstr "識別號"
 
@@ -431,11 +424,6 @@ msgid "Last Updated on"
 msgstr "最後更新於"
 
 #. module: crm_iap_mine
-#: model:ir.model,name:crm_iap_mine.model_crm_lead
-msgid "Lead"
-msgstr "潛在商機"
-
-#. module: crm_iap_mine
 #: model:ir.model.fields,field_description:crm_iap_mine.field_crm_iap_lead_mining_request__lead_contacts_credits
 msgid "Lead Contacts Credits"
 msgstr "潛在客戶聯絡點數"
@@ -466,6 +454,11 @@ msgstr "潛在客戶挖掘請求"
 #: model:ir.model.fields,field_description:crm_iap_mine.field_crm_iap_lead_mining_request__lead_total_credits
 msgid "Lead Total Credits"
 msgstr "潛在客戶總點數"
+
+#. module: crm_iap_mine
+#: model:ir.model,name:crm_iap_mine.model_crm_lead
+msgid "Lead/Opportunity"
+msgstr "潛在客戶 / 銷售機會"
 
 #. module: crm_iap_mine
 #: model:ir.model.fields.selection,name:crm_iap_mine.selection__crm_iap_lead_mining_request__lead_type__lead
@@ -559,7 +552,7 @@ msgstr "製程"
 #: model:ir.model.fields.selection,name:crm_iap_mine.selection__crm_iap_lead_mining_request__lead_type__opportunity
 #: model_terms:ir.ui.view,arch_db:crm_iap_mine.crm_iap_lead_mining_request_view_search
 msgid "Opportunities"
-msgstr "商機/線索"
+msgstr "商機"
 
 #. module: crm_iap_mine
 #. odoo-python

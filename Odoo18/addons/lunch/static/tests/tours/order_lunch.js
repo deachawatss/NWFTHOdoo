@@ -1,6 +1,8 @@
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
-import { stepUtils } from "@web_tour/tour_utils";
+import { stepUtils } from "@web_tour/tour_service/tour_utils";
 
 registry.category("web_tour.tours").add('order_lunch_tour', {
     url: "/odoo",
@@ -50,4 +52,5 @@ registry.category("web_tour.tours").add('order_lunch_tour', {
 }, {
     trigger: '.o_lunch_widget_lines .badge:contains("Ordered")',
     content: 'Check that order is ordered',
+    run: () => {}
 }]});

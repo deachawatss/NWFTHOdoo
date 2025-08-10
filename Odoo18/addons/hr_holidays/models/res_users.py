@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import api, fields, models, Command, _
-from odoo.tools import format_date
+from odoo import api, fields, models, Command
 
 
-class ResUsers(models.Model):
+class User(models.Model):
     _inherit = "res.users"
 
     leave_manager_id = fields.Many2one(related='employee_id.leave_manager_id')
@@ -32,14 +31,8 @@ class ResUsers(models.Model):
             'hr_icon_display',
         ]
 
-    @property
-    def SELF_WRITEABLE_FIELDS(self):
-        return super().SELF_WRITEABLE_FIELDS + [
-            'leave_manager_id',
-        ]
-
     def _compute_im_status(self):
-        super()._compute_im_status()
+        super(User, self)._compute_im_status()
         on_leave_user_ids = self._get_on_leave_ids()
         for user in self:
             if user.id in on_leave_user_ids:
@@ -47,8 +40,6 @@ class ResUsers(models.Model):
                     user.im_status = 'leave_online'
                 elif user.im_status == 'away':
                     user.im_status = 'leave_away'
-                elif user.im_status == 'busy':
-                    user.im_status = 'leave_busy'
                 elif user.im_status == 'offline':
                     user.im_status = 'leave_offline'
 
@@ -80,7 +71,7 @@ class ResUsers(models.Model):
         responsibles_to_remove_ids = set(self.ids) - {leave_manager.id for [leave_manager] in res}
         if responsibles_to_remove_ids:
             self.browse(responsibles_to_remove_ids).write({
-                'group_ids': [Command.unlink(self.env.ref(approver_group).id)],
+                'groups_id': [Command.unlink(self.env.ref(approver_group).id)],
             })
 
     @api.model_create_multi
@@ -88,12 +79,3 @@ class ResUsers(models.Model):
         users = super().create(vals_list)
         users.sudo()._clean_leave_responsible_users()
         return users
-
-    @api.depends('leave_date_to')
-    @api.depends_context('formatted_display_name')
-    def _compute_display_name(self):
-        super()._compute_display_name()
-        for user in self:
-            if user.env.context.get("formatted_display_name") and user.leave_date_to:
-                name = "%s \t ✈ --%s %s--" % (user.name, _("Back on"), format_date(self.env, user.leave_date_to, self.env.user.lang, "medium"))
-                user.display_name = name.strip()

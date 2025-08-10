@@ -1,29 +1,11 @@
-import { _t } from "@web/core/l10n/translation";
+/** @odoo-module **/
+
 import { patch } from "@web/core/utils/patch";
 
-import { HrPresenceStatus, hrPresenceStatus } from "@hr/components/hr_presence_status/hr_presence_status";
+import { HrPresenceStatus } from "@hr/components/hr_presence_status/hr_presence_status";
 import { HrPresenceStatusPrivate, hrPresenceStatusPrivate } from "@hr/components/hr_presence_status_private/hr_presence_status_private";
 
 const patchHrPresenceStatus = () => ({
-
-    get label() {
-        if (this.value.includes("holiday")) {
-            return _t("%(label)s, back on %(date)s",
-                {
-                    label: super.label,
-                    date: this.props.record.data['leave_date_to'].toLocaleString(
-                        {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                        }
-                    )
-                }
-            )
-        }
-        return super.label
-    },
-
     get icon() {
         if (this.value.startsWith("presence_holiday")) {
             return "fa-plane";
@@ -47,28 +29,14 @@ patch(HrPresenceStatusPrivate.prototype, patchHrPresenceStatus());
 patch(HrPresenceStatusPrivate.prototype, {
     get label() {
         return this.props.record.data.current_leave_id
-            ? this.props.record.data.current_leave_id.display_name + _t(", back on ") + this.props.record.data['leave_date_to'].toLocaleString(
-                {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric',
-                }
-            )
+            ? this.props.record.data.current_leave_id[1]
             : super.label;
     }
 });
 
-Object.assign(hrPresenceStatus, {
-    fieldDependencies: [
-        ...hrPresenceStatus.fieldDependencies,
-        { name: "leave_date_to", type: "date" },
-    ],
-});
-
 Object.assign(hrPresenceStatusPrivate, {
     fieldDependencies: [
-        ...hrPresenceStatusPrivate.fieldDependencies,
-        ...hrPresenceStatus.fieldDependencies,
-        { name: "current_leave_id", type:"many2one"},
+        ...(hrPresenceStatusPrivate.fieldDependencies || []),
+        { name: "current_leave_id", type:"many2one"}
     ],
 });

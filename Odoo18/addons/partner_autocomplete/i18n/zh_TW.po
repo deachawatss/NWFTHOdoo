@@ -3,15 +3,15 @@
 # 	* partner_autocomplete
 # 
 # Translators:
-# Wil Odoo, 2025
+# Wil Odoo, 2024
 # Tony Ng, 2025
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~18.3\n"
+"Project-Id-Version: Odoo Server 18.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-05-09 20:37+0000\n"
-"PO-Revision-Date: 2025-05-06 12:03+0000\n"
+"POT-Creation-Date: 2025-04-07 20:37+0000\n"
+"PO-Revision-Date: 2024-09-25 09:41+0000\n"
 "Last-Translator: Tony Ng, 2025\n"
 "Language-Team: Chinese (Taiwan) (https://app.transifex.com/odoo/teams/41243/zh_TW/)\n"
 "MIME-Version: 1.0\n"
@@ -19,6 +19,12 @@ msgstr ""
 "Content-Transfer-Encoding: \n"
 "Language: zh_TW\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
+
+#. module: partner_autocomplete
+#: model:ir.model.fields,field_description:partner_autocomplete.field_res_partner__additional_info
+#: model:ir.model.fields,field_description:partner_autocomplete.field_res_users__additional_info
+msgid "Additional info"
+msgstr "附加資訊"
 
 #. module: partner_autocomplete
 #: model:iap.service,description:partner_autocomplete.iap_service_partner_autocomplete
@@ -37,6 +43,13 @@ msgid "Companies"
 msgstr "公司"
 
 #. module: partner_autocomplete
+#: model:ir.model.fields,field_description:partner_autocomplete.field_res_company__partner_gid
+#: model:ir.model.fields,field_description:partner_autocomplete.field_res_partner__partner_gid
+#: model:ir.model.fields,field_description:partner_autocomplete.field_res_users__partner_gid
+msgid "Company database ID"
+msgstr "公司資料庫ID"
+
+#. module: partner_autocomplete
 #: model:ir.model,name:partner_autocomplete.model_res_config_settings
 msgid "Config Settings"
 msgstr "配置設定"
@@ -47,16 +60,17 @@ msgid "Contact"
 msgstr "聯絡人"
 
 #. module: partner_autocomplete
-#: model:ir.model,website_form_label:partner_autocomplete.model_res_partner
-msgid "Create a Customer"
-msgstr "建立客戶"
+#: model:ir.model.fields,field_description:partner_autocomplete.field_res_partner_autocomplete_sync__create_uid
+msgid "Created by"
+msgstr "建立人員"
 
 #. module: partner_autocomplete
-#: model:ir.model.fields,field_description:partner_autocomplete.field_iap_autocomplete_api__display_name
-#: model:ir.model.fields,field_description:partner_autocomplete.field_ir_http__display_name
-#: model:ir.model.fields,field_description:partner_autocomplete.field_res_company__display_name
-#: model:ir.model.fields,field_description:partner_autocomplete.field_res_config_settings__display_name
-#: model:ir.model.fields,field_description:partner_autocomplete.field_res_partner__display_name
+#: model:ir.model.fields,field_description:partner_autocomplete.field_res_partner_autocomplete_sync__create_date
+msgid "Created on"
+msgstr "建立於"
+
+#. module: partner_autocomplete
+#: model:ir.model.fields,field_description:partner_autocomplete.field_res_partner_autocomplete_sync__display_name
 msgid "Display Name"
 msgstr "顯示名稱"
 
@@ -87,11 +101,7 @@ msgid "IAP Partner Autocomplete API"
 msgstr "IAP 合作夥伴自動完成 API"
 
 #. module: partner_autocomplete
-#: model:ir.model.fields,field_description:partner_autocomplete.field_iap_autocomplete_api__id
-#: model:ir.model.fields,field_description:partner_autocomplete.field_ir_http__id
-#: model:ir.model.fields,field_description:partner_autocomplete.field_res_company__id
-#: model:ir.model.fields,field_description:partner_autocomplete.field_res_config_settings__id
-#: model:ir.model.fields,field_description:partner_autocomplete.field_res_partner__id
+#: model:ir.model.fields,field_description:partner_autocomplete.field_res_partner_autocomplete_sync__id
 msgid "ID"
 msgstr "識別號"
 
@@ -99,6 +109,21 @@ msgstr "識別號"
 #: model:ir.model.fields,field_description:partner_autocomplete.field_res_config_settings__partner_autocomplete_insufficient_credit
 msgid "Insufficient credit"
 msgstr "點數不足"
+
+#. module: partner_autocomplete
+#: model:ir.model.fields,field_description:partner_autocomplete.field_res_partner_autocomplete_sync__synched
+msgid "Is synched"
+msgstr "是同步的"
+
+#. module: partner_autocomplete
+#: model:ir.model.fields,field_description:partner_autocomplete.field_res_partner_autocomplete_sync__write_uid
+msgid "Last Updated by"
+msgstr "最後更新者"
+
+#. module: partner_autocomplete
+#: model:ir.model.fields,field_description:partner_autocomplete.field_res_partner_autocomplete_sync__write_date
+msgid "Last Updated on"
+msgstr "最後更新於"
 
 #. module: partner_autocomplete
 #. odoo-python
@@ -111,6 +136,21 @@ msgstr "沒有帳戶金鑰"
 #: code:addons/partner_autocomplete/static/src/js/partner_autocomplete_core.js:0
 msgid "Not enough credits for Partner Autocomplete"
 msgstr "合作夥伴自動完成點數不足"
+
+#. module: partner_autocomplete
+#: model:ir.model.fields,field_description:partner_autocomplete.field_res_partner_autocomplete_sync__partner_id
+msgid "Partner"
+msgstr "業務夥伴"
+
+#. module: partner_autocomplete
+#: model:ir.model,name:partner_autocomplete.model_res_partner_autocomplete_sync
+msgid "Partner Autocomplete Sync"
+msgstr "由合作夥伴自動填充SYNC"
+
+#. module: partner_autocomplete
+#: model:ir.actions.server,name:partner_autocomplete.ir_cron_partner_autocomplete_ir_actions_server
+msgid "Partner Autocomplete: Sync with remote DB"
+msgstr "合作夥伴自動填寫：與遠端資料庫同步"
 
 #. module: partner_autocomplete
 #. odoo-javascript

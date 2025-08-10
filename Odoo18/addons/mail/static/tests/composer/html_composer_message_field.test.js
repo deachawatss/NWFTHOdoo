@@ -24,16 +24,7 @@ import {
     patchWithCleanup,
     serverState,
 } from "@web/../tests/web_test_helpers";
-import {
-    click,
-    defineMailModels,
-    mailModels,
-    openFormView,
-    openView,
-    registerArchs,
-    start,
-    startServer,
-} from "../mail_test_helpers";
+import { defineMailModels, mailModels, openFormView, start } from "../mail_test_helpers";
 
 // Need this hack to use the arch in mountView(...)
 mailModels.MailComposeMessage._views = {};
@@ -150,25 +141,16 @@ test("mention a partner", async () => {
     onRpc("res.partner", "get_mention_suggestions", ({ kwargs }) => {
         expect.step(`get_mention_suggestions: ${kwargs.search}`);
     });
-    const pyEnv = await startServer();
-    registerArchs({
-        "mail.compose.message,false,form": `
+    await mountViewInDialog({
+        type: "form",
+        resModel: "mail.compose.message",
+        arch: `
         <form>
             <field name="body" type="html" widget="html_composer_message"/>
         </form>`,
     });
-    const composerId = pyEnv["mail.compose.message"].create({
-        subject: "Greetings",
-        body: "<p><br></p>",
-        model: "res.partner",
-    });
-    await start();
-    await openView({
-        res_model: "mail.compose.message",
-        res_id: composerId,
-        views: [["mail.compose.message,false,form", "form"]],
-    });
-    const anchorNode = queryOne(`.odoo-editor-editable p`);
+
+    const anchorNode = queryOne(`[name='body'] .odoo-editor-editable div.o-paragraph`);
     setSelection({ anchorNode, anchorOffset: 0 });
     await insertText(htmlEditor, "@");
     await animationFrame();
@@ -184,11 +166,11 @@ test("mention a partner", async () => {
 
     await press("enter");
     expect("[name='body'] .odoo-editor-editable").toHaveInnerHTML(`
-    <p>
+    <div class="o-paragraph">
         <a target="_blank" data-oe-protected="true" contenteditable="false" href="https://www.hoot.test/odoo/res.partner/17" class="o_mail_redirect" data-oe-id="17" data-oe-model="res.partner">
             @Mitchell Admin
         </a>
-    </p>`);
+    </div>`);
 });
 
 test("mention a channel", async () => {
@@ -235,8 +217,8 @@ describe("Remove attachments", () => {
         });
         await start();
         await openFormView("res.partner", serverState.partnerId);
-        await click("button", { text: "Log note" });
-        await click("button[title='Open Full Composer']");
+        await contains("button:contains('Log note')").click();
+        await contains("button[title='Full composer']").click();
         await waitFor(".odoo-editor-editable");
         const anchorNode = queryOne(".odoo-editor-editable div.o-paragraph");
         setSelection({ anchorNode, anchorOffset: 0 });
@@ -245,7 +227,7 @@ describe("Remove attachments", () => {
         await expect.waitForSteps(["File Uploaded"]);
         await waitFor("[name='attachment_ids'] a:contains('file.txt')");
         await waitFor(".odoo-editor-editable .o_file_box:has(a:contains('file.txt'))");
-        await click("[name='attachment_ids'] button:has(i.fa-times)");
+        await contains("[name='attachment_ids'] button:has(i.fa-times)").click();
         await waitForNone("[name='attachment_ids'] a:contains('file.txt')");
         await waitForNone(".odoo-editor-editable .o_file_box:has(a:contains('file.txt'))");
     });
@@ -280,8 +262,8 @@ describe("Remove attachments", () => {
 
         await start();
         await openFormView("res.partner", serverState.partnerId);
-        await click("button", { text: "Log note" });
-        await click("button[title='Open Full Composer']");
+        await contains("button:contains('Log note')").click();
+        await contains("button[title='Full composer']").click();
         await waitFor(".odoo-editor-editable");
         const anchorNode = queryOne(".odoo-editor-editable div.o-paragraph");
         setSelection({ anchorNode, anchorOffset: 0 });
@@ -296,7 +278,7 @@ describe("Remove attachments", () => {
         await expect.waitForSteps(["Image Uploaded"]);
         await waitFor("[name='attachment_ids'] a:contains('test.jpg')");
         await waitFor(".odoo-editor-editable img[data-attachment-id='1']");
-        await click("[name='attachment_ids'] button:has(i.fa-times)");
+        await contains("[name='attachment_ids'] button:has(i.fa-times)").click();
         await waitForNone("[name='attachment_ids'] a:contains('test.jpg')");
         await waitForNone(".odoo-editor-editable img[data-attachment-id='1']");
     });

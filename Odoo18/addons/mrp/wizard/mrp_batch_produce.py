@@ -10,7 +10,7 @@ from odoo.exceptions import UserError
 from odoo.tools import OrderedSet
 
 
-class MrpBatchProduce(models.TransientModel):
+class MrpBatchProduct(models.TransientModel):
     _name = 'mrp.batch.produce'
     _description = 'Produce a batch of production order'
 
@@ -116,7 +116,6 @@ class MrpBatchProduce(models.TransientModel):
         if not productions.product_id.tracking == 'serial':
             for production in reversed(productions):
                 production.qty_producing = production.product_uom_qty
-                production.move_raw_ids.manual_consumption = True
                 production.set_qty_producing()
 
         if mark_done:

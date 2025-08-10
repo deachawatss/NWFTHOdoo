@@ -1,13 +1,19 @@
 
 .o-mail-ImStatus {
+    width: $font-size-lg;
+    height: $font-size-lg;
 
-    i {
-        padding-left: 1px;
-        padding-right: 1px;
+    &.o-md {
+        width: $font-size-base;
+        height: $font-size-base;
     }
 
-    &.o-sm i {
-        width: 0.65rem; // matches .o-xsmaller
-        height: 0.65rem;
+    &.o-sm {
+        width: $font-size-sm;
+        height: $font-size-sm;
+    }
+
+    .o-away {
+        color: $yellow;
     }
 }

@@ -25,7 +25,7 @@ def _compute_is_valid(self):
 
 
 @tagged('post_install_l10n', 'post_install', '-at_install')
-@patch('odoo.addons.certificate.models.certificate.CertificateCertificate._compute_is_valid', _compute_is_valid)
+@patch('odoo.addons.certificate.models.certificate.Certificate._compute_is_valid', _compute_is_valid)
 class TestEdiFacturaeXmls(AccountTestInvoicingCommon):
     @classmethod
     @AccountTestInvoicingCommon.setup_country('es')
@@ -102,7 +102,7 @@ class TestEdiFacturaeXmls(AccountTestInvoicingCommon):
 
         cls.certificate_module = "odoo.addons.certificate.models.certificate"
         cls.move_module = "odoo.addons.l10n_es_edi_facturae.models.account_move"
-        with freeze_time(cls.frozen_today), patch(f"{cls.certificate_module}.fields.Datetime.now", lambda x=None: cls.frozen_today):
+        with freeze_time(cls.frozen_today), patch(f"{cls.certificate_module}.fields.datetime.now", lambda x=None: cls.frozen_today):
             cls.certificate = cls.env["certificate.certificate"].create({
                 'name': 'Test ES certificate',
                 'content': b64encode(file_open('l10n_es_edi_facturae/tests/data/certificate_test.pfx', 'rb').read()),
@@ -157,7 +157,7 @@ class TestEdiFacturaeXmls(AccountTestInvoicingCommon):
         date = date or self.frozen_today
         # We need to patch dates and uuid to ensure the signature's consistency
         with freeze_time(date), \
-                patch(f"{self.certificate_module}.fields.Datetime.now", lambda x=None: date), \
+                patch(f"{self.certificate_module}.fields.datetime.now", lambda x=None: date), \
                 patch(f"{self.move_module}.sha1", lambda x: sha1()):
             invoice = self.create_invoice(
                 partner_id=self.partner_a.id,
@@ -187,8 +187,8 @@ class TestEdiFacturaeXmls(AccountTestInvoicingCommon):
 
         random.seed(42)
         with freeze_time(self.frozen_today), \
-                patch(f"{self.certificate_module}.fields.Datetime.now", lambda x=None: self.frozen_today), \
-                patch(f'{self.certificate_module}.CertificateCertificate._compute_is_valid', _compute_is_valid), \
+                patch(f"{self.certificate_module}.fields.datetime.now", lambda x=None: self.frozen_today), \
+                patch('odoo.addons.certificate.models.certificate.Certificate._compute_is_valid', _compute_is_valid), \
                 patch(f"{self.move_module}.sha1", lambda x: sha1()):
             invoice = self.create_invoice(partner_id=self.partner_a.id, move_type='out_invoice', invoice_line_ids=[{'price_unit': 100.0, 'tax_ids': [self.tax.id]}])
             invoice.action_post()
@@ -201,12 +201,13 @@ class TestEdiFacturaeXmls(AccountTestInvoicingCommon):
         invoice = self.create_invoice(partner_id=self.partner_a.id, move_type='out_invoice', invoice_line_ids=[{'price_unit': 100.0, 'tax_ids': [self.tax.id]}])
         invoice.action_post()
         wizard = self.create_send_and_print(invoice)
-        wizard.action_send_and_print()
-        self.assertFalse(invoice.l10n_es_edi_facturae_xml_id)
+        # Expect a UserError if no certificate is configured
+        with self.assertRaises(UserError):
+            wizard.action_send_and_print()
 
     def test_tax_withheld(self):
         with freeze_time(self.frozen_today), \
-                patch(f"{self.certificate_module}.fields.Datetime.now", lambda x=None: self.frozen_today), \
+                patch(f"{self.certificate_module}.fields.datetime.now", lambda x=None: self.frozen_today), \
                 patch(f"{self.move_module}.sha1", lambda x: sha1()):
             witholding_taxes = self.env["account.tax"].create([{
                 'name': "IVA 21%",
@@ -243,7 +244,7 @@ class TestEdiFacturaeXmls(AccountTestInvoicingCommon):
         random.seed(42)
         # We need to patch dates and uuid to ensure the signature's consistency
         with freeze_time(self.frozen_today), \
-                patch(f"{self.certificate_module}.fields.Datetime.now", lambda x=None: self.frozen_today), \
+                patch(f"{self.certificate_module}.fields.datetime.now", lambda x=None: self.frozen_today), \
                 patch(f"{self.move_module}.sha1", lambda x: sha1()):
             invoice = self.create_invoice(
                 partner_id=self.partner_a.id,
@@ -269,7 +270,7 @@ class TestEdiFacturaeXmls(AccountTestInvoicingCommon):
         random.seed(42)
         # We need to patch dates and uuid to ensure the signature's consistency
         with freeze_time(self.frozen_today), \
-                patch(f"{self.certificate_module}.fields.Datetime.now", lambda x=None: self.frozen_today), \
+                patch(f"{self.certificate_module}.fields.datetime.now", lambda x=None: self.frozen_today), \
                 patch(f"{self.move_module}.sha1", lambda x: sha1()):
             invoice = self.create_invoice(
                 partner_id=self.partner_a.id,
@@ -301,7 +302,7 @@ class TestEdiFacturaeXmls(AccountTestInvoicingCommon):
     def test_discount_100_percent(self):
         """ Create an invoice with a 100% discount """
         with freeze_time(self.frozen_today), \
-                patch(f"{self.certificate_module}.fields.Datetime.now", lambda x=None: self.frozen_today), \
+                patch(f"{self.certificate_module}.fields.datetime.now", lambda x=None: self.frozen_today), \
                 patch(f"{self.move_module}.sha1", lambda x: sha1()):
             invoice = self.create_invoice(
                 partner_id=self.partner_a.id,
@@ -312,16 +313,17 @@ class TestEdiFacturaeXmls(AccountTestInvoicingCommon):
             wizard = self.create_send_and_print(invoice)
             result = wizard.action_send_and_print()
 
-            self.assertEqual(result['type'], 'ir.actions.act_window_close')
+            self.assertEqual(result['type'], 'ir.actions.act_url')
             self.assertEqual(invoice.invoice_line_ids[0].price_subtotal, 0.0)
 
     def test_import_multiple_invoices(self):
         with file_open("l10n_es_edi_facturae/tests/data/import_multiple_invoices.xml", "rt") as f:
-            content = f.read().encode()
+            imported_xml = lxml.etree.fromstring(f.read().encode())
 
-        attachment = self.env['ir.attachment'].create({'name': 'invoice.xml', 'raw': content})
-        sale_journal = self.company_data['default_journal_sale'].with_context(default_move_type='out_invoice')
-        moves = sale_journal._create_document_from_attachment(attachment.ids)
+        moves = self.env['account.move'].create({'move_type': 'out_invoice'})
+        moves._import_invoice_facturae(moves, {'xml_tree': imported_xml})
+
+        moves += self.env['account.move'].search([('ref', '=', 'INV/2023/00006'), ('company_id', '=', self.company_data['company'].id)], limit=1)
 
         currency = self.env['res.currency'].search([('name', '=', 'EUR')])
 
@@ -383,11 +385,10 @@ class TestEdiFacturaeXmls(AccountTestInvoicingCommon):
 
     def test_import_withheld_taxes(self):
         with file_open("l10n_es_edi_facturae/tests/data/import_withholding_invoice.xml", "rt") as f:
-            content = f.read().encode()
-        attachment = self.env['ir.attachment'].create({'name': 'invoice.xml', 'raw': content})
+            imported_xml = lxml.etree.fromstring(f.read().encode())
 
-        sale_journal = self.company_data['default_journal_sale'].with_context(default_move_type='out_invoice')
-        move = sale_journal._create_document_from_attachment(attachment.ids)
+        move = self.env['account.move'].create({'move_type': 'out_invoice'})
+        move._import_invoice_facturae(move, {'xml_tree': imported_xml})
 
         self.assertRecordValues(move, [
             {

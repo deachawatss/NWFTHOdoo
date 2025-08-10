@@ -15,7 +15,6 @@ class TestImLivechatCommon(HttpCase):
             'password': cls.password,
             'livechat_username': "Michel Operator",
             'email': 'michel@example.com',
-            'group_ids': cls.env.ref('im_livechat.im_livechat_group_user'),
         }, {
             'name': 'Paul',
             'login': 'paul'
@@ -44,6 +43,7 @@ class TestImLivechatCommon(HttpCase):
 
     def setUp(self):
         super().setUp()
+        self.operator_id = 0
 
         def _compute_available_operator_ids(channel_self):
             for record in channel_self:
@@ -51,20 +51,11 @@ class TestImLivechatCommon(HttpCase):
 
         self.patch(type(self.env['im_livechat.channel']), '_compute_available_operator_ids', _compute_available_operator_ids)
 
-
-class TestGetOperatorCommon(HttpCase):
-    def setUp(self):
-        super().setUp()
-        self.operator_id = 0
-
-    def _create_operator(self, lang_code=None, country_code=None, expertises=None):
+    def _create_operator(self, lang_code=None, country_code=None):
         self.env["res.lang"].with_context(active_test=False).search(
             [("code", "=", lang_code)]
-        ).sudo().active = True
-        operator = new_test_user(
-            self.env(su=True), login=f"operator_{lang_code or country_code}_{self.operator_id}"
-        )
-        operator.res_users_settings_id.livechat_expertise_ids = expertises
+        ).active = True
+        operator = new_test_user(self.env, login=f"operator_{lang_code or country_code}_{self.operator_id}")
         operator.partner_id = self.env["res.partner"].create(
             {
                 "name": f"Operator {lang_code or country_code}",
@@ -74,6 +65,6 @@ class TestGetOperatorCommon(HttpCase):
                 else None,
             }
         )
-        self.env["mail.presence"]._update_presence(operator)
+        self.env["bus.presence"].create({"user_id": operator.id, "status": "online"})  # Simulate online status
         self.operator_id += 1
         return operator

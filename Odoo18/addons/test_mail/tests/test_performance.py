@@ -3,9 +3,10 @@
 from markupsafe import Markup
 from unittest.mock import patch
 
-from odoo import Command, fields
+from odoo import fields
+from odoo.tools.misc import limited_field_access_token
 from odoo.addons.base.tests.common import TransactionCaseWithUserDemo
-from odoo.addons.mail.tests.common import MailCommon, mail_new_test_user
+from odoo.addons.mail.tests.common import MailCommon
 from odoo.addons.mail.tools.discuss import Store
 from odoo.tests import Form, users, warmup, tagged
 from odoo.tools import mute_logger, formataddr
@@ -16,108 +17,66 @@ class BaseMailPerformance(MailCommon, TransactionCaseWithUserDemo):
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
+        super(BaseMailPerformance, cls).setUpClass()
 
-        # standard users
-        cls.user_emp_email = mail_new_test_user(
-            cls.env,
-            company_id=cls.user_admin.company_id.id,
-            company_ids=[(4, cls.user_admin.company_id.id)],
-            email='user.emp.email@test.example.com',
-            login='user_emp_email',
-            groups='base.group_user,base.group_partner_manager',
-            name='Ernestine Email',
-            notification_type='email',
-            signature='Ernestine',
+        # creating partners is required notably with template usage
+        cls.user_employee.write({'groups_id': [(4, cls.env.ref('base.group_partner_manager').id)]})
+        res_users = cls.env["res.users"].with_context(cls._test_context)
+        cls.user_test = cls.user_test_inbox = res_users.create(
+            {
+                "name": "Paulette Testouille",
+                "login": "paul",
+                "email": "user.test.paulette@example.com",
+                "notification_type": "inbox",
+                "groups_id": [(6, 0, [cls.env.ref("base.group_user").id])],
+            }
         )
-        cls.user_emp_inbox = mail_new_test_user(
-            cls.env,
-            company_id=cls.user_admin.company_id.id,
-            company_ids=[(4, cls.user_admin.company_id.id)],
-            email='user.emp.inbox@test.example.com',
-            login='user_emp_inbox',
-            groups='base.group_user,base.group_partner_manager',
-            name='Ignasse Inbox',
-            notification_type='inbox',
-            signature='Ignasse',
+        cls.user_test_inbox_2 = res_users.create(
+            {
+                "name": "Jeannette Testouille",
+                "login": "jeannette",
+                "email": "user.test.jeannette@example.com",
+                "notification_type": "inbox",
+                "groups_id": [(6, 0, [cls.env.ref("base.group_user").id])],
+            }
         )
-        cls.user_follower_emp_email = mail_new_test_user(
-            cls.env,
-            company_id=cls.user_admin.company_id.id,
-            company_ids=[(4, cls.user_admin.company_id.id)],
-            email='user.fol.emp.email@test.example.com',
-            login='user_fol_emp_email',
-            groups='base.group_user,base.group_partner_manager',
-            name='Emmanuel Follower Email',
-            notification_type='email',
-            signature='Emmanuel',
-        )
-        cls.user_follower_emp_inbox = mail_new_test_user(
-            cls.env,
-            company_id=cls.user_admin.company_id.id,
-            company_ids=[(4, cls.user_admin.company_id.id)],
-            email='user.fol.emp.inbox@test.example.com',
-            login='user_fol_emp_inbox',
-            groups='base.group_user,base.group_partner_manager',
-            name='Isabelle Follower Inbox',
-            notification_type='inbox',
-            signature='Isabelle',
+        cls.user_test_email = res_users.create(
+            {
+                "name": "Georgette Testouille",
+                "login": "george",
+                "email": "user.test.georgette@example.com",
+                "notification_type": "email",
+                "groups_id": [(6, 0, [cls.env.ref("base.group_user").id])],
+            }
         )
 
-        # portal test users
-        cls.user_follower_portal = mail_new_test_user(
-            cls.env,
-            company_id=cls.user_admin.company_id.id,
-            company_ids=[(4, cls.user_admin.company_id.id)],
-            email='user.fol.portal@test.example.com',
-            login='user_fol_portal',
-            groups='base.group_portal',
-            name='Paul Follower Portal',
-            signature='Paul',
-        )
-        cls.user_portal = mail_new_test_user(
-            cls.env,
-            company_id=cls.user_admin.company_id.id,
-            company_ids=[(4, cls.user_admin.company_id.id)],
-            email='user.portal@test.example.com',
-            login='user_portal',
-            groups='base.group_portal',
-            name='Paulette Portal',
-            signature='Paulette',
-        )
-
-        # customers
-        cls.partner_follower = cls.env['res.partner'].create({
-            'country_id': cls.env.ref('base.be').id,
-            'email': 'partner_follower@example.com',
-            'name': 'partner_follower',
-            'phone': '04560011122',
-        })
-        cls.customers = cls.env['res.partner'].create([
+        cls.customers = cls.env['res.partner'].with_context(cls._test_context).create([
             {
                 'country_id': cls.env.ref('base.be').id,
-                'email': f'customer.full.test.{idx}@example.com',
-                'name': f'Test Full Customer {idx}',
-                'phone': f'045611111{idx}',
-            } for idx in range(5)
+                'email': 'customer.test@example.com',
+                'name': 'Test Customer',
+                'mobile': '0456123456',
+            }, {
+                'country_id': cls.env.ref('base.be').id,
+                'email': 'customer.test.2@example.com',
+                'name': 'Test Customer 2',
+                'mobile': '0456654321',
+            }
         ])
         cls.customer = cls.customers[0]
 
         cls.test_attachments_vals = cls._generate_attachments_data(3, 'mail.compose.message', 0)
 
     def setUp(self):
-        super().setUp()
+        super(BaseMailPerformance, self).setUp()
         # patch registry to simulate a ready environment
         self.patch(self.env.registry, 'ready', True)
-        # we don't use mock_mail_gateway thus want to mock smtp to test the stack
-        self._mock_smtplib_connection()
-        self._mock_push_to_end_point(max_direct_push=10)
 
     def _create_test_records(self):
         test_record_full = self.env['mail.test.ticket'].with_context(self._test_context).create({
             'name': 'TestRecord',
             'customer_id': self.customer.id,
-            'user_id': self.user_emp_inbox.id,
+            'user_id': self.user_test.id,
             'email_from': 'nopartner.test@example.com',
         })
         test_template_full = self.env['mail.template'].create({
@@ -146,7 +105,7 @@ class BaseMailPerformance(MailCommon, TransactionCaseWithUserDemo):
             'customer_id': test_partners[idx].id,
             'email_from': test_partners[idx].email_formatted,
             'name': f'Test Ticket {idx}',
-            'user_id': self.user_emp_inbox.id,
+            'user_id': self.user_test.id,
         } for idx in range(0, 10)])
         test_template_full = self.env['mail.template'].create({
             'name': 'TestTemplate',
@@ -161,6 +120,7 @@ class BaseMailPerformance(MailCommon, TransactionCaseWithUserDemo):
                 for attachment in self.test_attachments_vals
             ],
         })
+        self.flush_tracking()
         return test_partners, test_records, test_template_full
 
 
@@ -333,7 +293,7 @@ class TestBaseAPIPerformance(BaseMailPerformance):
             'default_res_model': 'mail.test.activity',
         })
 
-        with self.assertQueryCount(admin=5, employee=5):
+        with self.assertQueryCount(admin=6, employee=6):
             activity = MailActivity.create({
                 'summary': 'Test Activity',
                 'res_id': record.id,
@@ -343,8 +303,7 @@ class TestBaseAPIPerformance(BaseMailPerformance):
             # voip module read activity_type during create leading to one less query in enterprise on action_feedback
             _category = activity.activity_type_id.category
 
-        with self.assertQueryCount(admin=9, employee=8):  # tm: 6 / 6
-
+        with self.assertQueryCount(admin=14, employee=13):  # tm 10/10
             activity.action_feedback(feedback='Zizisse Done !')
 
     @warmup
@@ -379,7 +338,7 @@ class TestBaseAPIPerformance(BaseMailPerformance):
 
         record.write({'name': 'Dupe write'})
 
-        with self.assertQueryCount(admin=10, employee=9):  # tm: 7 / 7
+        with self.assertQueryCount(admin=15, employee=14):  # tm 11/11
             record.action_close('Dupe feedback')
 
         self.assertEqual(record.activity_ids, self.env['mail.activity'])
@@ -405,7 +364,7 @@ class TestBaseAPIPerformance(BaseMailPerformance):
 
         record.write({'name': 'Dupe write'})
 
-        with self.assertQueryCount(admin=12, employee=11):  # tm: 9 / 9
+        with self.assertQueryCount(admin=16, employee=15):  # tm 12/12
             record.action_close('Dupe feedback', attachment_ids=attachments.ids)
 
         # notifications
@@ -421,7 +380,7 @@ class TestBaseAPIPerformance(BaseMailPerformance):
     def test_mail_composer(self):
         test_record, _test_template = self._create_test_records()
         customer_id = self.customer.id
-        with self.assertQueryCount(admin=4, employee=4):
+        with self.assertQueryCount(admin=7, employee=7):
             composer = self.env['mail.compose.message'].with_context({
                 'default_composition_mode': 'comment',
                 'default_model': test_record._name,
@@ -431,7 +390,7 @@ class TestBaseAPIPerformance(BaseMailPerformance):
                 'partner_ids': [(4, customer_id)],
             })
 
-        with self.assertQueryCount(admin=34, employee=34):
+        with self.assertQueryCount(admin=36, employee=36):
             composer._action_send_mail()
 
     @users('admin', 'employee')
@@ -441,7 +400,7 @@ class TestBaseAPIPerformance(BaseMailPerformance):
         test_record, _test_template = self._create_test_records()
         customer = self.env['res.partner'].browse(self.customer.ids)
         attachments = self.env['ir.attachment'].with_user(self.env.user).create(self.test_attachments_vals)
-        with self.assertQueryCount(admin=5, employee=5):
+        with self.assertQueryCount(admin=8, employee=8):
             composer = self.env['mail.compose.message'].with_context({
                 'default_composition_mode': 'comment',
                 'default_model': test_record._name,
@@ -452,7 +411,7 @@ class TestBaseAPIPerformance(BaseMailPerformance):
                 'partner_ids': [(4, customer.id)],
             })
 
-        with self.assertQueryCount(admin=36, employee=36):
+        with self.assertQueryCount(admin=37, employee=37):
             composer._action_send_mail()
 
     @users('admin', 'employee')
@@ -462,7 +421,7 @@ class TestBaseAPIPerformance(BaseMailPerformance):
         test_record, _test_template = self._create_test_records()
         customer = self.env['res.partner'].browse(self.customer.ids)
         attachments = self.env['ir.attachment'].with_user(self.env.user).create(self.test_attachments_vals)
-        with self.assertQueryCount(admin=16, employee=16):  # tm 15/15
+        with self.assertQueryCount(admin=9, employee=9):  # tm 8/8
             composer_form = Form(
                 self.env['mail.compose.message'].with_context({
                     'default_composition_mode': 'comment',
@@ -482,16 +441,15 @@ class TestBaseAPIPerformance(BaseMailPerformance):
         # notifications
         message = test_record.message_ids[0]
         self.assertEqual(message.attachment_ids, attachments)
-        self.assertEqual(message.notified_partner_ids, customer + self.user_emp_inbox.partner_id)
+        self.assertEqual(message.notified_partner_ids, customer + self.user_test.partner_id)
 
     @users('admin', 'employee')
     @warmup
     @mute_logger('odoo.addons.mail.models.mail_mail', 'odoo.models.unlink', 'odoo.tests')
     def test_mail_composer_mass_w_template(self):
         _partners, test_records, test_template = self._create_test_records_for_batch()
-        self.flush_tracking()
 
-        with self.assertQueryCount(admin=3, employee=3):
+        with self.assertQueryCount(admin=4, employee=4):
             composer = self.env['mail.compose.message'].with_context({
                 'default_composition_mode': 'mass_mail',
                 'default_model': test_records._name,
@@ -499,7 +457,7 @@ class TestBaseAPIPerformance(BaseMailPerformance):
                 'default_template_id': test_template.id,
             }).create({})
 
-        with self.assertQueryCount(admin=55, employee=55), self.mock_mail_gateway():
+        with self.assertQueryCount(admin=52, employee=53), self.mock_mail_gateway():
             composer._action_send_mail()
 
         self.assertEqual(len(self._new_mails), 10)
@@ -510,7 +468,7 @@ class TestBaseAPIPerformance(BaseMailPerformance):
     def test_mail_composer_nodelete(self):
         test_record, _test_template = self._create_test_records()
         customer_id = self.customer.id
-        with self.assertQueryCount(admin=4, employee=4):
+        with self.assertQueryCount(admin=7, employee=7):
             composer = self.env['mail.compose.message'].with_context({
                 'default_composition_mode': 'comment',
                 'default_model': test_record._name,
@@ -521,7 +479,7 @@ class TestBaseAPIPerformance(BaseMailPerformance):
                 'partner_ids': [(4, customer_id)],
             })
 
-        with self.assertQueryCount(admin=34, employee=34):
+        with self.assertQueryCount(admin=36, employee=36):
             composer._action_send_mail()
 
     @users('admin', 'employee')
@@ -531,7 +489,7 @@ class TestBaseAPIPerformance(BaseMailPerformance):
         test_record, test_template = self._create_test_records()
         test_template.write({'attachment_ids': [(5, 0)]})
 
-        with self.assertQueryCount(admin=29, employee=29):  # tm: 23/23
+        with self.assertQueryCount(admin=28, employee=28):  # tm 16/16
             composer = self.env['mail.compose.message'].with_context({
                 'default_composition_mode': 'comment',
                 'default_model': test_record._name,
@@ -539,18 +497,15 @@ class TestBaseAPIPerformance(BaseMailPerformance):
                 'default_template_id': test_template.id,
             }).create({})
 
-        with self.assertQueryCount(admin=35, employee=35):
+        with self.assertQueryCount(admin=37, employee=37):
             composer._action_send_mail()
 
         # notifications
         message = test_record.message_ids[0]
         self.assertFalse(message.attachment_ids)
-        new_partner = self.env['res.partner'].sudo().search([('email', '=', 'nopartner.test@example.com')])
-        self.assertTrue(new_partner)
-        self.assertEqual(message.notified_partner_ids, self.user_emp_inbox.partner_id + self.customer + new_partner)
 
         # remove created partner to ensure tests are the same each run
-        new_partner.unlink()
+        self.env['res.partner'].sudo().search([('email', '=', 'nopartner.test@example.com')]).unlink()
 
     @users('admin', 'employee')
     @warmup
@@ -558,7 +513,7 @@ class TestBaseAPIPerformance(BaseMailPerformance):
     def test_mail_composer_w_template_attachments(self):
         test_record, test_template = self._create_test_records()
 
-        with self.assertQueryCount(admin=30, employee=30):  # tm: 24/24
+        with self.assertQueryCount(admin=29, employee=29):  # tm 17/17
             composer = self.env['mail.compose.message'].with_context({
                 'default_composition_mode': 'comment',
                 'default_model': test_record._name,
@@ -566,7 +521,7 @@ class TestBaseAPIPerformance(BaseMailPerformance):
                 'default_template_id': test_template.id,
             }).create({})
 
-        with self.assertQueryCount(admin=45, employee=45):
+        with self.assertQueryCount(admin=46, employee=46):
             composer._action_send_mail()
 
         # notifications
@@ -587,7 +542,7 @@ class TestBaseAPIPerformance(BaseMailPerformance):
         test_template.write({'attachment_ids': [(5, 0)]})
 
         customer = self.env['res.partner'].browse(self.customer.ids)
-        with self.assertQueryCount(admin=42, employee=42):  # tm 36/36
+        with self.assertQueryCount(admin=37, employee=37):  # tm 24/24
             composer_form = Form(
                 self.env['mail.compose.message'].with_context({
                     'default_composition_mode': 'comment',
@@ -605,7 +560,7 @@ class TestBaseAPIPerformance(BaseMailPerformance):
         new_partner = self.env['res.partner'].sudo().search([('email', '=', 'nopartner.test@example.com')])
         message = test_record.message_ids[0]
         self.assertFalse(message.attachment_ids)
-        self.assertEqual(message.notified_partner_ids, customer + self.user_emp_inbox.partner_id + new_partner)
+        self.assertEqual(message.notified_partner_ids, customer + self.user_test.partner_id + new_partner)
 
         # remove created partner to ensure tests are the same each run
         new_partner.unlink()
@@ -617,7 +572,7 @@ class TestBaseAPIPerformance(BaseMailPerformance):
         test_record, test_template = self._create_test_records()
 
         customer = self.env['res.partner'].browse(self.customer.ids)
-        with self.assertQueryCount(admin=44, employee=44):  # tm 37/37
+        with self.assertQueryCount(admin=37, employee=37):  # tm 24/24
             composer_form = Form(
                 self.env['mail.compose.message'].with_context({
                     'default_composition_mode': 'comment',
@@ -628,7 +583,7 @@ class TestBaseAPIPerformance(BaseMailPerformance):
             )
             composer = composer_form.save()
 
-        with self.assertQueryCount(admin=68, employee=68):
+        with self.assertQueryCount(admin=67, employee=67):
             composer._action_send_mail()
 
         # notifications
@@ -638,7 +593,7 @@ class TestBaseAPIPerformance(BaseMailPerformance):
             set(message.attachment_ids.mapped('name')),
             set(['AttFileName_00.txt', 'AttFileName_01.txt', 'AttFileName_02.txt'])
         )
-        self.assertEqual(message.notified_partner_ids, customer + self.user_emp_inbox.partner_id + new_partner)
+        self.assertEqual(message.notified_partner_ids, customer + self.user_test.partner_id + new_partner)
 
         # remove created partner to ensure tests are the same each run
         new_partner.unlink()
@@ -657,16 +612,16 @@ class TestBaseAPIPerformance(BaseMailPerformance):
         record = self.env['mail.test.track'].create({'name': 'Test'})
         with self.assertQueryCount(admin=40, employee=39):
             record.write({
-                'user_id': self.user_emp_email.id,
+                'user_id': self.user_test_email.id,
             })
 
     @users('admin', 'employee')
     @warmup
     def test_message_assignation_inbox(self):
         record = self.env['mail.test.track'].create({'name': 'Test'})
-        with self.assertQueryCount(admin=20, employee=19):
+        with self.assertQueryCount(admin=22, employee=21):
             record.write({
-                'user_id': self.user_emp_inbox.id,
+                'user_id': self.user_test_inbox.id,
             })
 
     @users('admin', 'employee')
@@ -714,7 +669,7 @@ class TestBaseAPIPerformance(BaseMailPerformance):
     def test_message_log_with_post(self):
         record = self.env['mail.test.simple'].create({'name': 'Test'})
 
-        with self.assertQueryCount(admin=5, employee=5):
+        with self.assertQueryCount(admin=7, employee=7):
             record.message_post(
                 body=Markup('<p>Test message_post as log</p>'),
                 subtype_xmlid='mail.mt_note',
@@ -738,7 +693,7 @@ class TestBaseAPIPerformance(BaseMailPerformance):
     def test_message_post_one_email_notification(self):
         record = self.env['mail.test.simple'].create({'name': 'Test'})
 
-        with self.assertQueryCount(admin=30, employee=30):
+        with self.assertQueryCount(admin=31, employee=31):
             record.message_post(
                 body=Markup('<p>Test Post Performances with an email ping</p>'),
                 partner_ids=self.customer.ids,
@@ -750,10 +705,10 @@ class TestBaseAPIPerformance(BaseMailPerformance):
     def test_message_post_one_inbox_notification(self):
         record = self.env['mail.test.simple'].create({'name': 'Test'})
 
-        with self.assertQueryCount(admin=17, employee=17):
+        with self.assertQueryCount(admin=19, employee=19):
             record.message_post(
                 body=Markup('<p>Test Post Performances with an inbox ping</p>'),
-                partner_ids=self.user_emp_inbox.partner_id.ids,
+                partner_ids=self.user_test.partner_id.ids,
                 message_type='comment',
                 subtype_xmlid='mail.mt_comment')
 
@@ -764,10 +719,10 @@ class TestBaseAPIPerformance(BaseMailPerformance):
         record = self.env['mail.test.simple'].create({'name': 'Test'})
 
         with self.assertQueryCount(admin=6, employee=6):
-            record.message_subscribe(partner_ids=self.user_emp_inbox.partner_id.ids)
+            record.message_subscribe(partner_ids=self.user_test.partner_id.ids)
 
         with self.assertQueryCount(admin=3, employee=3):
-            record.message_subscribe(partner_ids=self.user_emp_inbox.partner_id.ids)
+            record.message_subscribe(partner_ids=self.user_test.partner_id.ids)
 
     @mute_logger('odoo.models.unlink')
     @users('admin', 'employee')
@@ -777,10 +732,10 @@ class TestBaseAPIPerformance(BaseMailPerformance):
         subtype_ids = (self.env.ref('test_mail.st_mail_test_simple_external') | self.env.ref('mail.mt_comment')).ids
 
         with self.assertQueryCount(admin=5, employee=5):
-            record.message_subscribe(partner_ids=self.user_emp_inbox.partner_id.ids, subtype_ids=subtype_ids)
+            record.message_subscribe(partner_ids=self.user_test.partner_id.ids, subtype_ids=subtype_ids)
 
         with self.assertQueryCount(admin=2, employee=2):
-            record.message_subscribe(partner_ids=self.user_emp_inbox.partner_id.ids, subtype_ids=subtype_ids)
+            record.message_subscribe(partner_ids=self.user_test.partner_id.ids, subtype_ids=subtype_ids)
 
     @mute_logger('odoo.models.unlink')
     @users('admin', 'employee')
@@ -814,13 +769,16 @@ class TestBaseAPIPerformance(BaseMailPerformance):
         with self.assertQueryCount(admin=1, employee=1):
             test_records = self.env['mail.test.container'].browse(test_records_sudo.ids)
             reply_to = test_records._notify_get_reply_to(
-                default=self.env.user.email_formatted,
+                default=self.env.user.email_formatted
             )
 
         for record in test_records:
             self.assertEqual(
                 reply_to[record.id],
-                formataddr((self.env.user.name, f"{record.alias_name}@{self.alias_domain}"))
+                formataddr((
+                    f"{record.env.company.name} {record.name}",
+                    f"{record.alias_name}@{self.alias_domain}"
+                ))
             )
 
 
@@ -837,7 +795,7 @@ class TestMailAPIPerformance(BaseMailPerformance):
             'email': 'p.p@example.com',
             'signature': '--\nOlivia',
             'notification_type': 'email',
-            'group_ids': [(6, 0, [cls.env.ref('base.group_portal').id])],
+            'groups_id': [(6, 0, [cls.env.ref('base.group_portal').id])],
         })
 
         cls.container = cls.env['mail.test.container'].with_context(mail_create_nosubscribe=True).create({
@@ -855,23 +813,6 @@ class TestMailAPIPerformance(BaseMailPerformance):
         cls.container.message_subscribe(cls.partners.ids, subtype_ids=[
             cls.env.ref('mail.mt_comment').id,
             cls.env.ref('test_mail.st_mail_test_container_child_full').id
-        ])
-
-        cls.test_records_recipients = cls.env['mail.performance.thread.recipients'].create([
-            {
-                'email_from': 'only.email.1@test.example.com',
-            }, {
-                'email_from': 'only.email.2@test.example.com',
-            }, {
-                'email_from': 'both.1@test.example.com',
-                'partner_id': cls.partners[0].id,
-            }, {
-                'email_from': 'trice.1@test.example.com',
-                'partner_id': cls.partners[1].id,
-                'user_id': cls.user_admin.id,
-            }, {
-                'partner_id': cls.partners[2].id,
-            },
         ])
 
     @mute_logger('odoo.tests', 'odoo.addons.mail.models.mail_mail', 'odoo.models.unlink')
@@ -898,7 +839,7 @@ class TestMailAPIPerformance(BaseMailPerformance):
             'mail_message_id': message.id,
             'recipient_ids': [(4, pid) for pid in self.partners.ids],
         })
-        with self.assertQueryCount(admin=9, employee=9):
+        with self.assertQueryCount(admin=8, employee=8):
             self.env['mail.mail'].sudo().browse(mail.ids).send()
 
     @mute_logger('odoo.tests', 'odoo.addons.mail.models.mail_mail', 'odoo.models.unlink')
@@ -937,8 +878,7 @@ class TestMailAPIPerformance(BaseMailPerformance):
             unlinked_mails |= set(records.ids)
         unlinked_mails = set()
 
-        with self.assertQueryCount(admin=31, employee=31), \
-             self.mock_mail_gateway(), \
+        with self.assertQueryCount(admin=30, employee=30), \
              patch.object(type(self.env['mail.mail']), 'unlink', _patched_unlink):
             self.env['mail.mail'].sudo().browse(mails.ids).send()
 
@@ -950,75 +890,14 @@ class TestMailAPIPerformance(BaseMailPerformance):
         self.assertEqual(mails[-1].state, 'exception')
         self.assertIn(mails[-1].id, unlinked_mails, 'Mail: mails with invalid recipient are also to be unlinked')
 
-    @users('employee')
-    @warmup
-    def test_message_get_default_recipients(self):
-        record = self.test_records_recipients[0].with_env(self.env)
-        with self.assertQueryCount(employee=7):
-            defaults = record._message_get_default_recipients()
-        self.assertDictEqual(defaults, {record.id: {
-            'email_cc': '', 'email_to': 'only.email.1@test.example.com', 'partner_ids': [],
-        }})
-
-    @users('employee')
-    @warmup
-    def test_message_get_default_recipients_batch(self):
-        records = self.test_records_recipients.with_env(self.env)
-        with self.assertQueryCount(employee=9):
-            defaults = records._message_get_default_recipients()
-        self.assertDictEqual(defaults, {
-            records[0].id: {
-                'email_cc': '',
-                'email_to': 'only.email.1@test.example.com',
-                'partner_ids': []},
-            records[1].id: {
-                'email_cc': '',
-                'email_to': 'only.email.2@test.example.com',
-                'partner_ids': []},
-            records[2].id: {
-                'email_cc': '',
-                'email_to': '',
-                'partner_ids': self.partners[0].ids},
-            records[3].id: {
-                'email_cc': '',
-                'email_to': '',
-                'partner_ids': self.partners[1].ids},
-            records[4].id: {
-                'email_cc': '',
-                'email_to': '',
-                'partner_ids': self.partners[2].ids},
-        })
-
-    @users('employee')
-    @warmup
-    def test_message_get_suggested_recipients(self):
-        record = self.test_records_recipients[0].with_env(self.env)
-        with self.assertQueryCount(employee=22):  # tm: 16
-            recipients = record._message_get_suggested_recipients(no_create=False)
-        new_partner = self.env['res.partner'].search([('email_normalized', '=', 'only.email.1@test.example.com')])
-        self.assertEqual(len(new_partner), 1)
-        self.assertDictEqual(recipients[0], {
-            'email': 'only.email.1@test.example.com',
-            'name': 'only.email.1@test.example.com',
-            'partner_id': new_partner.id,
-            'create_values': {},
-        })
-
-    @users('employee')
-    @warmup
-    def test_message_get_suggested_recipients_batch(self):
-        records = self.test_records_recipients.with_env(self.env)
-        with self.assertQueryCount(employee=31):  # tm: 25
-            _recipients = records._message_get_suggested_recipients_batch(no_create=False)
-
     @mute_logger('odoo.tests', 'odoo.addons.mail.models.mail_mail', 'odoo.models.unlink')
     @users('admin', 'employee')
     @warmup
-    def test_message_post_followers(self):
+    def test_message_post(self):
         self.container.message_subscribe(self.user_portal.partner_id.ids)
         record = self.container.with_user(self.env.user)
 
-        # about 20 (19?) queries per additional customer group
+        # about 20 (19?) queries per additional customer
         with self.assertQueryCount(admin=54, employee=53):
             record.message_post(
                 body=Markup('<p>Test Post Performances</p>'),
@@ -1036,7 +915,7 @@ class TestMailAPIPerformance(BaseMailPerformance):
         record = self.container.with_user(self.env.user)
         template = self.env.ref('test_mail.mail_test_container_tpl')
 
-        # about 20 (19 ?) queries per additional customer group
+        # about 20 (19 ?) queries per additional customer
         with self.assertQueryCount(admin=68, employee=67):
             record.message_post_with_source(
                 template,
@@ -1052,9 +931,8 @@ class TestMailAPIPerformance(BaseMailPerformance):
     @warmup
     def test_message_post_view(self):
         _partners, test_records, test_template = self._create_test_records_for_batch()
-        self.flush_tracking()
 
-        with self.assertQueryCount(admin=3, employee=3):
+        with self.assertQueryCount(admin=4, employee=4):
             _composer = self.env['mail.compose.message'].with_context({
                 'default_composition_mode': 'mass_mail',
                 'default_model': test_records._name,
@@ -1062,10 +940,10 @@ class TestMailAPIPerformance(BaseMailPerformance):
                 'default_template_id': test_template.id,
             }).create({})
 
-        with self.assertQueryCount(admin=92, employee=92):
+        with self.assertQueryCount(admin=122, employee=122):
             messages_as_sudo = test_records.message_post_with_source(
                 'test_mail.mail_template_simple_test',
-                render_values={'partner': self.user_emp_inbox.partner_id},
+                render_values={'partner': self.user_test.partner_id},
                 subtype_id=self.env['ir.model.data']._xmlid_to_res_id('mail.mt_comment')
             )
 
@@ -1115,29 +993,6 @@ class TestMailAPIPerformance(BaseMailPerformance):
 
         self.assertEqual(rec1.message_partner_ids, self.env.user.partner_id | self.user_portal.partner_id | self.partners)
 
-    @users('employee')
-    @warmup
-    def test_partner_find_from_emails(self):
-        """ Test '_partner_find_from_emails', notably to check batch optimization """
-        records = self.test_records_recipients.with_user(self.env.user)
-        with self.assertQueryCount(employee=27):  # tm: 20
-            partners = records._partner_find_from_emails(
-                {record: [record.email_from, record.partner_id.email, record.user_id.email] for record in records},
-                avoid_alias=True,
-                no_create=False,
-            )
-        new_p1 = self.env['res.partner'].search([('email_normalized', '=', 'only.email.1@test.example.com')])
-        new_p2 = self.env['res.partner'].search([('email_normalized', '=', 'only.email.2@test.example.com')])
-        new_p3 = self.env['res.partner'].search([('email_normalized', '=', 'both.1@test.example.com')])
-        new_p4 = self.env['res.partner'].search([('email_normalized', '=', 'trice.1@test.example.com')])
-        self.assertDictEqual(partners, {
-            records[0].id: new_p1,
-            records[1].id: new_p2,
-            records[2].id: new_p3 + self.partners[0],
-            records[3].id: new_p4 + self.partners[1] + self.partner_admin,
-            records[4].id: self.partners[2],
-        })
-
     @mute_logger('odoo.tests', 'odoo.addons.mail.models.mail_mail', 'odoo.models.unlink')
     @users('admin', 'employee')
     @warmup
@@ -1172,7 +1027,7 @@ class TestMailAPIPerformance(BaseMailPerformance):
         customer_id = self.customer.id
         user_id = self.user_portal.id
 
-        with self.assertQueryCount(admin=93, employee=93):
+        with self.assertQueryCount(admin=92, employee=92):
             rec = self.env['mail.test.ticket'].create({
                 'name': 'Test',
                 'container_id': container_id,
@@ -1202,7 +1057,7 @@ class TestMailAPIPerformance(BaseMailPerformance):
         self.assertEqual(rec1.message_partner_ids, self.user_portal.partner_id | self.env.user.partner_id)
         self.assertEqual(len(rec1.message_ids), 1)
 
-        with self.assertQueryCount(admin=58, employee=58):
+        with self.assertQueryCount(admin=57, employee=57):
             rec.write({
                 'name': 'Test2',
                 'container_id': self.container.id,
@@ -1239,7 +1094,7 @@ class TestMailAPIPerformance(BaseMailPerformance):
         rec1 = rec.with_context(active_test=False)      # to see inactive records
         self.assertEqual(rec1.message_partner_ids, self.user_portal.partner_id | self.env.user.partner_id)
 
-        with self.assertQueryCount(admin=64, employee=64):
+        with self.assertQueryCount(admin=63, employee=63):
             rec.write({
                 'name': 'Test2',
                 'container_id': container_id,
@@ -1272,7 +1127,7 @@ class TestMailAPIPerformance(BaseMailPerformance):
         rec1 = rec.with_context(active_test=False)      # to see inactive records
         self.assertEqual(rec1.message_partner_ids, self.partners | self.env.user.partner_id | self.user_portal.partner_id)
 
-        with self.assertQueryCount(admin=31, employee=31):
+        with self.assertQueryCount(admin=32, employee=32):
             rec.write({
                 'name': 'Test2',
                 'customer_id': customer_id,
@@ -1326,13 +1181,6 @@ class TestMessageToStorePerformance(BaseMailPerformance):
         customer_id_field = cls.env['ir.model.fields']._get(cls.container._name, 'customer_id')
         comment_subtype_id = cls.env['ir.model.data']._xmlid_to_res_id('mail.mt_comment')
 
-        cls.link_previews = cls.env["mail.link.preview"].create(
-            [
-                {"source_url": "https://www.odoo.com"},
-                {"source_url": "https://www.example.com"},
-            ]
-        )
-
         cls.messages_all = cls.env['mail.message'].sudo().create([
             {
                 'attachment_ids': [
@@ -1347,9 +1195,12 @@ class TestMessageToStorePerformance(BaseMailPerformance):
                 'author_id': cls.partners[msg_idx].id,
                 'body': f'<p>Test {msg_idx}</p>',
                 'email_from': cls.partners[msg_idx].email_formatted,
-                "message_link_preview_ids": [
-                    Command.create({"link_preview_id": cls.link_previews[0].id}),
-                    Command.create({"link_preview_id": cls.link_previews[1].id}),
+                'link_preview_ids': [
+                    (0, 0, {
+                        'source_url': 'https://www.odoo.com',
+                    }), (0, 0, {
+                        'source_url': 'https://www.example.com',
+                    }),
                 ],
                 'message_type': 'comment',
                 'model': record._name,
@@ -1434,8 +1285,8 @@ class TestMessageToStorePerformance(BaseMailPerformance):
         """
         messages_all = self.messages_all.with_env(self.env)
 
-        with self.assertQueryCount(employee=23):  # tm 22
-            res = Store(messages_all).get_result()
+        with self.assertQueryCount(employee=27):
+            res = Store(messages_all, for_current_user=True).get_result()
 
         self.assertEqual(len(res["mail.message"]), 2 * 2)
         for message in res["mail.message"]:
@@ -1447,8 +1298,8 @@ class TestMessageToStorePerformance(BaseMailPerformance):
     def test_message_to_store_single(self):
         message = self.messages_all[0].with_env(self.env)
 
-        with self.assertQueryCount(employee=23):  # tm 22
-            res = Store(message).get_result()
+        with self.assertQueryCount(employee=27):
+            res = Store(message, for_current_user=True).get_result()
 
         self.assertEqual(len(res["mail.message"]), 1)
         self.assertEqual(len(res["mail.message"][0]["attachment_ids"]), 2)
@@ -1468,15 +1319,15 @@ class TestMessageToStorePerformance(BaseMailPerformance):
             'res_id': record.id
         } for record in records])
 
-        with self.assertQueryCount(employee=4):
-            res = Store(messages).get_result()
+        with self.assertQueryCount(employee=7):
+            res = Store(messages, for_current_user=True).get_result()
             self.assertEqual(len(res["mail.message"]), 6)
 
         self.env.flush_all()
         self.env.invalidate_all()
 
-        with self.assertQueryCount(employee=14):  # tm: 13
-            res = Store(messages).get_result()
+        with self.assertQueryCount(employee=15):
+            res = Store(messages, for_current_user=True).get_result()
             self.assertEqual(len(res["mail.message"]), 6)
 
     @warmup
@@ -1484,26 +1335,26 @@ class TestMessageToStorePerformance(BaseMailPerformance):
         """Test query count as well as bus notifcations from sending a message to multiple followers
         with inbox."""
         record = self.env["mail.test.simple"].create({"name": "Test"})
-        record.message_partner_ids = (self.user_emp_inbox + self.user_follower_emp_inbox).partner_id
+        record.message_partner_ids = (self.user_test_inbox + self.user_test_inbox_2).partner_id
         follower_1 = record.message_follower_ids.filtered(
-            lambda f: f.partner_id == self.user_emp_inbox.partner_id
+            lambda f: f.partner_id == self.user_test_inbox.partner_id
         )
         follower_2 = record.message_follower_ids.filtered(
-            lambda f: f.partner_id == self.user_follower_emp_inbox.partner_id
+            lambda f: f.partner_id == self.user_test_inbox_2.partner_id
         )
 
         def get_bus_params():
             message = self.env["mail.message"].search([], order="id desc", limit=1)
             notif_1 = message.notification_ids.filtered(
-                lambda n: n.res_partner_id == self.user_emp_inbox.partner_id
+                lambda n: n.res_partner_id == self.user_test_inbox.partner_id
             )
             notif_2 = message.notification_ids.filtered(
-                lambda n: n.res_partner_id == self.user_follower_emp_inbox.partner_id
+                lambda n: n.res_partner_id == self.user_test_inbox_2.partner_id
             )
             return (
                 [
-                    (self.cr.dbname, "res.partner", self.user_emp_inbox.partner_id.id),
-                    (self.cr.dbname, "res.partner", self.user_follower_emp_inbox.partner_id.id),
+                    (self.cr.dbname, "res.partner", self.user_test_inbox.partner_id.id),
+                    (self.cr.dbname, "res.partner", self.user_test_inbox_2.partner_id.id),
                 ],
                 [
                     {
@@ -1513,8 +1364,8 @@ class TestMessageToStorePerformance(BaseMailPerformance):
                                 {
                                     "id": follower_1.id,
                                     "is_active": True,
-                                    "partner_id": {
-                                        "id": self.user_emp_inbox.partner_id.id,
+                                    "partner": {
+                                        "id": self.user_test_inbox.partner_id.id,
                                         "type": "partner",
                                     },
                                 },
@@ -1522,102 +1373,93 @@ class TestMessageToStorePerformance(BaseMailPerformance):
                             "mail.message": self._filter_messages_fields(
                                 {
                                     "attachment_ids": [],
-                                    "author_guest_id": False,
-                                    "author_id": {
+                                    "author": {
                                         "id": self.env.user.partner_id.id,
                                         "type": "partner",
                                     },
-                                    "body": [
-                                        "markup",
-                                        "<p>Test Post Performances with multiple inbox ping!</p>",
-                                    ],
+                                    "body": "<p>Test Post Performances with multiple inbox ping!</p>",
                                     "create_date": fields.Datetime.to_string(message.create_date),
                                     "date": fields.Datetime.to_string(message.date),
                                     "default_subject": "Test",
                                     "email_from": '"OdooBot" <odoobot@example.com>',
                                     "id": message.id,
-                                    "incoming_email_cc": False,
-                                    "incoming_email_to": False,
-                                    "message_link_preview_ids": [],
+                                    "is_discussion": True,
+                                    "is_note": False,
+                                    "linkPreviews": [],
                                     "message_type": "comment",
                                     "model": "mail.test.simple",
                                     "needaction": True,
-                                    "notification_ids": [notif_1.id, notif_2.id],
-                                    "partner_ids": [],
+                                    "notifications": [notif_1.id, notif_2.id],
                                     "pinned_at": False,
                                     "rating_id": False,
                                     "reactions": [],
+                                    "recipients": [],
                                     "record_name": "Test",
                                     "res_id": record.id,
-                                    "scheduledDatetime": None,
+                                    "scheduledDatetime": False,
                                     "starred": False,
                                     "subject": False,
-                                    "subtype_id": self.env.ref("mail.mt_comment").id,
+                                    "subtype_description": False,
                                     "thread": {"id": record.id, "model": "mail.test.simple"},
                                     "trackingValues": [],
                                     "write_date": fields.Datetime.to_string(message.write_date),
                                 },
                             ),
-                            "mail.message.subtype": [
-                                {"description": False, "id": self.env.ref("mail.mt_comment").id},
-                            ],
                             "mail.notification": [
                                 {
                                     "failure_type": False,
                                     "id": notif_1.id,
-                                    "mail_message_id": message.id,
+                                    "message": message.id,
                                     "notification_status": "sent",
                                     "notification_type": "inbox",
-                                    "res_partner_id": {
-                                        "id": self.user_emp_inbox.partner_id.id,
+                                    "persona": {
+                                        "id": self.user_test_inbox.partner_id.id,
                                         "type": "partner",
                                     },
                                 },
                                 {
                                     "failure_type": False,
                                     "id": notif_2.id,
-                                    "mail_message_id": message.id,
+                                    "message": message.id,
                                     "notification_status": "sent",
                                     "notification_type": "inbox",
-                                    "res_partner_id": {
-                                        "id": self.user_follower_emp_inbox.partner_id.id,
+                                    "persona": {
+                                        "id": self.user_test_inbox_2.partner_id.id,
                                         "type": "partner",
                                     },
                                 },
                             ],
                             "mail.thread": self._filter_threads_fields(
                                 {
-                                    "display_name": "Test",
                                     "id": record.id,
                                     "model": "mail.test.simple",
                                     "module_icon": "/base/static/description/icon.png",
+                                    "name": "Test",
                                     "selfFollower": follower_1.id,
                                 },
                             ),
                             "res.partner": self._filter_partners_fields(
                                 {
-                                    "avatar_128_access_token": self.env.user.partner_id._get_avatar_128_access_token(),
+                                    "id": self.user_test_inbox.partner_id.id,
+                                    "name": "Paulette Testouille",
+                                },
+                                {
+                                    "id": self.user_test_inbox_2.partner_id.id,
+                                    "name": "Jeannette Testouille",
+                                },
+                                {
+                                    "avatar_128_access_token": limited_field_access_token(
+                                        self.env.user.partner_id, "avatar_128"
+                                    ),
                                     "id": self.env.user.partner_id.id,
+                                    "isInternalUser": True,
                                     "is_company": False,
-                                    "main_user_id": self.env.user.id,
                                     "name": "OdooBot",
+                                    "userId": self.env.user.id,
                                     "write_date": fields.Datetime.to_string(
-                                        self.env.user.partner_id.write_date
+                                        self.env.user.write_date
                                     ),
                                 },
-                                {
-                                    "email": self.user_emp_inbox.partner_id.email,
-                                    "id": self.user_emp_inbox.partner_id.id,
-                                    "name": "Ignasse Inbox",
-                                },
-                                {
-                                    "email": self.user_follower_emp_inbox.partner_id.email,
-                                    "id": self.user_follower_emp_inbox.partner_id.id,
-                                    "name": "Isabelle Follower Inbox",
-                                },
-                            ),
-                            "res.users": self._filter_users_fields(
-                                {"id": self.env.user.id, "share": False},
                             ),
                         },
                     },
@@ -1628,8 +1470,8 @@ class TestMessageToStorePerformance(BaseMailPerformance):
                                 {
                                     "id": follower_2.id,
                                     "is_active": True,
-                                    "partner_id": {
-                                        "id": self.user_follower_emp_inbox.partner_id.id,
+                                    "partner": {
+                                        "id": self.user_test_inbox_2.partner_id.id,
                                         "type": "partner",
                                     },
                                 },
@@ -1637,102 +1479,93 @@ class TestMessageToStorePerformance(BaseMailPerformance):
                             "mail.message": self._filter_messages_fields(
                                 {
                                     "attachment_ids": [],
-                                    "author_guest_id": False,
-                                    "author_id": {
+                                    "author": {
                                         "id": self.env.user.partner_id.id,
                                         "type": "partner",
                                     },
-                                    "body": [
-                                        "markup",
-                                        "<p>Test Post Performances with multiple inbox ping!</p>",
-                                    ],
+                                    "body": "<p>Test Post Performances with multiple inbox ping!</p>",
                                     "create_date": fields.Datetime.to_string(message.create_date),
                                     "date": fields.Datetime.to_string(message.date),
                                     "default_subject": "Test",
                                     "email_from": '"OdooBot" <odoobot@example.com>',
                                     "id": message.id,
-                                    "incoming_email_cc": False,
-                                    "incoming_email_to": False,
-                                    "message_link_preview_ids": [],
+                                    "is_discussion": True,
+                                    "is_note": False,
+                                    "linkPreviews": [],
                                     "message_type": "comment",
                                     "model": "mail.test.simple",
                                     "needaction": True,
-                                    "notification_ids": [notif_1.id, notif_2.id],
-                                    "partner_ids": [],
+                                    "notifications": [notif_1.id, notif_2.id],
                                     "pinned_at": False,
                                     "rating_id": False,
                                     "reactions": [],
+                                    "recipients": [],
                                     "record_name": "Test",
                                     "res_id": record.id,
-                                    "scheduledDatetime": None,
+                                    "scheduledDatetime": False,
                                     "starred": False,
                                     "subject": False,
-                                    "subtype_id": self.env.ref("mail.mt_comment").id,
+                                    "subtype_description": False,
                                     "thread": {"id": record.id, "model": "mail.test.simple"},
                                     "trackingValues": [],
                                     "write_date": fields.Datetime.to_string(message.write_date),
                                 },
                             ),
-                            "mail.message.subtype": [
-                                {"description": False, "id": self.env.ref("mail.mt_comment").id},
-                            ],
                             "mail.notification": [
                                 {
                                     "failure_type": False,
                                     "id": notif_1.id,
-                                    "mail_message_id": message.id,
+                                    "message": message.id,
                                     "notification_status": "sent",
                                     "notification_type": "inbox",
-                                    "res_partner_id": {
-                                        "id": self.user_emp_inbox.partner_id.id,
+                                    "persona": {
+                                        "id": self.user_test_inbox.partner_id.id,
                                         "type": "partner",
                                     },
                                 },
                                 {
                                     "failure_type": False,
                                     "id": notif_2.id,
-                                    "mail_message_id": message.id,
+                                    "message": message.id,
                                     "notification_status": "sent",
                                     "notification_type": "inbox",
-                                    "res_partner_id": {
-                                        "id": self.user_follower_emp_inbox.partner_id.id,
+                                    "persona": {
+                                        "id": self.user_test_inbox_2.partner_id.id,
                                         "type": "partner",
                                     },
                                 },
                             ],
                             "mail.thread": self._filter_threads_fields(
                                 {
-                                    "display_name": "Test",
                                     "id": record.id,
                                     "model": "mail.test.simple",
                                     "module_icon": "/base/static/description/icon.png",
+                                    "name": "Test",
                                     "selfFollower": follower_2.id,
                                 },
                             ),
                             "res.partner": self._filter_partners_fields(
                                 {
-                                    "avatar_128_access_token": self.env.user.partner_id._get_avatar_128_access_token(),
+                                    "id": self.user_test_inbox_2.partner_id.id,
+                                    "name": "Jeannette Testouille",
+                                },
+                                {
+                                    "id": self.user_test_inbox.partner_id.id,
+                                    "name": "Paulette Testouille",
+                                },
+                                {
+                                    "avatar_128_access_token": limited_field_access_token(
+                                        self.env.user.partner_id, "avatar_128"
+                                    ),
                                     "id": self.env.user.partner_id.id,
+                                    "isInternalUser": True,
                                     "is_company": False,
-                                    "main_user_id": self.env.user.id,
                                     "name": "OdooBot",
+                                    "userId": self.env.user.id,
                                     "write_date": fields.Datetime.to_string(
-                                        self.env.user.partner_id.write_date
+                                        self.env.user.write_date
                                     ),
                                 },
-                                {
-                                    "email": self.user_emp_inbox.partner_id.email,
-                                    "id": self.user_emp_inbox.partner_id.id,
-                                    "name": "Ignasse Inbox",
-                                },
-                                {
-                                    "email": self.user_follower_emp_inbox.partner_id.email,
-                                    "id": self.user_follower_emp_inbox.partner_id.id,
-                                    "name": "Isabelle Follower Inbox",
-                                },
-                            ),
-                            "res.users": self._filter_users_fields(
-                                {"id": self.env.user.id, "share": False},
                             ),
                         },
                     },
@@ -1742,7 +1575,7 @@ class TestMessageToStorePerformance(BaseMailPerformance):
         self._reset_bus()
         self.env.invalidate_all()
         with self.assertBus(get_params=get_bus_params):
-            with self.assertQueryCount(17):
+            with self.assertQueryCount(20):
                 record.message_post(
                     body=Markup("<p>Test Post Performances with multiple inbox ping!</p>"),
                     message_type="comment",
@@ -1750,155 +1583,95 @@ class TestMessageToStorePerformance(BaseMailPerformance):
                 )
 
 
-class BaseMailPostPerformance(BaseMailPerformance):
+@tagged('mail_performance', 'post_install', '-at_install')
+class TestPerformance(BaseMailPerformance):
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
 
-        # records
-        cls.record_container = cls.env['mail.test.container'].create({
+        # record
+        cls.record_container = cls.env['mail.test.container'].with_context(mail_create_nosubscribe=True).create({
             'name': 'Test record',
             'customer_id': cls.customer.id,
             'alias_name': 'test-alias',
         })
-        _partners, cls.record_tickets, _test_template = cls._create_test_records_for_batch(cls)
-        # avoid hanging followers, like assigned users (user_id)
-        cls.env['mail.followers'].search([
-            ('res_model', '=', cls.record_tickets._name),
-            ('res_id', 'in', cls.record_tickets.ids)
-        ]).unlink()
-        cls.record_ticket = cls.record_tickets[0]
-
-        # partners
-        cls.partner = cls.env['res.partner'].create({
-            'country_id': cls.env.ref('base.be').id,
-            'email': 'partner@example.com',
-            'name': 'partner',
-            'phone': '0456334455',
+        # followers
+        cls.user_follower_email = cls.env['res.users'].with_context(cls._test_context).create({
+            'name': 'user_follower_email',
+            'login': 'user_follower_email',
+            'email': 'user_follower_email@example.com',
+            'notification_type': 'email',
+            'groups_id': [(6, 0, [cls.env.ref('base.group_user').id])],
         })
+        cls.user_follower_inbox = cls.env['res.users'].with_context(cls._test_context).create({
+            'name': 'user_follower_inbox',
+            'login': 'user_follower_inbox',
+            'email': 'user_follower_inbox@example.com',
+            'notification_type': 'inbox',
+            'groups_id': [(6, 0, [cls.env.ref('base.group_user').id])],
+        })
+        cls.partner_follower = cls.env['res.partner'].with_context(cls._test_context).create({
+            'name': 'partner_follower',
+            'email': 'partner_follower@example.com',
+        })
+        cls.record_container.message_subscribe([
+            cls.partner_follower.id,
+            cls.user_follower_inbox.partner_id.id,
+            cls.user_follower_email.partner_id.id
+        ])
 
-        # generate devices and vapid keys to test push impact
-        cls._setup_push_devices_for_partners(
-            cls.user_admin.partner_id + cls.user_employee.partner_id +
-            cls.user_follower_emp_email.partner_id +
-            cls.user_follower_emp_inbox.partner_id +
-            cls.user_follower_portal.partner_id +
-            cls.partner_follower +
-            cls.user_emp_inbox.partner_id +
-            cls.user_emp_email.partner_id +
-            cls.partner +
-            cls.customers
-        )
-
-        # be sure not to be annoyed by ocn / mobile
-        cls.env['ir.config_parameter'].sudo().set_param('mail_mobile.enable_ocn', False)
-
-
-@tagged('mail_performance', 'post_install', '-at_install')
-class TestPerformance(BaseMailPostPerformance):
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-
-        cls.tracking_values_ids = [
-            (0, 0, {
-                'field_id': cls.env['ir.model.fields']._get(cls.record_ticket._name, 'email_from').id,
-                'new_value_char': 'new_value',
-                'old_value_char': 'old_value',
-            }),
-            (0, 0, {
-                'field_id': cls.env['ir.model.fields']._get(cls.record_ticket._name, 'customer_id').id,
-                'new_value_char': 'New Fake',
-                'new_value_integer': 2,
-                'old_value_char': 'Old Fake',
-                'old_value_integer': 1,
-            }),
-        ]
+        # partner_ids
+        cls.user_inbox = cls.env['res.users'].with_context(cls._test_context).create({
+            'name': 'user_inbox',
+            'login': 'user_inbox',
+            'email': 'user_inbox@example.com',
+            'notification_type': 'inbox',
+            'groups_id': [(6, 0, [cls.env.ref('base.group_user').id])],
+        })
+        cls.user_email = cls.env['res.users'].with_context(cls._test_context).create({
+            'name': 'user_email',
+            'login': 'user_email',
+            'email': 'user_email@example.com',
+            'notification_type': 'email',
+            'groups_id': [(6, 0, [cls.env.ref('base.group_user').id])],
+        })
+        cls.partner = cls.env['res.partner'].with_context(cls._test_context).create({
+            'name': 'partner',
+            'email': 'partner@example.com',
+        })
 
     @mute_logger('odoo.tests', 'odoo.addons.mail.models.mail_mail', 'odoo.models.unlink')
     @users('employee')
     @warmup
     def test_message_post(self):
-        """ Aims to cover as much features of message_post as possible """
-        followers = self.partner_follower + self.user_follower_emp_inbox.partner_id + self.user_follower_emp_email.partner_id
-        recipients = self.user_emp_inbox.partner_id + self.user_emp_email.partner_id + self.partner
-        ticket = self.record_ticket.with_user(self.env.user)
-        ticket.message_subscribe(followers.ids)
+        # aims to cover as much features of message_post as possible
+        recipients = self.user_inbox.partner_id + self.user_email.partner_id + self.partner
+        record_container = self.record_container.with_user(self.env.user)
         attachments_vals = [  # not linear on number of attachments_vals
-            ('attach tuple 1', "attachment tuple content 1"),
-            ('attach tuple 2', "attachment tuple content 2", {'cid': 'cid1'}),
-            ('attach tuple 3', "attachment tuple content 3", {'cid': 'cid2'}),
+            ('attach tuple 1', "attachement tupple content 1"),
+            ('attach tuple 2', "attachement tupple content 2", {'cid': 'cid1'}),
+            ('attach tuple 3', "attachement tupple content 3", {'cid': 'cid2'}),
         ]
         attachments = self.env['ir.attachment'].with_user(self.env.user).create(self.test_attachments_vals)
-        self.push_to_end_point_mocked.reset_mock()  # reset as executed twice
-        self.flush_tracking()
-
-        with self.assertQueryCount(employee=80):  # tm: 80
-            ticket.message_post(
+        # enable_logging = self.cr._enable_logging() if self.warm else nullcontext()
+        # with self.assertQueryCount(employee=63), enable_logging:
+        with self.assertQueryCount(employee=63):
+            record_container.with_context({}).message_post(
+                body=Markup('<p>Test body <img src="cid:cid1"> <img src="cid:cid2"></p>'),
+                subject='Test Subject',
+                message_type='notification',
+                subtype_xmlid=None,
+                partner_ids=recipients.ids,
+                parent_id=False,
                 attachments=attachments_vals,
                 attachment_ids=attachments.ids,
-                body=Markup('<p>Test body <img src="cid:cid1"> <img src="cid:cid2"></p>'),
                 email_add_signature=True,
-                mail_auto_delete=True,
-                message_type='comment',
-                parent_id=False,
-                partner_ids=recipients.ids,
-                subject='Test Subject',
-                subtype_xmlid='mail.mt_comment',
-                tracking_value_ids=self.tracking_values_ids,
+                model_description=False,
+                mail_auto_delete=True
             )
-        new_message = ticket.message_ids[0]
-        self.assertEqual(attachments.mapped('res_model'), [ticket._name for i in range(3)])
-        self.assertEqual(attachments.mapped('res_id'), [ticket.id for i in range(3)])
+        new_message = record_container.message_ids[0]
+        self.assertEqual(attachments.mapped('res_model'), [record_container._name for i in range(3)])
+        self.assertEqual(attachments.mapped('res_id'), [record_container.id for i in range(3)])
         self.assertTrue(new_message.body.startswith('<p>Test body <img src="/web/image/'))
-        self.assertEqual(new_message.notified_partner_ids, recipients + followers)
-        self.assertEqual(self.push_to_end_point_mocked.call_count, 6, "Everyone has a device")
-
-    @mute_logger('odoo.tests', 'odoo.addons.mail.models.mail_mail', 'odoo.models.unlink')
-    @users('employee')
-    @warmup
-    def test_message_post_loop(self):
-        """ Simulate a loop posting on several records, to check notably cache
-        is used. """
-        # aims to cover as much features of message_post as possible
-        followers = self.partner_follower + self.user_follower_emp_inbox.partner_id + self.user_follower_emp_email.partner_id
-        recipients = self.user_emp_inbox.partner_id + self.user_emp_email.partner_id + self.partner
-        tickets = self.record_tickets.with_user(self.env.user)
-        for ticket in tickets:
-            ticket.message_subscribe(followers.ids)
-        attachments_vals = [  # not linear on number of attachments_vals
-            ('attach tuple 1', "attachment tuple content 1"),
-            ('attach tuple 2', "attachment tuple content 2", {'cid': 'cid1'}),
-            ('attach tuple 3', "attachment tuple content 3", {'cid': 'cid2'}),
-        ]
-        attachments_all = [
-            self.env['ir.attachment'].with_user(self.env.user).create(self.test_attachments_vals)
-            for _ticket in tickets
-        ]
-        self.push_to_end_point_mocked.reset_mock()  # reset as executed twice
-        self.flush_tracking()
-
-        with self.assertQueryCount(employee=800):  # tm: 791
-            for ticket, attachments in zip(tickets, attachments_all, strict=True):
-                ticket.message_post(
-                    attachments=attachments_vals,
-                    attachment_ids=attachments.ids,
-                    body=Markup('<p>Test body <img src="cid:cid1"> <img src="cid:cid2"></p>'),
-                    email_add_signature=True,
-                    mail_auto_delete=True,
-                    message_type='comment',
-                    parent_id=False,
-                    partner_ids=recipients.ids,
-                    subject='Test Subject',
-                    subtype_xmlid='mail.mt_comment',
-                    tracking_value_ids=self.tracking_values_ids,
-                )
-        for ticket, attachments in zip(tickets, attachments_all, strict=True):
-            new_message = ticket.message_ids[0]
-            self.assertEqual(attachments.mapped('res_model'), [ticket._name for i in range(3)])
-            self.assertEqual(attachments.mapped('res_id'), [ticket.id for i in range(3)])
-            self.assertTrue(new_message.body.startswith('<p>Test body <img src="/web/image/'))
-            self.assertEqual(new_message.notified_partner_ids, recipients + followers)
-        self.assertEqual(self.push_to_end_point_mocked.call_count, 6 * 10, "Everyone has a device * record count")
+        self.assertEqual(new_message.notified_partner_ids, recipients)

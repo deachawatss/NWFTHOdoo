@@ -1,7 +1,8 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import _, fields, models
-from odoo.fields import Domain
+from odoo.osv import expression
 from odoo.tools.misc import format_datetime
 
 
@@ -16,13 +17,13 @@ class StockQuantityHistory(models.TransientModel):
     def open_at_date(self):
         tree_view_id = self.env.ref('stock.view_stock_product_tree').id
         form_view_id = self.env.ref('stock.product_form_view_procurement_button').id
-        domain = Domain('is_storable', '=', True)
+        domain = [('is_storable', '=', True)]
         product_id = self.env.context.get('product_id', False)
         product_tmpl_id = self.env.context.get('product_tmpl_id', False)
         if product_id:
-            domain &= Domain('id', '=', product_id)
+            domain = expression.AND([domain, [('id', '=', product_id)]])
         elif product_tmpl_id:
-            domain = Domain('product_tmpl_id', '=', product_tmpl_id)
+            domain = expression.AND([domain, [('product_tmpl_id', '=', product_tmpl_id)]])
         # We pass `to_date` in the context so that `qty_available` will be computed across
         # moves until date.
         action = {

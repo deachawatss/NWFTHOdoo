@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import paymentForm from '@payment/js/payment_form';
 
 paymentForm.include({
@@ -15,7 +17,14 @@ paymentForm.include({
      */
     _processTokenFlow(providerCode, paymentOptionId, paymentMethodCode, processingValues) {
         if (providerCode === 'flutterwave' && processingValues.redirect_form_html) {
-            this._processRedirectFlow(...arguments);
+            // Authorization uses POST instead of GET
+            const redirect_form_html = processingValues.redirect_form_html.replace(
+                /method="get"/, 'method="post"'
+            )
+            this._processRedirectFlow(providerCode, paymentOptionId, paymentMethodCode, {
+                ...processingValues,
+                redirect_form_html,
+            });
         } else {
             this._super(...arguments);
         }

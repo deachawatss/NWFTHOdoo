@@ -1,9 +1,11 @@
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
 import { browser } from "@web/core/browser/browser";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { Dropdown } from "@web/core/dropdown/dropdown";
 import { DropdownItem } from "@web/core/dropdown/dropdown_item";
-import { rpc, rpcBus } from "@web/core/network/rpc";
+import { rpc } from "@web/core/network/rpc";
 import { useService } from "@web/core/utils/hooks";
 import { renderToString } from "@web/core/utils/render";
 import { useSortable } from "@web/core/utils/sortable_owl";
@@ -126,7 +128,7 @@ export class BoardController extends Component {
             custom_id: this.board.customViewId,
             arch,
         });
-        rpcBus.trigger("CLEAR-CACHES");
+        this.env.bus.trigger("CLEAR-CACHES");
     }
 }
 

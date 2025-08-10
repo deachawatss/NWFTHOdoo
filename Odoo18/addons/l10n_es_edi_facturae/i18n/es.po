@@ -33,6 +33,15 @@ msgid "6-Packs"
 msgstr "6-Packs"
 
 #. module: l10n_es_edi_facturae
+#: model_terms:ir.ui.view,arch_db:l10n_es_edi_facturae.view_partner_form_inherit_l10n_es_edi_facturae
+msgid ""
+"<span>Administrative Center for Spain Public Administrations. Used in "
+"Spanish electronic invoices.</span>"
+msgstr ""
+"<span>Centro Administrativo de las Administraciones Públicas de España. "
+"Utilizado en facturas electrónicas españolas.</span>"
+
+#. module: l10n_es_edi_facturae
 #: model:ir.model.fields.selection,name:l10n_es_edi_facturae.selection__account_move__l10n_es_payment_means__05
 msgid "Accepted bill of exchange"
 msgstr "Letra aceptada"
@@ -117,6 +126,11 @@ msgstr "Cajas"
 #: model:ir.model.fields.selection,name:l10n_es_edi_facturae.selection__uom_uom__l10n_es_edi_facturae_uom_code__24
 msgid "Bunches"
 msgstr "Manojos"
+
+#. module: l10n_es_edi_facturae
+#: model:l10n_es_edi_facturae.ac_role_type,name:l10n_es_edi_facturae.ac_role_type_04
+msgid "Buyer"
+msgstr "Comprador"
 
 #. module: l10n_es_edi_facturae
 #: model:ir.model.fields.selection,name:l10n_es_edi_facturae.selection__account_move__l10n_es_edi_facturae_reason_code__81
@@ -222,6 +236,16 @@ msgid "Code of the issuing department."
 msgstr "Número del departamento emisor."
 
 #. module: l10n_es_edi_facturae
+#: model:l10n_es_edi_facturae.ac_role_type,name:l10n_es_edi_facturae.ac_role_type_08
+msgid "Collection Receiver"
+msgstr "Receptor del cobro"
+
+#. module: l10n_es_edi_facturae
+#: model:l10n_es_edi_facturae.ac_role_type,name:l10n_es_edi_facturae.ac_role_type_05
+msgid "Collector"
+msgstr "Cobrador"
+
+#. module: l10n_es_edi_facturae
 #: model:ir.model,name:l10n_es_edi_facturae.model_res_company
 msgid "Companies"
 msgstr "Compañías"
@@ -310,16 +334,7 @@ msgid "Direct debit"
 msgstr "Recibo domiciliado"
 
 #. module: l10n_es_edi_facturae
-#: model:ir.model.fields,field_description:l10n_es_edi_facturae.field_account_chart_template__display_name
-#: model:ir.model.fields,field_description:l10n_es_edi_facturae.field_account_move__display_name
-#: model:ir.model.fields,field_description:l10n_es_edi_facturae.field_account_move_reversal__display_name
-#: model:ir.model.fields,field_description:l10n_es_edi_facturae.field_account_move_send__display_name
-#: model:ir.model.fields,field_description:l10n_es_edi_facturae.field_account_tax__display_name
-#: model:ir.model.fields,field_description:l10n_es_edi_facturae.field_certificate_certificate__display_name
 #: model:ir.model.fields,field_description:l10n_es_edi_facturae.field_l10n_es_edi_facturae_ac_role_type__display_name
-#: model:ir.model.fields,field_description:l10n_es_edi_facturae.field_res_company__display_name
-#: model:ir.model.fields,field_description:l10n_es_edi_facturae.field_res_partner__display_name
-#: model:ir.model.fields,field_description:l10n_es_edi_facturae.field_uom_uom__display_name
 msgid "Display Name"
 msgstr "Nombre mostrado"
 
@@ -398,6 +413,11 @@ msgid "Facturae certificates"
 msgstr "Certificados para facturae"
 
 #. module: l10n_es_edi_facturae
+#: model:l10n_es_edi_facturae.ac_role_type,name:l10n_es_edi_facturae.ac_role_type_01
+msgid "Fiscal"
+msgstr "Fiscal"
+
+#. module: l10n_es_edi_facturae
 #: model:ir.model.fields.selection,name:l10n_es_edi_facturae.selection__uom_uom__l10n_es_edi_facturae_uom_code__21
 msgid "Grams"
 msgstr "Gramos"
@@ -413,16 +433,7 @@ msgid "ICIO: Tax on construction, installation and works"
 msgstr "ICIO: Impuesto sobre las construcciones, instalaciones y obras"
 
 #. module: l10n_es_edi_facturae
-#: model:ir.model.fields,field_description:l10n_es_edi_facturae.field_account_chart_template__id
-#: model:ir.model.fields,field_description:l10n_es_edi_facturae.field_account_move__id
-#: model:ir.model.fields,field_description:l10n_es_edi_facturae.field_account_move_reversal__id
-#: model:ir.model.fields,field_description:l10n_es_edi_facturae.field_account_move_send__id
-#: model:ir.model.fields,field_description:l10n_es_edi_facturae.field_account_tax__id
-#: model:ir.model.fields,field_description:l10n_es_edi_facturae.field_certificate_certificate__id
 #: model:ir.model.fields,field_description:l10n_es_edi_facturae.field_l10n_es_edi_facturae_ac_role_type__id
-#: model:ir.model.fields,field_description:l10n_es_edi_facturae.field_res_company__id
-#: model:ir.model.fields,field_description:l10n_es_edi_facturae.field_res_partner__id
-#: model:ir.model.fields,field_description:l10n_es_edi_facturae.field_uom_uom__id
 msgid "ID"
 msgstr "ID"
 
@@ -574,6 +585,11 @@ msgstr "Serie de la factura"
 #: model:ir.model.fields.selection,name:l10n_es_edi_facturae.selection__account_move__l10n_es_edi_facturae_reason_code__03
 msgid "Issue date"
 msgstr "Fecha expedición"
+
+#. module: l10n_es_edi_facturae
+#: model:l10n_es_edi_facturae.ac_role_type,name:l10n_es_edi_facturae.ac_role_type_09
+msgid "Issuer"
+msgstr "Emisor"
 
 #. module: l10n_es_edi_facturae
 #: model:ir.model.fields.selection,name:l10n_es_edi_facturae.selection__account_move__l10n_es_edi_facturae_reason_code__06
@@ -729,10 +745,20 @@ msgid "Packages"
 msgstr "Paquetes"
 
 #. module: l10n_es_edi_facturae
+#: model:l10n_es_edi_facturae.ac_role_type,name:l10n_es_edi_facturae.ac_role_type_03
+msgid "Payer"
+msgstr "Pagador"
+
+#. module: l10n_es_edi_facturae
 #: model:ir.model.fields,field_description:l10n_es_edi_facturae.field_account_bank_statement_line__l10n_es_payment_means
 #: model:ir.model.fields,field_description:l10n_es_edi_facturae.field_account_move__l10n_es_payment_means
 msgid "Payment Means"
 msgstr "Métodos de pago"
+
+#. module: l10n_es_edi_facturae
+#: model:l10n_es_edi_facturae.ac_role_type,name:l10n_es_edi_facturae.ac_role_type_07
+msgid "Payment Receiver"
+msgstr "Receptor del pago"
 
 #. module: l10n_es_edi_facturae
 #: model:ir.model.fields.selection,name:l10n_es_edi_facturae.selection__account_move__l10n_es_payment_means__19
@@ -791,6 +817,11 @@ msgid "Receipt"
 msgstr "Recibo"
 
 #. module: l10n_es_edi_facturae
+#: model:l10n_es_edi_facturae.ac_role_type,name:l10n_es_edi_facturae.ac_role_type_02
+msgid "Receiver"
+msgstr "Receptor"
+
+#. module: l10n_es_edi_facturae
 #: model:ir.model.fields.selection,name:l10n_es_edi_facturae.selection__account_move__l10n_es_edi_facturae_reason_code__07
 msgid "Receiver's Tax Identification Number"
 msgstr "Identificación fiscal Receptor"
@@ -829,6 +860,11 @@ msgid "Second"
 msgstr "Segundo"
 
 #. module: l10n_es_edi_facturae
+#: model:l10n_es_edi_facturae.ac_role_type,name:l10n_es_edi_facturae.ac_role_type_06
+msgid "Seller"
+msgstr "Vendedor"
+
+#. module: l10n_es_edi_facturae
 #: model:ir.model.fields.selection,name:l10n_es_edi_facturae.selection__account_move__l10n_es_payment_means__14
 msgid "Set-off by reciprocal credits"
 msgstr "Compensación"
@@ -856,6 +892,7 @@ msgid "Spanish Facturae EDI Tax Type"
 msgstr "Tipo de impuesto EDI de Facturae en España"
 
 #. module: l10n_es_edi_facturae
+#: model_terms:ir.ui.view,arch_db:l10n_es_edi_facturae.product_uom_categ_form_view_inherit_l10n_es_edi_facturae
 #: model_terms:ir.ui.view,arch_db:l10n_es_edi_facturae.product_uom_form_view_inherit_l10n_es_edi_facturae
 #: model_terms:ir.ui.view,arch_db:l10n_es_edi_facturae.product_uom_tree_view_inherit_l10n_es_edi_facturae
 msgid "Spanish Facturae EDI type"

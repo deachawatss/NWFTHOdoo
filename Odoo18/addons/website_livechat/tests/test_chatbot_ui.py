@@ -4,11 +4,11 @@
 from odoo import Command, tests
 from odoo.addons.im_livechat.tests.chatbot_common import ChatbotCase
 from odoo.addons.website_livechat.tests.common import TestLivechatCommon as TestWebsiteLivechatCommon
-from odoo.addons.im_livechat.tests.common import TestGetOperatorCommon
+from odoo.addons.im_livechat.tests.common import TestImLivechatCommon
 
 
 @tests.tagged('post_install', '-at_install')
-class TestLivechatChatbotUI(TestGetOperatorCommon, TestWebsiteLivechatCommon, ChatbotCase):
+class TestLivechatChatbotUI(TestImLivechatCommon, TestWebsiteLivechatCommon, ChatbotCase):
     def setUp(self):
         super().setUp()
         self.env['im_livechat.channel'].search([
@@ -16,6 +16,7 @@ class TestLivechatChatbotUI(TestGetOperatorCommon, TestWebsiteLivechatCommon, Ch
         ]).unlink()  # delete other channels to avoid them messing with the URL rules
 
         self.livechat_channel.write({
+            'is_published': True,
             'rule_ids': [(5, 0), (0, 0, {
                 'action': 'auto_popup',
                 'regex_url': '/',
@@ -29,7 +30,7 @@ class TestLivechatChatbotUI(TestGetOperatorCommon, TestWebsiteLivechatCommon, Ch
         operator = self.chatbot_script.operator_partner_id
         livechat_discuss_channel = self.env['discuss.channel'].search([
             ('livechat_channel_id', '=', self.livechat_channel.id),
-            ('chatbot_current_step_id.chatbot_script_id', '=', self.chatbot_script.id),
+            ('livechat_operator_id', '=', operator.id),
             ('message_ids', '!=', False),
         ])
         self.assertTrue(bool(livechat_discuss_channel))
@@ -79,7 +80,7 @@ class TestLivechatChatbotUI(TestGetOperatorCommon, TestWebsiteLivechatCommon, Ch
             ("I will transfer you to a human", operator, False),
             (
                 'invited <a href="#" data-oe-model="res.partner" data-oe-id="'
-                f'{operator_member.partner_id.id}">@El Deboulonnator</a> to the channel',
+                f'{operator_member.partner_id.id}">@Operator Michel</a> to the channel',
                 self.chatbot_script.operator_partner_id,
                 False,
             ),
@@ -111,11 +112,12 @@ class TestLivechatChatbotUI(TestGetOperatorCommon, TestWebsiteLivechatCommon, Ch
 
     def test_complete_chatbot_flow_ui(self):
         tests.new_test_user(self.env, login="portal_user", groups="base.group_portal")
+        operator = self.chatbot_script.operator_partner_id
         self.start_tour('/', 'website_livechat_chatbot_flow_tour')
         self._check_complete_chatbot_flow_result()
         self.env['discuss.channel'].search([
             ('livechat_channel_id', '=', self.livechat_channel.id),
-            ('chatbot_current_step_id.chatbot_script_id', '=', self.chatbot_script.id),
+            ('livechat_operator_id', '=', operator.id),
         ]).unlink()
         self.start_tour('/', 'website_livechat_chatbot_flow_tour', login="portal_user")
         self._check_complete_chatbot_flow_result()
@@ -124,8 +126,8 @@ class TestLivechatChatbotUI(TestGetOperatorCommon, TestWebsiteLivechatCommon, Ch
         self.start_tour("/", "website_livechat_chatbot_after_reload_tour")
 
     def test_chatbot_test_page_tour(self):
-        bob_manager = tests.new_test_user(self.env, login="bob_user", groups="im_livechat.im_livechat_group_manager,base.group_user")
-        self.livechat_channel.user_ids += bob_manager
+        bob_operator = tests.new_test_user(self.env, login="bob_user", groups="im_livechat.im_livechat_group_user,base.group_user")
+        self.livechat_channel.user_ids += bob_operator
         test_page_url = f"/chatbot/{'-'.join(self.chatbot_script.title.split(' '))}-{self.chatbot_script.id}/test"
         self.start_tour(test_page_url, "website_livechat_chatbot_test_page_tour", login="bob_user")
 
@@ -284,35 +286,3 @@ class TestLivechatChatbotUI(TestGetOperatorCommon, TestWebsiteLivechatCommon, Ch
             ]
         )
         self.start_tour("/", "website_livechat.question_selection_overlapping_answers")
-
-    def test_chatbot_continue_after_completion(self):
-        chatbot_script = self.env["chatbot.script"].create({"title": "Continue Bot"})
-        question_step = self.env["chatbot.script.step"].create(
-            {
-                "chatbot_script_id": chatbot_script.id,
-                "message": "Hello, what can I do for you?",
-                "step_type": "question_selection",
-            },
-        )
-        self.env["chatbot.script.answer"].create(
-            {
-                "name": "No, thank you for your time.",
-                "script_step_id": question_step.id,
-            }
-        )
-        livechat_channel = self.env["im_livechat.channel"].create(
-            {
-                "name": "Continue after completion channel",
-                "rule_ids": [
-                    Command.create(
-                        {
-                            "regex_url": "/",
-                            "chatbot_script_id": chatbot_script.id,
-                            "action": "auto_popup",
-                        }
-                    )
-                ],
-            }
-        )
-        self.env.ref("website.default_website").channel_id = livechat_channel.id
-        self.start_tour("/", "website_livechat.chatbot_continue_tour")

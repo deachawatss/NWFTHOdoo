@@ -1,5 +1,5 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
-from odoo import models
+from odoo import models, Command
 from odoo.addons.account.models.chart_template import template
 
 
@@ -11,6 +11,8 @@ class AccountChartTemplate(models.AbstractModel):
         return {
             'property_account_receivable_id': 'sa_account_102011',
             'property_account_payable_id': 'sa_account_201002',
+            'property_account_expense_categ_id': 'sa_account_400001',
+            'property_account_income_categ_id': 'sa_account_500001',
             'code_digits': '6',
         }
 
@@ -27,10 +29,8 @@ class AccountChartTemplate(models.AbstractModel):
                 'expense_currency_exchange_account_id': 'sa_account_400053',
                 'account_sale_tax_id': 'sa_sales_tax_15',
                 'account_purchase_tax_id': 'sa_purchase_tax_15',
-                'expense_account_id': 'sa_account_400001',
-                'income_account_id': 'sa_account_500001',
                 'deferred_expense_account_id': 'sa_account_104020',
-                'deferred_revenue_account_id': 'sa_account_201018',
+                'deferred_revenue_account_id': 'sa_account_201018'
             },
         }
 
@@ -59,4 +59,14 @@ class AccountChartTemplate(models.AbstractModel):
                 'show_on_dashboard': True,
                 'sequence': 10,
             }
+        }
+
+    @template('sa', 'account.account')
+    def _get_sa_account_account(self):
+        return {
+            "sa_account_100101": {'allowed_journal_ids': [Command.link('ifrs16')]},
+            "sa_account_100102": {'allowed_journal_ids': [Command.link('ifrs16')]},
+            "sa_account_400070": {'allowed_journal_ids': [Command.link('ifrs16')]},
+            "sa_account_201019": {'allowed_journal_ids': [Command.link('zakat')]},
+            "sa_account_400072": {'allowed_journal_ids': [Command.link('zakat')]},
         }

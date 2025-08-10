@@ -79,10 +79,6 @@
                                     <field name="attach"/>
                                     <field name="original"/>
                                 </group>
-                                <group string="Last Error">
-                                    <field name="error_date"/>
-                                    <field name="error_message"/>
-                                </group>
                             </group>
                         </page>
                     </notebook>

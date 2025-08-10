@@ -1,16 +1,6 @@
-// TODO: this code should probably be converted into an interaction. At the
-// moment, the `data-bs-auto-close` attribute of the dropdown is set both by
-// the code in this file and by the `website.dropdown_edit` interaction. Because
-// of a timing issue (`editor_enable` being set too late), at the moment both
-// this code and the interaction are needed to ensure the correct behaviour in
-// any possible case. See commit message for more details.
+/** @odoo-module **/
 
 const BREAKPOINT_SIZES = {sm: '575', md: '767', lg: '991', xl: '1199', xxl: '1399'};
-
-let ignoreDOMMutations;
-export function setupIgnoreDOMMutations(fn) {
-    ignoreDOMMutations = fn;
-}
 
 /**
  * Creates an automatic 'more' dropdown-menu for a set of navbar items.
@@ -122,8 +112,12 @@ async function autoHideMenu(el, options) {
     }
 
     function _adapt() {
-        if (ignoreDOMMutations) {
-            ignoreDOMMutations(__adapt);
+        const wysiwyg = window.$ && $('#wrapwrap').data('wysiwyg');
+        const odooEditor = wysiwyg && wysiwyg.odooEditor;
+        if (odooEditor) {
+            odooEditor.observerUnactive("adapt");
+            odooEditor.withoutRollback(__adapt);
+            odooEditor.observerActive("adapt");
             return;
         }
         __adapt();
@@ -215,8 +209,8 @@ async function autoHideMenu(el, options) {
     }
 
     function _addExtraItemsButton(target) {
-        let dropdownMenu = document.createElement("ul");
-        extraItemsToggle = document.createElement("li");
+        let dropdownMenu = document.createElement('div');
+        extraItemsToggle = dropdownMenu.cloneNode();
         const extraItemsToggleIcon = document.createElement('i');
         const extraItemsToggleLink = document.createElement('a');
 

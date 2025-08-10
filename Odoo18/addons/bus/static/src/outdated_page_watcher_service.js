@@ -3,6 +3,7 @@ import { _t } from "@web/core/l10n/translation";
 import { rpc } from "@web/core/network/rpc";
 import { registry } from "@web/core/registry";
 
+const { DateTime } = luxon;
 export class OutdatedPageWatcherService {
     constructor(env, services) {
         this.setup(env, services);
@@ -16,6 +17,8 @@ export class OutdatedPageWatcherService {
         this.notification = notification;
         this.multi_tab = multi_tab;
         this.lastNotificationId = multi_tab.getSharedValue("last_notification_id");
+        /** @deprecated */
+        this.lastDisconnectDt = null;
         this.closeNotificationFn;
         let wasBusAlreadyConnected;
         bus_service.addEventListener(
@@ -25,10 +28,10 @@ export class OutdatedPageWatcherService {
             },
             { once: true }
         );
-        bus_service.addEventListener(
-            "disconnect",
-            () => (this.lastNotificationId = multi_tab.getSharedValue("last_notification_id"))
-        );
+        bus_service.addEventListener("disconnect", () => {
+            this.lastNotificationId = multi_tab.getSharedValue("last_notification_id");
+            this.lastDisconnectDt = DateTime.now();
+        });
         bus_service.addEventListener("connect", async () => {
             if (wasBusAlreadyConnected) {
                 this.checkHasMissedNotifications();

@@ -1,13 +1,14 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import werkzeug
+import itertools
 import pytz
 import babel.dates
 from collections import defaultdict
 
 from odoo import http, fields, tools, models
 from odoo.addons.website.controllers.main import QueryURL
-from odoo.fields import Domain
 from odoo.http import request
 from odoo.tools import html2plaintext
 from odoo.tools.misc import get_lang
@@ -35,7 +36,7 @@ class WebsiteBlog(http.Controller):
             dom, groupby=['post_date:month'])
 
         locale = get_lang(request.env).code
-        tzinfo = pytz.timezone(request.env.context.get('tz', 'utc') or 'utc')
+        tzinfo = pytz.timezone(request.context.get('tz', 'utc') or 'utc')
         fmt = tools.DEFAULT_SERVER_DATETIME_FORMAT
 
         res = defaultdict(list)
@@ -73,10 +74,10 @@ class WebsiteBlog(http.Controller):
         domain = request.website.website_domain()
 
         if blog:
-            domain &= Domain('blog_id', '=', blog.id)
+            domain += [('blog_id', '=', blog.id)]
 
         if date_begin and date_end:
-            domain &= Domain("post_date", ">=", date_begin) & Domain("post_date", "<=", date_end)
+            domain += [("post_date", ">=", date_begin), ("post_date", "<=", date_end)]
         active_tag_ids = tags and [request.env['ir.http']._unslug(tag)[1] for tag in tags.split(',')] or []
         active_tags = BlogTag
         if active_tag_ids:
@@ -87,19 +88,19 @@ class WebsiteBlog(http.Controller):
                 new_url = path.replace("/tag/%s" % tags, fixed_tag_slug and "/tag/%s" % fixed_tag_slug or "", 1)
                 if new_url != path:  # check that really replaced and avoid loop
                     return request.redirect(new_url, 301)
-            domain &= Domain('tag_ids', 'in', active_tags.ids)
+            domain += [('tag_ids', 'in', active_tags.ids)]
 
         if request.env.user.has_group('website.group_website_designer'):
-            count_domain = domain & Domain("website_published", "=", True) & Domain("post_date", "<=", fields.Datetime.now())
+            count_domain = domain + [("website_published", "=", True), ("post_date", "<=", fields.Datetime.now())]
             published_count = BlogPost.search_count(count_domain)
             unpublished_count = BlogPost.search_count(domain) - published_count
 
             if state == "published":
-                domain &= Domain("website_published", "=", True) & Domain("post_date", "<=", fields.Datetime.now())
+                domain += [("website_published", "=", True), ("post_date", "<=", fields.Datetime.now())]
             elif state == "unpublished":
-                domain &= Domain("website_published", "=", False) | ("post_date", ">", fields.Datetime.now())
+                domain += ['|', ("website_published", "=", False), ("post_date", ">", fields.Datetime.now())]
         else:
-            domain &= Domain("post_date", "<=", fields.Datetime.now())
+            domain += [("post_date", "<=", fields.Datetime.now())]
 
         offset = (page - 1) * self._blog_post_per_page
 
@@ -174,7 +175,7 @@ class WebsiteBlog(http.Controller):
     ], type='http', auth="public", website=True, sitemap=True)
     def blog(self, blog=None, tag=None, page=1, search=None, **opt):
         Blog = request.env['blog.blog']
-        blogs = tools.lazy(lambda: Blog.search(request.website.website_domain(), order="sequence"))
+        blogs = tools.lazy(lambda: Blog.search(request.website.website_domain(), order="create_date asc, id asc"))
 
         if not blog and len(blogs) == 1:
             url = QueryURL('/blog/%s' % request.env['ir.http']._slug(blogs[0]), search=search, **opt)()
@@ -239,7 +240,7 @@ class WebsiteBlog(http.Controller):
         date_begin, date_end = post.get('date_begin'), post.get('date_end')
 
         domain = request.website.website_domain()
-        blogs = blog.search(domain, order="sequence")
+        blogs = blog.search(domain, order="create_date, id asc")
 
         tag = None
         if tag_id:

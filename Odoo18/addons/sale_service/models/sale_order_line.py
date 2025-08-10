@@ -4,14 +4,13 @@
 from itertools import groupby
 
 from odoo import api, fields, models
+from odoo.osv import expression
 from odoo.tools import format_amount
-from odoo.tools.sql import column_exists, create_column
+from odoo.tools.sql import column_exists, create_column, create_index
 
 
 class SaleOrderLine(models.Model):
     _inherit = "sale.order.line"
-
-    _name_search_services_index = models.Index("(order_id DESC, sequence, id) WHERE is_service IS TRUE")
 
     # used to know if generate a task and/or a project, depending on the product settings
     is_service = fields.Boolean("Is a Service", compute='_compute_is_service', store=True, compute_sudo=True, export_string_translation=False)
@@ -34,6 +33,8 @@ class SaleOrderLine(models.Model):
 
     @api.depends('product_id.type')
     def _compute_is_service(self):
+        self.fetch(['is_service', 'product_id'])
+        self.product_id.fetch(['type'])
         for so_line in self:
             so_line.is_service = so_line.product_id.type == 'service'
 
@@ -51,6 +52,14 @@ class SaleOrderLine(models.Model):
                 WHERE pp.id = line.product_id
             """)
         return super()._auto_init()
+
+    def init(self):
+        res = super().init()
+        query_domain_sale_line = expression.expression([('is_service', '=', True)], self).query
+        create_index(self._cr, 'sale_order_line_name_search_services_index',
+                     self._table, ('order_id DESC', 'sequence', 'id'),
+                     where=query_domain_sale_line.where_clause)
+        return res
 
     def _additional_name_per_id(self):
         name_per_id = super()._additional_name_per_id() if not self.env.context.get('hide_partner_ref') else {}
@@ -71,8 +80,8 @@ class SaleOrderLine(models.Model):
         return name_per_id
 
     @api.model
-    def name_search(self, name='', domain=None, operator='ilike', limit=100):
-        domain = domain or []
+    def name_search(self, name='', args=None, operator='ilike', limit=100):
+        domain = args or []
         # optimization for a SOL services name_search, to avoid joining on sale_order with too many lines
         if domain and ('is_service', '=', True) in domain and operator in ('like', 'ilike') and limit is not None:
             sols = self.search_fetch(

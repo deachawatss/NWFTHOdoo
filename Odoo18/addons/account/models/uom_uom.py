@@ -4,7 +4,7 @@
 from odoo import fields, models, api
 
 
-class UomUom(models.Model):
+class UoM(models.Model):
     _inherit = "uom.uom"
 
     fiscal_country_codes = fields.Char(compute="_compute_fiscal_country_codes")
@@ -20,7 +20,6 @@ class UomUom(models.Model):
         mapping = {
             'uom.product_uom_unit': 'C62',
             'uom.product_uom_dozen': 'DZN',
-            'uom.product_uom_pack_6': 'HD',
             'uom.product_uom_kgm': 'KGM',
             'uom.product_uom_gram': 'GRM',
             'uom.product_uom_day': 'DAY',
@@ -41,8 +40,8 @@ class UomUom(models.Model):
             'uom.product_uom_cubic_meter': 'MTQ',
             'uom.product_uom_cubic_inch': 'INQ',
             'uom.product_uom_cubic_foot': 'FTQ',
-            'uom.product_uom_square_meter': 'MTK',
-            'uom.product_uom_square_foot': 'FTK',
+            'uom.uom_square_meter': 'MTK',
+            'uom.uom_square_foot': 'FTK',
             'uom.product_uom_yard': 'YRD',
             'uom.product_uom_millimeter': 'MMT',
         }

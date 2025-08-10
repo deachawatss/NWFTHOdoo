@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { rpc } from "@web/core/network/rpc";
 import { registry } from "@web/core/registry";
 import { user } from "@web/core/user";

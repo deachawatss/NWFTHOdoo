@@ -30,15 +30,30 @@ class PosOrderLine(models.Model):
             del vals['combo_parent_uuid']
         return super().write(vals)
 
-
 class PosOrder(models.Model):
     _inherit = "pos.order"
 
     table_stand_number = fields.Char(string="Table Stand Number")
 
     @api.model
-    def _load_pos_self_data_domain(self, data, config):
+    def _load_pos_self_data_domain(self, data):
         return [('id', '=', False)]
+
+    @api.model
+    def sync_from_ui(self, orders):
+        for order in orders:
+            if order.get('id'):
+                order_id = order['id']
+
+                if isinstance(order_id, int):
+                    old_order = self.env['pos.order'].browse(order_id)
+                    if old_order.takeaway:
+                        order['takeaway'] = old_order.takeaway
+
+        result = super().sync_from_ui(orders)
+        order_ids = self.browse([order['id'] for order in result['pos.order'] if order.get('id')])
+        self._send_notification(order_ids)
+        return result
 
     @api.model
     def remove_from_ui(self, server_ids):
@@ -47,26 +62,8 @@ class PosOrder(models.Model):
         self._send_notification(order_ids)
         return super().remove_from_ui(server_ids)
 
-    @api.model
-    def sync_from_ui(self, orders):
-        result = super().sync_from_ui(orders)
-        order_ids = self.browse([order['id'] for order in result['pos.order'] if order.get('id')])
-        self._send_notification(order_ids)
-        return result
-
     def _send_notification(self, order_ids):
         config_ids = order_ids.config_id
         for config in config_ids:
             config.notify_synchronisation(config.current_session_id.id, self.env.context.get('login_number', 0))
             config._notify('ORDER_STATE_CHANGED', {})
-    
-    def action_send_self_order_receipt(self, email, mail_template_id, ticket_image, basic_image):
-        self.ensure_one()
-        self.email = email
-        mail_template = self.env['mail.template'].browse(mail_template_id)
-        if not mail_template:
-            raise UserError(_("The mail template with xmlid %s has been deleted.", mail_template_id))
-        email_values = {'email_to': email}
-        if self.state == 'paid':
-            email_values['attachment_ids'] = self._get_mail_attachments(self.name, ticket_image, basic_image)
-        mail_template.send_mail(self.id, force_send=True, email_values=email_values)

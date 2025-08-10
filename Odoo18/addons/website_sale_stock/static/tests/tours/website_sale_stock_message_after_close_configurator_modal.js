@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
 
 registry.category("web_tour.tours").add('website_sale_stock_message_after_close_onfigurator_modal_with_optional_products', {

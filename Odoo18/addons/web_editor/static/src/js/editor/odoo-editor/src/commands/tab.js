@@ -1,3 +1,4 @@
+/** @odoo-module **/
 import { createList, getListMode, isBlock, preserveCursor, toggleClass } from '../utils/utils.js';
 
 Text.prototype.oTab = function () {

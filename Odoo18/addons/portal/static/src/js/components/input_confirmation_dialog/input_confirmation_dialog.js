@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { useEffect } from "@odoo/owl";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 

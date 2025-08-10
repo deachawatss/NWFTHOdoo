@@ -19,7 +19,6 @@ import { useService } from "@web/core/utils/hooks";
 import { usePopover } from "@web/core/popover/popover_hook";
 import { patch } from "@web/core/utils/patch";
 import { AvatarCardPopover } from "@mail/discuss/web/avatar_card/avatar_card_popover";
-import { messageActionOpenFullComposer } from "./message_actions_patch";
 
 patch(Message.prototype, {
     setup() {
@@ -49,7 +48,7 @@ patch(Message.prototype, {
         };
     },
     hasAuthorClickable() {
-        return this.message.author?.main_user_id;
+        return this.message.author?.userId;
     },
     onClickAuthor(ev) {
         if (this.hasAuthorClickable()) {
@@ -57,39 +56,22 @@ patch(Message.prototype, {
             const target = ev.currentTarget;
             if (!this.avatarCard.isOpen) {
                 this.avatarCard.open(target, {
-                    id: this.message.author.main_user_id.id,
+                    id: this.message.author.userId,
                 });
             }
         }
     },
-
-    /** @deprecated */
-    async onClickMessageForward() {
-        await this.messageActions.actions.find((a) => a.name === "forward")?.onClick();
-    },
-
-    /** @deprecated */
-    async onClickMessageReplyAll() {
-        await this.messageActions.actions.find((a) => a.name === "reply-all")?.onClick();
-    },
-
-    /** @deprecated */
-    openFullComposer(name, context) {
-        messageActionOpenFullComposer(name, context, this);
-    },
-
     openRecord() {
-        this.message.thread.open({ focus: true });
-        this.message.thread.highlightMessage = this.message;
+        this.message.thread.open();
     },
 
     /**
      * @returns {string}
      */
-    formatTracking(trackingFieldInfo, trackingValue) {
-        switch (trackingFieldInfo.fieldType) {
+    formatTracking(trackingType, trackingValue) {
+        switch (trackingType) {
             case "boolean":
-                return trackingValue ? _t("Yes") : _t("No");
+                return trackingValue.value ? _t("Yes") : _t("No");
             /**
              * many2one formatter exists but is expecting id/display_name or data
              * object but only the target record name is known in this context.
@@ -100,35 +82,39 @@ patch(Message.prototype, {
             case "char":
             case "many2one":
             case "selection":
-                return formatChar(trackingValue);
+                return formatChar(trackingValue.value);
             case "date": {
-                const value = trackingValue ? deserializeDate(trackingValue) : trackingValue;
+                const value = trackingValue.value
+                    ? deserializeDate(trackingValue.value)
+                    : trackingValue.value;
                 return formatDate(value);
             }
             case "datetime": {
-                const value = trackingValue ? deserializeDateTime(trackingValue) : trackingValue;
+                const value = trackingValue.value
+                    ? deserializeDateTime(trackingValue.value)
+                    : trackingValue.value;
                 return formatDateTime(value);
             }
             case "float":
-                return formatFloat(trackingValue, { digits: trackingFieldInfo.floatPrecision });
+                return formatFloat(trackingValue.value, { digits: trackingValue.floatPrecision });
             case "integer":
-                return formatInteger(trackingValue);
+                return formatInteger(trackingValue.value);
             case "text":
-                return formatText(trackingValue);
+                return formatText(trackingValue.value);
             case "monetary":
-                return formatMonetary(trackingValue, {
-                    currencyId: trackingFieldInfo.currencyId,
+                return formatMonetary(trackingValue.value, {
+                    currencyId: trackingValue.currencyId,
                 });
             default:
-                return trackingValue;
+                return trackingValue.value;
         }
     },
 
     /**
      * @returns {string}
      */
-    formatTrackingOrNone(trackingFieldInfo, trackingValue) {
-        const formattedValue = this.formatTracking(trackingFieldInfo, trackingValue);
+    formatTrackingOrNone(trackingType, trackingValue) {
+        const formattedValue = this.formatTracking(trackingType, trackingValue);
         return formattedValue || _t("None");
     },
 });

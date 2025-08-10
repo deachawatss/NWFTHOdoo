@@ -1,3 +1,6 @@
+/** @odoo-module */
+
+import { waitUntil } from "@odoo/hoot-dom";
 import {
     changeOption,
     clickOnEditAndWaitEditMode,
@@ -73,16 +76,13 @@ registerWebsitePreviewTour("snippet_popup_and_animations", {
     },
     {
         content: "Wait for the page to be scrolled to the top.",
-        trigger: ":iframe .s_three_columns .row > :last-child:not(.o_animating)",
-        run() {
-            // If the column has been animated successfully, the animation delay
-            // should be set to approximately zero when it is not visible.
-            // The main goal of the following condition is to verify if the
-            // animation delay is being updated as expected.
-            if (Math.round(parseFloat(this.anchor.style.animationDelay)) !== 0) {
-                throw new Error("The scroll animation in the page did not end properly with the cookies bar open.");
-            }
-        },
+        trigger: ":iframe .s_three_columns .row > .o_animating:last-child",
+        isActive: [`:iframe .s_three_columns .row > .o_animating:last-child`],
+        run: (helpers) =>
+            waitUntil(
+                () => !helpers.anchor.classList.contains(`o_animating`),
+                { timeout: 10000 }
+            ),
     },
     {
         content: "Close the Cookies Bar.",
@@ -96,7 +96,7 @@ registerWebsitePreviewTour("snippet_popup_and_animations", {
     },
     {
         content: "Drag the Columns snippet group and drop it at the bottom of the popup.",
-        trigger: ".o_block_tab:not(.o_we_ongoing_insertion) #oe_snippets .oe_snippet[name='Columns'] .oe_snippet_thumbnail",
+        trigger: '#oe_snippets .oe_snippet[name="Columns"] .oe_snippet_thumbnail:not(.o_we_ongoing_insertion)',
         run: "drag_and_drop :iframe #wrap .s_popup .modal-content.oe_structure .oe_drop_zone:last",
     },
     {
@@ -125,14 +125,13 @@ registerWebsitePreviewTour("snippet_popup_and_animations", {
     },
     {
         content: "Wait until the column is no longer animated/visible.",
-        trigger: ":iframe .s_popup .s_three_columns .row > :last-child:not(.o_animating):hidden",
-        async run() {
-            // If the column has been animated successfully, the animation delay
-            // should be set to approximately zero when it is not visible.
-            if (Math.round(parseFloat(this.anchor.style.animationDelay)) !== 0) {
-                throw new Error("The scroll animation in the modal did not end properly.");
-            }
-        },
+        trigger: ":iframe .s_three_columns .row > .o_animating:last-child",
+        isActive: [`:iframe .s_three_columns .row > .o_animating:last-child`],
+        run: (helpers) =>
+            waitUntil(
+                () => !helpers.anchor.classList.contains(`o_animating`),
+                { timeout: 10000 }
+            ),
     },
     {
         content: "Close the Popup",
@@ -155,7 +154,7 @@ registerWebsitePreviewTour("snippet_popup_and_animations", {
     },
     ...clickOnSave(),
     ...clickOnEditAndWaitEditMode(),
-    clickOnElement("Image of the 'Columns' snippet with the overlay effect", ":iframe .s_three_columns .o_animate_on_scroll img[data-hover-effect='overlay']:not(:visible)"),
+    clickOnElement("Image of the 'Columns' snippet with the overlay effect", ":iframe .s_three_columns .o_animate_on_scroll img[data-hover-effect='overlay']"),
     changeOption("WebsiteAnimate", 'we-toggler:contains("Overlay")'),
     changeOption("WebsiteAnimate", 'we-button[data-select-data-attribute="outline"]'),
     {
@@ -163,12 +162,12 @@ registerWebsitePreviewTour("snippet_popup_and_animations", {
     },
     {
         content: "Check that the outline effect has been applied on the image",
-        trigger: ":iframe .s_three_columns .o_animate_on_scroll img[data-hover-effect='outline']:not(:visible)",
+        trigger: ":iframe .s_three_columns .o_animate_on_scroll img[data-hover-effect='outline']",
     },
     ...clickOnSave(),
     {
         content: "Check that the image src is not the raw data",
-        trigger: ":iframe .s_three_columns .o_animate_on_scroll img[data-hover-effect='outline']:not(:visible)",
+        trigger: ":iframe .s_three_columns .o_animate_on_scroll img[data-hover-effect='outline']",
         run() {
             const imgEl = document.querySelector("iframe").contentDocument.querySelector(".s_three_columns .o_animate_on_scroll img[data-hover-effect='outline']");
             const src = imgEl.getAttribute("src");
@@ -178,7 +177,7 @@ registerWebsitePreviewTour("snippet_popup_and_animations", {
         },
     },
     ...clickOnEditAndWaitEditMode(),
-    clickOnElement("Image of the 'Columns' snippet with the outline effect", ":iframe .s_three_columns .o_animate_on_scroll img[data-hover-effect='outline']:not(:visible)"),
+    clickOnElement("Image of the 'Columns' snippet with the outline effect", ":iframe .s_three_columns .o_animate_on_scroll img[data-hover-effect='outline']"),
     changeOption("ImageTools", 'we-select:contains("Filter") we-toggler:contains("None")'),
     changeOption("ImageTools", 'we-button:contains("Blur")'),
     {
@@ -186,7 +185,7 @@ registerWebsitePreviewTour("snippet_popup_and_animations", {
     },
     {
         content: "Check that the Blur filter has been applied on the image",
-        trigger: ":iframe .s_three_columns .o_animate_on_scroll img[data-gl-filter='blur']:not(:visible)",
+        trigger: ":iframe .s_three_columns .o_animate_on_scroll img[data-gl-filter='blur']",
     },
     {
         content: "Click on the 'undo' button",
@@ -195,12 +194,12 @@ registerWebsitePreviewTour("snippet_popup_and_animations", {
     },
     {
         content: "Check that the Blur filter has been removed from the image",
-        trigger: ":iframe .s_three_columns .o_animate_on_scroll img:not([data-gl-filter='blur']):not(:visible)",
+        trigger: ":iframe .s_three_columns .o_animate_on_scroll img:not([data-gl-filter='blur'])",
     },
     ...clickOnSave(),
     {
         content: "Check that the image src is not the raw data",
-        trigger: ":iframe .s_three_columns .o_animate_on_scroll img[data-hover-effect='outline']:not(:visible)",
+        trigger: ":iframe .s_three_columns .o_animate_on_scroll img[data-hover-effect='outline']",
         run() {
             const imgEl = document.querySelector("iframe").contentDocument.querySelector(".s_three_columns .o_animate_on_scroll img[data-hover-effect='outline']");
             const src = imgEl.getAttribute("src");

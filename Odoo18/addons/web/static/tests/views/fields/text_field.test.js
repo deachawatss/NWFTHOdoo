@@ -48,19 +48,6 @@ test("doesn't have a scrollbar with long content", async () => {
     expect(textarea.clientHeight).toBe(textarea.scrollHeight);
 });
 
-test("basic rendering char field", async () => {
-    Product._fields.name = fields.Char();
-    Product._records = [{ id: 1, name: "Description\nas\ntext" }];
-    await mountView({
-        type: "form",
-        resModel: "product",
-        resId: 1,
-        arch: '<form><field name="name" widget="text"/></form>',
-    });
-    expect(".o_field_text textarea").toHaveCount(1);
-    expect(".o_field_text textarea").toHaveValue("Description\nas\ntext");
-});
-
 test("render following an onchange", async () => {
     Product._fields.name = fields.Char({
         onChange: (record) => {
@@ -193,21 +180,6 @@ test("in editable list view", async () => {
     });
     await contains(".o_list_button_add").click();
     expect("textarea").toBeFocused();
-});
-
-test("placeholder_field shows as placeholder", async () => {
-    Product._fields.char = fields.Char({
-        default: "My Placeholder",
-    });
-    await mountView({
-        type: "form",
-        resModel: "product",
-        arch: `<form>
-            <field name="description" options="{'placeholder_field' : 'char'}"/>
-            <field name="char"/>
-        </form>`,
-    });
-    expect(`.o_field_text textarea`).toHaveAttribute("placeholder", "My Placeholder");
 });
 
 test.tags("desktop");

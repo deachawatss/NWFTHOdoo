@@ -45,8 +45,7 @@ def start_end_date_for_period(period, default_start_date=False, default_end_date
 
     return fields.Datetime.to_string(start_date), fields.Datetime.to_string(end_date)
 
-
-class GamificationChallenge(models.Model):
+class Challenge(models.Model):
     """Gamification challenge
 
     Set of predifined objectives assigned to people with rules for recurrence and
@@ -59,15 +58,15 @@ class GamificationChallenge(models.Model):
 
     _name = 'gamification.challenge'
     _description = 'Gamification Challenge'
-    _inherit = ['mail.thread']
+    _inherit = 'mail.thread'
     _order = 'end_date, start_date, name, id'
 
     @api.model
-    def default_get(self, fields):
-        res = super().default_get(fields)
-        if 'user_domain' in fields and 'user_domain' not in res:
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
+        if 'user_domain' in fields_list and 'user_domain' not in res:
             user_group_id = self.env.ref('base.group_user')
-            res['user_domain'] = f'["&", ("all_group_ids", "in", [{user_group_id.id}]), ("active", "=", True)]'
+            res['user_domain'] = f'["&", ("groups_id", "=", "{user_group_id.name}"), ("active", "=", True)]'
         return res
 
     # description
@@ -107,7 +106,7 @@ class GamificationChallenge(models.Model):
                                   help="List of goals that will be set",
                                   required=True, copy=True)
 
-    reward_id = fields.Many2one('gamification.badge', string="For Every Succeeding User", index='btree_not_null')
+    reward_id = fields.Many2one('gamification.badge', string="For Every Succeeding User")
     reward_first_id = fields.Many2one('gamification.badge', string="For 1st user")
     reward_second_id = fields.Many2one('gamification.badge', string="For 2nd user")
     reward_third_id = fields.Many2one('gamification.badge', string="For 3rd user")
@@ -209,6 +208,11 @@ class GamificationChallenge(models.Model):
 
         write_res = super().write(vals)
 
+        if vals.get('report_message_frequency', 'never') != 'never':
+            # _recompute_challenge_users do not set users for challenges with no reports, subscribing them now
+            for challenge in self:
+                challenge.message_subscribe([user.partner_id.id for user in challenge.user_ids])
+
         if vals.get('state') == 'inprogress':
             self._recompute_challenge_users()
             self._generate_goals_from_challenge()
@@ -264,8 +268,7 @@ class GamificationChallenge(models.Model):
             return True
 
         Goals = self.env['gamification.goal']
-        self.flush_recordset()
-        self.user_ids.presence_ids.flush_recordset()
+
         # include yesterday goals to update the goals that just ended
         # exclude goals for users that have not interacted with the
         # webclient since the last update or whose session is no longer
@@ -273,9 +276,9 @@ class GamificationChallenge(models.Model):
         yesterday = fields.Date.to_string(date.today() - timedelta(days=1))
         self.env.cr.execute("""SELECT gg.id
                         FROM gamification_goal as gg
-                        JOIN mail_presence as mp ON mp.user_id = gg.user_id
-                       WHERE gg.write_date <= mp.last_presence
-                         AND mp.last_presence >= now() AT TIME ZONE 'UTC' - interval '%(session_lifetime)s seconds'
+                        JOIN bus_presence as bp ON bp.user_id = gg.user_id
+                       WHERE gg.write_date <= bp.last_presence
+                         AND bp.last_presence >= now() AT TIME ZONE 'UTC' - interval '%(session_lifetime)s seconds'
                          AND gg.closed IS NOT TRUE
                          AND gg.challenge_id IN %(challenge_ids)s
                          AND (gg.state = 'inprogress'
@@ -614,7 +617,9 @@ class GamificationChallenge(models.Model):
                 lines = challenge._get_serialized_challenge_lines(user, restrict_goals=subset_goals)
                 if not lines:
                     continue
-
+                # Avoid error if 'full_suffix' is missing in the line
+                for line in lines:
+                    line.setdefault('full_suffix', '')
                 body_html = challenge.report_template_id.with_user(user).with_context(challenge_lines=lines)._render_field('body_html', challenge.ids)[challenge.id]
 
                 # notify message only to users, do not post on the challenge

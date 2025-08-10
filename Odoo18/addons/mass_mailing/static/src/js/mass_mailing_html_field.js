@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
 import { _t } from "@web/core/l10n/translation";
 import { useRecordObserver } from "@web/model/relational_model/utils";
@@ -287,33 +289,13 @@ export class MassMailingHtmlField extends HtmlField {
             }
         } else {
             const scrollableY = closestScrollableY(sidebar);
-            let stickyHeight = 0;
-            let stickyZindex = 0;
-            if (scrollableY) {
-                const statusBar = scrollableY.querySelector(".o_form_statusbar");
-                if (statusBar) {
-                    const statusBarStyle = getComputedStyle(statusBar);
-                    if (statusBarStyle.position === "sticky") {
-                        stickyHeight += statusBar.getBoundingClientRect().height;
-                    }
-                    stickyZindex = parseInt(statusBarStyle.zIndex) || 0;
-                }
-            }
             const top = scrollableY
-                ? `${
-                      -1 * (parseInt(getComputedStyle(scrollableY).paddingTop) || 0) + stickyHeight
-                  }px`
-                : `${stickyHeight}px`;
+                ? `${-1 * (parseInt(getComputedStyle(scrollableY).paddingTop) || 0)}px`
+                : "0";
             const maxHeight = this.iframe.parentNode.getBoundingClientRect().height;
-            const offsetHeight =
-                window.innerHeight -
-                stickyHeight -
-                document.querySelector(".o_content").getBoundingClientRect().y;
+            const offsetHeight = window.innerHeight - document.querySelector(".o_content").getBoundingClientRect().y;
             sidebar.style.height = `${Math.min(maxHeight, offsetHeight)}px`;
             sidebar.style.top = top;
-            if (stickyZindex > 0) {
-                sidebar.style.zIndex = `${stickyZindex - 1}`;
-            }
         }
     }
 
@@ -358,7 +340,7 @@ export class MassMailingHtmlField extends HtmlField {
 
         // Filter the fetched templates based on the current model
         const args = this.props.filterTemplates
-            ? [[['mailing_model_id', '=', this.props.record.data.mailing_model_id.id]]]
+            ? [[['mailing_model_id', '=', this.props.record.data.mailing_model_id[0]]]]
             : [];
 
         // Templates taken from old mailings
@@ -367,14 +349,14 @@ export class MassMailingHtmlField extends HtmlField {
         const templatesParams = result.map(values => {
             return {
                 id: values.id,
-                modelId: values.mailing_model_id.id,
-                modelName: values.mailing_model_id.display_name,
+                modelId: values.mailing_model_id[0],
+                modelName: values.mailing_model_id[1],
                 name: `template_${values.id}`,
                 nowrap: true,
                 subject: values.subject,
                 template: values.body_arch,
-                userId: values.user_id.id,
-                userName: values.user_id.display_name,
+                userId: values.user_id[0],
+                userName: values.user_id[1],
             };
         });
 
@@ -437,7 +419,7 @@ export class MassMailingHtmlField extends HtmlField {
         const $themeSelectorNew = $(renderToElement("mass_mailing.theme_selector_new", {
             themes: themesParams,
             templates: templatesParams,
-            modelName: this.props.record.data.mailing_model_id.display_name || '',
+            modelName: this.props.record.data.mailing_model_id[1] || '',
         }));
 
         // Check if editable area is empty.
@@ -597,7 +579,7 @@ export class MassMailingHtmlField extends HtmlField {
         }
         const iframeContent = this.wysiwyg.$iframe.contents();
 
-        const mailing_model_id = record.data.mailing_model_id.id;
+        const mailing_model_id = record.data.mailing_model_id[0];
         iframeContent
             .find(`.o_mail_template_preview[model-id!="${mailing_model_id}"]`)
             .addClass('d-none')
@@ -616,7 +598,7 @@ export class MassMailingHtmlField extends HtmlField {
             iframeContent.find('.o_mailing_template_preview_wrapper').removeClass('d-none');
         } else {
             iframeContent.find('.o_mailing_template_message').removeClass('d-none');
-            iframeContent.find('.o_mailing_template_message span').text(record.data.mailing_model_id.display_name);
+            iframeContent.find('.o_mailing_template_message span').text(record.data.mailing_model_id[1]);
             iframeContent.find('.o_mailing_template_preview_wrapper').addClass('d-none');
         }
     }
@@ -721,6 +703,12 @@ export class MassMailingHtmlField extends HtmlField {
         this._switchImages(themeParams, $newWrapperContent);
         old_layout && old_layout.remove();
         this.wysiwyg.odooEditor.resetContent($newLayout[0].outerHTML);
+
+        $newWrapperContent.find('*').addBack()
+            .contents()
+            .filter(function () {
+                return this.nodeType === 3 && this.textContent.match(/\S/);
+            }).parent().addClass('o_default_snippet_text');
 
         if (themeParams.name === 'basic') {
             this.wysiwyg.$editable[0].focus();

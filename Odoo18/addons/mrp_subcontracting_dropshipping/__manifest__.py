@@ -5,7 +5,7 @@
 {
     'name': 'Dropship and Subcontracting Management',
     'version': '0.1',
-    'category': 'Supply Chain/Purchase',
+    'category': 'Inventory/Purchase',
     'description': """
 This bridge module allows to manage subcontracting with the dropshipping module.
     """,
@@ -17,6 +17,5 @@ This bridge module allows to manage subcontracting with the dropshipping module.
     ],
     'installable': True,
     'auto_install': True,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

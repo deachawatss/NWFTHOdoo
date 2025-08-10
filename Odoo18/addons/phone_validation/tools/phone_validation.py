@@ -40,7 +40,7 @@ try:
                 # people may enter 0033... instead of +33...
                 if number.startswith('00'):
                     try:
-                        phone_nbr = phone_parse(f'+{number.removeprefix("00")}', country_code)
+                        phone_nbr = phone_parse(f'+{number.lstrip("00")}', country_code)
                     except UserError:
                         raise UserError(_lt('Impossible number %s: too many digits.', number))
                 # people may enter 33... instead of +33...
@@ -52,7 +52,7 @@ try:
                 else:
                     raise UserError(_lt('Impossible number %s: too many digits.', number))
             else:
-                raise UserError(_lt("The phone number %s is invalid! Let's fix it - you are not dialing aliens.", number))
+                raise UserError(_lt('Impossible number %s: probably invalid number of digits.', number))
         if not phonenumbers.is_valid_number(phone_nbr):
             raise UserError(_lt('Invalid number %s: probably incorrect prefix.', number))
 

@@ -1,7 +1,6 @@
-import { Component, useRef } from "@odoo/owl";
-import { useSelfOrder } from "@pos_self_order/app/services/self_order_service";
+import { Component } from "@odoo/owl";
+import { useSelfOrder } from "@pos_self_order/app/self_order_service";
 import { useService } from "@web/core/utils/hooks";
-import { useScrollShadow } from "../../utils/scroll_shadow_hook";
 
 export class EatingLocationPage extends Component {
     static template = "pos_self_order.EatingLocationPage";
@@ -10,21 +9,21 @@ export class EatingLocationPage extends Component {
     setup() {
         this.selfOrder = useSelfOrder();
         this.router = useService("router");
-        this.scrollContainerRef = useRef("scrollContainer");
-        this.scrollShadow = useScrollShadow(this.scrollContainerRef);
     }
 
-    onClickBack() {
+    back() {
         this.router.navigate("default");
     }
 
-    selectPreset(preset) {
-        this.selfOrder.currentOrder.setPreset(preset);
-        this.selfOrder.currentTable = null;
-        this.router.navigate("product_list");
-    }
+    selectLocation(loc) {
+        this.selfOrder.currentOrder.takeaway = loc === "out";
+        this.selfOrder.orderTakeAwayState[this.selfOrder.currentOrder.uuid] = true;
 
-    get presets() {
-        return this.selfOrder.models["pos.preset"].getAll();
+        if (loc === "out") {
+            this.selfOrder.currentOrder.update({
+                fiscal_position_id: this.selfOrder.config.takeaway_fp_id,
+            });
+        }
+        this.router.navigate("product_list");
     }
 }

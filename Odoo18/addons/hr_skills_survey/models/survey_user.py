@@ -1,13 +1,14 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from dateutil.relativedelta import relativedelta
 
 from odoo import fields, models
-from odoo.fields import Domain
+from odoo.osv import expression
 from odoo.tools import html2plaintext
 
 
-class SurveyUser_Input(models.Model):
+class SurveyUserInput(models.Model):
     _inherit = 'survey.user_input'
 
     def _mark_done(self):
@@ -16,18 +17,19 @@ class SurveyUser_Input(models.Model):
         - The user is linked to an employee
         - The user succeeded the test """
 
-        super()._mark_done()
+        super(SurveyUserInput, self)._mark_done()
 
         certification_user_inputs = self.filtered(lambda user_input: user_input.survey_id.certification and user_input.scoring_success)
         user_inputs_by_partner = certification_user_inputs.grouped('partner_id')
         employees = self.env['hr.employee'].search(
             [('user_id.partner_id', 'in', certification_user_inputs.partner_id.ids)])
         resume_lines = self.env['hr.resume.line'].search(
-            Domain.OR(
-                Domain('employee_id', '=', employee.id)
-                & Domain('survey_id', 'in', user_inputs_by_partner[employee.user_id.partner_id].survey_id.ids)
+            expression.OR([
+                expression.AND([
+                    [('employee_id', '=', employee.id)],
+                    [('survey_id', 'in', user_inputs_by_partner[employee.user_id.partner_id].survey_id.ids)]])
                 for employee in employees
-            ))
+            ]))
         resume_survey_by_ids = resume_lines.grouped(
             lambda resume_line: (resume_line.employee_id, resume_line.survey_id))
         line_type = self.env.ref('hr_skills_survey.resume_type_certification', raise_if_not_found=False)

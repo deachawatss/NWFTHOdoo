@@ -33,7 +33,8 @@ describe("Mixed", () => {
             contentBefore: unformat(`
                     <p>a[b</p>
                     <ul>
-                        <li><p>cd</p>
+                        <li>cd</li>
+                        <li class="oe-nested">
                             <ul>
                                 <li>ef</li>
                             </ul>
@@ -45,7 +46,8 @@ describe("Mixed", () => {
             contentAfter: unformat(`
                     <ol>
                         <li>a[b</li>
-                        <li><p>cd</p>
+                        <li>cd</li>
+                        <li class="oe-nested">
                             <ol>
                                 <li>ef</li>
                             </ol>
@@ -60,9 +62,11 @@ describe("Mixed", () => {
         await testEditor({
             contentBefore: unformat(`
                                 <ul>
-                                    <li><h1>abc</h1>
+                                    <li><h1>abc</h1></li>
+                                    <li class="oe-nested">
                                         <ul>
-                                            <li><h2>a[bc</h2>
+                                            <li><h2>a[bc</h2></li>
+                                            <li class="oe-nested">
                                                 <ul>
                                                     <li><h2>abc</h2></li>
                                                     <li><h3>abc</h3></li>
@@ -72,9 +76,11 @@ describe("Mixed", () => {
                                             <li><h2>abc</h2></li>
                                         </ul>
                                     </li>
-                                    <li><h1>abc</h1>
+                                    <li><h1>abc</h1></li>
+                                    <li class="oe-nested">
                                         <ul>
-                                            <li><h2>abc</h2>
+                                            <li><h2>abc</h2></li>
+                                            <li class="oe-nested">
                                                 <ul>
                                                     <li><h2>abc</h2></li>
                                                     <li><h3>abc</h3></li>
@@ -90,9 +96,11 @@ describe("Mixed", () => {
             stepFunction: toggleOrderedList,
             contentAfter: unformat(`
                                 <ol>
-                                    <li><h1>abc</h1>
+                                    <li><h1>abc</h1></li>
+                                    <li class="oe-nested">
                                         <ol>
-                                            <li><h2>a[bc</h2>
+                                            <li><h2>a[bc</h2></li>
+                                            <li class="oe-nested">
                                                 <ol>
                                                     <li><h2>abc</h2></li>
                                                     <li><h3>abc</h3></li>
@@ -102,9 +110,11 @@ describe("Mixed", () => {
                                             <li><h2>abc</h2></li>
                                         </ol>
                                     </li>
-                                    <li><h1>abc</h1>
+                                    <li><h1>abc</h1></li>
+                                    <li class="oe-nested">
                                         <ol>
-                                            <li><h2>abc</h2>
+                                            <li><h2>abc</h2></li>
+                                            <li class="oe-nested">
                                                 <ol>
                                                     <li><h2>abc</h2></li>
                                                     <li><h3>abc</h3></li>
@@ -123,9 +133,11 @@ describe("Mixed", () => {
         await testEditor({
             contentBefore: unformat(`
                     <ul>
-                        <li><h1><strong>abc</strong></h1>
+                        <li><h1><strong>abc</strong></h1></li>
+                        <li class="oe-nested">
                             <ul>
-                                <li><h3><strong>a[bc</strong></h3>
+                                <li><h3><strong>a[bc</strong></h3></li>
+                                <li class="oe-nested">
                                     <ul>
                                         <li><h2><em>abc</em></h2></li>
                                         <li><h2><s>abc</s></h2></li>
@@ -135,9 +147,11 @@ describe("Mixed", () => {
                                 <li><h1><strong>abc</strong></h1></li>
                             </ul>
                         </li>
-                        <li><h1><strong>abc</strong></h1>
+                        <li><h1><strong>abc</strong></h1></li>
+                        <li class="oe-nested">
                             <ul>
-                                <li><h3><strong>abc</strong></h3>
+                                <li><h3><strong>abc</strong></h3></li>
+                                <li class="oe-nested">
                                     <ul>
                                         <li><h2><em>abc</em></h2></li>
                                         <li><h2><s>abc</s></h2></li>
@@ -153,9 +167,11 @@ describe("Mixed", () => {
             stepFunction: toggleOrderedList,
             contentAfter: unformat(`
                     <ol>
-                        <li><h1><strong>abc</strong></h1>
+                        <li><h1><strong>abc</strong></h1></li>
+                        <li class="oe-nested">
                             <ol>
-                                <li><h3><strong>a[bc</strong></h3>
+                                <li><h3><strong>a[bc</strong></h3></li>
+                                <li class="oe-nested">
                                     <ol>
                                         <li><h2><em>abc</em></h2></li>
                                         <li><h2><s>abc</s></h2></li>
@@ -165,9 +181,11 @@ describe("Mixed", () => {
                                 <li><h1><strong>abc</strong></h1></li>
                             </ol>
                         </li>
-                        <li><h1><strong>abc</strong></h1>
+                        <li><h1><strong>abc</strong></h1></li>
+                        <li class="oe-nested">
                             <ol>
-                                <li><h3><strong>abc</strong></h3>
+                                <li><h3><strong>abc</strong></h3></li>
+                                <li class="oe-nested">
                                     <ol>
                                         <li><h2><em>abc</em></h2></li>
                                         <li><h2><s>abc</s></h2></li>
@@ -218,7 +236,8 @@ describe("Mixed", () => {
         await testEditor({
             contentBefore: unformat(`
                     <ul>
-                        <li><p>ab</p>
+                        <li>ab</li>
+                        <li class="oe-nested">
                             <ul>
                                 <li>c[d</li>
                                 <li>e]f</li>
@@ -229,7 +248,8 @@ describe("Mixed", () => {
             stepFunction: toggleOrderedList,
             contentAfter: unformat(`
                     <ul>
-                        <li><p>ab</p>
+                        <li>ab</li>
+                        <li class="oe-nested">
                             <ol>
                                 <li>c[d</li>
                                 <li>e]f</li>
@@ -245,13 +265,16 @@ describe("Mixed", () => {
             contentBefore: unformat(`
                     <ul>
                         <li>a[b</li>
-                        <li><p>cd</p>
+                        <li>cd</li>
+                        <li class="oe-nested">
                             <ul>
                                 <li>ef</li>
-                                <li><p>gh</p>
+                                <li>gh</li>
+                                <li class="oe-nested">
                                     <ol>
                                         <li>ij</li>
-                                        <li><p>kl</p>
+                                        <li>kl</li>
+                                        <li class="oe-nested">
                                             <ul>
                                                 <li>mn</li>
                                             </ul>
@@ -268,13 +291,16 @@ describe("Mixed", () => {
             contentAfter: unformat(`
                     <ol>
                         <li>a[b</li>
-                        <li><p>cd</p>
+                        <li>cd</li>
+                        <li class="oe-nested">
                             <ol>
                                 <li>ef</li>
-                                <li><p>gh</p>
+                                <li>gh</li>
+                                <li class="oe-nested">
                                     <ol>
                                         <li>ij</li>
-                                        <li><p>kl</p>
+                                        <li>kl</li>
+                                        <li class="oe-nested">
                                             <ol>
                                                 <li>mn</li>
                                             </ol>
@@ -295,13 +321,16 @@ describe("Mixed", () => {
             contentBefore: unformat(`
                     <ul>
                         <li>a</li>
-                        <li><p>b</p>
+                        <li>b</li>
+                        <li class="oe-nested">
                             <ol>
                                 <li>c</li>
-                                <li><p>d</p>
+                                <li>d</li>
+                                <li class="oe-nested">
                                     <ul>
                                         <li>[]e</li>
-                                        <li><p>f</p>
+                                        <li>f</li>
+                                        <li class="oe-nested">
                                             <ul>
                                                 <li>g</li>
                                             </ul>
@@ -318,13 +347,16 @@ describe("Mixed", () => {
             contentAfter: unformat(`
                     <ul>
                         <li>a</li>
-                        <li><p>b</p>
+                        <li>b</li>
+                        <li class="oe-nested">
                             <ol>
                                 <li>c</li>
-                                <li><p>d</p>
+                                <li>d</li>
+                                <li class="oe-nested">
                                     <ol>
                                         <li>[]e</li>
-                                        <li><p>f</p>
+                                        <li>f</li>
+                                        <li class="oe-nested">
                                             <ul>
                                                 <li>g</li>
                                             </ul>
@@ -362,10 +394,13 @@ describe("Mixed", () => {
         await testEditor({
             contentBefore: unformat(`
                     <ul class="o_checklist">
-                        <li><p>title</p>
+                        <li class="o_checked">title</li>
+                        <li class="oe-nested">
                             <ul class="o_checklist">
                                 <li class="o_checked">abc</li>
                             </ul>
+                        </li>
+                        <li class="oe-nested">
                             <ul>
                                 <li>d[e]f</li>
                             </ul>
@@ -374,7 +409,8 @@ describe("Mixed", () => {
             stepFunction: toggleCheckList,
             contentAfter: unformat(`
                     <ul class="o_checklist">
-                        <li><p>title</p>
+                        <li class="o_checked">title</li>
+                        <li class="oe-nested">
                             <ul class="o_checklist">
                                 <li class="o_checked">abc</li>
                                 <li>d[e]f</li>

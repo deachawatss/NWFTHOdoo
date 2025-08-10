@@ -1,70 +1,31 @@
 import { Component } from "@odoo/owl";
-import { Orderline } from "@point_of_sale/app/components/orderline/orderline";
+import { Orderline } from "@point_of_sale/app/generic_components/orderline/orderline";
+import { OrderWidget } from "@point_of_sale/app/generic_components/order_widget/order_widget";
 import { ReceiptHeader } from "@point_of_sale/app/screens/receipt_screen/receipt/receipt_header/receipt_header";
-import { OrderDisplay } from "@point_of_sale/app/components/order_display/order_display";
-import { qrCodeSrc } from "@point_of_sale/utils";
-import { _t } from "@web/core/l10n/translation";
-import { formatCurrency } from "@web/core/currency";
+import { omit } from "@web/core/utils/objects";
 
 export class OrderReceipt extends Component {
     static template = "point_of_sale.OrderReceipt";
     static components = {
         Orderline,
-        OrderDisplay,
+        OrderWidget,
         ReceiptHeader,
     };
     static props = {
-        order: Object,
+        data: Object,
+        formatCurrency: Function,
         basic_receipt: { type: Boolean, optional: true },
     };
     static defaultProps = {
         basic_receipt: false,
     };
-
-    get header() {
-        return {
-            company: this.order.company,
-            cashier: _t("Served by %s", this.order?.getCashierName()),
-            header: this.order.config.receipt_header,
-        };
+    omit(...args) {
+        return omit(...args);
     }
-
-    get order() {
-        return this.props.order;
-    }
-
-    get qrCode() {
-        const baseUrl = this.order.config._base_url;
-        return (
-            this.order.company.point_of_sale_use_ticket_qr_code &&
-            this.order.finalized &&
-            qrCodeSrc(`${baseUrl}/pos/ticket?order_uuid=${this.order.uuid}`)
-        );
-    }
-
-    get paymentLines() {
-        return this.order.payment_ids.filter((p) => !p.is_change);
-    }
-
-    formatCurrency(amount) {
-        return formatCurrency(amount, this.order.currency.id);
-    }
-
     doesAnyOrderlineHaveTaxLabel() {
-        return this.order.lines?.some((line) => line.taxGroupLabels);
+        return this.props.data.orderlines.some((line) => line.taxGroupLabels);
     }
-
     getPortalURL() {
-        return `${this.order.config._base_url}/pos/ticket`;
-    }
-
-    get vatText() {
-        if (this.order.company.country_id?.vat_label) {
-            return _t("%(vatLabel)s: %(vatId)s", {
-                vatLabel: this.order.company.country_id.vat_label,
-                vatId: this.order.company.vat,
-            });
-        }
-        return _t("Tax ID: %(vatId)s", { vatId: this.order.company.vat });
+        return `${this.props.data.base_url}/pos/ticket`;
     }
 }

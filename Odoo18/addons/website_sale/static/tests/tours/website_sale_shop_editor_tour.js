@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { clickOnSave, registerWebsitePreviewTour } from '@website/js/tours/tour_utils';
 
 registerWebsitePreviewTour("shop_editor", {
@@ -37,11 +39,11 @@ registerWebsitePreviewTour("shop_editor_set_product_ribbon", {
     run: "click",
 }, {
     content: "Open the ribbon selector",
-    trigger: ".o_wsale_ribbon_select + button:contains('None')",
+    trigger: ".o_wsale_ribbon_select we-toggler",
     run: "click",
 }, {
     content: "Select a ribbon",
-    trigger: ".o_popover div.o-dropdown-item:contains('Sale')",
+    trigger: '.o_wsale_ribbon_select we-button:contains("Sale")',
     run: "click",
 },
 ...clickOnSave(),

@@ -6,7 +6,8 @@ from odoo import _, http
 from odoo.exceptions import UserError
 from odoo.http import request
 from odoo.tools import consteq, replace_exceptions
-from odoo.addons.mail.tools.discuss import add_guest_to_context, Store
+from odoo.addons.mail.models.discuss.mail_guest import add_guest_to_context
+from odoo.addons.mail.tools.discuss import Store
 
 
 class PublicPageController(http.Controller):
@@ -45,7 +46,7 @@ class PublicPageController(http.Controller):
         # sudo: discuss.channel - channel access is validated with invitation_token
         if not channel or not channel.sudo().uuid or not consteq(channel.sudo().uuid, invitation_token):
             raise NotFound()
-        store = Store().add_global_values(isChannelTokenSecret=True)
+        store = Store({"isChannelTokenSecret": True})
         return self._response_discuss_channel_invitation(store, channel)
 
     @http.route("/discuss/channel/<int:channel_id>", methods=["GET"], type="http", auth="public")
@@ -78,7 +79,7 @@ class PublicPageController(http.Controller):
                 # commit the current transaction and get the channel.
                 request.env.cr.commit()
                 channel_sudo = channel_sudo.search([("uuid", "=", create_token)])
-        store = Store().add_global_values(isChannelTokenSecret=False)
+        store = Store({"isChannelTokenSecret": False})
         return self._response_discuss_channel_invitation(store, channel_sudo.sudo(False))
 
     def _response_discuss_channel_invitation(self, store, channel):
@@ -86,7 +87,7 @@ class PublicPageController(http.Controller):
         # sudo - res.groups: can access group public id of parent channel to determine if we
         # can access the channel.
         group_public_id = channel.group_public_id or channel.parent_channel_id.sudo().group_public_id
-        if group_public_id and group_public_id not in request.env.user.all_group_ids:
+        if group_public_id and group_public_id not in request.env.user.groups_id:
             raise request.not_found()
         guest_already_known = channel.env["mail.guest"]._get_guest_from_context()
         with replace_exceptions(UserError, by=NotFound()):
@@ -97,15 +98,17 @@ class PublicPageController(http.Controller):
                 timezone=request.env["mail.guest"]._get_timezone_from_request(request),
             )
         if guest and not guest_already_known:
-            store.add_global_values(shouldDisplayWelcomeViewInitially=True)
+            store.add({"shouldDisplayWelcomeViewInitially": True})
             channel = channel.with_context(guest=guest)
         return self._response_discuss_public_template(store, channel)
 
-    def _response_discuss_public_template(self, store: Store, channel):
-        store.add_global_values(
-            companyName=request.env.company.name,
-            discuss_public_thread=Store.One(channel),
-            inPublicPage=True,
+    def _response_discuss_public_template(self, store, channel):
+        store.add(
+            {
+                "companyName": request.env.company.name,
+                "inPublicPage": True,
+                "discuss_public_thread": Store.one(channel),
+            }
         )
         return request.render(
             "mail.discuss_public_channel_template",

@@ -1,6 +1,7 @@
-import { registry } from "@web/core/registry";
-import { clickOnElement } from '@website/js/tours/tour_utils';
-import * as tourUtils from "@website_sale/js/tours/tour_utils";
+/** @odoo-module **/
+
+    import { registry } from "@web/core/registry";
+    import * as tourUtils from "@website_sale/js/tours/tour_utils";
 
     registry.category("web_tour.tours").add('product_comparison', {
         url: "/shop",
@@ -13,11 +14,11 @@ import * as tourUtils from "@website_sale/js/tours/tour_utils";
     },
     {
         content: "check compare button contains one product",
-        trigger: 'button[name="product_comparison_button"] .badge:contains(1)',
+        trigger: '.o_product_circle:contains(1)',
     },
     {
-        content: "check popover is closed",
-        trigger: 'body:not(:has([name="product_comparison_popover"]))',
+        content: "check popover is closed when only one product",
+        trigger: 'body:not(:has(.comparator-popover))',
     },
     {
         content: "add second product 'Color Pants' in a comparison list",
@@ -25,21 +26,19 @@ import * as tourUtils from "@website_sale/js/tours/tour_utils";
         run: "hover && click .oe_product_cart:contains(Color Pants) .o_add_compare",
     },
     {
-        content: "open the comparison popover",
-        trigger: 'button[name="product_comparison_button"]',
-        run: "click",
+        trigger: ".comparator-popover",
     },
     {
-        content: "check that the compare button contains two products",
-        trigger: 'button[name="product_comparison_button"] .badge:contains(2)',
-    },
-    {
-        content: "check products name are correct in the comparelist",
-        trigger: '[name="product_comparison_popover_row"]:contains("Color T-Shirt")',
+        content: "check popover is now open and compare button contains two products",
+        trigger: ' .o_product_circle:contains(2)',
     },
     {
         content: "check products name are correct in the comparelist",
-        trigger: '[name="product_comparison_popover_row"]:contains("Color Pants")',
+        trigger: '.o_product_row:contains("Color T-Shirt")',
+    },
+    {
+        content: "check products name are correct in the comparelist",
+        trigger: '.o_product_row:contains("Color Pants")',
     },
     // test form product page
     {
@@ -50,11 +49,11 @@ import * as tourUtils from "@website_sale/js/tours/tour_utils";
     },
     {
         content: "check compare button is still there and contains 2 products",
-        trigger: 'button[name="product_comparison_button"] .badge:contains(2)',
+        trigger: '.o_product_circle:contains(2)',
     },
     {
         content: "check popover is closed after changing page",
-        trigger: 'body:not(:has([name="product_comparison_popover"]))',
+        trigger: 'body:not(:has(.comparator-popover))',
     },
     {
         content: "add first variant to comparelist",
@@ -62,13 +61,11 @@ import * as tourUtils from "@website_sale/js/tours/tour_utils";
         run: "click",
     },
     {
-        content: "open the comparison popover",
-        trigger: 'button[name="product_comparison_button"]',
-        run: "click",
+        trigger: ".comparator-popover",
     },
     {
         content: "check the comparelist is now open and contains 3rd product with correct variant",
-        trigger: '[name="product_comparison_popover_row"]:contains("Color Shoes (Red)")',
+        trigger: '.o_product_row:contains("Color Shoes (Red)")',
     },
     {
         content: "select 2nd variant(Pink Color)",
@@ -87,16 +84,15 @@ import * as tourUtils from "@website_sale/js/tours/tour_utils";
         run: "click",
     },
     {
-        trigger: 'button[name="product_comparison_button"]:has(.badge:contains(4))',
-        run: "click",
+        trigger: '.o_product_circle:contains(4)',
     },
     {
         content: "comparelist contains 4th product with correct variant",
-        trigger: '[name="product_comparison_popover_row"]:contains("Color Shoes (Red)")',
+        trigger: '.o_product_row:contains("Color Shoes (Red)"):not(:visible)',
     },
     {
         content: "check limit is not reached",
-        trigger: ':not(.o_notification:contains("You can compare up to 4 products at a time."))',
+        trigger: ':not(.o_comparelist_limit_warning)',
     },
     {
         content: "select 3nd variant(Custom)",
@@ -112,17 +108,18 @@ import * as tourUtils from "@website_sale/js/tours/tour_utils";
         run: "click",
     },
     {
-        content: "check limit is reached",
-        trigger: '.o_notification:contains("You can compare up to 4 products at a time.")',
-    },
-    {
-        content: "open the comparison popover",
-        trigger: 'button[name="product_comparison_button"]',
+        content: "Ensure the comparator popover is visible. Click too fast can toggle it",
+        isActive: ["body:not(:has(.comparator-popover))"],
+        trigger: ".o_add_compare_dyn",
         run: "click",
     },
     {
+        content: "check limit is reached",
+        trigger: '.o_comparelist_limit_warning',
+    },
+    {
         content: "click on compare button",
-        trigger: 'a[name="product_comparison_popover_button"]',
+        trigger: '.o_comparelist_button a',
         run: "click",
         expectUnloadPage: true,
     },
@@ -154,22 +151,21 @@ import * as tourUtils from "@website_sale/js/tours/tour_utils";
         trigger: '#o_comparelist_table:not(:contains("Color Shoes (Pink)"))',
     },
     {
-        content: "open the comparison popover",
-        trigger: 'button[name="product_comparison_button"]',
+        trigger: 'body:has(.o_product_row:contains("Color T-Shirt") .o_remove)',
+    },
+    {
+        content: "open compare menu",
+        trigger: '.o_product_panel_header',
         run: "click",
     },
     {
         content: "remove product",
-        trigger: '[name="product_comparison_popover_row"]:contains("Color T-Shirt") button:has(i.fa-trash)',
+        trigger: '.o_product_row:contains("Color T-Shirt") .o_remove',
         run: "click",
     },
     {
-        content: "wait for 'Color T-Shirt' to be removed from the popover",
-        trigger: '[name="product_comparison_popover"]:not(:contains("Color T-Shirt"))',
-    },
-    {
         content: "click on compare button to reload",
-        trigger: 'a[name="product_comparison_popover_button"]',
+        trigger: '.o_comparelist_button a',
         run: "click",
         expectUnloadPage: true,
     },
@@ -179,10 +175,9 @@ import * as tourUtils from "@website_sale/js/tours/tour_utils";
     },
     {
         content: "add product 'Color Pants' to cart",
-        trigger: '.product_summary:contains("Color Pants") button:contains("Add to Cart")',
+        trigger: '.product_summary:contains("Color Pants") .a-submit:contains("Add to Cart")',
         run: "click",
     },
-        clickOnElement('Continue Shopping', 'button:contains("Continue Shopping")'),
         tourUtils.goToCart(),
     {
         content: "check product correctly added to cart",

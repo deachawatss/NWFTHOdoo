@@ -4,12 +4,10 @@ import {
     defineMailModels,
     insertText,
     openDiscuss,
-    setupChatHub,
     start,
     startServer,
 } from "@mail/../tests/mail_test_helpers";
 import { describe, test } from "@odoo/hoot";
-import { mockDate } from "@odoo/hoot-mock";
 import { Command, getService, serverState, withUser } from "@web/../tests/web_test_helpers";
 
 describe.current.tags("desktop");
@@ -37,29 +35,28 @@ test("should display the channel invitation form after clicking on the invite bu
 });
 
 test("can invite users in channel from chat window", async () => {
-    mockDate("2025-01-01 12:00:00", +1);
     const pyEnv = await startServer();
     const partnerId = pyEnv["res.partner"].create({
         email: "testpartner@odoo.com",
         name: "TestPartner",
     });
     pyEnv["res.users"].create({ partner_id: partnerId });
-    const channelId = pyEnv["discuss.channel"].create({
+    pyEnv["discuss.channel"].create({
         name: "TestChannel",
+        channel_member_ids: [
+            Command.create({ fold_state: "open", partner_id: serverState.partnerId }),
+        ],
         channel_type: "channel",
     });
-    setupChatHub({ opened: [channelId] });
     await start();
-    // dropdown requires an extra delay before click (because handler is registered in useEffect)
-    await contains("[title='Open Actions Menu']");
     await click("[title='Open Actions Menu']");
     await click(".o-dropdown-item", { text: "Invite People" });
     await contains(".o-discuss-ChannelInvitation");
     await click(".o-discuss-ChannelInvitation-selectable", { text: "TestPartner" });
-    await click(".o-discuss-ChannelInvitation [title='Invite']:enabled");
+    await click("[title='Invite to Channel']:enabled");
     await contains(".o-discuss-ChannelInvitation", { count: 0 });
     await contains(".o-mail-Thread .o-mail-NotificationMessage", {
-        text: "Mitchell Admin invited TestPartner to the channel1:00 PM",
+        text: "Mitchell Admin invited TestPartner to the channel",
     });
 });
 
@@ -102,6 +99,7 @@ test("Invitation form should display channel group restriction", async () => {
     });
     const channelId = pyEnv["discuss.channel"].create({
         name: "TestChannel",
+        channel_member_ids: [Command.create({ partner_id: serverState.partnerId })],
         channel_type: "channel",
         group_public_id: groupId,
     });

@@ -198,7 +198,7 @@ class TestProjectPurchaseProfitability(TestProjectProfitabilityCommon, TestPurch
         })
         purchase_order.button_confirm()
         self.assertEqual(purchase_order.invoice_status, 'to invoice')
-        # The section "purchase_order" should appear as the purchase order is validated, the total should be updated,
+        # no section "purchase_order" should appear as no purchase order is invoiced, the total should be updated,
         # the "other_purchase_costs" shouldn't change, as we don't take into
         # account bills from purchase orders, as those are already taken into calculations
         # from the purchase orders (in "purchase_order" section)
@@ -210,12 +210,8 @@ class TestProjectPurchaseProfitability(TestProjectProfitabilityCommon, TestPurch
                     'sequence': self.project._get_profitability_sequence_per_invoice_type()['other_costs_aal'],
                     'to_bill': 0.0,
                     'billed': -150.1,
-                },{
-                    'id': 'purchase_order',
-                    'sequence': self.project._get_profitability_sequence_per_invoice_type()['purchase_order'],
-                    'to_bill': -self.product_order.standard_price * analytic_contribution,
-                    'billed': 0.0,
-                }, {
+                },
+                {
                     'id': 'other_purchase_costs',
                     'sequence': self.project._get_profitability_sequence_per_invoice_type()['other_purchase_costs'],
                     'to_bill': 0.0,
@@ -224,7 +220,7 @@ class TestProjectPurchaseProfitability(TestProjectProfitabilityCommon, TestPurch
                                 self.service_deliver.standard_price) * analytic_contribution,
                 }],
                 'total': {
-                    'to_bill': -self.product_order.standard_price * analytic_contribution,
+                    'to_bill': 0.0,
                     'billed': -(2 * self.product_a.standard_price +
                                 2 * self.product_b.standard_price -
                                 self.service_deliver.standard_price) * analytic_contribution - 150.1,
@@ -345,14 +341,9 @@ class TestProjectPurchaseProfitability(TestProjectProfitabilityCommon, TestPurch
         self.assertDictEqual(
             self.project._get_profitability_items(False)['costs'],
             {
-                'data': [{
-                    'id': 'purchase_order',
-                    'sequence': self.project._get_profitability_sequence_per_invoice_type()['purchase_order'],
-                    'to_bill': -(self.product_order.standard_price * (analytic_ratios["project_ratio"] / 100)),
-                    'billed': 0.0,
-                }],
+                'data': [],
                 'total': {
-                    'to_bill': -(self.product_order.standard_price * (analytic_ratios["project_ratio"] / 100)),
+                    'to_bill': 0.0,
                     'billed': 0.0,
                 },
             },
@@ -505,19 +496,15 @@ class TestProjectPurchaseProfitability(TestProjectProfitabilityCommon, TestPurch
         purchase_order_foreign.button_confirm()
         self.assertEqual(purchase_order_foreign.invoice_status, 'to invoice')
 
-        # The section "purchase_order" should appear because the purchase order is validated, the total should be updated,
+        # No section "purchase_order" should appear because no purchase order is invoiced, the total should be updated,
         # but the "other_purchase_costs" shouldn't change, as we don't take into
         # account bills from purchase orders in this section.
         items = project._get_profitability_items(with_action=False)['costs']
-        self.assertEqual('purchase_order', items['data'][0]['id'])
-        self.assertEqual(project._get_profitability_sequence_per_invoice_type()['purchase_order'], items['data'][0]['sequence'])
-        self.assertEqual(0.0, items['data'][0]['billed'])
-        self.assertEqual(float_compare(-self.product_order.standard_price * analytic_contribution * 0.6, items['data'][0]['to_bill'], 2), 0)
-        self.assertEqual('other_purchase_costs', items['data'][1]['id'])
-        self.assertEqual(project._get_profitability_sequence_per_invoice_type()['other_purchase_costs'], items['data'][1]['sequence'])
-        self.assertEqual(0.0, items['data'][1]['to_bill'])
-        self.assertEqual(float_compare(-self.product_a.standard_price * analytic_contribution * 3.6, items['data'][1]['billed'], 2), 0)
-        self.assertEqual(float_compare(- self.product_order.standard_price * analytic_contribution * 0.6, items['total']['to_bill'], 2), 0)
+        self.assertEqual('other_purchase_costs', items['data'][0]['id'])
+        self.assertEqual(project._get_profitability_sequence_per_invoice_type()['other_purchase_costs'], items['data'][0]['sequence'])
+        self.assertEqual(0.0, items['data'][0]['to_bill'])
+        self.assertEqual(float_compare(-self.product_a.standard_price * analytic_contribution * 3.6, items['data'][0]['billed'], 2), 0)
+        self.assertEqual(0.0, items['total']['to_bill'])
         self.assertEqual(float_compare(-self.product_a.standard_price * analytic_contribution * 3.6, items['total']['billed'], 2), 0)
 
         # create a new purchase order
@@ -541,18 +528,13 @@ class TestProjectPurchaseProfitability(TestProjectProfitabilityCommon, TestPurch
         })
         purchase_order.button_confirm()
         self.assertEqual(purchase_order.invoice_status, 'to invoice')
-
-        # The section "purchase_order" should be updated with the new po values.
+        # Again, no section "purchase_order" should appear because no purchase order is invoiced.
         items = project._get_profitability_items(with_action=False)['costs']
-        self.assertEqual('purchase_order', items['data'][0]['id'])
-        self.assertEqual(project._get_profitability_sequence_per_invoice_type()['purchase_order'], items['data'][0]['sequence'])
-        self.assertEqual(0.0, items['data'][0]['billed'])
-        self.assertEqual(float_compare(-self.product_order.standard_price * analytic_contribution * 3.6, items['data'][0]['to_bill'], 2), 0)
-        self.assertEqual('other_purchase_costs', items['data'][1]['id'])
-        self.assertEqual(project._get_profitability_sequence_per_invoice_type()['other_purchase_costs'], items['data'][1]['sequence'])
-        self.assertEqual(0.0, items['data'][1]['to_bill'])
-        self.assertEqual(float_compare(-self.product_a.standard_price * analytic_contribution * 3.6, items['data'][1]['billed'], 2), 0)
-        self.assertEqual(float_compare(- self.product_order.standard_price * analytic_contribution * 3.6    , items['total']['to_bill'], 2), 0)
+        self.assertEqual('other_purchase_costs', items['data'][0]['id'])
+        self.assertEqual(project._get_profitability_sequence_per_invoice_type()['other_purchase_costs'], items['data'][0]['sequence'])
+        self.assertEqual(0.0, items['data'][0]['to_bill'])
+        self.assertEqual(float_compare(-self.product_a.standard_price * analytic_contribution * 3.6, items['data'][0]['billed'], 2), 0)
+        self.assertEqual(0.0, items['total']['to_bill'])
         self.assertEqual(float_compare(-self.product_a.standard_price * analytic_contribution * 3.6, items['total']['billed'], 2), 0)
 
         self._create_invoice_for_po(purchase_order)
@@ -562,13 +544,13 @@ class TestProjectPurchaseProfitability(TestProjectProfitabilityCommon, TestPurch
         items = project._get_profitability_items(with_action=False)['costs']
         self.assertEqual('purchase_order', items['data'][0]['id'])
         self.assertEqual(project._get_profitability_sequence_per_invoice_type()['purchase_order'], items['data'][0]['sequence'])
-        self.assertEqual(float_compare(-self.product_order.standard_price * analytic_contribution * 0.6, items['data'][0]['to_bill'], 2), 0)
+        self.assertEqual(0.0, items['data'][0]['to_bill'])
         self.assertEqual(float_compare(-self.product_order.standard_price * analytic_contribution * 3, items['data'][0]['billed'], 2), 0)
         self.assertEqual('other_purchase_costs', items['data'][1]['id'])
         self.assertEqual(project._get_profitability_sequence_per_invoice_type()['other_purchase_costs'], items['data'][1]['sequence'])
         self.assertEqual(0.0, items['data'][1]['to_bill'])
         self.assertEqual(float_compare(-self.product_a.standard_price * analytic_contribution * 3.6, items['data'][1]['billed'], 2), 0)
-        self.assertEqual(float_compare(-self.product_order.standard_price * analytic_contribution * 0.6, items['total']['to_bill'], 2), 0)
+        self.assertEqual(0.0, items['total']['to_bill'])
         self.assertEqual(float_compare(-self.product_a.standard_price * analytic_contribution * 3.6 - self.product_order.standard_price * analytic_contribution * 3, items['total']['billed'], 2), 0)
 
         self._create_invoice_for_po(purchase_order_foreign)
@@ -627,7 +609,7 @@ class TestProjectPurchaseProfitability(TestProjectProfitabilityCommon, TestPurch
                 'analytic_distribution': {self.analytic_account.id: 100},
                 'product_id': self.product_order.id,
                 'product_qty': 2,  # plural value to check if the price is multiplied more than once
-                'tax_ids': [included_tax.id],  # set the included tax
+                'taxes_id': [included_tax.id],  # set the included tax
                 'price_unit': self.product_order.standard_price,
                 'currency_id': self.env.company.currency_id.id,
             })],
@@ -687,7 +669,7 @@ class TestProjectPurchaseProfitability(TestProjectProfitabilityCommon, TestPurch
         })
         purchase_order.button_confirm()
         # changing the uom to a higher number
-        purchase_order.order_line.product_uom_id = self.env.ref("uom.product_uom_dozen")
+        purchase_order.order_line.product_uom = self.env.ref("uom.product_uom_dozen")
         purchase_order.action_create_invoice()
         self.assertDictEqual(
             self.project._get_profitability_items(False)['costs'],
@@ -772,33 +754,3 @@ class TestProjectPurchaseProfitability(TestProjectProfitabilityCommon, TestPurch
             'billed': 0.0,
             'to_bill': 0.0,
         })
-
-    def test_project_purchase_profitability_without_analytic_distribution(self):
-        purchase_order = self.env['purchase.order'].create({
-            "name": "A purchase order",
-            "partner_id": self.partner_a.id,
-            "order_line": [Command.create({
-                'analytic_distribution': {self.analytic_account.id: 100},
-                'product_id': self.product_order.id,
-            })],
-        })
-        purchase_order.button_confirm()
-
-        vendor_bill = self._create_invoice_for_po(purchase_order)
-        vendor_bill.invoice_line_ids.analytic_distribution = False
-
-        self.assertDictEqual(
-            self.project._get_profitability_items(False)['costs'],
-            {
-                'data': [{
-                    'id': 'purchase_order',
-                    'sequence': self.project._get_profitability_sequence_per_invoice_type()['purchase_order'],
-                    'to_bill': 0.0,
-                    'billed': 0.0,
-                }],
-                'total': {
-                    'to_bill': 0.0,
-                    'billed': 0.0,
-                },
-            },
-        )

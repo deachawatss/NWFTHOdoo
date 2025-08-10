@@ -27,6 +27,5 @@ following:
             'pos_paytm/static/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

@@ -36,8 +36,6 @@ const actionRegistry = registry.category("actions");
 class Partner extends models.Model {
     _rec_name = "display_name";
 
-    start = fields.Date();
-
     _records = [
         { id: 1, display_name: "First record" },
         { id: 2, display_name: "Second record" },
@@ -60,9 +58,13 @@ class Partner extends models.Model {
                         <field name="display_name"/>
                     </t>
                 </templates>
-            </kanban>`,
-        list: /* xml */ `<list><field name="display_name"/></list>`,
-        calendar: /* xml */ `<calendar date_start="start"/>`,
+            </kanban>
+        `,
+        "list,2": /* xml */ `
+            <list>
+                <field name="display_name" />
+            </list>
+        `,
     };
 }
 
@@ -75,8 +77,8 @@ class Pony extends models.Model {
         { id: 9, name: "Fluttershy" },
     ];
     _views = {
-        list: /* xml */ `<list><field name="name"/></list>`,
-        form: /* xml */ `<form><field name="name"/></form>`,
+        list: `<list><field name="name"/></list>`,
+        form: `<form><field name="name"/></form>`,
     };
 }
 
@@ -91,7 +93,6 @@ defineActions([
         views: [
             [false, "list"],
             [1, "kanban"],
-            [false, "calendar"],
             [false, "form"],
         ],
     },
@@ -102,7 +103,7 @@ defineActions([
         res_model: "partner",
         views: [
             [1, "kanban"],
-            [false, "list"],
+            [2, "list"],
             [false, "form"],
         ],
     },
@@ -170,6 +171,7 @@ test("handle switching view and switching back on slow network", async () => {
         "/web/action/load",
         "get_views",
         "web_search_read",
+        "web_search_read",
         "has_group",
         "web_search_read",
     ]);
@@ -208,21 +210,10 @@ test("clicking quickly on breadcrumbs...", async () => {
 
 test.tags("desktop");
 test("execute a new action while loading a lazy-loaded controller", async () => {
-    defineActions([
-        {
-            id: 77,
-            type: "ir.actions.act_window",
-            res_model: "partner",
-            views: [
-                [false, "calendar"],
-                [false, "form"],
-            ],
-        },
-    ]);
-    redirect("/odoo/action-77/2?cids=1");
+    redirect("/odoo/action-4/2?cids=1");
 
     let def;
-    onRpc("partner", "search_read", () => def);
+    onRpc("partner", "web_search_read", () => def);
     stepAllNetworkCalls();
 
     await mountWithCleanup(WebClient);
@@ -246,7 +237,7 @@ test("execute a new action while loading a lazy-loaded controller", async () => 
         "/web/action/load",
         "get_views",
         "web_read",
-        "search_read",
+        "web_search_read",
         "/web/action/load",
         "get_views",
         "web_search_read",
@@ -405,7 +396,6 @@ test("execute a new action while loading views", async () => {
         "/web/action/load",
         "get_views",
         "web_search_read",
-        "has_group",
     ]);
 });
 
@@ -413,20 +403,14 @@ test.tags("desktop");
 test("execute a new action while loading data of default view", async () => {
     const def = new Deferred();
     stepAllNetworkCalls();
-    onRpc("web_read", () => def);
+    onRpc("web_search_read", () => def);
 
     await mountWithCleanup(WebClient);
-    // execute a first action (its 'web_read' RPC is blocked)
-    getService("action").doAction({
-        name: "A Partner",
-        res_model: "partner",
-        res_id: 1,
-        type: "ir.actions.act_window",
-        views: [[false, "form"]],
-    });
+    // execute a first action (its 'search_read' RPC is blocked)
+    getService("action").doAction(3);
     await animationFrame();
-    expect(".o_form_view").toHaveCount(0, {
-        message: "should not display the form view",
+    expect(".o_list_view").toHaveCount(0, {
+        message: "should not display the list view of action 3",
     });
 
     // execute another action meanwhile (and unlock the RPC)
@@ -436,52 +420,51 @@ test("execute a new action while loading data of default view", async () => {
     expect(".o_kanban_view").toHaveCount(1, {
         message: "should display the kanban view of action 4",
     });
-    expect(".o_form_view").toHaveCount(0, {
-        message: "should not display the form view",
+    expect(".o_list_view").toHaveCount(0, {
+        message: "should not display the list view of action 3",
     });
     expect(queryAllTexts(".breadcrumb-item, .o_breadcrumb .active")).toEqual(["Partners Action 4"]);
     expect.verifySteps([
         "/web/webclient/translations",
         "/web/webclient/load_menus",
-        "get_views",
-        "web_read",
         "/web/action/load",
         "get_views",
         "web_search_read",
         "has_group",
+        "/web/action/load",
+        "get_views",
+        "web_search_read",
     ]);
 });
 
 test.tags("desktop");
 test("open a record while reloading the list view", async () => {
     let def;
-    onRpc("search_read", () => def);
+    onRpc("web_search_read", () => def);
 
     await mountWithCleanup(WebClient);
     await getService("action").doAction(3);
-    expect(".o_calendar_view").toHaveCount(0);
     expect(".o_list_view").toHaveCount(1);
     expect(".o_list_view .o_data_row").toHaveCount(2);
-    expect(".o_control_panel .o_list_button_add").toHaveCount(1);
+    expect(".o_control_panel .o_list_buttons").toHaveCount(1);
 
     // reload (the search_read RPC will be blocked)
     def = new Deferred();
-    await switchView("calendar");
+    await switchView("list");
     expect(".o_list_view .o_data_row").toHaveCount(2);
-    expect(".o_control_panel .o_list_button_add").toHaveCount(1);
+    expect(".o_control_panel .o_list_buttons").toHaveCount(1);
 
     // open a record in form view
     await contains(".o_list_view .o_data_cell").click();
     expect(".o_form_view").toHaveCount(1);
-    expect(".o_control_panel .o_list_button_add").toHaveCount(0);
+    expect(".o_control_panel .o_list_buttons").toHaveCount(0);
 
     // unblock the search_read RPC
     def.resolve();
     await animationFrame();
     expect(".o_form_view").toHaveCount(1);
     expect(".o_list_view").toHaveCount(0);
-    expect(".o_calendar_view").toHaveCount(0);
-    expect(".o_control_panel .o_list_button_add").toHaveCount(0);
+    expect(".o_control_panel .o_list_buttons").toHaveCount(0);
 });
 
 test("properly drop client actions after new action is initiated", async () => {
@@ -616,18 +599,15 @@ test("switching when doing an action -- get_views slow", async () => {
 test.tags("desktop");
 test("switching when doing an action -- search_read slow", async () => {
     const def = new Deferred();
-    onRpc("search_read", () => def);
+    const defs = [null, def, null];
+    onRpc("web_search_read", () => defs.shift());
     stepAllNetworkCalls();
 
     await mountWithCleanup(WebClient);
     await getService("action").doAction(3);
     expect(".o_list_view").toHaveCount(1);
 
-    getService("action").doAction({
-        type: "ir.actions.act_window",
-        res_model: "partner",
-        views: [[false, "calendar"]],
-    });
+    getService("action").doAction(4);
     await animationFrame();
     await switchView("kanban");
     def.resolve();
@@ -642,8 +622,9 @@ test("switching when doing an action -- search_read slow", async () => {
         "get_views",
         "web_search_read",
         "has_group",
+        "/web/action/load",
         "get_views",
-        "search_read",
+        "web_search_read",
         "web_search_read",
     ]);
 });
@@ -651,16 +632,28 @@ test("switching when doing an action -- search_read slow", async () => {
 test.tags("desktop");
 test("click multiple times to open a record", async () => {
     const def = new Deferred();
-    onRpc("web_read", () => def);
+    const defs = [null, def];
+    onRpc("web_read", () => defs.shift());
 
     await mountWithCleanup(WebClient);
     await getService("action").doAction(3);
+    expect(".o_list_view").toHaveCount(1);
+
+    await contains(".o_list_view .o_data_cell").click();
+    expect(".o_form_view").toHaveCount(1);
+
+    await contains(".o_back_button").click();
     expect(".o_list_view").toHaveCount(1);
 
     const row1 = queryAll(".o_list_view .o_data_row")[0];
     const row2 = queryAll(".o_list_view .o_data_row")[1];
     await contains(row1.querySelector(".o_data_cell")).click();
     await contains(row2.querySelector(".o_data_cell")).click();
+    expect(".o_form_view").toHaveCount(1);
+    expect(queryAllTexts(".breadcrumb-item, .o_breadcrumb .active")).toEqual([
+        "Partners",
+        "Second record",
+    ]);
 
     def.resolve();
     await animationFrame();
@@ -712,9 +705,11 @@ test("local state, global state, and race conditions", async () => {
         static props = ["*"];
         setup() {
             this.id = id++;
-            expect.step(this.props.state || "no state");
+            expect.step(JSON.stringify(this.props.state || "no state"));
             useSetupAction({
-                getLocalState: () => ({ fromId: this.id }),
+                getLocalState: () => {
+                    return { fromId: this.id };
+                },
             });
             onWillStart(() => def);
         }
@@ -756,9 +751,9 @@ test("local state, global state, and race conditions", async () => {
     // of the first instantiated toy view.
 
     expect.verifySteps([
-        "no state", // setup first view instantiated
-        { fromId: 1 }, // setup second view instantiated
-        { fromId: 1 }, // setup third view instantiated
+        `"no state"`, // setup first view instantiated
+        `{"fromId":1}`, // setup second view instantiated
+        `{"fromId":1}`, // setup third view instantiated
     ]);
 });
 

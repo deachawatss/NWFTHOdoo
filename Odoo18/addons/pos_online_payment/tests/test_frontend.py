@@ -1,26 +1,27 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 import uuid
 from unittest.mock import patch
 
-from odoo import fields
-from odoo.fields import Command
+from odoo import Command, fields
 from odoo.tools import mute_logger
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 from odoo.addons.point_of_sale.tests.test_frontend import TestPointOfSaleHttpCommon
 from odoo.addons.mail.tests.common import mail_new_test_user
 from odoo.addons.pos_online_payment.tests.online_payment_common import OnlinePaymentCommon
 from odoo.addons.account.models.account_payment_method import AccountPaymentMethod
+from odoo.osv.expression import AND
 from odoo.addons.point_of_sale.tests.common import archive_products
 from odoo.exceptions import UserError
 
 import odoo.tests
 
 
-@odoo.tests.tagged('post_install', '-at_install')
+@odoo.tests.tagged('post_install', '-at_install', 'is_tour')
 class TestUi(TestPointOfSaleHttpCommon, OnlinePaymentCommon):
 
     def _get_url(self):
-        return f"/pos/ui/{self.pos_config.id}"
+        return f"/pos/ui?config_id={self.pos_config.id}"
 
     def start_pos_tour(self, tour_name, login="pos_user", **kwargs):
         self.start_tour(self._get_url(), tour_name, login=login, **kwargs)
@@ -28,7 +29,7 @@ class TestUi(TestPointOfSaleHttpCommon, OnlinePaymentCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.env.user.group_ids |= cls.env.ref('point_of_sale.group_pos_manager')
+
         # Code from addons/account_payment/tests/common.py:
         Method_get_payment_method_information = AccountPaymentMethod._get_payment_method_information
 
@@ -185,6 +186,7 @@ class TestUi(TestPointOfSaleHttpCommon, OnlinePaymentCommon):
             'uuid': order_uid,
             'name': order_pos_reference,
             'session_id': current_session.id,
+            'sequence_number': 1,
             'user_id': self.pos_user.id,
             'partner_id': False,
             'access_token': str(uuid.uuid4()),
@@ -210,7 +212,7 @@ class TestUi(TestPointOfSaleHttpCommon, OnlinePaymentCommon):
 
         create_result = self.env['pos.order'].with_user(self.pos_user).sync_from_ui([order_data])
         self.assertEqual(len(current_session.order_ids), 1)
-        order_id = next(result_order_data for result_order_data in create_result['pos.order'] if result_order_data['uuid'] == order_uid)['id']
+        order_id = next(result_order_data for result_order_data in create_result['pos.order'] if result_order_data['pos_reference'] == order_pos_reference)['id']
 
         order = self.env['pos.order'].search([('id', '=', order_id)])
         self.assertEqual(order.state, 'draft')

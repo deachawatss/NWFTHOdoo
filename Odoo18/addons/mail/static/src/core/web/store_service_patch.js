@@ -1,5 +1,6 @@
-import { fields } from "@mail/core/common/record";
+import { Record } from "@mail/core/common/record";
 import { Store } from "@mail/core/common/store_service";
+import { compareDatetime } from "@mail/utils/common/misc";
 import { browser } from "@web/core/browser/browser";
 import { _t } from "@web/core/l10n/translation";
 
@@ -11,8 +12,7 @@ const StorePatch = {
         super.setup(...arguments);
         this.activityCounter = 0;
         this.activity_counter_bus_id = 0;
-        /** @type {Object[]} */
-        this.activityGroups = fields.Attr([], {
+        this.activityGroups = Record.attr([], {
             onUpdate() {
                 this.onUpdateActivityGroups();
             },
@@ -26,33 +26,26 @@ const StorePatch = {
                 return getSortId(g1) - getSortId(g2);
             },
         });
-        this.inbox = fields.One("Thread");
-        this.starred = fields.One("Thread");
-        this.history = fields.One("Thread");
-    },
-    async initialize() {
-        await Promise.all([
-            this.fetchStoreData("failures"),
-            this.fetchStoreData("systray_get_activities"),
-            super.initialize(...arguments),
-        ]);
+        this.inbox = Record.one("Thread");
+        this.starred = Record.one("Thread");
+        this.history = Record.one("Thread");
     },
     onStarted() {
         super.onStarted(...arguments);
         this.inbox = {
-            display_name: _t("Inbox"),
             id: "inbox",
             model: "mail.box",
+            name: _t("Inbox"),
         };
         this.starred = {
-            display_name: _t("Starred"),
             id: "starred",
             model: "mail.box",
+            name: _t("Starred"),
         };
         this.history = {
-            display_name: _t("History"),
             id: "history",
             model: "mail.box",
+            name: _t("History"),
         };
         try {
             // useful for synchronizing activity data between multiple tabs
@@ -64,12 +57,22 @@ const StorePatch = {
             this.activityBroadcastChannel = null;
         }
     },
+    get initMessagingParams() {
+        return {
+            ...super.initMessagingParams,
+            failures: true,
+            systray_get_activities: true,
+        };
+    },
+    getNeedactionChannels() {
+        return this.getRecentChannels().filter((channel) => channel.importantCounter > 0);
+    },
+    getRecentChannels() {
+        return Object.values(this.Thread.records)
+            .filter((thread) => thread.model === "discuss.channel")
+            .sort((a, b) => compareDatetime(b.lastInterestDt, a.lastInterestDt) || b.id - a.id);
+    },
     onUpdateActivityGroups() {},
-    /**
-     * @param {string} resModel
-     * @param {number[]} resIds
-     * @param {number|undefined} defaultActivityTypeId
-     */
     async scheduleActivity(resModel, resIds, defaultActivityTypeId = undefined) {
         const context = {
             active_model: resModel,
@@ -79,7 +82,7 @@ const StorePatch = {
                 ? { default_activity_type_id: defaultActivityTypeId }
                 : {}),
         };
-        await new Promise((resolve) =>
+        return new Promise((resolve) =>
             this.env.services.action.doAction(
                 {
                     type: "ir.actions.act_window",
@@ -93,26 +96,17 @@ const StorePatch = {
                     target: "new",
                     context,
                 },
-                {
-                    onClose: resolve,
-                    additionalContext: {
-                        dialog_size: "large",
-                    },
-                }
+                { onClose: resolve }
             )
         );
     },
-    /**
-     * @param {object} param0
-     * @param {{ type: "INSERT"|"DELETE"|"RELOAD_CHATTER", payload: Partial<import("models").Activity> }} param0.data
-     */
     _onActivityBroadcastChannelMessage({ data }) {
         switch (data.type) {
             case "INSERT":
-                this.insert(data.payload, { broadcast: false });
+                this.Activity.insert(data.payload, { broadcast: false, html: true });
                 break;
             case "DELETE": {
-                const activity = this["mail.activity"].insert(data.payload, { broadcast: false });
+                const activity = this.Activity.insert(data.payload, { broadcast: false });
                 activity.remove({ broadcast: false });
                 break;
             }
@@ -150,7 +144,10 @@ const StorePatch = {
         }
         return false;
     },
-    /** @param {import("models").Thread} fromThread */
-    onLinkFollowed(fromThread) {},
+    onLinkFollowed(fromThread) {
+        if (!this.env.isSmall && fromThread?.model === "discuss.channel") {
+            fromThread.open(true, { autofocus: false });
+        }
+    },
 };
 patch(Store.prototype, StorePatch);

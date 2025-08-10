@@ -1,3 +1,4 @@
+/** @odoo-module */
 // @ts-check
 
 import { LoadingDataError } from "@spreadsheet/o_spreadsheet/errors";
@@ -153,16 +154,17 @@ export const LOADING_ERROR = new LoadingDataError();
 export class ModelNotFoundError extends Error {}
 
 /**
- * Return the fields of a given model.
+ * Perform a `fields_get` on the given model and return the fields.
  * If the model is not found, a `ModelNotFoundError` is thrown.
  *
- * @param {object} fieldService
+ * @param {ServerData} serverData
  * @param {string} model
  * @returns {Promise<import("@spreadsheet").OdooFields>}
  */
-export async function getFields(fieldService, model) {
+export async function getFields(serverData, model) {
     try {
-        return await fieldService.loadFields(model);
+        const fields = await serverData.fetch(model, "fields_get");
+        return fields;
     } catch (e) {
         if (e instanceof RPCError && e.code === 404) {
             throw new ModelNotFoundError(model);

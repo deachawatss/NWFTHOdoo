@@ -17,8 +17,7 @@ from odoo.addons.auth_totp.models.totp import ALGORITHM, DIGITS, TIMESTEP
 
 compress = functools.partial(re.sub, r'\s', '')
 
-
-class Auth_TotpWizard(models.TransientModel):
+class TOTPWizard(models.TransientModel):
     _name = 'auth_totp.wizard'
     _description = "2-Factor Setup Wizard"
 
@@ -29,7 +28,7 @@ class Auth_TotpWizard(models.TransientModel):
         attachment=False, store=True, readonly=True,
         compute='_compute_qrcode',
     )
-    code = fields.Char(string="Verification Code", size=7, store=False)
+    code = fields.Char(string="Verification Code", size=7)
 
     @api.depends('user_id.login', 'user_id.company_id.display_name', 'secret')
     def _compute_qrcode(self):
@@ -58,7 +57,7 @@ class Auth_TotpWizard(models.TransientModel):
     @check_identity
     def enable(self):
         try:
-            c = int(compress(self.env.context.get('code', '')))
+            c = int(compress(self.code))
         except ValueError:
             raise UserError(_("The verification code should only contain numbers"))
         if self.user_id._totp_try_setting(self.secret, c):

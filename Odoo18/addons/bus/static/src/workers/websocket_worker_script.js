@@ -1,10 +1,11 @@
+/** @odoo-module **/
 /* eslint-env worker */
 /* eslint-disable no-restricted-globals */
 
 import { WebsocketWorker } from "./websocket_worker";
 
 (function () {
-    const websocketWorker = new WebsocketWorker(self.name);
+    const websocketWorker = new WebsocketWorker();
 
     if (self.name.includes("shared")) {
         // The script is running in a shared worker: let's register every

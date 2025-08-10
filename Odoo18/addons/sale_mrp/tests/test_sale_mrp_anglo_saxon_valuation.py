@@ -3,28 +3,30 @@
 
 from odoo.tests import Form, tagged
 
-from odoo.addons.sale.tests.common import TestSaleCommon
 from odoo.addons.stock_account.tests.test_anglo_saxon_valuation_reconciliation_common import ValuationReconciliationTestCommon
 
 
 @tagged('post_install', '-at_install')
-class TestSaleMRPAngloSaxonValuation(TestSaleCommon, ValuationReconciliationTestCommon):
+class TestSaleMRPAngloSaxonValuation(ValuationReconciliationTestCommon):
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
 
         cls.env.user.company_id.anglo_saxon_accounting = True
+        cls.uom_unit = cls.env.ref('uom.product_uom_unit')
 
     @classmethod
-    def _create_product(cls, **create_vals):
-        if create_vals.get('is_storable'):
-            create_vals['categ_id'] = cls.stock_account_product_categ.id
-        return super()._create_product(**create_vals)
+    def _create_product(cls, **kwargs):
+        return super()._create_product(
+            categ_id=cls.stock_account_product_categ.id if kwargs.get('is_storable') else cls.env.ref('product.product_category_all').id,
+            **kwargs
+        )
 
     def test_sale_mrp_kit_bom_cogs(self):
         """Check invoice COGS aml after selling and delivering a product
         with Kit BoM having another product with Kit BoM as component"""
+
         # ----------------------------------------------
         # BoM of Kit A:
         #   - BoM Type: Kit
@@ -54,6 +56,7 @@ class TestSaleMRPAngloSaxonValuation(TestSaleCommon, ValuationReconciliationTest
 
         # Create BoM for Kit A
         bom_product_form = Form(self.env['mrp.bom'])
+        bom_product_form.product_id = self.kit_a
         bom_product_form.product_tmpl_id = self.kit_a.product_tmpl_id
         bom_product_form.product_qty = 3.0
         bom_product_form.type = 'phantom'
@@ -67,6 +70,7 @@ class TestSaleMRPAngloSaxonValuation(TestSaleCommon, ValuationReconciliationTest
 
         # Create BoM for Kit B
         bom_product_form = Form(self.env['mrp.bom'])
+        bom_product_form.product_id = self.kit_b
         bom_product_form.product_tmpl_id = self.kit_b.product_tmpl_id
         bom_product_form.product_qty = 10.0
         bom_product_form.type = 'phantom'
@@ -85,8 +89,9 @@ class TestSaleMRPAngloSaxonValuation(TestSaleCommon, ValuationReconciliationTest
                     'name': self.kit_a.name,
                     'product_id': self.kit_a.id,
                     'product_uom_qty': 1.0,
+                    'product_uom': self.kit_a.uom_id.id,
                     'price_unit': 1,
-                    'tax_ids': False,
+                    'tax_id': False,
                 })],
         })
         so.action_confirm()
@@ -173,6 +178,7 @@ class TestSaleMRPAngloSaxonValuation(TestSaleCommon, ValuationReconciliationTest
                     'name': product.name,
                     'product_id': product.id,
                     'product_uom_qty': 2,
+                    'product_uom': product.uom_id.id,
                     'price_unit': product.list_price
                 })],
                 'company_id': self.company_data['company'].id,
@@ -226,6 +232,7 @@ class TestSaleMRPAngloSaxonValuation(TestSaleCommon, ValuationReconciliationTest
 
         # Receive 3 components: one @10, one @20 and one @60
         in_moves = self.env['stock.move'].create([{
+            'name': 'IN move @%s' % p,
             'product_id': component.id,
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.company_data['default_warehouse'].lot_stock_id.id,
@@ -245,8 +252,9 @@ class TestSaleMRPAngloSaxonValuation(TestSaleCommon, ValuationReconciliationTest
                     'name': kit.name,
                     'product_id': kit.id,
                     'product_uom_qty': 3.0,
+                    'product_uom': kit.uom_id.id,
                     'price_unit': 100,
-                    'tax_ids': False,
+                    'tax_id': False,
                 })],
         })
         so.action_confirm()
@@ -267,6 +275,7 @@ class TestSaleMRPAngloSaxonValuation(TestSaleCommon, ValuationReconciliationTest
 
         # Receive one @100
         in_moves = self.env['stock.move'].create({
+            'name': 'IN move @100',
             'product_id': component.id,
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.company_data['default_warehouse'].lot_stock_id.id,
@@ -327,6 +336,7 @@ class TestSaleMRPAngloSaxonValuation(TestSaleCommon, ValuationReconciliationTest
 
         # Receive 3 components: one @10, one @20 and one @60
         in_moves = self.env['stock.move'].create([{
+            'name': 'IN move @%s' % p,
             'product_id': component.id,
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.company_data['default_warehouse'].lot_stock_id.id,
@@ -346,8 +356,9 @@ class TestSaleMRPAngloSaxonValuation(TestSaleCommon, ValuationReconciliationTest
                     'name': kit.name,
                     'product_id': kit.id,
                     'product_uom_qty': 3.0,
+                    'product_uom': kit.uom_id.id,
                     'price_unit': 100,
-                    'tax_ids': False,
+                    'tax_id': False,
                 })],
         })
         so.action_confirm()
@@ -368,6 +379,7 @@ class TestSaleMRPAngloSaxonValuation(TestSaleCommon, ValuationReconciliationTest
 
         # Receive one @100
         in_moves = self.env['stock.move'].create({
+            'name': 'IN move @100',
             'product_id': component.id,
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.company_data['default_warehouse'].lot_stock_id.id,
@@ -437,8 +449,9 @@ class TestSaleMRPAngloSaxonValuation(TestSaleCommon, ValuationReconciliationTest
                     'name': kit.name,
                     'product_id': kit.id,
                     'product_uom_qty': 1.0,
+                    'product_uom': kit.uom_id.id,
                     'price_unit': 5,
-                    'tax_ids': False,
+                    'tax_id': False,
                 })],
         })
         so.action_confirm()
@@ -489,8 +502,9 @@ class TestSaleMRPAngloSaxonValuation(TestSaleCommon, ValuationReconciliationTest
                     'name': kit.name,
                     'product_id': kit.id,
                     'product_uom_qty': 2.0,
+                    'product_uom': kit.uom_id.id,
                     'price_unit': 5,
-                    'tax_ids': False,
+                    'tax_id': False,
                 })],
         })
         so.action_confirm()
@@ -588,7 +602,7 @@ class TestSaleMRPAngloSaxonValuation(TestSaleCommon, ValuationReconciliationTest
                     'product_id': main_kit.id,
                     'product_uom_qty': 1.0,
                     'price_unit': 1,
-                    'tax_ids': False,
+                    'tax_id': False,
                 })],
         })
         so.action_confirm()

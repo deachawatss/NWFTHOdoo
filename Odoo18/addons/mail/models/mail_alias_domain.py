@@ -5,7 +5,7 @@ from odoo import api, exceptions, fields, models, _
 from odoo.addons.mail.models.mail_alias import dot_atom_text
 
 
-class MailAliasDomain(models.Model):
+class AliasDomain(models.Model):
     """ Model alias domains, now company-specific. Alias domains are email
     domains used to receive emails through catchall and bounce aliases, as
     well as using mail.alias records to redirect email replies.
@@ -40,14 +40,18 @@ class MailAliasDomain(models.Model):
              "'notifications@example.com' to override all outgoing emails.")
     default_from_email = fields.Char('Default From', compute='_compute_default_from_email')
 
-    _bounce_email_uniques = models.Constraint(
-        'UNIQUE(bounce_alias, name)',
-        'Bounce emails should be unique',
-    )
-    _catchall_email_uniques = models.Constraint(
-        'UNIQUE(catchall_alias, name)',
-        'Catchall emails should be unique',
-    )
+    _sql_constraints = [
+        (
+            'bounce_email_uniques',
+            'UNIQUE(bounce_alias, name)',
+            'Bounce emails should be unique'
+        ),
+        (
+            'catchall_email_uniques',
+            'UNIQUE(catchall_alias, name)',
+            'Catchall emails should be unique'
+        ),
+    ]
 
     @api.depends('bounce_alias', 'name')
     def _compute_bounce_email(self):
@@ -176,21 +180,6 @@ class MailAliasDomain(models.Model):
                 config_values['default_from'], is_email=True
             )
         return config_values
-
-    @api.model
-    def _find_aliases(self, email_list):
-        """ Utility method to find both alias domains aliases (bounce, catchall
-        or default from) and mail aliases from an email list. """
-        if not email_list:
-            return email_list
-        all_domains = self.search([])
-        aliases = all_domains.mapped('bounce_email') + all_domains.mapped('catchall_email') + all_domains.mapped('default_from_email')
-        # search on aliases using the proposed list, as we could have a lot of aliases
-        # better than returning 'all alias emails'
-        aliases += self.env['mail.alias'].search(
-            [('alias_full_name', 'in', email_list)]
-        ).mapped('alias_full_name')
-        return [email for email in email_list if email in aliases]
 
     @api.model
     def _migrate_icp_to_domain(self):

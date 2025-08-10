@@ -5,7 +5,7 @@ import { useDiscussSystray } from "@mail/utils/common/hooks";
 
 import { Component, useExternalListener, useRef, useState } from "@odoo/owl";
 
-import { hasTouch, isDisplayStandalone, isIOS } from "@web/core/browser/feature_detection";
+import { hasTouch } from "@web/core/browser/feature_detection";
 import { Dropdown } from "@web/core/dropdown/dropdown";
 import { useDropdownState } from "@web/core/dropdown/dropdown_hooks";
 import { _t } from "@web/core/l10n/translation";
@@ -20,11 +20,10 @@ export class MessagingMenu extends Component {
 
     setup() {
         super.setup();
-        this.isIosPwa = isIOS() && isDisplayStandalone();
         this.discussSystray = useDiscussSystray();
-        this.store = useService("mail.store");
+        this.store = useState(useService("mail.store"));
         this.hasTouch = hasTouch;
-        this.ui = useService("ui");
+        this.ui = useState(useService("ui"));
         this.state = useState({
             activeIndex: null,
             adding: false,
@@ -46,6 +45,9 @@ export class MessagingMenu extends Component {
     markAsRead(thread) {
         if (thread.needactionMessages.length > 0) {
             thread.markAllMessagesAsRead();
+        }
+        if (thread.model === "discuss.channel") {
+            thread.markAsRead();
         }
     }
 
@@ -125,16 +127,11 @@ export class MessagingMenu extends Component {
     get tabs() {
         return [
             {
-                counter: this.store.getDiscussSidebarCategoryCounter(this.store.discuss.chats.id),
                 icon: "fa fa-user",
                 id: "chat",
                 label: _t("Chat"),
             },
             {
-                channelHasUnread: Boolean(this.store.discuss.unreadChannels.length),
-                counter: this.store.getDiscussSidebarCategoryCounter(
-                    this.store.discuss.channels.id
-                ),
                 icon: "fa fa-users",
                 id: "channel",
                 label: _t("Channel"),
@@ -143,7 +140,7 @@ export class MessagingMenu extends Component {
     }
 
     openDiscussion(thread) {
-        thread.open({ focus: true, fromMessagingMenu: true, bypassCompact: true });
+        thread.open({ fromMessagingMenu: true });
         this.dropdown.close();
     }
 
@@ -162,10 +159,6 @@ export class MessagingMenu extends Component {
         if (this.store.discuss.activeTab !== "main") {
             this.store.discuss.thread = undefined;
         }
-    }
-
-    canUnpinItem(thread) {
-        return thread.canUnpin && thread.message_unread_counter === 0;
     }
 }
 

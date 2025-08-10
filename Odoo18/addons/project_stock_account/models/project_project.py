@@ -1,7 +1,8 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+from odoo.osv import expression
+
 from odoo import models, _lt
-from odoo.fields import Domain
 
 
 class Project(models.Model):
@@ -28,7 +29,11 @@ class Project(models.Model):
         return profitability_items
 
     def _get_items_from_aal_picking(self, with_action=True):
-        domain = Domain(self._get_domain_aal_with_no_move_line()) & Domain('category', '=', 'picking_entry')
+        domain = self._get_domain_aal_with_no_move_line()
+        domain = expression.AND([
+            domain,
+            [('category', '=', 'picking_entry')]
+        ])
         aal_other_search = self.env['account.analytic.line'].sudo().search_read(domain, ['id', 'amount', 'currency_id'])
         if not aal_other_search:
             return False

@@ -7,14 +7,12 @@ import time
 from datetime import datetime
 
 from dateutil.relativedelta import relativedelta
-from werkzeug.urls import url_encode, url_join
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
 from odoo.addons.payment import utils as payment_utils
 from odoo.addons.payment_razorpay import const
-from odoo.addons.payment_razorpay.controllers.main import RazorpayController
 
 
 _logger = logging.getLogger(__name__)
@@ -44,15 +42,10 @@ class PaymentTransaction(models.Model):
         order_id = self._razorpay_create_order(customer_id)['id']
         return {
             'razorpay_key_id': self.provider_id.razorpay_key_id,
-            'razorpay_public_token': self.provider_id.razorpay_public_token,
+            'razorpay_public_token': self.provider_id._razorpay_get_public_token(),
             'razorpay_customer_id': customer_id,
             'is_tokenize_request': self.tokenize,
             'razorpay_order_id': order_id,
-            'callback_url': url_join(
-                self.provider_id.get_base_url(),
-                f'{RazorpayController._return_url}?{url_encode({"reference": self.reference})}'
-            ),
-            'redirect': self.payment_method_id.code in const.REDIRECT_PAYMENT_METHOD_CODES,
         }
 
     def _razorpay_create_customer(self):
@@ -83,8 +76,7 @@ class PaymentTransaction(models.Model):
         """ Validate and format the phone number.
 
         :param str phone: The phone number to validate.
-        :returns: The formatted phone number.
-        :rtype: str
+        :return str: The formatted phone number.
         :raise ValidationError: If the phone number is missing or incorrect.
         """
         if not phone and self.tokenize:
@@ -403,27 +395,6 @@ class PaymentTransaction(models.Model):
         return source_tx._create_child_transaction(
             converted_amount, is_refund=True, provider_reference=refund_provider_reference
         )
-
-    def _compare_notification_data(self, notification_data):
-        """ Override of `payment` to compare the transaction based on Razorpay data.
-
-        :param dict notification_data: The notification data sent by the provider.
-        :return: None
-        :raise ValidationError: If the transaction's amount and currency don't match the
-            notification data.
-        """
-        if self.provider_code != 'razorpay':
-            return super()._compare_notification_data(notification_data)
-
-        # Amount and currency are not sent in notification data for REDIRECT_PAYMENT_METHOD_CODES.
-        if self.payment_method_id.code in const.REDIRECT_PAYMENT_METHOD_CODES:
-            return
-
-        amount = payment_utils.to_major_currency_units(
-            notification_data.get('amount', 0), self.currency_id
-        )
-        currency_code = notification_data.get('currency')
-        self._validate_amount_and_currency(amount, currency_code)
 
     def _process_notification_data(self, notification_data):
         """ Override of `payment` to process the transaction based on Razorpay data.

@@ -4,16 +4,13 @@ import base64
 import datetime
 import logging
 import time
-from collections import defaultdict
 
 import dateutil
-import werkzeug
 
-from odoo import _, api, fields, models, SUPERUSER_ID
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
-from odoo.fields import Domain
+from odoo.osv import expression
 from odoo.tools import split_every
-from odoo.tools.image import image_data_uri
 
 _logger = logging.getLogger(__name__)
 
@@ -117,15 +114,6 @@ Customs form No. 1, 9, etc for Vendor Bills""",
         readonly=True,
         export_string_translation=False,
     )
-    l10n_my_edi_invoice_long_id = fields.Char(
-        string="MyInvois Long ID",
-        copy=False,
-        readonly=True,
-    )
-    l10n_my_invoice_need_edi = fields.Boolean(
-        compute='_compute_l10n_my_invoice_need_edi',
-        export_string_translation=False,
-    )
 
     # --------------------------------
     # Compute, inverse, search methods
@@ -142,32 +130,12 @@ Customs form No. 1, 9, etc for Vendor Bills""",
         super()._compute_show_reset_to_draft_button()
         self.filtered(lambda m: m.l10n_my_edi_state and m.l10n_my_edi_state not in CANCELLED_STATES).show_reset_to_draft_button = False
 
-    @api.depends('l10n_my_invoice_need_edi', 'l10n_my_edi_state')
-    def _compute_highlight_send_button(self):
-        # EXTENDS 'account' to not highlight the "Send" button when the "Send To MyInvois" button is available to have just one call to action.
-        super()._compute_highlight_send_button()
-        for move in self:
-            if move.l10n_my_invoice_need_edi:
-                move.highlight_send_button &= move.l10n_my_edi_state == 'valid'
-
     @api.depends('company_id', 'invoice_line_ids.tax_ids')
     def _compute_l10n_my_edi_display_tax_exemption_reason(self):
         """ Some users will never use tax-exempt taxes, so it's better to only show the field when necessary. """
         for move in self:
             should_display = move._l10n_my_edi_uses_edi() and any(tax.l10n_my_tax_type == 'E' for tax in move.invoice_line_ids.tax_ids)
             move.l10n_my_edi_display_tax_exemption_reason = should_display
-
-    @api.depends('move_type', 'state', 'country_code', 'l10n_my_edi_state', 'company_id')
-    def _compute_l10n_my_invoice_need_edi(self):
-        for move in self:
-            # We return true for malaysian invoices which are not sent yet, sent but awaiting validation or valid.
-            move.l10n_my_invoice_need_edi = bool(
-                move.is_invoice()
-                and move.state == 'posted'
-                and move.country_code == 'MY'
-                and move.l10n_my_edi_state in (False, 'in_progress', 'valid')
-                and move.company_id.l10n_my_edi_proxy_user_id
-            )
 
     # -----------------------
     # CRUD, inherited methods
@@ -224,12 +192,6 @@ Customs form No. 1, 9, etc for Vendor Bills""",
         # EXTENDS 'account'
         # For the in_progress state, we do not want to allow resetting to draft nor cancelling. We need to wait for the result first.
         return super()._need_cancel_request() or self.l10n_my_edi_state in ['valid', 'rejected']
-
-    def _get_name_invoice_report(self):
-        # EXTENDS 'account'
-        if self.l10n_my_edi_external_uuid:  # Meaning we are a myinvois invoice, meaning we need to embed the qr code.
-            return 'l10n_my_edi.report_invoice_document'
-        return super()._get_name_invoice_report()
 
     # --------------
     # Action methods
@@ -288,17 +250,6 @@ Customs form No. 1, 9, etc for Vendor Bills""",
     def action_validate_tin(self):
         self.ensure_one()
         self.partner_id.action_validate_tin()
-
-    def action_invoice_sent(self):
-        """ The wizard should not be available for invoices sent to MyInvois but not yet validated.
-        This is because before validation the ID used for the QR code is not available and the user should NOT send the invoice yet.
-        """
-        self.ensure_one()
-
-        if self.l10n_my_edi_state == 'in_progress':
-            raise UserError(_('You cannot send invoices that are currently being validated.\nPlease wait for the validation to complete.'))
-
-        return super().action_invoice_sent()
 
     # ----------------
     # Business methods
@@ -371,7 +322,7 @@ Customs form No. 1, 9, etc for Vendor Bills""",
                     move.write(updated_values)
 
             if commit and self._can_commit():
-                self.env.cr.commit()
+                self._cr.commit()
 
         # For successful moves, we log the sending here. Any errors will be handled by the send & print wizard.
         if success_messages:
@@ -442,7 +393,7 @@ Customs form No. 1, 9, etc for Vendor Bills""",
                     move._update_validation_fields(status_info)
 
             if commit and self._can_commit():
-                self.env.cr.commit()
+                self._cr.commit()
 
         # We don't consider these errors per-say. From my understanding an invalid invoice is considered as cancelled,
         # so a new one must be issued.
@@ -498,7 +449,7 @@ Customs form No. 1, 9, etc for Vendor Bills""",
             )
 
         if self._can_commit():
-            self.env.cr.commit()
+            self._cr.commit()
 
     @api.model
     def _cron_l10n_my_edi_synchronize_myinvois(self):
@@ -511,24 +462,24 @@ Customs form No. 1, 9, etc for Vendor Bills""",
         # /!\ when an invoice validation is pending, l10n_my_edi_validation_time is still None. These also need to be updated.
         datetime_threshold = datetime.datetime.now() - datetime.timedelta(hours=74)
         # We always want to fetch in_progress invoices, it's very likely that their status is already there.
-        invoice_domain = Domain("l10n_my_edi_state", "=", "in_progress")
+        invoice_domain = [("l10n_my_edi_state", "=", "in_progress")]
         # For valid invoices, we want them if their l10n_my_edi_validation_time is less than 74h ago, and if their l10n_my_edi_retry_at in the past.
-        invoice_domain |= Domain([
+        invoice_domain = expression.OR([invoice_domain, [
             ('l10n_my_edi_state', '=', 'valid'),
             ('l10n_my_edi_validation_time', '>', datetime_threshold),
             '|',
             ('l10n_my_edi_retry_at', '<=', datetime.datetime.now()),
             ('l10n_my_edi_retry_at', '=', False),
-        ])
-        if self._can_commit():
-            self.env['ir.cron']._commit_progress(remaining=self.search_count(invoice_domain))
+        ]])
         grouped_invoices = self.env["account.move"]._read_group(
             invoice_domain,
             groupby=["company_id", "l10n_my_edi_submission_uid"],
             aggregates=["id:recordset"],
             limit=MAX_SUBMISSION_UPDATE,
         )
+        invoice_count = self.search_count(invoice_domain)  # Count the total amount of invoices to process.
 
+        processed_invoices = 0
         for company, submission_uid, invoices in grouped_invoices:
             if not company.l10n_my_edi_proxy_user_id:
                 continue
@@ -565,11 +516,14 @@ Customs form No. 1, 9, etc for Vendor Bills""",
                 if invoice.l10n_my_edi_state == "valid":
                     invoice._update_validation_fields(invoice_result)
 
+            processed_invoices += len(invoices)
             # Commit if we can, in case an issue arises later.
             if self._can_commit():
-                self.env['ir.cron']._commit_progress(len(invoices))
+                self.env['ir.cron']._notify_progress(done=processed_invoices, remaining=invoice_count - processed_invoices)
+                self._cr.commit()
 
             time.sleep(0.3)  # There is a limit of how many calls we can do, so we pace ourselves
+        self.env['ir.cron']._notify_progress(done=processed_invoices, remaining=invoice_count - processed_invoices)
 
     @api.model
     def _l10n_my_get_submission_status(self, submission_uid, proxy_user):
@@ -631,7 +585,6 @@ Customs form No. 1, 9, etc for Vendor Bills""",
         # Odoo expect a timezone unaware datetime in UTC, so we can safely remove the info without any more work needed.
         utc_tz_aware_datetime = dateutil.parser.isoparse(validation_result['valid_datetime'])
         self.l10n_my_edi_validation_time = utc_tz_aware_datetime.replace(tzinfo=None)
-        self.l10n_my_edi_invoice_long_id = validation_result['long_id']
 
     # Other methods
 
@@ -741,132 +694,10 @@ Customs form No. 1, 9, etc for Vendor Bills""",
                 move.line_ids._check_tax_lock_date()
                 move.button_cancel()
             except UserError as e:
-                move.message_post(
+                move.with_context(no_new_invoice=True).message_post(
                     body=_(
                         'The invoice has been canceled on MyInvois, '
                         'But the cancellation in Odoo failed with error: %(error)s\n'
                         'Please resolve the problem manually, and then cancel the invoice.', error=e
                     )
                 )
-
-    def action_l10n_my_edi_send_invoice(self):
-        """ Create the xml file (if needed) to be sent to the platform.
-        This will replace what is done in send & print.
-        """
-        self._l10n_my_edi_send_invoice()
-
-    def _l10n_my_edi_send_invoice(self, commit=True):
-        # Gather the moves that have to be sent and the xml for each of them.
-        moves, xml_contents = self._l10n_my_edi_prepare_moves_to_send()
-        # We then push the moves to myinvois.
-        self._l10n_my_edi_send_to_myinvois(moves, xml_contents, commit)
-        # We need to see if the validation status is already available; otherwise it will be fetched via a cron.
-        errors = self._l10n_my_edi_get_status(moves, commit)
-        # Finally, we update the move attachments
-        for move, xml_content in xml_contents.items():
-            if xml_content:
-                self.env['ir.attachment'].with_user(SUPERUSER_ID).create({
-                    'name': f'{move.name.replace("/", "_")}_myinvois.xml',
-                    'raw': xml_content,
-                    'mimetype': 'application/xml',
-                    'res_model': move._name,
-                    'res_id': move.id,
-                    'res_field': 'l10n_my_edi_file',  # Binary field
-                })
-                move.invalidate_recordset(fnames=['l10n_my_edi_file_id', 'l10n_my_edi_file'])
-        return errors
-
-    def _l10n_my_edi_prepare_moves_to_send(self):
-        AccountMoveSend = self.env['account.move.send']
-        xml_contents = defaultdict(list)
-        moves = self.env['account.move']
-        for move in self:
-            if not move.l10n_my_invoice_need_edi or move.l10n_my_edi_state:
-                continue
-
-            moves |= move
-
-            if move.l10n_my_edi_file:
-                xml_content = base64.b64decode(move.l10n_my_edi_file).decode('utf-8')
-            else:
-                xml_content, errors = move._l10n_my_edi_generate_invoice_xml()
-                if errors:
-                    raise UserError(AccountMoveSend._format_error_text({
-                        'error_title': _('Error when generating MyInvois file:'),
-                        'errors': errors,
-                    }))
-                xml_content = xml_content.decode('utf-8')
-            xml_contents[move] = xml_content
-        return moves, xml_contents
-
-    def _l10n_my_edi_send_to_myinvois(self, moves, xml_contents, commit=True):
-        AccountMoveSend = self.env['account.move.send']
-        if moves and xml_contents:
-            errors = moves._l10n_my_edi_submit_documents(xml_contents, commit)
-
-            for move in moves.filtered(lambda m: m in errors):
-                move.message_post(body=AccountMoveSend._format_error_html({
-                    'error_title': _('Error when sending the invoices to the E-invoicing service.'),
-                    'errors': errors[move],
-                }))
-
-            # At this point we will need to commit as we reached the api, and we could have a mix of failed and valid invoice.
-            if commit and moves._can_commit():
-                self.env.cr.commit()
-
-            # We already logged the details on the invoice(s) and saved the api results. If we send a single invoice, we can safely raise now.
-            if errors and len(moves) == 1:
-                raise UserError(AccountMoveSend._format_error_text({
-                    'error_title': _('Error when sending the invoices to the E-invoicing service.'),
-                    'errors': errors[moves],
-                }))
-
-    def _l10n_my_edi_get_status(self, moves, commit=True):
-        AccountMoveSend = self.env['account.move.send']
-        retry = 0
-        errors, any_in_progress = moves._l10n_my_edi_fetch_updated_statuses(commit)
-        while any_in_progress and retry < 3:
-            if self._can_commit():
-                time.sleep(1 + retry)  # We wait a while before retrying, only when not in test mode
-            errors, any_in_progress = moves._l10n_my_edi_fetch_updated_statuses(commit)
-            retry += 1
-        # While technically an in_progress status is not an error, it won't hurt much to display it as such.
-        # The "error" message in this case should be clear enough.
-        for move in moves.filtered(lambda m: m in errors):
-            move.message_post(body=AccountMoveSend._format_error_html({
-                'error_title': _('Error when sending the invoices to the E-invoicing service.'),
-                'errors': errors[move],
-            }))
-        # We commit again if possible, to ensure that the invoice status is set in the database in case of errors later.
-        if commit and self._can_commit():
-            self.env.cr.commit()
-
-        return errors
-
-    def _generate_myinvois_qr_code(self):
-        """ Generate the qr code which should be embedded into the invoices PDF """
-        self.ensure_one()
-
-        if not self.l10n_my_edi_invoice_long_id:  # Only valid invoices have a long id
-            return None
-
-        # We need to add the portal url to the qr
-        proxy_user = self._l10n_my_edi_ensure_proxy_user()
-        if proxy_user.edi_mode == 'prod':
-            portal_url = "myinvois.hasil.gov.my"
-        else:
-            portal_url = "preprod.myinvois.hasil.gov.my"
-
-        try:
-            qr_code = self.env['ir.actions.report'].barcode(
-                barcode_type='QR',
-                quiet=False,
-                width=128,
-                height=128,
-                humanreadable=1,
-                value=f'https://{portal_url}/{self.l10n_my_edi_external_uuid}/share/{self.l10n_my_edi_invoice_long_id}',
-            )
-        except (ValueError, AttributeError):
-            raise werkzeug.exceptions.HTTPException(description='Cannot convert into QR Code.')
-
-        return image_data_uri(base64.b64encode(qr_code))

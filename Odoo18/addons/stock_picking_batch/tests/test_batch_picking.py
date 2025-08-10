@@ -3,7 +3,7 @@
 
 from datetime import datetime, timedelta
 
-from odoo import Command, fields
+from odoo import Command
 from odoo.tools import float_round
 
 from odoo.exceptions import UserError
@@ -26,10 +26,12 @@ class TestBatchPicking(TransactionCase):
         cls.productA = cls.env['product.product'].create({
             'name': 'Product A',
             'is_storable': True,
+            'categ_id': cls.env.ref('product.product_category_all').id,
         })
         cls.productB = cls.env['product.product'].create({
             'name': 'Product B',
             'is_storable': True,
+            'categ_id': cls.env.ref('product.product_category_all').id,
         })
 
         cls.client_1 = cls.env['res.partner'].create({'name': 'Client 1'})
@@ -42,6 +44,7 @@ class TestBatchPicking(TransactionCase):
         })
 
         cls.env['stock.move'].create({
+            'name': cls.productA.name,
             'product_id': cls.productA.id,
             'product_uom_qty': 10,
             'product_uom': cls.productA.uom_id.id,
@@ -60,6 +63,7 @@ class TestBatchPicking(TransactionCase):
         })
 
         cls.env['stock.move'].create({
+            'name': cls.productB.name,
             'product_id': cls.productB.id,
             'product_uom_qty': 10,
             'product_uom': cls.productA.uom_id.id,
@@ -76,6 +80,7 @@ class TestBatchPicking(TransactionCase):
         })
 
         cls.env['stock.move'].create({
+            'name': cls.productB.name,
             'product_id': cls.productB.id,
             'product_uom_qty': 10,
             'product_uom': cls.productA.uom_id.id,
@@ -408,6 +413,7 @@ class TestBatchPicking(TransactionCase):
             'partner_id': partner_1.id
         })
         self.env['stock.move'].create({
+            'name': self.productA.name,
             'product_id': self.productA.id,
             'product_uom_qty': 10,
             'product_uom': self.productA.uom_id.id,
@@ -424,6 +430,7 @@ class TestBatchPicking(TransactionCase):
             'partner_id': partner_2.id
         })
         self.env['stock.move'].create({
+            'name': self.productB.name,
             'product_id': self.productB.id,
             'product_uom_qty': 10,
             'product_uom': self.productB.uom_id.id,
@@ -440,6 +447,7 @@ class TestBatchPicking(TransactionCase):
             'partner_id': partner_1.id
         })
         self.env['stock.move'].create({
+            'name': self.productB.name,
             'product_id': self.productB.id,
             'product_uom_qty': 10,
             'product_uom': self.productB.uom_id.id,
@@ -606,7 +614,7 @@ class TestBatchPicking(TransactionCase):
         Create a third picking with same partner
         - Should be added to the batch
         """
-        self.env.user.group_ids = [(4, self.ref('stock.group_reception_report'))]
+        self.env.user.groups_id = [(4, self.ref('stock.group_reception_report'))]
         self.env['stock.picking.type'].browse(self.picking_type_in).write({
             'auto_show_reception_report': True,
             'auto_batch': True,
@@ -621,6 +629,7 @@ class TestBatchPicking(TransactionCase):
             'location_id': from_loc.id,
             'location_dest_id': to_loc.id,
             'move_ids': [(0, 0, {
+                'name': '/',
                 'product_id': product.id,
                 'product_uom': product.uom_id.id,
                 'product_uom_qty': 1,
@@ -657,6 +666,7 @@ class TestBatchPicking(TransactionCase):
             'location_id': self.supplier_location.id,
             'location_dest_id': self.stock_location.id,
             'move_ids': [(0, 0, {
+                'name': '/',
                 'product_id': self.productA.id,
                 'product_uom': self.productA.uom_id.id,
                 'product_uom_qty': 1,
@@ -666,33 +676,6 @@ class TestBatchPicking(TransactionCase):
         })
         receipt03.action_confirm()
         self.assertEqual(batch.picking_ids, backorder | receipt02 | receipt03)
-
-    def test_batch_merge(self):
-        batch_1 = self.env['stock.picking.batch'].create({
-            'name': 'Batch 1',
-            'company_id': self.env.company.id,
-            'picking_ids': [Command.link(self.picking_client_1.id)],
-            'description': 'Great batch',
-            'user_id': self.env.user.id,
-        })
-        batch_2 = self.env['stock.picking.batch'].create({
-            'name': 'Batch 2',
-            'company_id': self.env.company.id,
-            'picking_ids': [Command.link(self.picking_client_2.id)],
-            'description': 'Amazing batch',
-            'user_id': self.env.user.id,
-        })
-        batch_1.action_confirm()
-        with self.assertRaises(UserError):
-            (batch_1 | batch_2).action_merge()
-        batch_2.action_confirm()
-        early_date = fields.Datetime.now() - timedelta(days=1)
-        batch_2.scheduled_date = early_date
-        (batch_1 | batch_2).action_merge()
-        self.assertEqual(batch_1.picking_ids, self.picking_client_1 | self.picking_client_2)
-        self.assertEqual(batch_1.description, 'Amazing batch', 'The description should be the one of the earliest batch')
-        self.assertEqual(batch_1.scheduled_date, early_date)
-
 
 @tagged('-at_install', 'post_install')
 class TestBatchPicking02(TransactionCase):
@@ -712,10 +695,12 @@ class TestBatchPicking02(TransactionCase):
         self.productA = self.env['product.product'].create({
             'name': 'Product A',
             'is_storable': True,
+            'categ_id': self.env.ref('product.product_category_all').id,
         })
         self.productB = self.env['product.product'].create({
             'name': 'Product B',
             'is_storable': True,
+            'categ_id': self.env.ref('product.product_category_all').id,
         })
         self.package_type = self.env['stock.package.type'].create({
             'name': 'Big box',
@@ -748,12 +733,14 @@ class TestBatchPicking02(TransactionCase):
             'location_dest_id': loc2.id,
             'picking_type_id': self.picking_type_internal.id,
             'move_ids': [(0, 0, {
+                'name': 'test_put_in_pack_from_multiple_pages',
                 'location_id': loc1.id,
                 'location_dest_id': loc2.id,
                 'product_id': self.productA.id,
                 'product_uom': self.productA.uom_id.id,
                 'product_uom_qty': qty,
             }), (0, 0, {
+                'name': 'test_put_in_pack_from_multiple_pages',
                 'location_id': loc1.id,
                 'location_dest_id': loc2.id,
                 'product_id': self.productB.id,
@@ -776,7 +763,7 @@ class TestBatchPicking02(TransactionCase):
 
         batch.action_done()
         self.assertEqual(batch.estimated_shipping_weight, 10 + 10*10 + 10*15)
-        precision = self.env['decimal.precision'].precision_get('Product Unit')
+        precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
         volume = float_round((500*500*500)/1000**3, precision_digits=precision)
         self.assertEqual(batch.estimated_shipping_volume, volume)
         self.assertRecordValues(pickings.move_ids, [
@@ -786,6 +773,35 @@ class TestBatchPicking02(TransactionCase):
             {'state': 'done', 'quantity': 7},
         ])
         self.assertEqual(pickings.move_line_ids.result_package_id, package)
+
+    def test_add_batch_move_line(self):
+        """
+        Adding a stock move line in a batch form triggers a calculation of the
+        default dest location. This test checks if that calculation doesn't
+        raise any exceptions for a new, empty StockMoveLine object.
+        """
+        loc1, loc2 = self.stock_location.child_ids
+        picking = self.env['stock.picking'].create({
+            'location_id': loc1.id,
+            'location_dest_id': loc2.id,
+            'picking_type_id': self.picking_type_internal.id,
+            'state': 'draft',
+        })
+        batch_form = Form(self.env['stock.picking.batch'])
+        batch_form.picking_ids.add(picking)
+        batch = batch_form.save()
+        batch.action_confirm()
+        confirmed_form = Form(batch)
+        # Adding a new line should not raise an error
+        confirmed_form.move_line_ids.new()
+        # Adding a line should work also for users in multi_locations (former storage categories) group
+        self.env.user.groups_id += self.env.ref('stock.group_stock_multi_locations')
+        batch_form = Form(self.env['stock.picking.batch'])
+        batch_form.picking_ids.add(picking)
+        batch = batch_form.save()
+        batch.action_confirm()
+        confirmed_form = Form(batch)
+        confirmed_form.move_line_ids.new()
 
     def test_batch_validation_without_backorder(self):
         loc1, loc2 = self.stock_location.child_ids
@@ -798,6 +814,7 @@ class TestBatchPicking02(TransactionCase):
             'company_id': self.env.company.id,
         })
         self.env['stock.move'].create({
+            'name': self.productA.name,
             'product_id': self.productA.id,
             'product_uom_qty': 1,
             'product_uom': self.productA.uom_id.id,
@@ -813,6 +830,7 @@ class TestBatchPicking02(TransactionCase):
             'company_id': self.env.company.id,
         })
         self.env['stock.move'].create({
+            'name': self.productB.name,
             'product_id': self.productB.id,
             'product_uom_qty': 5,
             'product_uom': self.productB.uom_id.id,
@@ -874,6 +892,7 @@ class TestBatchPicking02(TransactionCase):
         picking_1, picking_2 = pickings
         self.env['stock.move'].create([
             {
+                'name': productA.name,
                 'product_id': productA.id,
                 'product_uom_qty': 1.0,
                 'product_uom': productA.uom_id.id,
@@ -882,6 +901,7 @@ class TestBatchPicking02(TransactionCase):
                 'location_dest_id': picking_1.location_dest_id.id,
             },
             {
+                'name': productA.name,
                 'product_id': productA.id,
                 'product_uom_qty': 1.0,
                 'product_uom': productA.uom_id.id,
@@ -890,6 +910,7 @@ class TestBatchPicking02(TransactionCase):
                 'location_dest_id': picking_2.location_dest_id.id,
             },
             {
+                'name': productB.name,
                 'product_id': productB.id,
                 'product_uom_qty': 1.0,
                 'product_uom': productB.uom_id.id,
@@ -927,6 +948,7 @@ class TestBatchPicking02(TransactionCase):
         ])
         self.env['stock.move'].create([
             {
+                'name': productA.name,
                 'product_id': productA.id,
                 'product_uom_qty': 4.0,
                 'product_uom': productA.uom_id.id,
@@ -935,6 +957,7 @@ class TestBatchPicking02(TransactionCase):
                 'location_dest_id': pickings[0].location_dest_id.id,
             },
             {
+                'name': productB.name,
                 'product_id': productB.id,
                 'product_uom_qty': 4.0,
                 'product_uom': productB.uom_id.id,
@@ -943,6 +966,7 @@ class TestBatchPicking02(TransactionCase):
                 'location_dest_id': pickings[1].location_dest_id.id,
             },
             {
+                'name': productA.name,
                 'product_id': productA.id,
                 'product_uom_qty': 1.0,
                 'product_uom': productA.uom_id.id,
@@ -1024,6 +1048,7 @@ class TestBatchPicking02(TransactionCase):
         ])
         self.env['stock.move'].create([
             {
+                'name': productA.name,
                 'product_id': productA.id,
                 'product_uom_qty': 1.0,
                 'product_uom': productA.uom_id.id,
@@ -1032,6 +1057,7 @@ class TestBatchPicking02(TransactionCase):
                 'location_dest_id': pickings[0].location_dest_id.id,
             },
             {
+                'name': productB.name,
                 'product_id': productB.id,
                 'product_uom_qty': 4.0,
                 'product_uom': productB.uom_id.id,
@@ -1040,6 +1066,7 @@ class TestBatchPicking02(TransactionCase):
                 'location_dest_id': pickings[0].location_dest_id.id,
             },
             {
+                'name': productA.name,
                 'product_id': productA.id,
                 'product_uom_qty': 1.0,
                 'product_uom': productA.uom_id.id,
@@ -1085,6 +1112,7 @@ class TestBatchPicking02(TransactionCase):
         ])
         self.env['stock.move'].create([
             {
+                'name': productA.name,
                 'product_id': productA.id,
                 'product_uom_qty': 1.0,
                 'product_uom': productA.uom_id.id,
@@ -1093,6 +1121,7 @@ class TestBatchPicking02(TransactionCase):
                 'location_dest_id': pickings[0].location_dest_id.id,
             },
             {
+                'name': productB.name,
                 'product_id': productB.id,
                 'product_uom_qty': 4.0,
                 'product_uom': productB.uom_id.id,
@@ -1101,6 +1130,7 @@ class TestBatchPicking02(TransactionCase):
                 'location_dest_id': pickings[0].location_dest_id.id,
             },
             {
+                'name': productA.name,
                 'product_id': productA.id,
                 'product_uom_qty': 1.0,
                 'product_uom': productA.uom_id.id,
@@ -1149,6 +1179,7 @@ class TestBatchPickingSynchronization(HttpCase):
         productA = self.env['product.product'].create({
             'name': 'Product A',
             'is_storable': True,
+            'categ_id': self.env.ref('product.product_category_all').id,
         })
 
         picking_type_internal = self.env.ref('stock.picking_type_internal')
@@ -1160,6 +1191,7 @@ class TestBatchPickingSynchronization(HttpCase):
             'company_id': self.env.company.id,
         })
         self.env['stock.move'].create({
+            'name': productA.name,
             'product_id': productA.id,
             'product_uom_qty': 1,
             'product_uom': productA.uom_id.id,

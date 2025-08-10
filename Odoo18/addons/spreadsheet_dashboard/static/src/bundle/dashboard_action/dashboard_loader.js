@@ -1,7 +1,8 @@
+/** @odoo-module */
+
 import { Model } from "@odoo/o-spreadsheet";
 import { OdooDataProvider } from "@spreadsheet/data_sources/odoo_data_provider";
 import { createDefaultCurrency } from "@spreadsheet/currency/helpers";
-import { _t } from "@web/core/l10n/translation";
 
 /**
  * @type {{
@@ -46,7 +47,7 @@ export class DashboardLoader {
      * @param {OdooEnv} env
      * @param {ORM} orm
      */
-    constructor(env, orm, geoJsonService) {
+    constructor(env, orm) {
         /** @private */
         this.env = env;
         /** @private */
@@ -55,7 +56,6 @@ export class DashboardLoader {
         this.groups = [];
         /** @private @type {Object<number, Dashboard>} */
         this.dashboards = {};
-        this.geoJsonService = geoJsonService;
     }
 
     /**
@@ -92,7 +92,6 @@ export class DashboardLoader {
                 id: dashboard.id,
                 displayName: dashboard.name,
                 status: Status.NotLoaded,
-                isFavorite: dashboard.is_favorite,
             };
         }
     }
@@ -113,8 +112,7 @@ export class DashboardLoader {
      * @returns {Array<DashboardGroup>}
      */
     getDashboardGroups() {
-        const favoriteDashboards = this._getFavoriteDashboards();
-        const dashboardGroups = this.groups.map((section) => ({
+        return this.groups.map((section) => ({
             id: section.id,
             name: section.name,
             dashboards: section.dashboards.map((dashboard) => ({
@@ -123,13 +121,6 @@ export class DashboardLoader {
                 status: this._getDashboard(dashboard.id).status,
             })),
         }));
-
-        return favoriteDashboards.length
-            ? [
-                  { id: "favorites", name: _t("FAVORITES"), dashboards: favoriteDashboards },
-                  ...dashboardGroups,
-              ]
-            : dashboardGroups;
     }
 
     /**
@@ -143,33 +134,11 @@ export class DashboardLoader {
             {
                 specification: {
                     name: {},
-                    published_dashboard_ids: { fields: { name: {}, is_favorite: {} } },
+                    published_dashboard_ids: { fields: { name: {} } },
                 },
             }
         );
         return groups.records;
-    }
-
-    /**
-     * Filters and returns an array of favorite dashboards.
-     * @returns {Array<Dashboard>}
-     */
-    _getFavoriteDashboards() {
-        const favoriteDashboards = [];
-        this.groups
-            .flatMap((group) => group.dashboards)
-            .forEach((dashboard) => {
-                const dashboardData = this._getDashboard(dashboard.id);
-                if (dashboardData.isFavorite) {
-                    favoriteDashboards.push({
-                        id: dashboard.id,
-                        displayName: dashboard.name,
-                        status: dashboardData.status,
-                    });
-                }
-            });
-
-        return favoriteDashboards;
     }
 
     /**
@@ -192,10 +161,11 @@ export class DashboardLoader {
         const dashboard = this._getDashboard(dashboardId);
         dashboard.status = Status.Loading;
         try {
-            const result = await this.env.services.http.get(
-                `/spreadsheet/dashboard/data/${dashboardId}`
+            const { snapshot, revisions, default_currency, is_sample } = await this.orm.call(
+                "spreadsheet.dashboard",
+                "get_readonly_dashboard",
+                [dashboardId]
             );
-            const { snapshot, revisions, default_currency, is_sample } = result;
             dashboard.model = this._createSpreadsheetModel(snapshot, revisions, default_currency);
             dashboard.status = Status.Loaded;
             dashboard.isSample = is_sample;
@@ -237,7 +207,6 @@ export class DashboardLoader {
                 custom: { env: this.env, orm: this.orm, odooDataProvider },
                 mode: "dashboard",
                 defaultCurrency: createDefaultCurrency(currency),
-                external: { geoJsonService: this.geoJsonService },
             },
             revisions
         );

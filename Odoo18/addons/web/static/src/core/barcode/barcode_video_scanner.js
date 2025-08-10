@@ -24,7 +24,6 @@ export class BarcodeVideoScanner extends Component {
         onReady: { type: Function, optional: true },
         onResult: Function,
         onError: Function,
-        placeholder: { type: String, optional: true },
         delayBetweenScan: { type: Number, optional: true },
     };
     static defaultProps = {

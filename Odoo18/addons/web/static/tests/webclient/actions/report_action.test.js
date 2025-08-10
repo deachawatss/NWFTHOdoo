@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "@odoo/hoot";
-import { animationFrame, runAllTimers } from "@odoo/hoot-mock";
+import { runAllTimers } from "@odoo/hoot-mock";
 import {
     contains,
     defineActions,
@@ -142,7 +142,6 @@ test("report actions can close modals and reload views", async () => {
     });
 
     await getService("action").doAction(11);
-    await animationFrame();
     expect(".o_technical_modal .o_form_view").toHaveCount(0, {
         message: "the modal should have been closed after the action report",
     });

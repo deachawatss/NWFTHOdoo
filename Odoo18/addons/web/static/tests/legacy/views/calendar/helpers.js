@@ -95,6 +95,7 @@ export const FAKE_FILTER_SECTIONS = [
             model: "filter_partner",
             field: "partner_id",
         },
+        canCollapse: true,
         canAddFilter: true,
         filters: [
             {
@@ -151,6 +152,7 @@ export const FAKE_FILTER_SECTIONS = [
             model: null,
             field: null,
         },
+        canCollapse: false,
         canAddFilter: false,
         filters: [
             {

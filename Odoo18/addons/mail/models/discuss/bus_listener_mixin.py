@@ -3,6 +3,7 @@
 from markupsafe import Markup
 
 from odoo import models
+from odoo.addons.mail.tools.discuss import Store
 
 
 class BusListenerMixin(models.AbstractModel):
@@ -14,6 +15,6 @@ class BusListenerMixin(models.AbstractModel):
             "discuss.channel/transient_message",
             {
                 "body": Markup("<span class='o_mail_notification'>%s</span>") % content,
-                "channel_id": channel.id,
+                "thread": Store.one_id(channel, as_thread=True),
             },
         )

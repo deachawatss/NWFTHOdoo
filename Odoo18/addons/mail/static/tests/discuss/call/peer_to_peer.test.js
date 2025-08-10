@@ -1,8 +1,14 @@
-import { describe, expect, test } from "@odoo/hoot";
+import { describe, expect } from "@odoo/hoot";
 import { advanceTime } from "@odoo/hoot-mock";
 import { browser } from "@web/core/browser/browser";
-import { asyncStep, onRpc, mountWebClient, waitForSteps } from "@web/../tests/web_test_helpers";
-import { defineMailModels, mockGetMedia } from "@mail/../tests/mail_test_helpers";
+import { onRpc, mountWebClient, asyncStep, waitForSteps } from "@web/../tests/web_test_helpers";
+import {
+    assertSteps,
+    defineMailModels,
+    mockGetMedia,
+    onlineTest,
+    step,
+} from "@mail/../tests/mail_test_helpers";
 import { PeerToPeer, STREAM_TYPE, UPDATE_EVENT } from "@mail/discuss/call/common/peer_to_peer";
 
 describe.current.tags("desktop");
@@ -42,7 +48,7 @@ class Network {
     }
 }
 
-test("basic peer to peer connection", async () => {
+onlineTest("basic peer to peer connection", async () => {
     await mountWebClient();
     const channelId = 1;
     const network = new Network();
@@ -50,18 +56,18 @@ test("basic peer to peer connection", async () => {
     const user2 = network.register(2);
     user2.p2p.addEventListener("update", ({ detail: { name, payload } }) => {
         if (name === UPDATE_EVENT.CONNECTION_CHANGE && payload.state === "connected") {
-            asyncStep(payload.state);
+            step(payload.state);
         }
     });
 
     user2.p2p.connect(user2.id, channelId);
     user1.p2p.connect(user1.id, channelId);
     await user1.p2p.addPeer(user2.id);
-    await waitForSteps(["connected"]);
+    await assertSteps(["connected"]);
     network.close();
 });
 
-test("mesh peer to peer connections", async () => {
+onlineTest("mesh peer to peer connections", async () => {
     await mountWebClient();
     const channelId = 2;
     const network = new Network();
@@ -89,7 +95,7 @@ test("mesh peer to peer connections", async () => {
     expect(connectionsCount).toBe(0);
 });
 
-test("connection recovery", async () => {
+onlineTest("connection recovery", async () => {
     await mountWebClient();
     const channelId = 1;
     const network = new Network();
@@ -98,7 +104,7 @@ test("connection recovery", async () => {
     user2.remoteStates = new Map();
     user2.p2p.addEventListener("update", ({ detail: { name, payload } }) => {
         if (name === UPDATE_EVENT.CONNECTION_CHANGE && payload.state === "connected") {
-            asyncStep(payload.state);
+            step(payload.state);
         }
     });
 
@@ -112,11 +118,11 @@ test("connection recovery", async () => {
     });
     advanceTime(5_000); // recovery timeout
     await openPromise;
-    await waitForSteps(["connected"]);
+    await assertSteps(["connected"]);
     network.close();
 });
 
-test("can broadcast a stream and control download", async () => {
+onlineTest("can broadcast a stream and control download", async () => {
     mockGetMedia();
     await mountWebClient();
     const channelId = 3;
@@ -157,7 +163,7 @@ test("can broadcast a stream and control download", async () => {
     network.close();
 });
 
-test("can broadcast arbitrary messages (dataChannel)", async () => {
+onlineTest("can broadcast arbitrary messages (dataChannel)", async () => {
     await mountWebClient();
     const channelId = 4;
     const network = new Network();
@@ -191,7 +197,7 @@ test("can broadcast arbitrary messages (dataChannel)", async () => {
     network.close();
 });
 
-test("can reject arbitrary offers", async () => {
+onlineTest("can reject arbitrary offers", async () => {
     await mountWebClient();
     const channelId = 1;
     const network = new Network();
@@ -204,7 +210,9 @@ test("can reject arbitrary offers", async () => {
             asyncStep("offer rejected");
         }
     };
-    user2.p2p.acceptOffer = (id, sequence) => id !== user1.id || sequence > 20;
+    user2.p2p.acceptOffer = (id, sequence) => {
+        return id !== user1.id || sequence > 20;
+    };
     user1.p2p.addPeer(user2.id, { sequence: 19 });
     await waitForSteps(["offer rejected"]);
     network.close();

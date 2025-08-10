@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from werkzeug.exceptions import Forbidden
 
+from odoo.exceptions import UserError
 from odoo.tests import tagged
 from odoo.tools import mute_logger
 
@@ -86,10 +87,10 @@ class AdyenTest(AdyenCommon, PaymentHttpCommon):
         data = dict(
             self.webhook_notification_payload,
             amount={
-                'currency': self.currency.name,
+                'currency': 'USD',
                 'value': payment_utils.to_minor_currency_units(
-                    source_tx.amount, refund_tx.currency_id
-                ),
+                    -source_tx.amount, refund_tx.currency_id
+                )
             },
             eventCode='REFUND',
         )
@@ -102,10 +103,9 @@ class AdyenTest(AdyenCommon, PaymentHttpCommon):
         )
         data = dict(
             self.webhook_notification_payload,
-            amount={
-                'currency': self.currency.name,
-                'value': payment_utils.to_minor_currency_units(self.amount, source_tx.currency_id),
-            },
+            amount={'currency': 'USD', 'value': payment_utils.to_minor_currency_units(
+                -self.amount, source_tx.currency_id
+            )},
             eventCode='REFUND',
         )
         refund_tx = self.env['payment.transaction']._get_tx_from_notification_data('adyen', data)
@@ -132,7 +132,7 @@ class AdyenTest(AdyenCommon, PaymentHttpCommon):
         data = dict(
             self.webhook_notification_payload,
             amount={
-                'currency': self.currency.name,
+                'currency': 'USD',
                 'value': payment_utils.to_minor_currency_units(
                     source_tx.amount-10, capture_tx.currency_id
                 ),
@@ -149,12 +149,9 @@ class AdyenTest(AdyenCommon, PaymentHttpCommon):
         )
         data = dict(
             self.webhook_notification_payload,
-            amount={
-                'currency': self.currency.name,
-                'value': payment_utils.to_minor_currency_units(
-                    self.amount - 10, source_tx.currency_id
-                ),
-            },
+            amount={'currency': 'USD', 'value': payment_utils.to_minor_currency_units(
+                self.amount - 10, source_tx.currency_id
+            )},
             eventCode='CAPTURE',
         )
         capture_tx = self.env['payment.transaction']._get_tx_from_notification_data('adyen', data)
@@ -181,7 +178,7 @@ class AdyenTest(AdyenCommon, PaymentHttpCommon):
         data = dict(
             self.webhook_notification_payload,
             amount={
-                'currency': self.currency.name,
+                'currency': 'USD',
                 'value': payment_utils.to_minor_currency_units(
                     source_tx.amount - 10, cancel_tx.currency_id
                 ),
@@ -198,12 +195,9 @@ class AdyenTest(AdyenCommon, PaymentHttpCommon):
         )
         data = dict(
             self.webhook_notification_payload,
-            amount={
-                'currency': self.currency.name,
-                'value': payment_utils.to_minor_currency_units(
-                    self.amount - 10, source_tx.currency_id
-                ),
-            },
+            amount={'currency': 'USD', 'value': payment_utils.to_minor_currency_units(
+                self.amount - 10, source_tx.currency_id
+            )},
             eventCode='CANCELLATION',
         )
         void_tx = self.env['payment.transaction']._get_tx_from_notification_data('adyen', data)
@@ -355,14 +349,7 @@ class AdyenTest(AdyenCommon, PaymentHttpCommon):
             'direct', state='authorized', provider_reference=self.original_reference, amount=9.99
         )
         payload = dict(self.webhook_notification_batch_data, notificationItems=[{
-            'NotificationRequestItem': dict(
-                self.webhook_notification_payload,
-                amount={
-                    'currency': self.currency.name,
-                    'value': payment_utils.to_minor_currency_units(9.99, tx.currency_id),
-                },
-                eventCode='CAPTURE',
-            )
+            'NotificationRequestItem': dict(self.webhook_notification_payload, eventCode='CAPTURE')
         }])
         self._webhook_notification_flow(payload)
         self.assertEqual(
@@ -376,12 +363,7 @@ class AdyenTest(AdyenCommon, PaymentHttpCommon):
         )
         payload = dict(self.webhook_notification_batch_data, notificationItems=[{
             'NotificationRequestItem': dict(
-                self.webhook_notification_payload,
-                amount={
-                    'currency': self.currency.name,
-                    'value': payment_utils.to_minor_currency_units(9.99, tx.currency_id),
-                },
-                eventCode='CANCELLATION',
+                self.webhook_notification_payload, eventCode='CANCELLATION'
             )
         }])
         self._webhook_notification_flow(payload)
@@ -398,12 +380,9 @@ class AdyenTest(AdyenCommon, PaymentHttpCommon):
         payload = dict(self.webhook_notification_batch_data, notificationItems=[{
             'NotificationRequestItem': dict(
                 self.webhook_notification_payload,
-                amount={
-                    'currency': self.currency.name,
-                    'value': payment_utils.to_minor_currency_units(
-                        self.amount, source_tx.currency_id
-                    ),
-                },
+                amount={'currency': 'USD', 'value': payment_utils.to_minor_currency_units(
+                    -self.amount, source_tx.currency_id
+                )},
                 eventCode='REFUND',
             )
         }])
@@ -464,12 +443,9 @@ class AdyenTest(AdyenCommon, PaymentHttpCommon):
         payload = dict(self.webhook_notification_batch_data, notificationItems=[{
             'NotificationRequestItem': dict(
                 self.webhook_notification_payload,
-                amount={
-                    'currency': self.currency.name,
-                    'value': payment_utils.to_minor_currency_units(
-                        self.amount, source_tx.currency_id
-                    ),
-                },
+                amount={'currency': 'USD', 'value': payment_utils.to_minor_currency_units(
+                    -self.amount, source_tx.currency_id
+                )},
                 eventCode='REFUND',
                 success='false',
             )

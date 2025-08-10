@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
 import { BinaryField, binaryField } from "@web/views/fields/binary/binary_field";
 
@@ -6,12 +8,11 @@ export class SettingsBinaryField extends BinaryField {
 
     getDownloadData() {
         const related = this.props.record.fields[this.props.name].related;
-        const [fieldName, relatedFieldName] = related.split(".");
         return {
             ...super.getDownloadData(),
-            model: this.props.record.fields[fieldName].relation,
-            field: relatedFieldName ?? fieldName,
-            id: this.props.record.data[fieldName].id,
+            model: this.props.record.fields[related.split(".")[0]].relation,
+            field: related.split(".")[1] ?? related.split(".")[0],
+            id: this.props.record.data[related.split(".")[0]][0],
         }
     }
 

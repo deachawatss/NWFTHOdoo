@@ -1084,9 +1084,11 @@ test("multi level command", async () => {
     const commands = [
         {
             name: "Command1",
-            action: () => ({
-                providers: [{ provide: () => [{ name: "Command lvl2", action: () => {} }] }],
-            }),
+            action: () => {
+                return {
+                    providers: [{ provide: () => [{ name: "Command lvl2", action: () => {} }] }],
+                };
+            },
         },
     ];
     const providers = [
@@ -1280,9 +1282,9 @@ test("bold the searchValue on the commands", async () => {
     await runAllTimers();
     expect(".o_command").toHaveCount(5);
     expect(
-        queryAll(".o_command").map((command) =>
-            queryAllTexts(".o_command_name b", { root: command })
-        )
+        queryAll(".o_command").map((command) => {
+            return queryAllTexts(".o_command_name b", { root: command });
+        })
     ).toEqual([["Test"], ["test"], ["test"], ["Test"], ["TeSt", "Test", "TEST"]]);
 });
 
@@ -1511,14 +1513,14 @@ test("display spinner while loading results from providers", async () => {
 
     await animationFrame();
     expect(".o_command_palette_search i.oi.oi-search").toHaveCount(1);
-    expect(".o_command_palette_search i.fa.fa-circle-o-notch").toHaveCount(0);
+    expect(".o_command_palette_search i.fa.fa-spinner").toHaveCount(0);
     await click(".o_command_palette_search input");
     await edit("? blabla");
     await runAllTimers();
     expect(".o_command_palette_search i.oi.oi-search").toHaveCount(0);
-    expect(".o_command_palette_search i.fa.fa-circle-o-notch").toHaveCount(1);
+    expect(".o_command_palette_search i.fa.fa-spinner").toHaveCount(1);
     provideDef.resolve();
     await animationFrame();
     expect(".o_command_palette_search i.oi.oi-search").toHaveCount(1);
-    expect(".o_command_palette_search i.fa.fa-circle-o-notch").toHaveCount(0);
+    expect(".o_command_palette_search i.fa.fa-spinner").toHaveCount(0);
 });

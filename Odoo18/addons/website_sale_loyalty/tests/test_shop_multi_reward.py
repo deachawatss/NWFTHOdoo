@@ -3,21 +3,20 @@
 from odoo import Command, http
 from odoo.tests import tagged
 
-from odoo.addons.website_sale.tests.common import MockRequest, WebsiteSaleCommon
+from odoo.addons.base.tests.common import TransactionCaseWithUserPortal
+from odoo.addons.website.tools import MockRequest
 from odoo.addons.website_sale_loyalty.controllers.main import WebsiteSale
 
 
 @tagged('post_install', '-at_install')
-class TestClaimReward(WebsiteSaleCommon):
+class TestClaimReward(TransactionCaseWithUserPortal):
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
 
         cls.WebsiteSaleController = WebsiteSale()
-
-        cls.user_portal = cls._create_new_portal_user()
-        cls.partner_portal = cls.user_portal.partner_id
+        cls.website = cls.env.ref('website.default_website').with_user(cls.user_portal)
 
         cls.env['product.pricelist'].search([]).action_archive()
 
@@ -77,6 +76,16 @@ class TestClaimReward(WebsiteSaleCommon):
         }])
         cls.coupon = cls.coupon_program.coupon_ids
 
+        cls.cart = cls.env['sale.order'].create({
+            'website_id': cls.website.id,
+            'partner_id': cls.partner_portal.id,
+            'order_line': [Command.create({
+                'product_id': cls.product1.id,
+                'product_uom_qty': 1,
+            })],
+        })
+        cls.cart._update_programs_and_rewards()
+
         installed_modules = set(cls.env['ir.module.module'].search([
             ('state', '=', 'installed'),
         ]).mapped('name'))
@@ -84,42 +93,35 @@ class TestClaimReward(WebsiteSaleCommon):
             pass
 
     def test_claim_reward_with_multi_products(self):
-        product1, product2 = self.product2, self.product2
-        order = self.empty_cart
-        order.order_line = [Command.create({'product_id': product1.id})]
-        order._update_programs_and_rewards()
+        order = self.cart
+        product2 = self.product2
+
         with MockRequest(self.env, website=self.website, sale_order_id=order.id):
             self.WebsiteSaleController.claim_reward(
                 self.promo_program.reward_ids.id,
                 product_id=str(product2.id),
             )
+
             self.assertEqual(len(order.order_line), 2, 'reward line should be added to order')
             self.assertEqual(order.order_line[1].product_id, product2, 'added reward line should should contain product 2')
 
     def test_apply_coupon_with_multiple_rewards(self):
-        cart = self.empty_cart
-        cart.write({
-            'partner_id': self.partner_portal.id,
-            'order_line': [Command.create({'product_id': self.product1.id})],
-        })
-        cart._update_programs_and_rewards()
-        website = cart.website_id.with_user(self.user_portal)
         discount_reward = self.coupon_program.reward_ids.filtered('discount')
 
-        with MockRequest(website.env, website=website, sale_order_id=cart.id):
+        with MockRequest(self.website.env, website=self.website, sale_order_id=self.cart.id):
             self.WebsiteSaleController.pricelist(promo=self.coupon.code)
-            self.assertFalse(cart.order_line.reward_id)
+            self.assertFalse(self.cart.order_line.reward_id)
 
             self.WebsiteSaleController.claim_reward(discount_reward.id, code=self.coupon.code)
-            self.assertTrue(cart.order_line.reward_id)
+            self.assertTrue(self.cart.order_line.reward_id)
             self.assertIn(
                 discount_reward.discount_line_product_id,
-                cart.order_line.product_id,
+                self.cart.order_line.product_id,
                 "Discount product should be added to order",
             )
             self.assertAlmostEqual(
                 self.product1.list_price * 0.9,
-                cart.amount_untaxed,
-                delta=cart.currency_id.rounding,
+                self.cart.amount_untaxed,
+                delta=self.cart.currency_id.rounding,
                 msg="10% discount should be applied",
             )

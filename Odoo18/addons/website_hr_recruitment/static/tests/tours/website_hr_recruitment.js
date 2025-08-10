@@ -1,10 +1,12 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
 import {
     clickOnEditAndWaitEditMode,
     clickOnSave,
     registerWebsitePreviewTour,
 } from "@website/js/tours/tour_utils";
-import { stepUtils } from "@web_tour/tour_utils";
+import { stepUtils } from "@web_tour/tour_service/tour_utils";
 
 function applyForAJob(jobName, application) {
     return [{
@@ -35,7 +37,7 @@ function applyForAJob(jobName, application) {
         run: `edit linkedin.com/in/${application.name.toLowerCase().replace(' ', '-')}`,
     }, {
         content: "Complete Subject",
-        trigger: "textarea[name=short_introduction]",
+        trigger: "textarea[name=applicant_notes]",
         run: `edit ${application.subject}`,
     }, { // TODO: Upload a file ?
         content: "Send the form",
@@ -101,9 +103,9 @@ registerWebsitePreviewTour('website_hr_recruitment_tour_edit_form', {
     },
 }, {
     content: 'Make the department_id field visible',
-    trigger: ':iframe form',
-    run() {
-        const departmentEl = this.anchor.querySelector('input[name="department_id"]');
+    trigger: "body",
+    run: () => {
+        const departmentEl = document.querySelector('.o_iframe:not(.o_ignore_in_tour)').contentDocument.querySelector('input[name="department_id"]');
         departmentEl.value = 'FAKE_DEPARTMENT_ID_DEFAULT_VAL';
         departmentEl.type = 'text';
         departmentEl.closest('.s_website_form_field').classList.remove('s_website_form_dnone');
@@ -113,9 +115,10 @@ registerWebsitePreviewTour('website_hr_recruitment_tour_edit_form', {
     content: 'Edit the form',
     trigger: ':iframe input[type="file"]',
     run: "click",
-}, {
-    content: 'Add a new field',
-    trigger: 'div[data-container-title="Field"] button.o_we_bg_brand_primary',
+},
+{
+    content: 'Add a new field so the changes are saved',
+    trigger: 'we-button[data-add-field]',
     run: "click",
 },
 ...clickOnSave(),
@@ -184,6 +187,6 @@ registerWebsitePreviewTour('model_required_field_should_have_action_name', {
     run: "click",
 }, {
     content: "Select model-required field",
-    trigger: ".options-container .alert > span:not(:contains(undefined))",
+    trigger: "we-customizeblock-options we-alert > span:not(:contains(undefined))",
 }
 ]);

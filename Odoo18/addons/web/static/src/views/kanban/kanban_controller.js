@@ -1,11 +1,12 @@
-import { DropdownItem } from "@web/core/dropdown/dropdown_item";
+import {
+    deleteConfirmationMessage,
+    ConfirmationDialog,
+} from "@web/core/confirmation_dialog/confirmation_dialog";
 import { _t } from "@web/core/l10n/translation";
-import { user } from "@web/core/user";
 import { useService } from "@web/core/utils/hooks";
-import { omit } from "@web/core/utils/objects";
+import { CogMenu } from "@web/search/cog_menu/cog_menu";
 import { evaluateBooleanExpr } from "@web/core/py_js/py";
 import { useSetupAction } from "@web/search/action_hook";
-import { ActionMenus, STATIC_ACTIONS_GROUP_NUMBER } from "@web/search/action_menus/action_menus";
 import { Layout } from "@web/search/layout";
 import { usePager } from "@web/search/pager_hook";
 import { SearchBar } from "@web/search/search_bar/search_bar";
@@ -15,23 +16,11 @@ import { useModelWithSampleData } from "@web/model/model";
 import { standardViewProps } from "@web/views/standard_view_props";
 import { MultiRecordViewButton } from "@web/views/view_button/multi_record_view_button";
 import { useViewButtons } from "@web/views/view_button/view_button_hook";
-import { useExportRecords, useDeleteRecords } from "@web/views/view_hook";
 import { addFieldDependencies, extractFieldsFromArchInfo } from "@web/model/relational_model/utils";
-import { KanbanCogMenu } from "./kanban_cog_menu";
 import { KanbanRenderer } from "./kanban_renderer";
 import { useProgressBar } from "./progress_bar_hook";
-import { SelectionBox } from "@web/views/view_components/selection_box";
 
-import {
-    Component,
-    onMounted,
-    onWillStart,
-    reactive,
-    useEffect,
-    useRef,
-    useState,
-    useSubEnv,
-} from "@odoo/owl";
+import { Component, reactive, useRef, useState } from "@odoo/owl";
 
 const QUICK_CREATE_FIELD_TYPES = ["char", "boolean", "many2one", "selection", "many2many"];
 
@@ -39,24 +28,18 @@ const QUICK_CREATE_FIELD_TYPES = ["char", "boolean", "many2one", "selection", "m
 
 export class KanbanController extends Component {
     static template = `web.KanbanView`;
-    static components = {
-        ActionMenus,
-        DropdownItem,
-        Layout,
-        KanbanRenderer,
-        MultiRecordViewButton,
-        SearchBar,
-        CogMenu: KanbanCogMenu,
-        SelectionBox,
-    };
+    static components = { Layout, KanbanRenderer, MultiRecordViewButton, SearchBar, CogMenu };
     static props = {
         ...standardViewProps,
+        defaultGroupBy: {
+            validate: (dgb) => !dgb || typeof dgb === "string",
+            optional: true,
+        },
         editable: { type: Boolean, optional: true },
         forceGlobalClick: { type: Boolean, optional: true },
         onSelectionChanged: { type: Function, optional: true },
-        readonly: { type: Boolean, optional: true },
         showButtons: { type: Boolean, optional: true },
-        Compiler: Function,
+        Compiler: { type: Function, optional: true }, // optional in stable for backward compatibility
         Model: Function,
         Renderer: Function,
         buttonTemplate: String,
@@ -192,90 +175,10 @@ export class KanbanController extends Component {
             }
         });
         this.searchBarToggler = useSearchBarToggler();
-        this.firstLoad = true;
-        onMounted(() => {
-            this.firstLoad = false;
-        });
-        useEffect(
-            () => {
-                this.onSelectionChanged();
-            },
-            () => [this.model.root.selection?.length, this.model.root.isDomainSelected]
-        );
-        onWillStart(async () => {
-            this.isExportEnable = await user.hasGroup("base.group_allow_export");
-        });
-        this.archiveEnabled =
-            "active" in this.props.fields
-                ? !this.props.fields.active.readonly
-                : "x_active" in this.props.fields
-                ? !this.props.fields.x_active.readonly
-                : false;
-        useSubEnv({ model: this.model });
-        this.exportRecords = useExportRecords(this.env, this.props.context, () =>
-            this.getExportableFields()
-        );
-        this.deleteRecordsWithConfirmation = useDeleteRecords(this.model);
-    }
-
-    get display() {
-        const { controlPanel } = this.props.display;
-        if (!controlPanel) {
-            return this.props.display;
-        }
-        return {
-            ...this.props.display,
-            controlPanel: {
-                ...controlPanel,
-                layoutActions: !this.hasSelectedRecords,
-            },
-        };
-    }
-
-    get actionMenuItems() {
-        const { actionMenus } = this.props.info;
-        const staticActionItems = Object.entries(this.getStaticActionMenuItems())
-            .filter(([key, item]) => item.isAvailable === undefined || item.isAvailable())
-            .sort(([k1, item1], [k2, item2]) => (item1.sequence || 0) - (item2.sequence || 0))
-            .map(([key, item]) =>
-                Object.assign(
-                    { key, groupNumber: STATIC_ACTIONS_GROUP_NUMBER },
-                    omit(item, "isAvailable")
-                )
-            );
-
-        return {
-            action: [...staticActionItems, ...(actionMenus?.action || [])],
-            print: actionMenus?.print,
-        };
-    }
-
-    get actionMenuProps() {
-        return {
-            getActiveIds: () => this.model.root.selection.map((r) => r.resId),
-            context: this.props.context,
-            domain: this.props.domain,
-            items: this.actionMenuItems,
-            isDomainSelected: this.model.root.isDomainSelected,
-            resModel: this.model.root.resModel,
-            onActionExecuted: ({ noReload } = {}) => {
-                if (!noReload) {
-                    return this.model.load();
-                }
-            },
-        };
-    }
-
-    get hasSelectedRecords() {
-        return this.model.root.selection?.length || this.isDomainSelected;
-    }
-
-    get isDomainSelected() {
-        return this.model.root.isDomainSelected;
     }
 
     get modelParams() {
-        const { resModel, archInfo, limit } = this.props;
+        const { resModel, archInfo, limit, defaultGroupBy } = this.props;
         const { activeFields, fields } = extractFieldsFromArchInfo(archInfo, this.props.fields);
 
         const cardColorField = archInfo.cardColorField;
@@ -283,12 +186,19 @@ export class KanbanController extends Component {
             addFieldDependencies(activeFields, fields, [{ name: cardColorField, type: "integer" }]);
         }
 
+        // Remove fields aggregator unused to avoid asking them for no reason
+        const aggregateFieldNames = this.progressBarAggregateFields.map((field) => field.name);
+        for (const [key, value] of Object.entries(activeFields)) {
+            if (!aggregateFieldNames.includes(key)) {
+                value.aggregator = null;
+            }
+        }
+
         addFieldDependencies(activeFields, fields, this.progressBarAggregateFields);
         const modelConfig = this.props.state?.modelState?.config || {
             resModel,
             activeFields,
             fields,
-            fieldsToAggregate: this.progressBarAggregateFields.map((field) => field.name),
             openGroupsByDefault: true,
         };
 
@@ -298,6 +208,7 @@ export class KanbanController extends Component {
             limit: archInfo.limit || limit || 40,
             groupsLimit: Number.MAX_SAFE_INTEGER, // no limit
             countLimit: archInfo.countLimit,
+            defaultGroupBy,
             defaultOrderBy: archInfo.defaultOrder,
             maxGroupByDepth: 1,
             activeIdsLimit: session.active_ids_limit,
@@ -308,12 +219,7 @@ export class KanbanController extends Component {
     }
 
     get modelOptions() {
-        return {
-            lazy:
-                !this.env.config.isReloadingController &&
-                !this.env.inDialog &&
-                !!this.props.display.controlPanel,
-        };
+        return {};
     }
 
     get progressBarAggregateFields() {
@@ -334,88 +240,31 @@ export class KanbanController extends Component {
         return this.props.className;
     }
 
-    get archiveDialogProps() {
-        return {};
-    }
-
-    get deleteConfirmationDialogProps() {
-        return {};
-    }
-
-    getExportableFields() {
-        return Object.keys(this.model.root.config.activeFields)
-            .map((e) => this.props.fields[e])
-            .filter((field) => field.type !== "properties");
-    }
-
-    async onSelectionChanged() {
-        if (this.props.onSelectionChanged) {
-            const resIds = await this.model.root.getResIds(true);
-            this.props.onSelectionChanged(resIds);
-        }
-    }
-
-    getStaticActionMenuItems() {
-        return {
-            export: {
-                isAvailable: () => this.isExportEnable,
-                sequence: 10,
-                icon: "fa fa-upload",
-                description: _t("Export"),
-                callback: () => this.exportRecords(),
-            },
-            duplicate: {
-                isAvailable: () => this.props.archInfo.activeActions.duplicate,
-                sequence: 30,
-                icon: "fa fa-clone",
-                description: _t("Duplicate"),
-                callback: () => this.model.root.duplicateRecords(),
-            },
-            archive: {
-                isAvailable: () => this.archiveEnabled,
-                sequence: 40,
-                icon: "oi oi-archive",
-                description: _t("Archive"),
-                callback: () =>
-                    this.model.root.toggleArchiveWithConfirmation(true, this.archiveDialogProps),
-            },
-            unarchive: {
-                isAvailable: () => this.archiveEnabled,
-                sequence: 45,
-                icon: "oi oi-unarchive",
-                description: _t("Unarchive"),
-                callback: () => this.model.root.toggleArchiveWithConfirmation(false),
-            },
-            delete: {
-                isAvailable: () => this.props.archInfo.activeActions.delete,
-                sequence: 50,
-                icon: "fa fa-trash-o",
-                description: _t("Delete"),
-                class: "text-danger",
-                callback: () =>
-                    this.deleteRecordsWithConfirmation(this.deleteConfirmationDialogProps),
-            },
-        };
+    async deleteRecord(record) {
+        this.dialog.add(ConfirmationDialog, {
+            title: _t("Bye-bye, record!"),
+            body: deleteConfirmationMessage,
+            confirm: () => this.model.root.deleteRecords([record]),
+            confirmLabel: _t("Delete"),
+            cancel: () => {},
+            cancelLabel: _t("No, keep it"),
+        });
     }
 
     evalViewModifier(modifier) {
         return evaluateBooleanExpr(modifier, { context: this.props.context });
     }
 
-    deleteRecord(record) {
-        this.deleteRecordsWithConfirmation(this.deleteConfirmationDialogProps, [record]);
-    }
-
-    async openRecord(record, { newWindow } = {}) {
+    async openRecord(record, mode) {
         const activeIds = this.model.root.records.map((datapoint) => datapoint.resId);
-        this.props.selectRecord(record.resId, { activeIds, newWindow });
+        this.props.selectRecord(record.resId, { activeIds, mode });
     }
 
     async createRecord() {
         const { onCreate } = this.props.archInfo;
         const { root } = this.model;
         if (this.canQuickCreate && onCreate === "quick_create") {
-            const firstGroup = root.groups.find((group) => !group.isFolded) || root.groups[0];
+            const firstGroup = root.groups[0];
             if (firstGroup.isFolded) {
                 await firstGroup.toggle();
             }
@@ -436,27 +285,23 @@ export class KanbanController extends Component {
     }
 
     get canCreate() {
-        return this.props.archInfo.activeActions.create;
-    }
-
-    get isNewButtonDisabled() {
-        const { createGroup } = this.props.archInfo.activeActions;
+        const { create, createGroup } = this.props.archInfo.activeActions;
         const list = this.model.root;
-        return (
-            this.model.isReady &&
-            list.isGrouped &&
-            list.groupByField.type === "many2one" &&
-            list.groups.length === 0 &&
-            createGroup
-        );
+        if (!create) {
+            return false;
+        }
+        if (list.isGrouped) {
+            if (list.groupByField.type !== "many2one") {
+                return true;
+            }
+            return list.groups.length || !createGroup;
+        }
+        return true;
     }
 
     get canQuickCreate() {
         const { activeActions } = this.props.archInfo;
         if (!activeActions.quickCreate) {
-            return false;
-        }
-        if (!this.model.isReady) {
             return false;
         }
 

@@ -3,7 +3,7 @@
 
 {
     'name': 'Track Speakers SMS Marketing',
-    'category': 'Marketing/Email Marketing',
+    'category': 'Hidden',
     'version': '1.0',
     'description':
         """
@@ -20,6 +20,5 @@ speakers..
         'website_event_track'
     ],
     'auto_install': True,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

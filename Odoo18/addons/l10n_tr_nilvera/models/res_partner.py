@@ -13,7 +13,7 @@ class ResPartner(models.Model):
     _name = 'res.partner'
     _inherit = ['res.partner']
 
-    invoice_edi_format = fields.Selection(selection_add=[('ubl_tr', "UBL TR 1.2")])
+    invoice_edi_format = fields.Selection(selection_add=[('ubl_tr', "Turkyie (UBL TR 1.2)")])
     l10n_tr_nilvera_customer_status = fields.Selection(
         selection=[
             ('not_checked', "Not Checked"),
@@ -93,14 +93,6 @@ class ResPartner(models.Model):
                     remaining_aliases = newly_persisted_aliases | to_keep
                     if not self.l10n_tr_nilvera_customer_alias_id and remaining_aliases:
                         self.l10n_tr_nilvera_customer_alias_id = remaining_aliases[0]
-
-    def _get_suggested_invoice_edi_format(self):
-        # EXTENDS 'account'
-        res = super()._get_suggested_invoice_edi_format()
-        if self.country_code == 'TR':
-            return 'ubl_tr'
-        else:
-            return res
 
     def _get_edi_builder(self, invoice_edi_format):
         # EXTENDS 'account_edi_ubl_cii'

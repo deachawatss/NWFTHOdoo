@@ -1,7 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import api, fields, models
-from odoo.exceptions import UserError
+from odoo import _, api, fields, models
 
 
 class SaleOrderLine(models.Model):
@@ -25,15 +24,6 @@ class SaleOrderLine(models.Model):
     def get_description_following_lines(self):
         return self.name.splitlines()[1:]
 
-    def _get_combination_name(self):
-        return self.product_id.product_template_attribute_value_ids._get_combination_name()
-
-    def _get_line_header(self):
-        if not self.product_template_attribute_value_ids:
-            return self.name_short
-        # not display_name because we don't want the combination name or the code.
-        return self.product_id.name
-
     def _get_order_date(self):
         self.ensure_one()
         if self.order_id.website_id and self.state == 'draft':
@@ -53,13 +43,13 @@ class SaleOrderLine(models.Model):
         show_tax = self.order_id.website_id.show_line_subtotals_tax_selection
         tax_display = 'total_excluded' if show_tax == 'tax_excluded' else 'total_included'
 
-        return self.tax_ids.compute_all(
+        return self.tax_id.compute_all(
             self.price_unit, self.currency_id, 1, self.product_id, self.order_partner_id,
         )[tax_display]
 
     def _get_displayed_quantity(self):
         rounded_uom_qty = round(self.product_uom_qty,
-                                self.env['decimal.precision'].precision_get('Product Unit'))
+                                self.env['decimal.precision'].precision_get('Product Unit of Measure'))
         return int(rounded_uom_qty) == rounded_uom_qty and int(rounded_uom_qty) or rounded_uom_qty
 
     def _show_in_cart(self):
@@ -79,14 +69,3 @@ class SaleOrderLine(models.Model):
             else 'price_total'
         )
         return sum(self._get_lines_with_price().mapped(price_type))
-
-    def _check_validity(self):
-        if (
-            not self.combo_item_id
-            and sum(self._get_lines_with_price().mapped('price_unit')) == 0
-            and self.order_id.website_id.prevent_zero_price_sale
-            and self.product_template_id.service_tracking not in self.env['product.template']._get_product_types_allow_zero_price()
-        ):
-            raise UserError(self.env._(
-                "The given product does not have a price therefore it cannot be added to cart.",
-            ))

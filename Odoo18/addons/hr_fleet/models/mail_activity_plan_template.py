@@ -24,14 +24,12 @@ class MailActivityPlanTemplate(models.Model):
             employee_id = self.env['hr.employee'].browse(employee._origin.id)
             vehicle = employee_id.car_ids[:1]
             error = False
-            warning = False
             if not vehicle:
                 error = _('Employee %s is not linked to a vehicle.', employee_id.name)
             if vehicle and not vehicle.manager_id:
-                warning = _("The vehicle of employee %(employee)s is not linked to a fleet manager, assigning to you.", employee=employee_id.name)
+                error = _("The vehicle of employee %(employee)s is not linked to a fleet manager.", employee=employee_id.name)
             return {
-                'responsible': vehicle.manager_id or self.env.user,
+                'responsible': vehicle.manager_id,
                 'error': error,
-                'warning': warning
             }
         return super()._determine_responsible(on_demand_responsible, employee)

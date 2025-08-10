@@ -1,11 +1,11 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+from odoo.addons.sale_loyalty.tests.common import TestSaleCouponNumbersCommon
 from odoo.exceptions import ValidationError
 from odoo.fields import Command
 from odoo.tests import tagged
 from odoo.tools.float_utils import float_compare
-
-from odoo.addons.sale_loyalty.tests.common import TestSaleCouponNumbersCommon
 
 
 @tagged('post_install', '-at_install')
@@ -126,8 +126,8 @@ class TestSaleCouponProgramNumbers(TestSaleCouponNumbersCommon):
 
         self._auto_rewards(order, self.all_programs)
         self.assertEqual(len(order.order_line.ids), 1, "We should not get the reduction line since we dont have 320$ tax excluded (cabinet is 320$ tax included)")
-        sol1.tax_ids.price_include_override = 'tax_excluded'
-        sol1._compute_tax_ids()
+        sol1.tax_id.price_include_override = 'tax_excluded'
+        sol1._compute_tax_id()
         self.env.flush_all()
         self._auto_rewards(order, self.all_programs)
         self.assertEqual(len(order.order_line.ids), 2, "We should now get the reduction line since we have 320$ tax included (cabinet is 320$ tax included)")
@@ -372,7 +372,7 @@ class TestSaleCouponProgramNumbers(TestSaleCouponNumbersCommon):
         self.assertEqual(len(order.order_line.ids), 12, "Order should contains 5 regular product lines, 3 free product lines and 4 discount lines (one for every tax)")
 
         # -- This is a test inside the test
-        order.order_line._compute_tax_ids()
+        order.order_line._compute_tax_id()
         self.assertRecordValues(order, [{
             'amount_total': 1711.0,
             'amount_untaxed': 1435.46,
@@ -532,7 +532,7 @@ class TestSaleCouponProgramNumbers(TestSaleCouponNumbersCommon):
             'name': 'Drawer Black',
             'product_uom_qty': 1.0,
             'order_id': order.id,
-            'tax_ids': [(4, self.tax_0pc_excl.id)]
+            'tax_id': [(4, self.tax_0pc_excl.id)]
         })
         self._auto_rewards(order, self.all_programs)
         self.assertEqual(order.amount_total, 0, "Total should be null. The fixed amount discount is higher than the SO total, it should be reduced to the SO total")
@@ -697,7 +697,7 @@ class TestSaleCouponProgramNumbers(TestSaleCouponNumbersCommon):
             'product_uom_qty': 1.0,
             'price_unit': 100.0,
             'order_id': order.id,
-            'tax_ids': [(6, 0, (self.tax_15pc_excl.id,))],
+            'tax_id': [(6, 0, (self.tax_15pc_excl.id,))],
         },
         {
             'product_id': self.pedalBin.id,
@@ -705,7 +705,7 @@ class TestSaleCouponProgramNumbers(TestSaleCouponNumbersCommon):
             'product_uom_qty': 1.0,
             'price_unit': 100.0,
             'order_id': order.id,
-            'tax_ids': [(6, 0, [])],
+            'tax_id': [(6, 0, [])],
         },
         {
             'product_id': self.product_A.id,
@@ -713,7 +713,7 @@ class TestSaleCouponProgramNumbers(TestSaleCouponNumbersCommon):
             'product_uom_qty': 1.0,
             'price_unit': 100.0,
             'order_id': order.id,
-            'tax_ids': [(6, 0, [])],
+            'tax_id': [(6, 0, [])],
         },
         ])
 
@@ -784,7 +784,7 @@ class TestSaleCouponProgramNumbers(TestSaleCouponNumbersCommon):
             'product_uom_qty': 1.0,
             'price_unit': 100.0,
             'order_id': order.id,
-            'tax_ids': [(6, 0, (self.tax_10pc_incl.id,))],
+            'tax_id': [(6, 0, (self.tax_10pc_incl.id,))],
         },
         {
             'product_id': self.pedalBin.id,
@@ -792,7 +792,7 @@ class TestSaleCouponProgramNumbers(TestSaleCouponNumbersCommon):
             'product_uom_qty': 1.0,
             'price_unit': 100.0,
             'order_id': order.id,
-            'tax_ids': [(6, 0, [])],
+            'tax_id': [(6, 0, [])],
         },
         {
             'product_id': self.product_A.id,
@@ -800,7 +800,7 @@ class TestSaleCouponProgramNumbers(TestSaleCouponNumbersCommon):
             'product_uom_qty': 1.0,
             'price_unit': 100.0,
             'order_id': order.id,
-            'tax_ids': [(6, 0, [])],
+            'tax_id': [(6, 0, [])],
         },
         ])
 
@@ -910,7 +910,7 @@ class TestSaleCouponProgramNumbers(TestSaleCouponNumbersCommon):
             'amount': 30,
             'price_include_override': 'tax_included',
         })
-        sol2.tax_ids = percent_tax
+        sol2.tax_id = percent_tax
 
         self._auto_rewards(order, self.all_programs)
         self.assertEqual(len(order.order_line.ids), 4, "Conference Chair + Drawer Black + 20% on no TVA product (Conference Chair) + 20% on 15% tva product (Drawer Black)")
@@ -1065,7 +1065,7 @@ class TestSaleCouponProgramNumbers(TestSaleCouponNumbersCommon):
             'product_uom_qty': 14.0,
             'price_unit': 118.0,
             'order_id': order.id,
-            'tax_ids': False,
+            'tax_id': False,
         })
         self._auto_rewards(order, self.all_programs)
         self.assertEqual(order.amount_total, 1486.80, "10% discount should be applied")
@@ -1488,26 +1488,26 @@ class TestSaleCouponProgramNumbers(TestSaleCouponNumbersCommon):
         self.assertEqual(order.amount_total, 5, 'Price should be 10$ - 5$(discount) = 5$')
         self.assertEqual(order.amount_tax, 0, 'No taxes are applied yet')
 
-        sol.tax_ids = self.tax_10pc_base_incl
+        sol.tax_id = self.tax_10pc_base_incl
         self._auto_rewards(order, program)
 
         self.assertEqual(order.amount_total, 5, 'Price should be 10$ - 5$(discount) = 5$')
         self.assertEqual(float_compare(order.amount_tax, 5 / 11, precision_rounding=3), 0, '10% Tax included in 5$')
 
-        sol.tax_ids = self.tax_10pc_excl
+        sol.tax_id = self.tax_10pc_excl
         self._auto_rewards(order, program)
 
         # Value is 5.99 instead of 6 because you cannot have 6 with 10% tax excluded and a precision rounding of 2
         self.assertAlmostEqual(order.amount_total, 6, 1, msg='Price should be 11$ - 5$(discount) = 6$')
         self.assertEqual(float_compare(order.amount_tax, 6 / 11, precision_rounding=3), 0, '10% Tax included in 6$')
 
-        sol.tax_ids = self.tax_20pc_excl
+        sol.tax_id = self.tax_20pc_excl
         self._auto_rewards(order, program)
 
         self.assertEqual(order.amount_total, 7, 'Price should be 12$ - 5$(discount) = 7$')
         self.assertEqual(float_compare(order.amount_tax, 7 / 12, precision_rounding=3), 0, '20% Tax included on 7$')
 
-        sol.tax_ids = self.tax_10pc_base_incl + self.tax_10pc_excl
+        sol.tax_id = self.tax_10pc_base_incl + self.tax_10pc_excl
         self._auto_rewards(order, program)
 
         self.assertAlmostEqual(order.amount_total, 6, 1, msg='Price should be 11$ - 5$(discount) = 6$')
@@ -1550,21 +1550,21 @@ class TestSaleCouponProgramNumbers(TestSaleCouponNumbersCommon):
         self.assertAlmostEqual(order.amount_total, 15, 1, msg='Price should be 20$ - 5$(discount) = 15$')
         self.assertEqual(order.amount_tax, 0, 'No taxes are applied yet')
 
-        sol1.tax_ids = self.tax_10pc_base_incl
+        sol1.tax_id = self.tax_10pc_base_incl
         self._auto_rewards(order, program)
 
         self.assertAlmostEqual(order.amount_total, 15, 1, msg='Price should be 20$ - 5$(discount) = 15$')
         self.assertEqual(float_compare(order.amount_tax, 5 / 11 + 0, precision_rounding=3), 0,
                          '10% Tax included in 5$ in sol1 (highest cost) and 0 in sol2')
 
-        sol2.tax_ids = self.tax_10pc_excl
+        sol2.tax_id = self.tax_10pc_excl
         self._auto_rewards(order, program)
 
         self.assertAlmostEqual(order.amount_total, 16, 1, msg='Price should be 21$ - 5$(discount) = 16$')
         # Tax amount = 10% in 10$ + 10% in 11$ - 10% in 5$ (apply on excluded)
         self.assertEqual(float_compare(order.amount_tax, 5 / 11, precision_rounding=3), 0)
 
-        sol2.tax_ids = self.tax_10pc_base_incl + self.tax_10pc_excl
+        sol2.tax_id = self.tax_10pc_base_incl + self.tax_10pc_excl
         self._auto_rewards(order, program)
 
         self.assertAlmostEqual(order.amount_total, 16, 1, msg='Price should be 21$ - 5$(discount) = 16$')
@@ -1580,7 +1580,7 @@ class TestSaleCouponProgramNumbers(TestSaleCouponNumbersCommon):
             'product_uom_qty': 1.0,
             'order_id': order.id,
         })
-        sol3.tax_ids = self.tax_10pc_excl
+        sol3.tax_id = self.tax_10pc_excl
         self._auto_rewards(order, program)
 
         self.assertAlmostEqual(order.amount_total, 27, 1, msg='Price should be 32$ - 5$(discount) = 27$')
@@ -1814,8 +1814,8 @@ class TestSaleCouponProgramNumbers(TestSaleCouponNumbersCommon):
         self._auto_rewards(order, loyalty_program)
 
         self.assertEqual(len(order.order_line), 2, 'Promotion should add 1 line')
-        self.assertEqual(order.order_line[0].tax_ids, tax_15pc_excl)
-        self.assertEqual(order.order_line[1].tax_ids, tax_15pc_excl)
+        self.assertEqual(order.order_line[0].tax_id, tax_15pc_excl)
+        self.assertEqual(order.order_line[1].tax_id, tax_15pc_excl)
         self.assertEqual(order.amount_total, 156.0, '140$ + 15% - 5$ = 156$')
 
     def test_apply_order_and_specific_discounts(self):
@@ -1854,7 +1854,7 @@ class TestSaleCouponProgramNumbers(TestSaleCouponNumbersCommon):
         order = self.empty_order
         order.order_line = [Command.create({
             'product_id': self.pedalBin.id,
-            'tax_ids': self.tax_20pc_excl.ids,
+            'tax_id': self.tax_20pc_excl.ids,
         })]
 
         self.assertAlmostEqual(

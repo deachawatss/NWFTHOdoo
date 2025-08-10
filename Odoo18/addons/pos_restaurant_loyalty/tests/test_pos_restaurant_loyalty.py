@@ -11,6 +11,7 @@ class TestPoSRestaurantLoyalty(TestFrontend):
         """
         Test that make sure that rewards stay on the order when leaving the table
         """
+        self.env['loyalty.program'].search([]).write({'active': False})
         self.env['loyalty.program'].create({
             'name': 'My super program',
             'program_type': 'promotion',
@@ -25,8 +26,13 @@ class TestPoSRestaurantLoyalty(TestFrontend):
                 'discount_mode': 'percent',
                 'discount_applicability': 'order',
             })],
+            'pos_config_ids': [Command.link(self.pos_config.id)],
         })
-        self.pos_config.with_user(self.pos_user).open_ui()
-        self.start_pos_tour("PosRestaurantRewardStay")
+        self.pos_config.with_user(self.pos_admin).open_ui()
+        self.start_tour(
+            "/pos/web?config_id=%d" % self.pos_config.id,
+            "PosRestaurantRewardStay",
+            login="pos_admin",
+        )
         order = self.env['pos.order'].search([])
         self.assertEqual(order.currency_id.round(order.amount_total), 1.98)

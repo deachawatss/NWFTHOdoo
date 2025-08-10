@@ -1,6 +1,6 @@
 /*!
- * Signature Pad v5.0.4 | https://github.com/szimek/signature_pad
- * (c) 2024 Szymon Nowak | Released under the MIT license
+ * Signature Pad v4.1.7 | https://github.com/szimek/signature_pad
+ * (c) 2023 Szymon Nowak | Released under the MIT license
  */
 
 (function (global, factory) {
@@ -52,7 +52,7 @@
             const l2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
             const dxm = m1.x - m2.x;
             const dym = m1.y - m2.y;
-            const k = l1 + l2 == 0 ? 0 : l2 / (l1 + l2);
+            const k = l2 / (l1 + l2);
             const cm = { x: m2.x + dxm * k, y: m2.y + dym * k };
             const tx = s2.x - cm.x;
             const ty = s2.y - cm.y;
@@ -101,7 +101,7 @@
             try {
                 this._et = new EventTarget();
             }
-            catch (_a) {
+            catch (error) {
                 this._et = document;
             }
         }
@@ -157,7 +157,6 @@
 
     class SignaturePad extends SignatureEventTarget {
         constructor(canvas, options = {}) {
-            var _a, _b, _c;
             super();
             this.canvas = canvas;
             this._drawingStroke = false;
@@ -167,95 +166,70 @@
             this._lastVelocity = 0;
             this._lastWidth = 0;
             this._handleMouseDown = (event) => {
-                if (!this._isLeftButtonPressed(event, true) || this._drawingStroke) {
-                    return;
+                if (event.buttons === 1) {
+                    this._strokeBegin(event);
                 }
-                this._strokeBegin(this._pointerEventToSignatureEvent(event));
             };
             this._handleMouseMove = (event) => {
-                if (!this._isLeftButtonPressed(event, true) || !this._drawingStroke) {
-                    this._strokeEnd(this._pointerEventToSignatureEvent(event), false);
-                    return;
-                }
-                this._strokeMoveUpdate(this._pointerEventToSignatureEvent(event));
+                this._strokeMoveUpdate(event);
             };
             this._handleMouseUp = (event) => {
-                if (this._isLeftButtonPressed(event)) {
-                    return;
+                if (event.buttons === 1) {
+                    this._strokeEnd(event);
                 }
-                this._strokeEnd(this._pointerEventToSignatureEvent(event));
             };
             this._handleTouchStart = (event) => {
-                if (event.targetTouches.length !== 1 || this._drawingStroke) {
-                    return;
-                }
                 if (event.cancelable) {
                     event.preventDefault();
                 }
-                this._strokeBegin(this._touchEventToSignatureEvent(event));
+                if (event.targetTouches.length === 1) {
+                    const touch = event.changedTouches[0];
+                    this._strokeBegin(touch);
+                }
             };
             this._handleTouchMove = (event) => {
-                if (event.targetTouches.length !== 1) {
-                    return;
-                }
                 if (event.cancelable) {
                     event.preventDefault();
                 }
-                if (!this._drawingStroke) {
-                    this._strokeEnd(this._touchEventToSignatureEvent(event), false);
-                    return;
-                }
-                this._strokeMoveUpdate(this._touchEventToSignatureEvent(event));
+                const touch = event.targetTouches[0];
+                this._strokeMoveUpdate(touch);
             };
             this._handleTouchEnd = (event) => {
-                if (event.targetTouches.length !== 0) {
-                    return;
+                const wasCanvasTouched = event.target === this.canvas;
+                if (wasCanvasTouched) {
+                    if (event.cancelable) {
+                        event.preventDefault();
+                    }
+                    const touch = event.changedTouches[0];
+                    this._strokeEnd(touch);
                 }
-                if (event.cancelable) {
-                    event.preventDefault();
-                }
-                this.canvas.removeEventListener('touchmove', this._handleTouchMove);
-                this._strokeEnd(this._touchEventToSignatureEvent(event));
             };
-            this._handlePointerDown = (event) => {
-                if (!event.isPrimary || !this._isLeftButtonPressed(event) || this._drawingStroke) {
-                    return;
-                }
+            this._handlePointerStart = (event) => {
                 event.preventDefault();
-                this._strokeBegin(this._pointerEventToSignatureEvent(event));
+                this._strokeBegin(event);
             };
             this._handlePointerMove = (event) => {
-                if (!event.isPrimary) {
-                    return;
-                }
-                if (!this._isLeftButtonPressed(event, true) || !this._drawingStroke) {
-                    this._strokeEnd(this._pointerEventToSignatureEvent(event), false);
-                    return;
-                }
-                event.preventDefault();
-                this._strokeMoveUpdate(this._pointerEventToSignatureEvent(event));
+                this._strokeMoveUpdate(event);
             };
-            this._handlePointerUp = (event) => {
-                if (!event.isPrimary || this._isLeftButtonPressed(event)) {
-                    return;
+            this._handlePointerEnd = (event) => {
+                if (this._drawingStroke) {
+                    event.preventDefault();
+                    this._strokeEnd(event);
                 }
-                event.preventDefault();
-                this._strokeEnd(this._pointerEventToSignatureEvent(event));
             };
             this.velocityFilterWeight = options.velocityFilterWeight || 0.7;
             this.minWidth = options.minWidth || 0.5;
             this.maxWidth = options.maxWidth || 2.5;
-            this.throttle = (_a = options.throttle) !== null && _a !== void 0 ? _a : 16;
-            this.minDistance = (_b = options.minDistance) !== null && _b !== void 0 ? _b : 5;
+            this.throttle = ('throttle' in options ? options.throttle : 16);
+            this.minDistance = ('minDistance' in options ? options.minDistance : 5);
             this.dotSize = options.dotSize || 0;
             this.penColor = options.penColor || 'black';
             this.backgroundColor = options.backgroundColor || 'rgba(0,0,0,0)';
             this.compositeOperation = options.compositeOperation || 'source-over';
-            this.canvasContextOptions = (_c = options.canvasContextOptions) !== null && _c !== void 0 ? _c : {};
             this._strokeMoveUpdate = this.throttle
                 ? throttle(SignaturePad.prototype._strokeUpdate, this.throttle)
                 : SignaturePad.prototype._strokeUpdate;
-            this._ctx = canvas.getContext('2d', this.canvasContextOptions);
+            this._ctx = canvas.getContext('2d');
             this.clear();
             this.on();
         }
@@ -322,29 +296,15 @@
             this.canvas.style.touchAction = 'auto';
             this.canvas.style.msTouchAction = 'auto';
             this.canvas.style.userSelect = 'auto';
-            this.canvas.removeEventListener('pointerdown', this._handlePointerDown);
+            this.canvas.removeEventListener('pointerdown', this._handlePointerStart);
+            this.canvas.removeEventListener('pointermove', this._handlePointerMove);
+            this.canvas.ownerDocument.removeEventListener('pointerup', this._handlePointerEnd);
             this.canvas.removeEventListener('mousedown', this._handleMouseDown);
+            this.canvas.removeEventListener('mousemove', this._handleMouseMove);
+            this.canvas.ownerDocument.removeEventListener('mouseup', this._handleMouseUp);
             this.canvas.removeEventListener('touchstart', this._handleTouchStart);
-            this._removeMoveUpEventListeners();
-        }
-        _getListenerFunctions() {
-            var _a;
-            const canvasWindow = window.document === this.canvas.ownerDocument
-                ? window
-                : (_a = this.canvas.ownerDocument.defaultView) !== null && _a !== void 0 ? _a : this.canvas.ownerDocument;
-            return {
-                addEventListener: canvasWindow.addEventListener.bind(canvasWindow),
-                removeEventListener: canvasWindow.removeEventListener.bind(canvasWindow),
-            };
-        }
-        _removeMoveUpEventListeners() {
-            const { removeEventListener } = this._getListenerFunctions();
-            removeEventListener('pointermove', this._handlePointerMove);
-            removeEventListener('pointerup', this._handlePointerUp);
-            removeEventListener('mousemove', this._handleMouseMove);
-            removeEventListener('mouseup', this._handleMouseUp);
-            removeEventListener('touchmove', this._handleTouchMove);
-            removeEventListener('touchend', this._handleTouchEnd);
+            this.canvas.removeEventListener('touchmove', this._handleTouchMove);
+            this.canvas.removeEventListener('touchend', this._handleTouchEnd);
         }
         isEmpty() {
             return this._isEmpty;
@@ -358,31 +318,6 @@
         }
         toData() {
             return this._data;
-        }
-        _isLeftButtonPressed(event, only) {
-            if (only) {
-                return event.buttons === 1;
-            }
-            return (event.buttons & 1) === 1;
-        }
-        _pointerEventToSignatureEvent(event) {
-            return {
-                event: event,
-                type: event.type,
-                x: event.clientX,
-                y: event.clientY,
-                pressure: 'pressure' in event ? event.pressure : 0,
-            };
-        }
-        _touchEventToSignatureEvent(event) {
-            const touch = event.changedTouches[0];
-            return {
-                event: event,
-                type: event.type,
-                x: touch.clientX,
-                y: touch.clientY,
-                pressure: touch.force,
-            };
         }
         _getPointGroupOptions(group) {
             return {
@@ -403,21 +338,6 @@
             if (cancelled) {
                 return;
             }
-            const { addEventListener } = this._getListenerFunctions();
-            switch (event.event.type) {
-                case 'mousedown':
-                    addEventListener('mousemove', this._handleMouseMove);
-                    addEventListener('mouseup', this._handleMouseUp);
-                    break;
-                case 'touchstart':
-                    addEventListener('touchmove', this._handleTouchMove);
-                    addEventListener('touchend', this._handleTouchEnd);
-                    break;
-                case 'pointerdown':
-                    addEventListener('pointermove', this._handlePointerMove);
-                    addEventListener('pointerup', this._handlePointerUp);
-                    break;
-            }
             this._drawingStroke = true;
             const pointGroupOptions = this._getPointGroupOptions();
             const newPointGroup = Object.assign(Object.assign({}, pointGroupOptions), { points: [] });
@@ -434,7 +354,14 @@
                 return;
             }
             this.dispatchEvent(new CustomEvent('beforeUpdateStroke', { detail: event }));
-            const point = this._createPoint(event.x, event.y, event.pressure);
+            const x = event.clientX;
+            const y = event.clientY;
+            const pressure = event.pressure !== undefined
+                ? event.pressure
+                : event.force !== undefined
+                    ? event.force
+                    : 0;
+            const point = this._createPoint(x, y, pressure);
             const lastPointGroup = this._data[this._data.length - 1];
             const lastPoints = lastPointGroup.points;
             const lastPoint = lastPoints.length > 0 && lastPoints[lastPoints.length - 1];
@@ -459,27 +386,30 @@
             }
             this.dispatchEvent(new CustomEvent('afterUpdateStroke', { detail: event }));
         }
-        _strokeEnd(event, shouldUpdate = true) {
-            this._removeMoveUpEventListeners();
+        _strokeEnd(event) {
             if (!this._drawingStroke) {
                 return;
             }
-            if (shouldUpdate) {
-                this._strokeUpdate(event);
-            }
+            this._strokeUpdate(event);
             this._drawingStroke = false;
             this.dispatchEvent(new CustomEvent('endStroke', { detail: event }));
         }
         _handlePointerEvents() {
             this._drawingStroke = false;
-            this.canvas.addEventListener('pointerdown', this._handlePointerDown);
+            this.canvas.addEventListener('pointerdown', this._handlePointerStart);
+            this.canvas.addEventListener('pointermove', this._handlePointerMove);
+            this.canvas.ownerDocument.addEventListener('pointerup', this._handlePointerEnd);
         }
         _handleMouseEvents() {
             this._drawingStroke = false;
             this.canvas.addEventListener('mousedown', this._handleMouseDown);
+            this.canvas.addEventListener('mousemove', this._handleMouseMove);
+            this.canvas.ownerDocument.addEventListener('mouseup', this._handleMouseUp);
         }
         _handleTouchEvents() {
             this.canvas.addEventListener('touchstart', this._handleTouchStart);
+            this.canvas.addEventListener('touchmove', this._handleTouchMove);
+            this.canvas.addEventListener('touchend', this._handleTouchEnd);
         }
         _reset(options) {
             this._lastPoints = [];

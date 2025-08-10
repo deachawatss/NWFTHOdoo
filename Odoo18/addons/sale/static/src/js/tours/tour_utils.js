@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 function createNewSalesOrder() {
     return [
         {
@@ -64,11 +66,14 @@ function clickSomewhereElse() {
 function checkSOLDescriptionContains(productName, text) {
     // currently must be called after exiting the edit mode on the SOL
     // TODO in the future: handle edit mode and look directly into the textarea value
-    let trigger = `.o_field_product_label_section_and_note_cell:contains("${productName}")`;
-    if (text) {
-        trigger = `${trigger} textarea`;
+    if (!text) {
+        return {
+            trigger: `span:contains("${productName}")`,
+        }
     }
-    return { trigger };
+    return {
+        trigger: `span:contains("${productName}") ~ textarea`,
+    }
 }
 
 function editLineMatching(productName, text) {

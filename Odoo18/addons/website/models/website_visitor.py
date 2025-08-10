@@ -4,14 +4,15 @@ from datetime import datetime, timedelta
 
 import hashlib
 import pytz
+import threading
 
-from odoo import api, fields, models
+from odoo import fields, models, api, _
 from odoo.addons.base.models.res_partner import _tz_get
 from odoo.exceptions import UserError
-from odoo.fields import Domain
-from odoo.tools import _, SQL
+from odoo.tools import split_every, SQL
 from odoo.tools.misc import _format_time_ago
 from odoo.http import request
+from odoo.osv import expression
 
 
 class WebsiteTrack(models.Model):
@@ -76,10 +77,9 @@ class WebsiteVisitor(models.Model):
     time_since_last_action = fields.Char('Last action', compute="_compute_time_statistics", help='Time since last page view. E.g.: 2 minutes ago')
     is_connected = fields.Boolean('Is connected?', compute='_compute_time_statistics', help='A visitor is considered as connected if his last page view was within the last 5 minutes.')
 
-    _access_token_unique = models.Constraint(
-        'unique(access_token)',
-        'Access token should be unique.',
-    )
+    _sql_constraints = [
+        ('access_token_unique', 'unique(access_token)', 'Access token should be unique.'),
+    ]
 
     @api.depends('partner_id')
     def _compute_display_name(self):
@@ -92,31 +92,28 @@ class WebsiteVisitor(models.Model):
     def _compute_partner_id(self):
         # The browse in the loop is fine, there is no SQL Query on partner here
         for visitor in self:
-            if not visitor.id:
-                visitor.partner_id = visitor._origin.partner_id
-                continue
             # If the access_token is not a 32 length hexa string, it means that
             # the visitor is linked to a logged in user, in which case its
             # partner_id is used instead as the token.
             partner_id = len(visitor.access_token) != 32 and int(visitor.access_token)
             visitor.partner_id = self.env['res.partner'].browse(partner_id)
 
-    @api.depends('partner_id.email_normalized', 'partner_id.phone')
+    @api.depends('partner_id.email_normalized', 'partner_id.mobile', 'partner_id.phone')
     def _compute_email_phone(self):
         results = self.env['res.partner'].search_read(
             [('id', 'in', self.partner_id.ids)],
-            ['id', 'email_normalized', 'phone'],
+            ['id', 'email_normalized', 'mobile', 'phone'],
         )
         mapped_data = {
             result['id']: {
                 'email_normalized': result['email_normalized'],
-                'phone': result['phone']
+                'mobile': result['mobile'] if result['mobile'] else result['phone']
             } for result in results
         }
 
         for visitor in self:
             visitor.email = mapped_data.get(visitor.partner_id.id, {}).get('email_normalized')
-            visitor.mobile = mapped_data.get(visitor.partner_id.id, {}).get('phone')
+            visitor.mobile = mapped_data.get(visitor.partner_id.id, {}).get('mobile')
 
     @api.depends('website_track_ids')
     def _compute_page_statistics(self):
@@ -133,12 +130,13 @@ class WebsiteVisitor(models.Model):
 
         for visitor in self:
             visitor_info = mapped_data.get(visitor.id, {'page_count': 0, 'visitor_page_count': 0, 'page_ids': set()})
-            # sudo - website.visitor: access to page_ids is restricted to group_website_designer
-            visitor.sudo().page_ids = [(6, 0, visitor_info['page_ids'])]
+            visitor.page_ids = [(6, 0, visitor_info['page_ids'])]
             visitor.visitor_page_count = visitor_info['visitor_page_count']
             visitor.page_count = visitor_info['page_count']
 
     def _search_page_ids(self, operator, value):
+        if operator not in ('like', 'ilike', 'not like', 'not ilike', '=like', '=ilike', '=', '!='):
+            raise ValueError(_('This operator is not supported'))
         return [('website_track_ids.page_id.name', operator, value)]
 
     @api.depends('website_track_ids.page_id')
@@ -304,7 +302,7 @@ class WebsiteVisitor(models.Model):
 
     def _add_tracking(self, domain, website_track_values):
         """ Add the track and update the visitor"""
-        domain = Domain.AND([domain, Domain('visitor_id', '=', self.id)])
+        domain = expression.AND([domain, [('visitor_id', '=', self.id)]])
         last_view = self.env['website.track'].sudo().search(domain, limit=1)
         if not last_view or last_view.visit_datetime < datetime.now() - timedelta(minutes=30):
             website_track_values['visitor_id'] = self.id
@@ -331,20 +329,28 @@ class WebsiteVisitor(models.Model):
         self.website_track_ids.visitor_id = target.id
         self.unlink()
 
-    def _cron_unlink_old_visitors(self, batch_size=1000):
+    def _cron_unlink_old_visitors(self, batch_size=1000, limit=None):
         """ Unlink inactive visitors (see '_inactive_visitors_domain' for
         details).
 
         Visitors were previously archived but we came to the conclusion that
         archived visitors have very little value and bloat the database for no
         reason. """
-        domain = self._inactive_visitors_domain()
-        visitors = self.env['website.visitor'].sudo().search(domain, limit=batch_size)
-        visitors.unlink()
-        self.env['ir.cron']._commit_progress(
-            processed=len(visitors),
-            remaining=0 if len(visitors) < batch_size else visitors.search_count(domain),
-        )
+        auto_commit = not getattr(threading.current_thread(), 'testing', False)
+        visitor_model = self.env['website.visitor']
+        visitor_ids = visitor_model.sudo().search(self._inactive_visitors_domain(), limit=limit).ids
+        visitor_done = 0
+        for inactive_visitors_batch in split_every(
+            batch_size,
+            visitor_ids,
+            visitor_model.browse,
+        ):
+            inactive_visitors_batch.unlink()
+            visitor_done += len(inactive_visitors_batch)
+            if auto_commit:
+                self.env['ir.cron']._notify_progress(done=visitor_done, remaining=len(visitor_ids) - visitor_done)
+                self.env.cr.commit()
+        self.env['ir.cron']._notify_progress(done=visitor_done, remaining=len(visitor_ids) - visitor_done)
 
     def _inactive_visitors_domain(self):
         """ This method defines the domain of visitors that can be cleaned. By
@@ -357,7 +363,7 @@ class WebsiteVisitor(models.Model):
 
         delay_days = int(self.env['ir.config_parameter'].sudo().get_param('website.visitor.live.days', 60))
         deadline = datetime.now() - timedelta(days=delay_days)
-        return Domain('last_connection_datetime', '<', deadline) & Domain('partner_id', '=', False)
+        return [('last_connection_datetime', '<', deadline), ('partner_id', '=', False)]
 
     def _update_visitor_timezone(self, timezone):
         """ We need to do this part here to avoid concurrent updates error. """

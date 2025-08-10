@@ -1,8 +1,10 @@
-import { Component, onWillStart } from "@odoo/owl";
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
-import { useService } from "@web/core/utils/hooks";
-import { ListRenderer } from "@web/views/list/list_renderer";
 import { listView } from "@web/views/list/list_view";
+import { ListRenderer } from "@web/views/list/list_renderer";
+import { useService } from "@web/core/utils/hooks";
+import { Component, onWillStart } from "@odoo/owl";
 
 export class LoyaltyActionHelper extends Component {
     static template = "loyalty.LoyaltyActionHelper";

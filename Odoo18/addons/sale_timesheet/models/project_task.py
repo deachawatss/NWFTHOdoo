@@ -1,13 +1,13 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, fields, models
-from odoo.fields import Domain
+from odoo.osv import expression
 
 
 class ProjectTask(models.Model):
     _inherit = "project.task"
 
-    def _get_default_partner_id(self, project=None, parent=None):
+    def _get_default_partner_id(self, project, parent):
         res = super()._get_default_partner_id(project, parent)
         if not res and project:
             # project in sudo if the current user is a portal user.
@@ -25,11 +25,10 @@ class ProjectTask(models.Model):
     timesheet_product_id = fields.Many2one(related="project_id.timesheet_product_id")
     remaining_hours_so = fields.Float('Time Remaining on SO', compute='_compute_remaining_hours_so', search='_search_remaining_hours_so', compute_sudo=True)
     remaining_hours_available = fields.Boolean(related="sale_line_id.remaining_hours_available")
-    last_sol_of_customer = fields.Many2one('sale.order.line', compute='_compute_last_sol_of_customer')
 
     @property
-    def TASK_PORTAL_READABLE_FIELDS(self):
-        return super().TASK_PORTAL_READABLE_FIELDS | {
+    def SELF_READABLE_FIELDS(self):
+        return super().SELF_READABLE_FIELDS | {
             'remaining_hours_available',
             'remaining_hours_so',
         }
@@ -58,29 +57,18 @@ class ProjectTask(models.Model):
     def _search_remaining_hours_so(self, operator, value):
         return [('sale_line_id.remaining_hours', operator, value)]
 
-    def _compute_last_sol_of_customer(self):
-        sol_per_domain = dict()
-        for task in self:
-            domain = tuple(task._get_last_sol_of_customer_domain())
-            if not domain:
-                task.last_sol_of_customer = False
-                continue
-            if domain not in sol_per_domain:
-                sol_per_domain[domain] = self.env['sale.order.line'].search(domain, limit=1)
-            task.last_sol_of_customer = sol_per_domain[domain]
-
     def _inverse_partner_id(self):
         super()._inverse_partner_id()
         for task in self:
             if task.allow_billable and not task.sale_line_id:
-                task.sale_line_id = task.sudo().last_sol_of_customer
+                task.sale_line_id = task.sudo()._get_last_sol_of_customer()
 
     @api.depends('sale_line_id.order_partner_id', 'parent_id.sale_line_id', 'project_id.sale_line_id', 'allow_billable')
     def _compute_sale_line(self):
         super()._compute_sale_line()
         for task in self:
             if task.allow_billable and not task.sale_line_id:
-                task.sale_line_id = task.last_sol_of_customer
+                task.sale_line_id = task._get_last_sol_of_customer()
 
     @api.depends('project_id.sale_line_employee_ids')
     def _compute_is_project_map_empty(self):
@@ -92,23 +80,23 @@ class ProjectTask(models.Model):
         for task in self:
             task.has_multi_sol = task.timesheet_ids and task.timesheet_ids.so_line != task.sale_line_id
 
-    def _get_last_sol_of_customer_domain(self):
-        # Get the domain of the last SOL made for the customer in the current task where we need to compute
+    def _get_last_sol_of_customer(self):
+        # Get the last SOL made for the customer in the current task where we need to compute
         self.ensure_one()
         if not self.partner_id.commercial_partner_id or not self.allow_billable:
-            return []
+            return False
         SaleOrderLine = self.env['sale.order.line']
-        domain = Domain.AND([
+        domain = expression.AND([
             SaleOrderLine._domain_sale_line_service(),
             [
                 ('company_id', '=?', self.company_id.id),
-                ('order_partner_id', 'child_of', self.partner_id.commercial_partner_id.id),
+                ('order_partner_id', 'child_of', self.partner_id.commercial_partner_id.ids),
                 ('remaining_hours', '>', 0),
             ],
         ])
         if self.project_id.pricing_type != 'task_rate' and self.project_sale_order_id and self.partner_id.commercial_partner_id == self.project_id.partner_id.commercial_partner_id:
-            domain &= Domain('order_id', '=', self.project_sale_order_id.id)
-        return domain
+            domain = expression.AND([domain, [('order_id', '=?', self.project_sale_order_id.id)]])
+        return SaleOrderLine.search(domain, limit=1)
 
     def _get_timesheet(self):
         # return not invoiced timesheet and timesheet without so_line or so_line linked to task

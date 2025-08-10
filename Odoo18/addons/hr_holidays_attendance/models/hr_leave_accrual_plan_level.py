@@ -1,30 +1,27 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
+
 from odoo import api, fields, models
-from odoo.exceptions import ValidationError
 
 
-class HrLeaveAccrualLevel(models.Model):
+class AccrualPlanLevel(models.Model):
     _inherit = "hr.leave.accrual.level"
 
-    frequency = fields.Selection(
-        selection_add=[('worked_hours', 'Per Hour Worked')],
-        ondelete={'worked_hours': 'cascade'},
-        compute='_compute_frequency',
+    frequency_hourly_source = fields.Selection(
+        selection=[
+            ('calendar', 'Calendar'),
+            ('attendance', 'Attendances')
+        ],
+        default='calendar',
+        compute='_compute_frequency_hourly_source',
         store=True,
         readonly=False,
-    )
-
-    @api.constrains('frequency')
-    def _check_worked_hours(self):
-        for level in self:
-            if level.frequency == 'worked_hours' and level.accrued_gain_time == 'start':
-                raise ValidationError(self.env._("You can't base accrued time on hours worked, because time is accrued at the start of the period."))
+        help='If the source is set to "Calendar", the amount of worked hours will be computed based '
+        "on the Employee's working schedule. Otherwise, the amount of worked hours will be based "
+        'on Attendance records.')
 
     @api.depends('accrued_gain_time')
-    def _compute_frequency(self):
+    def _compute_frequency_hourly_source(self):
         for level in self:
-            if level.accrued_gain_time == 'start' and level.frequency == 'worked_hours':
-                level.frequency = 'hourly'
-
-    def _get_hourly_frequencies(self):
-        return super()._get_hourly_frequencies() + ["worked_hours"]
+            if level.accrued_gain_time == 'start':
+                level.frequency_hourly_source = 'calendar'

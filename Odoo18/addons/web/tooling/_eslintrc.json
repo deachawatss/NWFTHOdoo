@@ -34,8 +34,7 @@
     "prefer-const": ["error", {
       "destructuring": "all",
       "ignoreReadBeforeAssign": true
-    }],
-    "arrow-body-style": ["error", "as-needed"]
+    }]
   },
   "globals": {
     "odoo": "readonly",

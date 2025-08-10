@@ -23,7 +23,6 @@ body:not(.o_touch_device) .o_settings_container .o_field_selection {
    position: absolute;
    top: 0px;
    right: 40px;
-   cursor: pointer;
 }
 
 // MIXINS
@@ -46,7 +45,7 @@ body:not(.o_touch_device) .o_settings_container .o_field_selection {
 .o_base_settings_view .o_form_renderer {
    --settings__tab-bg: #{map-get($grays, '100')};
    --settings__tab-bg--active: #{$o-component-active-bg};
-   --settings__tab-color: #{$body-color};
+   --settings__tab-color: #{map-get($grays, '700')};
    --settings__title-bg: #{map-get($grays, '200')};
 
    height: 100%;
@@ -101,7 +100,7 @@ body:not(.o_touch_device) .o_settings_container .o_field_selection {
                }
 
                &:hover, &.selected {
-                   color: $black;
+                   color: $o-gray-900;
                }
            }
        }
@@ -164,7 +163,6 @@ body:not(.o_touch_device) .o_settings_container .o_field_selection {
 
            .highlighter {
                background: yellow;
-               font-weight: bold;
            }
 
             .o_datepicker .o_datepicker_button {

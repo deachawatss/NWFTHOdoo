@@ -6,13 +6,28 @@ export class DiscussNotificationSettings extends Component {
     static template = "mail.DiscussNotificationSettings";
 
     setup() {
-        this.store = useService("mail.store");
+        this.store = useState(useService("mail.store"));
         this.state = useState({
             selectedDuration: false,
         });
     }
 
-    onChangeMessageSound() {
-        this.store.settings.messageSound = !this.store.settings.messageSound;
+    onChangeDisplayMuteDetails() {
+        // set the default mute duration to forever when opens the mute details
+        if (!this.store.settings.mute_until_dt) {
+            const FOREVER = this.store.settings.MUTES.find((m) => m.label === "forever").value;
+            this.store.settings.setMuteDuration(FOREVER);
+            this.state.selectedDuration = FOREVER;
+        } else {
+            this.store.settings.setMuteDuration(false);
+        }
+    }
+
+    onChangeMuteDuration(ev) {
+        if (ev.target.value === "default") {
+            return;
+        }
+        this.store.settings.setMuteDuration(parseInt(ev.target.value));
+        this.state.selectedDuration = parseInt(ev.target.value);
     }
 }

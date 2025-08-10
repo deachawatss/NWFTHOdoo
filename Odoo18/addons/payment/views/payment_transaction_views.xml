@@ -58,7 +58,7 @@
                     <separator string="Child transactions" invisible="not child_transaction_ids"/>
                     <field name="child_transaction_ids" invisible="not child_transaction_ids"/>
                     <group string="Message" invisible="not state_message">
-                        <field colspan="2" name="state_message" nolabel="1"/>
+                        <field name="state_message" nolabel="1"/>
                     </group>
                 </sheet>
             </form>
@@ -113,7 +113,7 @@
                 <field name="provider_id"/>
                 <field name="partner_id"/>
                 <field name="partner_name"/>
-                <group string="Group By">
+                <group expand="1" string="Group By">
                     <filter string="Provider" name="provider_id" context="{'group_by': 'provider_id'}"/>
                     <filter string="Partner" name="partner_id" context="{'group_by': 'partner_id'}"/>
                     <filter string="Status" name="state" context="{'group_by': 'state'}"/>
@@ -123,33 +123,10 @@
         </field>
     </record>
 
-    <record id="payment_transaction_graph" model="ir.ui.view">
-        <field name="name">payment.transaction.graph</field>
-        <field name="model">payment.transaction</field>
-        <field name="arch" type="xml">
-            <graph string="Payment Transactions">
-                <field name="create_date" interval="month"/>
-                <field name="state"/>
-            </graph>
-        </field>
-    </record>
-
-    <record id="payment_transaction_pivot" model="ir.ui.view">
-        <field name="name">payment.transaction.pivot</field>
-        <field name="model">payment.transaction</field>
-        <field name="arch" type="xml">
-            <pivot string="Payment Transactions" display_quantity="1">
-                <field name="create_date" interval="month" type="row"/>
-                <field name="state" type="col"/>
-                <field name="amount" type="measure"/>
-            </pivot>
-        </field>
-    </record>
-
     <record id="action_payment_transaction" model="ir.actions.act_window">
         <field name="name">Payment Transactions</field>
         <field name="res_model">payment.transaction</field>
-        <field name="view_mode">list,kanban,form,graph,pivot</field>
+        <field name="view_mode">list,kanban,form</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_neutral_face">
                 There are no transactions to show

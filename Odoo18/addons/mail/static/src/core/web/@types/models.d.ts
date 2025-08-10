@@ -1,37 +1,22 @@
 declare module "models" {
-    export interface Activity {
-        dateCreateFormatted: Readonly<string>;
-        dateDeadlineFormatted: Readonly<string>;
-        dateDoneFormatted: Readonly<string>;
-        edit: () => Promise<void>;
-        markAsDone: (attachmentIds: number[]) => Promise<void>;
-        markAsDoneAndScheduleNext: () => Promise<ActionDescription>;
-        remove: (param0: { broadcast: boolean }) => void;
-    }
-    export interface Message {
-        canForward: (thread: Thread) => boolean;
-        canReplyAll: (thread: Thread) => boolean;
+    import { Activity as ActivityClass } from "@mail/core/web/activity_model";
+
+    export interface Activity extends ActivityClass {}
+    export interface Discuss  {
+        inbox: Thread,
+        stared: Thread,
+        history: Thread,
     }
     export interface Store {
-        _onActivityBroadcastChannelMessage: (param0: { data: { type: "INSERT"|"DELETE"|"RELOAD_CHATTER", payload: Partial<Activity> } }) => void;
-        activity_counter_bus_id: number;
-        activityCounter: number;
-        activityGroups: Object[];
-        history: Thread;
-        inbox: Thread;
-        onLinkFollowed: (fromThread: Thread) => void;
-        onUpdateActivityGroups: () => void;
-        scheduleActivity: (resModel: string, resIds: number[], defaultActivityTypeId: number|undefined) => Promise<void>;
-        starred: Thread;
-        unstarAll: () => Promise<void>;
+        activityCounter: number,
+        activity_counter_bus_id: number,
+        activityGroups: Object[],
     }
     export interface Thread {
-        activities: Activity[];
-        follow: () => Promise<void>;
-        loadMoreFollowers: () => Promise<void>;
-        loadMoreRecipients: () => Promise<void>;
-        recipients: Follower[];
-        recipientsCount: number|undefined;
-        recipientsFullyLoaded: Readonly<boolean>;
+        recipients: Follower[],
+    }
+
+    export interface Models {
+        "Activity": Activity,
     }
 }

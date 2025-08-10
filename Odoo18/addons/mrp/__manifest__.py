@@ -6,7 +6,7 @@
     'name': 'Manufacturing',
     'version': '2.0',
     'website': 'https://www.odoo.com/app/manufacturing',
-    'category': 'Supply Chain/Manufacturing',
+    'category': 'Manufacturing/Manufacturing',
     'sequence': 55,
     'summary': 'Manufacturing Orders & BOMs',
     'depends': ['product', 'stock', 'resource'],
@@ -68,6 +68,5 @@
             'mrp/static/tests/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

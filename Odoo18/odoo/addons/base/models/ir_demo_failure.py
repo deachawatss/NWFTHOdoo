@@ -1,7 +1,7 @@
 from odoo import api, fields, models
 
 
-class IrDemo_Failure(models.TransientModel):
+class DemoFailure(models.TransientModel):
     """ Stores modules for which we could not install demo data
     """
     _name = 'ir.demo_failure'
@@ -11,8 +11,7 @@ class IrDemo_Failure(models.TransientModel):
     error = fields.Char(string="Error")
     wizard_id = fields.Many2one('ir.demo_failure.wizard')
 
-
-class IrDemo_FailureWizard(models.TransientModel):
+class DemoFailureWizard(models.TransientModel):
     _name = 'ir.demo_failure.wizard'
     _description = 'Demo Failure wizard'
 

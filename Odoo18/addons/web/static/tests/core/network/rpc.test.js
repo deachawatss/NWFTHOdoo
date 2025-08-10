@@ -9,7 +9,6 @@ import {
     rpc,
     rpcBus,
 } from "@web/core/network/rpc";
-import { PersistentCache } from "@web/core/utils/persistent_cache";
 
 const onRpcRequest = (listener) => after(on(rpcBus, "RPC:REQUEST", listener));
 const onRpcResponse = (listener) => after(on(rpcBus, "RPC:RESPONSE", listener));
@@ -145,23 +144,4 @@ test("rpc can send additional headers", async () => {
         return { result: true };
     });
     await rpc("/test/", null, { headers: { Hello: "World" } });
-});
-
-test("Cache: can cache a simple rpc", async () => {
-    rpc.setCache(
-        new PersistentCache(
-            "mockRpc",
-            1,
-            "85472d41873cdb504b7c7dfecdb8993d90db142c4c03e6d94c4ae37a7771dc5b"
-        )
-    );
-    mockFetch(() => {
-        expect.step("Fetch");
-        return { result: { action_id: 123 } };
-    });
-
-    expect(await rpc("/test/", {}, { cached: true })).toEqual({ action_id: 123 });
-    expect(await rpc("/test/", {}, { cached: true })).toEqual({ action_id: 123 });
-    expect(await rpc("/test/", {}, { cached: true })).toEqual({ action_id: 123 });
-    expect.verifySteps(["Fetch"]);
 });

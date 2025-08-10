@@ -5,14 +5,12 @@ from datetime import datetime, timedelta, timezone
 from http import HTTPStatus
 from os.path import basename, join as opj
 from unittest.mock import patch
-from urllib.parse import urlsplit
-
 from freezegun import freeze_time
+from urllib3.util import parse_url
 
-from odoo import api, http
+import odoo
 from odoo.tests import new_test_user, tagged, RecordCapturer
-from odoo.tools import config, file_open
-from odoo.tools.image import image_process
+from odoo.tools import config, file_open, image_process
 from odoo.tools.misc import submap
 
 from .test_common import TestHttpBase, HTTP_DATETIME_FORMAT
@@ -279,10 +277,10 @@ class TestHttpStatic(TestHttpStaticCommon):
 
     def test_static16_public_access_rights(self):
         self.authenticate(None, None)
-        user_template = self.env.ref('base.template_portal_user_id')
+        default_user = self.env.ref('base.default_user')
 
         with self.subTest('model access rights'):
-            res = self.url_open(f'/web/content/res.users/{user_template.id}/image_128')
+            res = self.url_open(f'/web/content/res.users/{default_user.id}/image_128')
             self.assertEqual(res.status_code, 404)
 
         with self.subTest('attachment + field access rights'):
@@ -336,7 +334,7 @@ class TestHttpStatic(TestHttpStaticCommon):
         })
 
         res = self.url_open(bad_path, allow_redirects=False)
-        location = urlsplit(res.headers.get('Location', ''))
+        location = parse_url(res.headers.get('Location', ''))
         self.assertNotEqual(location.path, bad_path, "loop detected")
         self.assertEqual(res.status_code, 404)
 
@@ -431,7 +429,7 @@ class TestHttpStatic(TestHttpStaticCommon):
         session = self.authenticate(None, None)
         for debug in ('', 'assets'):
             session.debug = debug
-            http.root.session_store.save(self.session)
+            odoo.http.root.session_store.save(self.session)
             with self.subTest(debug=debug):
                 res = self.db_url_open('/test_http/static/src/img/gizeh.png', headers={
                     'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) '
@@ -450,6 +448,32 @@ class TestHttpStatic(TestHttpStaticCommon):
                     e = "wkhtmltopdf only works if it is allowed to cache everything"
                     raise AssertionError(e) from exc
                 self.assertEqual(res.content, self.gizeh_data)
+
+    def test_static24_only_one_date_header(self):
+        res = self.assertDownloadPlaceholder('/web/image')
+        # requests merge multiple headers with a same key together, it
+        # concatenates the values, hence .count(' GMT')
+        self.assertEqual(res.headers['Date'].count(' GMT'), 1,
+            "There must be only 1 Date header, not 2")
+
+    def test_static25_binary_non_base64(self):
+        self.authenticate('admin', 'admin')
+
+        # need a Binary(attachment=False) field
+        # TODO: master, add such a field on test_http.stargate
+        record = self.env['ir.mail_server'].create({
+            'name': 'dummy test_http test_static server',
+            'smtp_host': 'localhost',
+        })
+        record.smtp_ssl_certificate = b'non base64 value'
+        self.assertDownload(
+            f'/web/content/ir.mail_server/{record.id}/smtp_ssl_certificate',
+            headers={},
+            assert_status_code=200,
+            assert_headers={},
+            assert_content=b'non base64 value',
+        )
+
 
 @tagged('post_install', '-at_install')
 class TestHttpStaticLogo(TestHttpStaticCommon):
@@ -481,7 +505,7 @@ class TestHttpStaticLogo(TestHttpStaticCommon):
             'Content-Type': 'image/png',
             'Content-Disposition': 'inline; filename=nologo.png'
         }
-        super_user = cls.env['res.users'].browse([api.SUPERUSER_ID])
+        super_user = cls.env['res.users'].browse([odoo.SUPERUSER_ID])
         companies = ResCompany.browse([super_user.company_id.id]) | ResCompany.create(
             {
                 'name': 'Company 2',
@@ -667,11 +691,11 @@ class TestHttpStaticUpload(TestHttpStaticCommon):
             file_content = file.read()
             file_size = len(file_content)
             file.seek(0)
-            res = self.url_open(
+            res = self.opener.post(
                 f'{self.base_url()}/web/binary/upload_attachment',
                 files={'ufile': file},
                 data={
-                    'csrf_token': http.Request.csrf_token(self),
+                    'csrf_token': odoo.http.Request.csrf_token(self),
                     'model': 'test_http.stargate',
                     'id': self.env.ref('test_http.earth').id,
                 },
@@ -713,11 +737,11 @@ class TestHttpStaticUpload(TestHttpStaticCommon):
             self.env['ir.config_parameter'].sudo().set_param(
                 'web.max_file_upload_size', file_size - 1,
             )
-            res = self.url_open(
+            res = self.opener.post(
                 f'{self.base_url()}/web/binary/upload_attachment',
                 files={'ufile': file},
                 data={
-                    'csrf_token': http.Request.csrf_token(self),
+                    'csrf_token': odoo.http.Request.csrf_token(self),
                     'model': 'test_http.stargate',
                     'id': self.env.ref('test_http.earth').id,
                     'callback': 'callmemaybe',

@@ -1,3 +1,4 @@
+/** @odoo-module **/
 import { ForecastedButtons } from "@stock/stock_forecasted/forecasted_buttons";
 import { patch } from "@web/core/utils/patch";
 import { onWillStart } from "@odoo/owl";
@@ -18,7 +19,7 @@ patch(ForecastedButtons.prototype, {
                 active_id: this.bomId,
                 active_product_id: this.productId,
                 active_model: this.resModel,
-                mode: "forecast",
+                activate_availabilities : true,
             },
         });
     }

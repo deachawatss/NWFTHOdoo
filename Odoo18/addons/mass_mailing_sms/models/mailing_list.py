@@ -73,8 +73,7 @@ class MailingList(models.Model):
         on one list but not on another, one opted in and the other one opted out,
         send mailing anyway.
 
-        :return: opt-outed record IDs
-        :rtype: list
+        :return list: opt-outed record IDs
         """
         subscriptions = self.subscription_ids if self else mailing.contact_list_ids.subscription_ids
         opt_out_contacts = subscriptions.filtered(lambda sub: sub.opt_out).mapped('contact_id')

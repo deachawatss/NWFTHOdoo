@@ -4,7 +4,7 @@ from odoo.fields import Command
 from odoo.tests import tagged
 from odoo.tests.common import HttpCase
 
-from odoo.addons.website_sale.tests.common import MockRequest
+from odoo.addons.website.tools import MockRequest
 from odoo.addons.website_sale_stock.tests.common import WebsiteSaleStockCommon
 
 
@@ -35,7 +35,7 @@ class TestWebsiteSaleStockSaleOrderLine(HttpCase, WebsiteSaleStockCommon):
         combo_product_line = self.env['sale.order.line'].create({
             'order_id': self.cart.id, 'product_id': combo_product.id, 'product_uom_qty': 3
         })
-        combo_item_line_a, _combo_item_line_b = self.env['sale.order.line'].create([
+        combo_item_line_a, combo_item_line_b = self.env['sale.order.line'].create([
             {
                 'order_id': self.cart.id,
                 'product_id': product_a.id,

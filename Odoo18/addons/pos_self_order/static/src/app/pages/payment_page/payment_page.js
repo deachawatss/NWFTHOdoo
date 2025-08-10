@@ -1,5 +1,5 @@
 import { Component, onMounted, onWillUnmount, useState } from "@odoo/owl";
-import { useSelfOrder } from "@pos_self_order/app/services/self_order_service";
+import { useSelfOrder } from "@pos_self_order/app/self_order_service";
 import { rpc } from "@web/core/network/rpc";
 import { useService } from "@web/core/utils/hooks";
 
@@ -50,7 +50,7 @@ export class PaymentPage extends Component {
         this.selfOrder.paymentError = false;
         try {
             await rpc(`/kiosk/payment/${this.selfOrder.config.id}/kiosk`, {
-                order: this.selfOrder.currentOrder.serializeForORM(),
+                order: this.selfOrder.currentOrder.serialize({ orm: true }),
                 access_token: this.selfOrder.access_token,
                 payment_method_id: this.state.paymentMethodId,
             });

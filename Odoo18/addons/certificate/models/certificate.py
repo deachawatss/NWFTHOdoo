@@ -1,4 +1,5 @@
 import base64
+import datetime
 from importlib import metadata
 
 from cryptography import x509
@@ -8,10 +9,11 @@ from cryptography.hazmat.primitives.serialization import Encoding, pkcs12
 from odoo import _, api, fields, models
 from .key import STR_TO_HASH, _get_formatted_value
 from odoo.exceptions import UserError
+from odoo.osv import expression
 from odoo.tools import parse_version
 
 
-class CertificateCertificate(models.Model):
+class Certificate(models.Model):
     _name = 'certificate.certificate'
     _description = 'Certificate'
     _order = 'date_end DESC'
@@ -72,13 +74,13 @@ class CertificateCertificate(models.Model):
     )
     date_start = fields.Datetime(
         string='Available date',
-        help='The date on which the certificate starts to be valid',
+        help='The date on which the certificate starts to be valid (UTC)',
         compute='_compute_pem_certificate',
         store=True,
     )
     date_end = fields.Datetime(
         string='Expiration date',
-        help='The date on which the certificate expires',
+        help='The date on which the certificate expires (UTC)',
         compute='_compute_pem_certificate',
         store=True,
     )
@@ -201,27 +203,37 @@ class CertificateCertificate(models.Model):
 
     @api.depends('date_start', 'date_end', 'loading_error')
     def _compute_is_valid(self):
-        # Certificate dates and Odoo datetimes are UTC timezoned
+        # Certificate dates are UTC timezoned
         # https://cryptography.io/en/latest/x509/reference/#cryptography.x509.Certificate.not_valid_after
-        now = fields.Datetime.now()
+        utc_now = datetime.datetime.now(datetime.timezone.utc)
         for certificate in self:
             if not certificate.date_start or not certificate.date_end or certificate.loading_error:
                 certificate.is_valid = False
             else:
-                date_start = certificate.date_start
-                date_end = certificate.date_end
-                certificate.is_valid = date_start <= now <= date_end
+                date_start = certificate.date_start.replace(tzinfo=datetime.timezone.utc)
+                date_end = certificate.date_end.replace(tzinfo=datetime.timezone.utc)
+                certificate.is_valid = date_start <= utc_now <= date_end
 
     def _search_is_valid(self, operator, value):
-        if operator != 'in':
-            return NotImplemented
-        now = fields.Datetime.now()
-        return [
-            ('pem_certificate', '!=', False),
-            ('date_start', '<=', now),
-            ('date_end', '>=', now),
-            ('loading_error', '=', '')
-        ]
+        if operator not in ['=', '!='] or not isinstance(value, bool):
+            raise NotImplementedError("Operation not supported, only '=' and '!=' are allowed.")
+        utc_now = datetime.datetime.now(datetime.timezone.utc)
+        if (operator == '=' and value) or (operator == '!=' and not value):
+            return [
+                ('pem_certificate', '!=', False),
+                ('date_start', '<=', utc_now),
+                ('date_end', '>=', utc_now),
+                ('loading_error', '=', '')
+            ]
+        else:
+            return expression.OR([
+                [('pem_certificate', '=', False)],
+                [('date_start', '=', False)],
+                [('date_end', '=', False)],
+                [('date_start', '>', utc_now)],
+                [('date_end', '<', utc_now)],
+                [('loading_error', '!=', '')],
+            ])
 
     @api.constrains('pem_certificate', 'private_key_id', 'public_key_id')
     def _constrains_certificate_key_compatibility(self):
@@ -284,7 +296,7 @@ class CertificateCertificate(models.Model):
         self.ensure_one()
         cert = x509.load_pem_x509_certificate(base64.b64decode(self.with_context(bin_size=False).pem_certificate))
         if hashing_algorithm not in STR_TO_HASH:
-            raise UserError(f"Unsupported hashing algorithm '{hashing_algorithm}'. Currently supported: sha1 and sha256.")  # pylint: disable=missing-gettext
+            raise UserError(f"Unsupported hashing algorithm '{hashing_algorithm}'. Currently supported: sha1 and sha256.")
         return _get_formatted_value(cert.fingerprint(STR_TO_HASH[hashing_algorithm]), formatting=formatting)
 
     def _get_signature_bytes(self, formatting='encodebytes'):

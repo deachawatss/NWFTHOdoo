@@ -15,12 +15,15 @@ class TestUi(TestPointOfSaleHttpCommon):
         # Ensure minimum rights (avoid new groups added through modules installation)
         group_internal_user = cls.env.ref('base.group_user')
         group_pos_user = cls.env.ref('point_of_sale.group_pos_user')
-        cls.pos_user.group_ids = [Command.set([group_internal_user.id, group_pos_user.id])]
+        cls.pos_user.groups_id = [Command.set([group_internal_user.id, group_pos_user.id])]
+
+        categ = cls.env.ref('product.product_category_all')
 
         cls.basic_kit, cls.finished, cls.component_a, cls.component_b = cls.env['product.product'].create([{
             'name': name,
             'type': 'consu',
             'is_storable': True,
+            'categ_id': categ.id,
             'available_in_pos': True,
             'list_price': 10.0,
             'standard_price': 1.0,
@@ -67,7 +70,7 @@ class TestUi(TestPointOfSaleHttpCommon):
         customer.name = "AAAA Super Customer"
 
         self.main_pos_config.with_user(self.pos_user).open_ui()
-        url = "/pos/ui/%d" % self.main_pos_config.id
+        url = "/pos/ui?config_id=%d" % self.main_pos_config.id
         self.start_tour(url, 'test_ship_later_kit_and_mto_manufactured_product', login="pos_user")
 
         picking = self.env['stock.picking'].search([('partner_id', '=', self.partner_full.id)], limit=1)

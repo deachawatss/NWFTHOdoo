@@ -1,15 +1,14 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import ast
-import re
 
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
-from odoo.fields import Domain
+from odoo.osv import expression
 
 
-class HrDepartment(models.Model):
-    _name = 'hr.department'
+class Department(models.Model):
+    _name = "hr.department"
     _description = "Department"
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = "name"
@@ -17,7 +16,7 @@ class HrDepartment(models.Model):
     _parent_store = True
 
     name = fields.Char('Department Name', required=True, translate=True)
-    complete_name = fields.Char('Complete Name', compute='_compute_complete_name', recursive=True, search='_search_complete_name')
+    complete_name = fields.Char('Complete Name', compute='_compute_complete_name', recursive=True, store=True)
     active = fields.Boolean('Active', default=True)
     company_id = fields.Many2one('res.company', string='Company', index=True, default=lambda self: self.env.company)
     parent_id = fields.Many2one('hr.department', string='Parent Department', index=True, check_company=True)
@@ -44,34 +43,15 @@ class HrDepartment(models.Model):
             record.display_name = record.name
 
     def _search_has_read_access(self, operator, value):
-        if operator != 'in':
-            return NotImplemented
+        supported_operators = ["="]
+        if operator not in supported_operators or not isinstance(value, bool):
+            raise NotImplementedError()
+        if not value:
+            return [(1, "=", 0)]
         if self.env['hr.employee'].has_access('read'):
             return [(1, "=", 1)]
         departments_ids = self.env['hr.department'].sudo().search([('manager_id', 'in', self.env.user.employee_ids.ids)]).ids
         return [('id', 'child_of', departments_ids)]
-
-    def _search_complete_name(self, operator, value):
-        supported_operators = ["=", "!=", "ilike", "not ilike", "in", "not in", "=ilike"]
-        if operator not in supported_operators or not isinstance(value, (str, list)):
-            raise NotImplementedError(_('Operation not Supported.'))
-        department = self.env['hr.department'].search([])
-        if operator == '=':
-            department = department.filtered(lambda m: m.complete_name == value)
-        elif operator == '!=':
-            department = department.filtered(lambda m: m.complete_name != value)
-        elif operator == 'ilike':
-            department = department.filtered(lambda m: value.lower() in m.complete_name.lower())
-        elif operator == 'not ilike':
-            department = department.filtered(lambda m: value.lower() not in m.complete_name.lower())
-        elif operator == 'in':
-            department = department.filtered(lambda m: m.complete_name in value)
-        elif operator == 'not in':
-            department = department.filtered(lambda m: m.complete_name not in value)
-        elif operator == '=ilike':
-            pattern = re.compile(re.escape(value).replace('%', '.*').replace('_', '.'), flags=re.IGNORECASE)
-            department = department.filtered(lambda m: pattern.fullmatch(m.complete_name))
-        return [('id', 'in', department.ids)]
 
     @api.model
     def name_create(self, name):
@@ -119,17 +99,38 @@ class HrDepartment(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        return super(HrDepartment, self.with_context(mail_create_nosubscribe=True)).create(vals_list)
+        # TDE note: auto-subscription of manager done by hand, because currently
+        # the tracking allows to track+subscribe fields linked to a res.user record
+        # An update of the limited behavior should come, but not currently done.
+        departments = super(Department, self.with_context(mail_create_nosubscribe=True)).create(vals_list)
+        for department, vals in zip(departments, vals_list):
+            manager = self.env['hr.employee'].browse(vals.get("manager_id"))
+            if manager.user_id:
+                department.message_subscribe(partner_ids=manager.user_id.partner_id.ids)
+        return departments
 
     def write(self, vals):
         """ If updating manager of a department, we need to update all the employees
             of department hierarchy, and subscribe the new manager.
         """
+        # TDE note: auto-subscription of manager done by hand, because currently
+        # the tracking allows to track+subscribe fields linked to a res.user record
+        # An update of the limited behavior should come, but not currently done.
         if 'manager_id' in vals:
             manager_id = vals.get("manager_id")
+            if manager_id:
+                manager = self.env['hr.employee'].browse(manager_id)
+                # subscribe the manager user
+                if manager.user_id:
+                    self.message_subscribe(partner_ids=manager.user_id.partner_id.ids)
+            manager_to_unsubscribe = set()
+            for department in self:
+                if department.manager_id and department.manager_id.user_id:
+                    manager_to_unsubscribe.update(department.manager_id.user_id.partner_id.ids)
+            self.message_unsubscribe(partner_ids=list(manager_to_unsubscribe))
             # set the employees's parent to the new manager
             self._update_employee_manager(manager_id)
-        return super().write(vals)
+        return super(Department, self).write(vals)
 
     def _update_employee_manager(self, manager_id):
         employees = self.env['hr.employee']
@@ -165,7 +166,7 @@ class HrDepartment(models.Model):
         ]
         if 'domain' in action:
             allowed_company_ids = self.env.context.get('allowed_company_ids', [])
-            action['domain'] = Domain.AND([
+            action['domain'] = expression.AND([
                 ast.literal_eval(action['domain'].replace('allowed_company_ids', str(allowed_company_ids))), domain
             ])
         else:

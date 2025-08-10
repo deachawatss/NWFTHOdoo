@@ -1,6 +1,9 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+import itertools
 from odoo import api, fields, models, _
+from odoo.tools.float_utils import float_is_zero
 from odoo.tools.misc import groupby
 
 
@@ -8,32 +11,13 @@ class StockQuant(models.Model):
     _inherit = 'stock.quant'
 
     value = fields.Monetary('Value', compute='_compute_value', groups='stock.group_stock_manager')
-    currency_id = fields.Many2one('res.currency', related='company_id.currency_id', groups='stock.group_stock_manager')
+    currency_id = fields.Many2one('res.currency', compute='_compute_value', groups='stock.group_stock_manager')
     accounting_date = fields.Date(
         'Accounting Date',
         help="Date at which the accounting entries will be created"
              " in case of automated inventory valuation."
              " If empty, the inventory date will be used.")
-    cost_method = fields.Selection(
-        string="Cost Method",
-        selection=[
-            ('standard', "Standard Price"),
-            ('fifo', "First In First Out (FIFO)"),
-            ('average', "Average Cost (AVCO)"),
-        ],
-        compute='_compute_cost_method',
-    )
-
-    @api.depends_context('company')
-    @api.depends('product_categ_id.property_cost_method')
-    def _compute_cost_method(self):
-        for quant in self:
-            quant.cost_method = (
-                quant.product_categ_id.with_company(
-                    quant.company_id
-                ).property_cost_method
-                or (quant.company_id or self.env.company).cost_method
-            )
+    cost_method = fields.Selection(related="product_categ_id.property_cost_method")
 
     @api.model
     def _should_exclude_for_valuation(self):
@@ -51,10 +35,11 @@ class StockQuant(models.Model):
         self.fetch(['company_id', 'location_id', 'owner_id', 'product_id', 'quantity', 'lot_id'])
         self.value = 0
         for quant in self:
+            quant.currency_id = quant.company_id.currency_id
             if not quant.location_id or not quant.product_id or\
                     not quant.location_id._should_be_valued() or\
                     quant._should_exclude_for_valuation() or\
-                    quant.product_id.uom_id.is_zero(quant.quantity):
+                    float_is_zero(quant.quantity, precision_rounding=quant.product_id.uom_id.rounding):
                 continue
             if quant.product_id.lot_valuated:
                 quantity = quant.lot_id.with_company(quant.company_id).quantity_svl
@@ -62,7 +47,7 @@ class StockQuant(models.Model):
             else:
                 quantity = quant.product_id.with_company(quant.company_id).quantity_svl
                 value_svl = quant.product_id.with_company(quant.company_id).value_svl
-            if quant.product_id.uom_id.is_zero(quantity):
+            if float_is_zero(quantity, precision_rounding=quant.product_id.uom_id.rounding):
                 continue
             quant.value = quant.quantity * value_svl / quantity
 

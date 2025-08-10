@@ -1,10 +1,10 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from ast import literal_eval
 
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
-from odoo.fields import Domain
+from odoo.osv import expression
 
 
 class StockPickingType(models.Model):
@@ -71,12 +71,6 @@ class StockPickingType(models.Model):
             if picking_type.code == 'mrp_operation':
                 picking_type.use_existing_lots = True
 
-    @api.constrains('default_location_dest_id')
-    def _check_default_location(self):
-        for record in self:
-            if record.code == 'mrp_operation' and record.default_location_dest_id.scrap_location:
-                raise ValidationError(_("You cannot set a scrap location as the destination location for a manufacturing type operation."))
-
     def _get_mo_count(self):
         mrp_picking_types = self.filtered(lambda picking: picking.code == 'mrp_operation')
         remaining = (self - mrp_picking_types)
@@ -122,7 +116,6 @@ class StockPickingType(models.Model):
         mrp_records = [(i, d, self.env._('Confirmed')) for i, d in picking_type_id_to_dates.items()]
         return records + mrp_records
 
-
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
 
@@ -158,7 +151,6 @@ class StockPicking(models.Model):
     def action_view_mrp_production(self):
         self.ensure_one()
         action = {
-            'name': _("Manufacturing Orders"),
             'res_model': 'mrp.production',
             'type': 'ir.actions.act_window',
             'domain': [('id', 'in', self.production_ids.ids)],
@@ -190,7 +182,7 @@ class StockPicking(models.Model):
 
         if picking_type_code == "mrp_operation":
             action = self._get_action("mrp.action_picking_tree_mrp_operation_graph")
-            action["domain"] = Domain.AND([
+            action["domain"] = expression.AND([
                 literal_eval(action["domain"] or '[]'), [('picking_type_id', '=', picking_type_id)]
             ])
             allowed_company_ids = self.env.context.get("allowed_company_ids", [])

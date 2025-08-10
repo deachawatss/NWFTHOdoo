@@ -74,10 +74,7 @@ export const nameService = {
 
                     const specification = { display_name: {} };
                     orm.silent
-                        .webSearchRead(resModel, [["id", "in", idsInBatch]], {
-                            specification,
-                            context: { active_test: false },
-                        })
+                        .webSearchRead(resModel, [["id", "in", idsInBatch]], { specification })
                         .then(({ records }) => {
                             const displayNames = Object.fromEntries(
                                 records.map((rec) => [rec.id, rec.display_name])

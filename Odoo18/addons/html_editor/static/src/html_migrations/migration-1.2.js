@@ -24,7 +24,7 @@ function getAriaLabel(element) {
  *
  * @param {HTMLElement} container
  */
-export function migrate(container) {
+export function upgrade(container) {
     const bannerContainers = container.querySelectorAll(".o_editor_banner");
     for (const bannerContainer of bannerContainers) {
         bannerContainer.classList.remove("o_not_editable");

@@ -5,8 +5,9 @@ export class IrWebSocket extends models.ServerModel {
 
     /**
      * @param {number} inactivityPeriod
+     * @param {number[]} imStatusIdsByModel
      */
-    _update_presence(inactivityPeriod) {}
+    _update_presence(inactivityPeriod, imStatusIdsByModel) {}
 
     /**
      * @returns {string[]}

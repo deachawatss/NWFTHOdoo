@@ -15,21 +15,23 @@ class TestMrpAccount(TestMrpCommon):
     @classmethod
     def setUpClass(cls):
         super(TestMrpAccount, cls).setUpClass()
-        cls.source_location_id = cls.shelf_1.id
+        cls.source_location_id = cls.stock_location_14.id
+        cls.warehouse = cls.env.ref('stock.warehouse0')
         # setting up alternative workcenters
         cls.wc_alt_1 = cls.env['mrp.workcenter'].create({
             'name': 'Nuclear Workcenter bis',
+            'default_capacity': 3,
             'time_start': 9,
             'time_stop': 5,
             'time_efficiency': 80,
         })
         cls.wc_alt_2 = cls.env['mrp.workcenter'].create({
             'name': 'Nuclear Workcenter ter',
+            'default_capacity': 1,
             'time_start': 10,
             'time_stop': 5,
             'time_efficiency': 85,
         })
-        cls.bom_1.product_uom_id = cls.uom_dozen
         cls.product_4.uom_id = cls.uom_unit
         cls.planning_bom = cls.env['mrp.bom'].create({
             'product_id': cls.product_4.id,
@@ -170,6 +172,7 @@ class TestMrpAccount(TestMrpCommon):
         quants.action_apply_inventory()
 
         bom = self.mrp_bom_desk.copy()
+        bom.bom_line_ids.manual_consumption = False
         bom.operation_ids = False
         production_table_form = Form(self.env['mrp.production'])
         production_table_form.product_id = self.dining_table
@@ -222,9 +225,10 @@ class TestMrpAccount(TestMrpCommon):
             })],
         })
         in_move = self.env['stock.move'].create({
+            'name': 'in 2 component',
             'product_id': component.id,
             'product_uom_qty': 2.0,
-            'location_id': self.supplier_location.id,
+            'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.source_location_id,
             'price_unit': 1,
         })
@@ -273,10 +277,11 @@ class TestMrpAccount(TestMrpCommon):
             ]
         )
         out_move = self.env['stock.move'].create({
+            'name': 'out 1 final',
             'product_id': final_product.id,
             'product_uom_qty': 1.0,
             'location_id': self.source_location_id,
-            'location_dest_id': self.customer_location.id,
+            'location_dest_id': self.env.ref('stock.stock_location_customers').id,
         })
         out_move._action_confirm()
         out_move._action_assign()
@@ -293,6 +298,89 @@ class TestMrpAccount(TestMrpCommon):
                 {'remaining_qty': 0.0, 'value': -1.0, 'quantity': -1.0},
             ]
         )
+
+    def test_labor_cost_posting_is_not_rounded_incorrectly(self):
+        """ Test to ensure that labor costs are posted accurately without rounding errors."""
+
+        wc1_account, wc2_account, input_account, output_account, stock_valuation_account = self.env['account.account'].create([{
+            'name': 'Workcenter 1 account',
+            'code': 'WC1',
+            'account_type': 'expense',
+        }, {
+            'name': 'Workcenter 2 account',
+            'code': 'WC2',
+            'account_type': 'expense',
+        }, {
+            'name': 'Input Account',
+            'code': 'InputAccount',
+            'account_type': 'expense',
+        }, {
+            'name': 'Output Account',
+            'code': 'OutputAccount',
+            'account_type': 'income',
+        }, {
+            'name': 'Stock Valuation Account',
+            'code': 'StockValuationAccount',
+            'account_type': 'asset_current',
+        }])
+
+        self.mrp_workcenter.write({'costs_hour': 0.01, "expense_account_id": wc1_account.id})
+        self.mrp_workcenter_1.write({'costs_hour': 0.01, "expense_account_id": wc2_account.id})
+
+        self.categ_real.write({
+            'property_stock_account_input_categ_id': input_account.id,
+            'property_stock_account_output_categ_id': output_account.id,
+            'property_stock_valuation_account_id': stock_valuation_account.id,
+            'property_stock_journal': self.env['account.journal'].create({
+                'name': 'Stock Journal',
+                'code': 'STK',
+                'type': 'general',
+                'company_id': self.env.company.id,
+            }).id,
+            'property_valuation': 'real_time',
+        })
+        final_product = self.env['product.product'].create({
+            'is_storable': True,
+            'name': 'final product',
+            'categ_id': self.categ_real.id,
+        })
+        self.bom_1.write({
+            'product_id': final_product.id,
+            'operation_ids': [
+                Command.create({'name': 'work', 'workcenter_id': self.mrp_workcenter.id,   'time_cycle': 30.2}),
+                Command.create({'name': 'work', 'workcenter_id': self.mrp_workcenter_1.id, 'time_cycle': 30.2}),
+            ],
+            'bom_line_ids': [
+                Command.create({
+                    'product_id': self.product_2.id,
+                    'product_qty': 1.0,
+                })],
+        })
+
+        # Build
+        production_form = Form(self.env['mrp.production'])
+        production_form.product_id = final_product
+        production_form.bom_id = self.bom_1
+        production_form.product_qty = 1
+        production = production_form.save()
+        production.action_confirm()
+        workorder = production.workorder_ids
+        workorder.duration = 30.2
+        workorder.time_ids.write({'duration': 30.2})  # Ensure that the duration is correct
+        production.all_move_raw_ids.filtered(lambda m: m.product_id == self.product_2)[0].write({
+            'quantity': 1.0,
+        })
+
+        mo_form = Form(production)
+        mo_form.qty_producing = 1
+        production = mo_form.save()
+        production._post_inventory()
+        production.button_mark_done()
+
+        self.assertEqual(production.workorder_ids.mapped('time_ids').mapped('account_move_line_id').mapped('credit'), [
+            0.01, 0.01
+        ])
+
 
 @tagged("post_install", "-at_install")
 class TestMrpAccountMove(TestAccountMoveStockCommon):
@@ -341,6 +429,7 @@ class TestMrpAccountMove(TestAccountMoveStockCommon):
         cls.default_sv_account_id = field.get_company_dependent_fallback(cls.env['product.category']).id
         cls.workcenter = cls.env['mrp.workcenter'].create({
             'name': 'Workcenter',
+            'default_capacity': 1,
             'time_efficiency': 100,
         })
 
@@ -390,7 +479,7 @@ class TestMrpAccountMove(TestAccountMoveStockCommon):
         """ Test that posting a WIP accounting entry works as expected.
         WIP MO = MO with some time completed on WOs and/or 'consumed' components
         """
-        self.env.user.write({'group_ids': [(4, self.env.ref('mrp.group_mrp_routings').id)]})
+        self.env.user.write({'groups_id': [(4, self.env.ref('mrp.group_mrp_routings').id)]})
         wc = self.env['mrp.workcenter'].create({
             'name': 'Funland',
             'time_start': 0,
@@ -461,7 +550,7 @@ class TestMrpAccountMove(TestAccountMoveStockCommon):
             'date_end': now,
             'loss_id': self.env.ref('mrp.block_reason7').id,
         })
-        workorder.button_finish()
+        workorder.button_done()
         wizard = Form(self.env['mrp.account.wip.accounting'].with_context({'active_ids': [mo.id]}))
         wizard.save().confirm()
         wip_entries1 = self.env['account.move'].search([('ref', 'ilike', 'WIP - ' + mo.name), ('id', 'not in', wip_empty_entries.ids)])
@@ -594,7 +683,7 @@ class TestMrpAccountMove(TestAccountMoveStockCommon):
         workorder = production.workorder_ids
         workorder.duration = 0.03  # ~= 2 seconds (1.8 seconds exactly)
         workorder.time_ids.write({'duration': 0.03})  # Ensure that the duration is correct
-        self.assertEqual(workorder._cal_cost(), 0.005)  # 2 seconds at $10/h
+        self.assertEqual(workorder._cal_cost(), (2 / 3600) * 10)  # 2 seconds at $10/h
 
         mo_form = Form(production)
         mo_form.qty_producing = 1
@@ -622,7 +711,6 @@ class TestMrpAccountMove(TestAccountMoveStockCommon):
             'time_cycle': 5,
             'sequence': 1,
         })]
-        self.bom.bom_line_ids.operation_id = self.bom.operation_ids
         production = self.env['mrp.production'].create({
             'bom_id': self.bom.id,
             'product_qty': 1,
@@ -646,8 +734,8 @@ class TestMrpAccountMove(TestAccountMoveStockCommon):
             {'name': production.name + ' - Labour', 'debit': 20.0, 'credit': 0.0},
             {'name': production.name + ' - ' + self.product_A.name, 'debit': 0.0, 'credit': 10.0},
             {'name': production.name + ' - ' + self.product_A.name, 'debit': 10.0, 'credit': 0.0},
-            {'name': production.name + ' - ' + self.product_B.name, 'debit': 0.0, 'credit': 20.0},
-            {'name': production.name + ' - ' + self.product_B.name, 'debit': 20.0, 'credit': 0.0},
+            {'name': production.name + ' - ' + self.product_B.name, 'debit': 0.0, 'credit': 10.0},
+            {'name': production.name + ' - ' + self.product_B.name, 'debit': 10.0, 'credit': 0.0},
         ])
 
     def test_labor_cost_balancing_with_cost_share(self):
@@ -676,7 +764,7 @@ class TestMrpAccountMove(TestAccountMoveStockCommon):
         workorder = production.workorder_ids
         workorder.duration = 0.03  # ~= 2 seconds (1.8 seconds exactly)
         workorder.time_ids.write({'duration': 0.03})  # Ensure that the duration is correct
-        self.assertEqual(workorder._cal_cost(), 0.01)  # 2 seconds at $20/h
+        self.assertEqual(workorder._cal_cost(), (2 / 3600) * 20)  # 2 seconds at $20/h
 
         mo_form = Form(production)
         mo_form.qty_producing = 1
@@ -695,27 +783,3 @@ class TestMrpAccountMove(TestAccountMoveStockCommon):
             {'credit': 0.01, 'debit': 0.00},
             {'credit': 0.00, 'debit': 0.01},
         ])
-
-    def test_estimated_cost_valuation(self):
-        """ Test that operations with 'estimated' cost correctly compute the cost.
-        The cost should be equal to workcenter.costs_hour * workorder.duration_expected. """
-        self.workcenter.costs_hour = 33
-        self.bom.write({
-            'operation_ids': [
-                Command.create({'name': 'do stuff', 'workcenter_id': self.workcenter.id, 'cost_mode': 'estimated', 'sequence': 1})
-            ]
-        })
-        mo = self.env['mrp.production'].create({
-            'name': 'MO',
-            'product_qty': 1.0,
-            'product_id': self.product_A.id
-        })
-        mo.action_confirm()
-        self.bom.operation_ids.cost_mode = 'actual'
-        mo.workorder_ids.duration = 10
-        self.assertEqual(mo.workorder_ids._cal_cost(), 33.0)
-
-        # Cost should stay the same for a done MO if nothing else is changed
-        mo.button_mark_done()
-        self.workcenter.costs_hour = 333
-        self.assertEqual(mo.workorder_ids._cal_cost(), 33.0)

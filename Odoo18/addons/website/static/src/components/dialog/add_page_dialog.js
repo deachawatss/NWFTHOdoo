@@ -1,22 +1,35 @@
 import { isBrowserFirefox } from "@web/core/browser/feature_detection";
+import { ensureJQuery } from "@web/core/ensure_jquery";
 import { rpc } from "@web/core/network/rpc";
+import { Deferred } from "@web/core/utils/concurrency";
 import { renderToElement } from "@web/core/utils/render";
 import { useAutofocus, useService } from '@web/core/utils/hooks';
 import { _t } from "@web/core/l10n/translation";
 import { WebsiteDialog } from '@website/components/dialog/dialog';
-import { Switch } from '@html_editor/components/switch/switch';
+import { Switch } from '@website/components/switch/switch';
 import { applyTextHighlight } from "@website/js/text_processing";
 import { useRef, useState, useSubEnv, Component, onWillStart, onMounted, status } from "@odoo/owl";
-import { onceAllImagesLoaded } from "@website/utils/images";
+import wUtils from '@website/js/utils';
 
 const NO_OP = () => {};
 
-class AddPageConfirmDialog extends Component {
+export class AddPageConfirmDialog extends Component {
     static template = "website.AddPageConfirmDialog";
     static props = {
         close: Function,
-        createPage: Function,
+        onAddPage: {
+            type: Function,
+            optional: true,
+        },
+        websiteId: Number,
+        sectionsArch: {
+            type: String,
+            optional: true,
+        },
         name: String,
+    };
+    static defaultProps = {
+        onAddPage: NO_OP,
     };
     static components = {
         Switch,
@@ -26,6 +39,10 @@ class AddPageConfirmDialog extends Component {
     setup() {
         super.setup();
         useAutofocus();
+
+        this.website = useService('website');
+        this.http = useService('http');
+        this.action = useService('action');
 
         this.state = useState({
             addMenu: true,
@@ -38,11 +55,31 @@ class AddPageConfirmDialog extends Component {
     }
 
     async addPage() {
-        await this.props.createPage(this.state.name, this.state.addMenu);
+        const params = {'add_menu': this.state.addMenu || '', csrf_token: odoo.csrf_token};
+        if (this.props.sectionsArch) {
+            params.sections_arch = this.props.sectionsArch;
+        }
+        // Remove any leading slash.
+        const pageName = this.state.name.replace(/^\/*/, "") || _t("New Page");
+        const url = `/website/add/${encodeURIComponent(pageName)}`;
+        params['website_id'] = this.props.websiteId;
+        const data = await this.http.post(url, params);
+        if (data.view_id) {
+            this.action.doAction({
+                'res_model': 'ir.ui.view',
+                'res_id': data.view_id,
+                'views': [[false, 'form']],
+                'type': 'ir.actions.act_window',
+                'view_mode': 'form',
+            });
+        } else {
+            this.website.goToWebsite({path: data.url, edition: true, websiteId: this.props.websiteId});
+        }
+        this.props.onAddPage(this.state);
     }
 }
 
-class AddPageTemplateBlank extends Component {
+export class AddPageTemplateBlank extends Component {
     static template = "website.AddPageTemplateBlank";
     static props = {
         firstRow: {
@@ -65,7 +102,7 @@ class AddPageTemplateBlank extends Component {
     }
 }
 
-class AddPageTemplatePreview extends Component {
+export class AddPageTemplatePreview extends Component {
     static template = "website.AddPageTemplatePreview";
     static props = {
         template: Object,
@@ -135,9 +172,7 @@ class AddPageTemplatePreview extends Component {
                 }
                 section[data-snippet="s_carousel"],
                 section[data-snippet="s_carousel_intro"],
-                section[data-snippet="s_carousel_cards"],
                 section[data-snippet="s_quotes_carousel_minimal"],
-                section[data-snippet="s_quotes_carousel_compact"],
                 section[data-snippet="s_quotes_carousel"] {
                     height: ${carouselHeight} !important;
                 }
@@ -180,7 +215,8 @@ class AddPageTemplatePreview extends Component {
                 imgEl.setAttribute("loading", "eager");
             }
             mainEl.appendChild(wrapEl);
-            await onceAllImagesLoaded(wrapEl);
+            await ensureJQuery();
+            await wUtils.onceAllImagesLoaded($(wrapEl));
             // Restore image lazy loading.
             for (const imgEl of lazyLoadedImgEls) {
                 imgEl.setAttribute("loading", "lazy");
@@ -249,7 +285,7 @@ class AddPageTemplatePreview extends Component {
     }
 }
 
-class AddPageTemplatePreviews extends Component {
+export class AddPageTemplatePreviews extends Component {
     static template = "website.AddPageTemplatePreviews";
     static props = {
         isCustom: {
@@ -281,7 +317,7 @@ class AddPageTemplatePreviews extends Component {
     }
 }
 
-class AddPageTemplates extends Component {
+export class AddPageTemplates extends Component {
     static template = "website.AddPageTemplates";
     static props = {
         onTemplatePageChanged: Function,
@@ -292,7 +328,6 @@ class AddPageTemplates extends Component {
 
     setup() {
         super.setup();
-        this.website = useService("website");
         this.tabsRef = useRef("tabs");
         this.panesRef = useRef("panes");
 
@@ -319,8 +354,6 @@ class AddPageTemplates extends Component {
     }
 
     async preparePages() {
-        const loadTemplates = rpc("/website/get_new_page_templates", { context: { website_id: this.website.currentWebsiteId}}, { cached: true, silent: true });
-
         // Forces the correct website if needed before fetching the templates.
         // Displaying the correct images in the previews also relies on the
         // website id having been forced.
@@ -333,7 +366,7 @@ class AddPageTemplates extends Component {
             return this.pages;
         }
 
-        const newPageTemplates = await loadTemplates;
+        const newPageTemplates = await rpc("/website/get_new_page_templates");
         newPageTemplates[0].templates.unshift({
             isBlank: true,
         });
@@ -379,10 +412,6 @@ export class AddPageDialog extends Component {
         websiteId: {
             type: Number,
         },
-        forcedURL: {
-            type: String,
-            optional: true,
-        },
     };
     static defaultProps = {
         onAddPage: NO_OP,
@@ -401,6 +430,7 @@ export class AddPageDialog extends Component {
         this.switchLabel = _t("Add to menu");
         this.website = useService('website');
         this.dialogs = useService("dialog");
+        this.orm = useService('orm');
         this.http = useService('http');
         this.action = useService('action');
 
@@ -418,62 +448,36 @@ export class AddPageDialog extends Component {
     }
 
     async addPage(sectionsArch, name) {
-        if (this.props.forcedURL) {
-            // We also skip the possibility to choose to add in menu in that
-            // case (e.g. in creation from 404 page button). The user can still
-            // create its menu afterwards if needed.
-            await this.createPage(sectionsArch, this.props.forcedURL);
-        } else {
-            this.dialogs.add(AddPageConfirmDialog, {
-                createPage: (...args) => this.createPage(sectionsArch, ...args),
-                name: name || this.lastTabName,
-            });
-        }
-    }
-
-    async createPage(sectionsArch, name = "", addMenu = false) {
-        // Remove any leading slash.
-        const pageName = name.replace(/^\/*/, "") || _t("New Page");
-        const data = await this.http.post(`/website/add/${encodeURIComponent(pageName)}`, {
-            // Needed to be passed as a (falsy) string because false would be
-            // converted to 'false' with a POST.
-            'sections_arch': sectionsArch || '',
-            'add_menu': addMenu || '',
-
-            'website_id': this.props.websiteId,
-            'csrf_token': odoo.csrf_token,
+        const props = this.props;
+        this.dialogs.add(AddPageConfirmDialog, {
+            onAddPage: () => {
+                props.onAddPage();
+                props.close();
+            },
+            websiteId: this.props.websiteId,
+            sectionsArch: sectionsArch,
+            name: name || this.lastTabName,
         });
-        if (data.view_id) {
-            this.action.doAction({
-                'res_model': 'ir.ui.view',
-                'res_id': data.view_id,
-                'views': [[false, 'form']],
-                'type': 'ir.actions.act_window',
-                'view_mode': 'form',
-            });
-        } else {
-            this.website.goToWebsite({path: data.url, edition: true, websiteId: this.props.websiteId});
-        }
-        this.props.onAddPage();
-        this.props.close();
     }
 
     getCssLinkEls() {
         if (!this.cssLinkEls) {
-            this.cssLinkEls = new Promise((resolve) => {
-                const container = document.querySelector(".o_website_preview .o_iframe_container");
-                const iframe = container?.lastElementChild;
-                if (iframe?.contentDocument.body.getAttribute("is-ready") === "true") {
+            this.cssLinkEls = new Deferred();
+            (async () => {
+                let contentDocument;
+                // Already in DOM ?
+                const pageIframeEl = document.querySelector("iframe.o_iframe");
+                if (pageIframeEl?.getAttribute("is-ready") === "true") {
                     // If there is a fully loaded website preview, use it.
-                    resolve(iframe.contentDocument.head.querySelectorAll("link[type='text/css']"));
-                } else {
-                    // If there is no website preview or it was not ready yet, fetch page.
-                    this.http.get(`/website/force/${this.props.websiteId}?path=/`, "text").then(html => {
-                        const doc = new DOMParser().parseFromString(html, "text/html");
-                        resolve(doc.head.querySelectorAll("link[type='text/css']"));
-                    });
+                    contentDocument = pageIframeEl.contentDocument;
                 }
-            });
+                if (!contentDocument) {
+                    // If there is no website preview or it was not ready yet, fetch page.
+                    const html = await this.http.get(`/website/force/${this.props.websiteId}?path=/`, "text");
+                    contentDocument = new DOMParser().parseFromString(html, "text/html");
+                }
+                this.cssLinkEls.resolve(contentDocument.head.querySelectorAll("link[type='text/css']"));
+            })();
         }
         return this.cssLinkEls;
     }

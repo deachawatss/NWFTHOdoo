@@ -5,7 +5,7 @@ from odoo import api, fields, models
 from odoo.addons.onboarding.models.onboarding_progress import ONBOARDING_PROGRESS_STATES
 
 
-class OnboardingOnboarding(models.Model):
+class Onboarding(models.Model):
     _name = 'onboarding.onboarding'
     _description = 'Onboarding'
     _order = 'sequence asc, id desc'
@@ -37,10 +37,9 @@ class OnboardingOnboarding(models.Model):
         help='All Onboarding Progress Records (across companies).')
 
     sequence = fields.Integer(default=10)
-    _route_name_uniq = models.Constraint(
-        'UNIQUE (route_name)',
-        'Onboarding alias must be unique.',
-    )
+    _sql_constraints = [
+        ('route_name_uniq', 'UNIQUE (route_name)', 'Onboarding alias must be unique.'),
+    ]
 
     @api.depends('progress_ids', 'progress_ids.company_id', 'step_ids', 'step_ids.is_per_company')
     def _compute_is_per_company(self):

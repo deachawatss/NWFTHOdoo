@@ -24,7 +24,6 @@ class DeliveryZipPrefix(models.Model):
             vals['name'] = vals['name'].upper()
         return super().write(vals)
 
-    _name_uniq = models.Constraint(
-        'unique (name)',
-        'Prefix already exists!',
-    )
+    _sql_constraints = [
+        ('name_uniq', 'unique (name)', "Prefix already exists!"),
+    ]

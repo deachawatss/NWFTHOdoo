@@ -63,7 +63,6 @@
                             </div>
                             <group>
                                 <field name="support_tokenization"/>
-                                <field name="support_manual_capture"/>
                                 <field name="support_express_checkout"/>
                                 <field name="support_refund" />
                                 <field name="supported_country_ids"
@@ -132,7 +131,6 @@
     <record id="action_payment_method" model="ir.actions.act_window">
         <field name="name">Payment Methods</field>
         <field name="res_model">payment.method</field>
-        <field name="path">payment-methods</field>
         <field name="view_mode">list,kanban,form</field>
         <field name="domain">[('is_primary', '=', True)]</field>
         <field name="context">{'active_test': False, 'search_default_available_pms': 1}</field>

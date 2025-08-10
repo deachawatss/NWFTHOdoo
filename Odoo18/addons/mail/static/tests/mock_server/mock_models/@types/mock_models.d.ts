@@ -11,7 +11,6 @@ declare module "mock_models" {
     import { MailGuest as MailGuest2 } from "@mail/../tests/mock_server/mock_models/mail_guest";
     import { MailLinkPreview as MailLinkPreview2 } from "@mail/../tests/mock_server/mock_models/mail_link_preview";
     import { MailMessage as MailMessage2 } from "@mail/../tests/mock_server/mock_models/mail_message";
-    import { MailMessageLinkPreview as MailMessageLinkPreview2 } from "@mail/../tests/mock_server/mock_models/mail_message_link_preview";
     import { MailMessageReaction as MailMessageReaction2 } from "@mail/../tests/mock_server/mock_models/mail_message_reaction";
     import { MailMessageSubtype as MailMessageSubtype2 } from "@mail/../tests/mock_server/mock_models/mail_message_subtype";
     import { MailNotification as MailNotification2 } from "@mail/../tests/mock_server/mock_models/mail_notification";
@@ -21,8 +20,6 @@ declare module "mock_models" {
     import { MailThread as MailThread2 } from "@mail/../tests/mock_server/mock_models/mail_thread";
     import { MailTrackingValue as MailTrackingValue2 } from "@mail/../tests/mock_server/mock_models/mail_tracking_value";
     import { ResFake as ResFake2 } from "@mail/../tests/mock_server/mock_models/res_fake";
-    import { ResLang as ResLang2 } from "@mail/../tests/mock_server/mock_models/res_lang";
-    import { ResRole as ResRole2 } from "addons/mail/static/tests/mock_server/mock_models/res_role";
     import { ResPartner as ResPartner2 } from "@mail/../tests/mock_server/mock_models/res_partner";
     import { ResUsers as ResUsers2 } from "@mail/../tests/mock_server/mock_models/res_users";
     import { ResUsersSettings as ResUsersSettings2 } from "@mail/../tests/mock_server/mock_models/res_users_settings";
@@ -40,7 +37,6 @@ declare module "mock_models" {
     export interface MailGuest extends MailGuest2 {}
     export interface MailLinkPreview extends MailLinkPreview2 {}
     export interface MailMessage extends MailMessage2 {}
-    export interface MailMessageLinkPreview extends MailMessageLinkPreview2 {}
     export interface MailMessageReaction extends MailMessageReaction2 {}
     export interface MailMessageSubtype extends MailMessageSubtype2 {}
     export interface MailNotification extends MailNotification2 {}
@@ -50,9 +46,7 @@ declare module "mock_models" {
     export interface MailThread extends MailThread2 {}
     export interface MailTrackingValue extends MailTrackingValue2 {}
     export interface ResFake extends ResFake2 {}
-    export interface ResLang extends ResLang2 {}
     export interface ResPartner extends ResPartner2 {}
-    export interface ResRole extends ResRole2 {}
     export interface ResUsers extends ResUsers2 {}
     export interface ResUsersSettings extends ResUsersSettings2 {}
     export interface ResUsersSettingsVolumes extends ResUsersSettingsVolumes2 {}
@@ -70,7 +64,6 @@ declare module "mock_models" {
         "mail.guest": MailGuest,
         "mail.link.preview": MailLinkPreview,
         "mail.message": MailMessage,
-        "mail.message.link.preview": MailMessageLinkPreview,
         "mail.message.reaction": MailMessageReaction,
         "mail.message.subtype": MailMessageSubtype,
         "mail.notification": MailNotification,
@@ -80,10 +73,7 @@ declare module "mock_models" {
         "mail.thread": MailThread,
         "mail.tracking.value": MailTrackingValue,
         "res.fake": ResFake,
-        "res.groups": ResGroups,
-        "res.lang": ResLang,
         "res.partner": ResPartner,
-        "res.role": ResRole,
         "res.users": ResUsers,
         "res.users.settings": ResUsersSettings,
         "res.users.settings.volumes": ResUsersSettingsVolumes,

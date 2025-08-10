@@ -3,11 +3,11 @@
 from odoo.fields import Command
 from odoo.tests import HttpCase, tagged
 
-from odoo.addons.product.tests.common import ProductVariantsCommon
+from odoo.addons.product.tests.common import ProductAttributesCommon
 
 
 @tagged('post_install', '-at_install')
-class TestWebsiteSaleCartNotification(HttpCase, ProductVariantsCommon):
+class TestWebsiteSaleCartNotification(HttpCase, ProductAttributesCommon):
 
     @classmethod
     def setUpClass(cls):
@@ -35,5 +35,4 @@ class TestWebsiteSaleCartNotification(HttpCase, ProductVariantsCommon):
         })
 
     def test_website_sale_cart_notification(self):
-        self.env.ref('website_sale.product_search').active = True
         self.start_tour("/", 'website_sale_cart_notification')

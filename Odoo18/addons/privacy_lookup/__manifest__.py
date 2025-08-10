@@ -13,6 +13,5 @@
         'data/ir_actions_server_data.xml',
     ],
     'auto_install': True,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

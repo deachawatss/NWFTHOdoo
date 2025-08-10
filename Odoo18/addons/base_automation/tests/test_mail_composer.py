@@ -16,6 +16,9 @@ class TestMailFullComposer(MailCommon, HttpCase):
             'name': 'Test template',
             'partner_to': '{{ object.id }}',
         })
+        self.user_employee.write({
+            'groups_id': [(4, self.env.ref('base.group_partner_manager').id)],
+        })
 
         automation = self.env['base.automation'].create({
             'name': 'Test',
@@ -32,13 +35,7 @@ class TestMailFullComposer(MailCommon, HttpCase):
         })
         automation.write({'action_server_ids': [(4, server_action.id)]})
         partner = self.env["res.partner"].create({"name": "Jane", "email": "jane@example.com"})
-        user_partner = self.env["res.partner"].create({"name": "Not A Demo User", "email":  "NotADemoUser@mail.com"})
-        user = self.env["res.users"].create({
-            "name": "Not A Demo User",
-            "login": "nadu",
-            "partner_id": user_partner.id
-        })
-        partner.message_subscribe(partner_ids=[self.user_admin.partner_id.id])
+        user = self.env["res.users"].create({"name": "Not A Demo User", "login": "nadu"})
         with self.mock_mail_app():
             self.start_tour(
                 f"/odoo/res.partner/{partner.id}",

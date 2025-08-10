@@ -1,58 +1,68 @@
-import { useState, onWillUnmount, status, useComponent } from "@odoo/owl";
+import { Component, useState, onWillUnmount, status } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
 import { _t } from "@web/core/l10n/translation";
 import { browser } from "@web/core/browser/browser";
 import { Mp3Encoder } from "./mp3_encoder";
 import { loadLamejs } from "@mail/discuss/voice_message/common/voice_message_service";
 
-export const patchable = {
-    makeFile(file) {
-        return file;
-    },
-};
+/**
+ * @typedef {Object} Props
+ * @property {import("models").Composer} composer
+ * @property {function} [attachmentUploader]
+ * @property {function} [onchangeRecording]
+ * @extends {Component<Props, Env>}
+ */
+export class VoiceRecorder extends Component {
+    static props = ["composer", "attachmentUploader", "onchangeRecording?"];
+    static template = "mail.VoiceRecorder";
 
-export function useVoiceRecorder() {
     /** @type {MediaStream} */
-    let microphone;
+    microphone;
     /** @type {number} */
-    let startTimeStamp;
+    startTimeStamp;
     /** @type {AudioContext} */
-    let audioContext;
+    audioContext;
     /** @type {MediaStreamAudioSourceNode} */
-    let streamSource;
+    streamSource;
     /** @type {AudioWorkletNode} */
-    let processor;
+    processor;
     /** @type {Mp3Encoder} */
-    let encoder;
-
-    const component = useComponent();
-    const state = useState({
-        limitWarning: false,
-        isActionPending: false,
-        recording: component.props.state?.recording ?? false,
-        elapsed: "00 : 00",
-        onClick() {
-            if (state.recording) {
-                stopRecording();
-            } else {
-                startRecording();
-            }
-        },
-    });
+    encoder;
+    /** @type {import("models").Store} */
+    store;
     /** @type {ReturnType<typeof import("@web/core/notifications/notification_service").notificationService.start>} */
-    const notification = useService("notification");
-    const store = useService("mail.store");
-    const config = { bitRate: 128 }; // 128 or 160 kbit/s – mid-range bitrate quality
-    onWillUnmount(() => {
-        if (state.recording) {
-            notification.add(_t("Voice recording stopped"), { type: "warning" });
-            stopRecording();
-        } else {
-            cleanUp();
-        }
-    });
+    notification;
+    /** @type {Object} */
+    config;
+    /** @type {import("@mail/discuss/voice_message/common/voice_message_service").VoiceMessageService} */
+    voiceMessageService;
 
-    function filename() {
+    setup() {
+        super.setup();
+        this.state = useState({
+            limitWarning: false,
+            isActionPending: false,
+            recording: false,
+            elapsed: "00 : 00",
+        });
+        this.notification = useService("notification");
+        this.store = useState(useService("mail.store"));
+        this.voiceMessageService = useState(useService("discuss.voice_message"));
+        this.config = {
+            // 128 or 160 kbit/s – mid-range bitrate quality
+            bitRate: 128,
+        };
+        onWillUnmount(() => {
+            if (this.state.recording) {
+                this.notification.add(_t("Voice recording stopped"), { type: "warning" });
+                this.stopRecording();
+            } else {
+                this.cleanUp({ unmounting: true });
+            }
+        });
+    }
+
+    filename() {
         return (
             "Voice-" +
             new Date().toISOString().split("T")[0] +
@@ -62,132 +72,140 @@ export function useVoiceRecorder() {
         );
     }
 
-    async function startRecording() {
-        if (state.isActionPending) {
+    async startRecording() {
+        if (this.state.isActionPending) {
             return;
         }
-        state.isActionPending = true;
-        if (!microphone) {
+        this.state.isActionPending = true;
+        if (!this.microphone) {
             try {
-                microphone = await browser.navigator.mediaDevices.getUserMedia({
-                    audio: store.settings.audioConstraints,
+                this.microphone = await browser.navigator.mediaDevices.getUserMedia({
+                    audio: this.store.settings.audioConstraints,
                 });
-                if (status(component) === "destroyed") {
-                    cleanUp();
+                if (status(this) === "destroyed") {
+                    this.cleanUp({ unmounting: true });
                     return;
                 }
             } catch {
-                notification.add(
+                this.notification.add(
                     _t('"%(hostname)s" needs to access your microphone', {
                         hostname: window.location.host,
                     }),
                     { type: "warning" }
                 );
-                state.isActionPending = false;
+                this.state.isActionPending = false;
                 return;
             }
         }
-        state.elapsed = "00 : 00";
-        state.recording = true;
-        audioContext = new browser.AudioContext();
+        this.state.elapsed = "00 : 00";
+        this.props.onchangeRecording?.();
+        this.state.recording = true;
+        this.audioContext = new browser.AudioContext();
 
         await loadLamejs();
-        await audioContext.audioWorklet.addModule("/discuss/voice/worklet_processor");
-        processor = new browser.AudioWorkletNode(audioContext, "processor");
-        processor.port.onmessage = (e) => {
-            if (state.recording && !startTimeStamp) {
-                startTimeStamp = e.timeStamp;
+        await this.audioContext.audioWorklet.addModule("/discuss/voice/worklet_processor");
+        this.processor = new browser.AudioWorkletNode(this.audioContext, "processor");
+        this.processor.port.onmessage = (e) => {
+            if (this.state.recording && !this.startTimeStamp) {
+                this.startTimeStamp = e.timeStamp;
             }
-            if (!startTimeStamp) {
+            if (!this.startTimeStamp) {
                 return;
             }
-            const elapsedSeconds = Math.floor((e.timeStamp - startTimeStamp) / 1000);
+            const elapsedSeconds = Math.floor((e.timeStamp - this.startTimeStamp) / 1000);
             const second = elapsedSeconds % 60;
             const minute = Math.floor(elapsedSeconds / 60);
-            state.elapsed =
+            this.state.elapsed =
                 (minute < 10 ? "0" + minute : minute) +
                 " : " +
                 (second < 10 ? "0" + second : second);
             if (elapsedSeconds > 55 && elapsedSeconds < 60) {
-                state.limitWarning = true;
+                this.state.limitWarning = true;
             }
             if (elapsedSeconds === 60) {
-                notification.add(_t("The duration of voice messages is limited to 1 minute."), {
-                    type: "warning",
-                });
-                stopRecording();
+                this.notification.add(
+                    _t("The duration of voice messages is limited to 1 minute."),
+                    { type: "warning" }
+                );
+                this.stopRecording();
             }
             if (!e.data) {
                 return;
             }
-            _encode(e.data);
+            this._encode(e.data);
         };
-        streamSource = audioContext.createMediaStreamSource(microphone);
+        this.streamSource = this.audioContext.createMediaStreamSource(this.microphone);
 
         // Start to get microphone data
-        streamSource.connect(processor);
-        processor.connect(audioContext.destination);
-        config.sampleRate = audioContext.sampleRate;
-        encoder = new Mp3Encoder(config);
-        state.isActionPending = false;
+        this.streamSource.connect(this.processor);
+        this.processor.connect(this.audioContext.destination);
+        this.config.sampleRate = this.audioContext.sampleRate;
+        this.encoder = new Mp3Encoder(this.config);
+        this.state.isActionPending = false;
     }
 
-    function _encode(data) {
-        encoder.encode(data);
+    _encode(data) {
+        this.encoder.encode(data);
     }
 
-    function _getEncoderBuffer() {
-        return encoder.finish();
+    _getEncoderBuffer() {
+        return this.encoder.finish();
     }
 
-    function _makeFile(buffer, type) {
-        return patchable.makeFile(new File(buffer, filename(), { type }));
+    _makeFile(buffer, type) {
+        return new File(buffer, this.filename(), { type });
     }
 
-    function stopRecording() {
-        getMp3()
+    stopRecording() {
+        this.getMp3()
             .then((buffer) => {
-                const file = _makeFile(buffer, "audio/mp3");
-                if (file.size === 0) {
-                    return;
-                }
-                component.attachmentUploader.uploadFile(file, { voice: true });
+                const file = this._makeFile(buffer, "audio/mp3");
+                this.props.attachmentUploader.uploadFile(file, { voice: true });
             })
             .catch(() => {});
-        cleanUp();
+        this.cleanUp();
     }
 
-    function cleanUp() {
-        if (processor && streamSource) {
+    cleanUp({ unmounting = false } = {}) {
+        if (this.processor && this.streamSource) {
             // Clean up the Web Audio API resources.
-            streamSource.disconnect();
-            processor.disconnect();
+            this.streamSource.disconnect();
+            this.processor.disconnect();
 
-            if (audioContext && audioContext.state !== "closed") {
-                // If all references using audioContext are destroyed, context is
+            if (this.audioContext && this.audioContext.state !== "closed") {
+                // If all references using this.audioContext are destroyed, context is
                 // closed automatically. DOMException is fired when trying to close again
-                audioContext.close();
+                this.audioContext.close();
             }
         }
 
-        startTimeStamp = false;
-        microphone?.getTracks().forEach((track) => track.stop());
-        microphone = null;
-        state.recording = false;
-        state.limitWarning = false;
+        this.startTimeStamp = false;
+        this.microphone?.getTracks().forEach((track) => track.stop());
+        this.microphone = null;
+        this.state.recording = false;
+        this.state.limitWarning = false;
+        if (!unmounting) {
+            this.props.onchangeRecording?.();
+        }
     }
 
-    function getMp3() {
-        const finalBuffer = _getEncoderBuffer();
+    getMp3() {
+        const finalBuffer = this._getEncoderBuffer();
         return new Promise((resolve, reject) => {
             if (finalBuffer.length === 0) {
                 reject(new Error("No buffer to send"));
             } else {
                 resolve(finalBuffer);
-                encoder.clearBuffer();
+                this.encoder.clearBuffer();
             }
         });
     }
 
-    return state;
+    onClick(ev) {
+        if (this.state.recording) {
+            this.stopRecording();
+        } else {
+            this.startRecording();
+        }
+    }
 }

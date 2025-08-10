@@ -1,13 +1,13 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from collections import defaultdict
 from datetime import datetime
 
-from odoo import _, api, fields, models
+from odoo import api, fields, models
 from odoo.tools import SQL
 
 
-class ResPartner(models.Model):
+class Partner(models.Model):
     _inherit = 'res.partner'
 
     meeting_count = fields.Integer("# Meetings", compute='_compute_meeting_count')
@@ -55,19 +55,11 @@ class ResPartner(models.Model):
             return {p_id: list(meetings.get(p_id, set())) for p_id in self.ids}
         return {}
 
-    def _compute_application_statistics_hook(self):
-        data_list = super()._compute_application_statistics_hook()
-        for partner in self.filtered('meeting_count'):
-            stat_info = {'iconClass': 'fa-calendar', 'value': partner.meeting_count, 'label': _('Meetings')}
-            data_list[partner.id].append(stat_info)
-        return data_list
-
     def get_attendee_detail(self, meeting_ids):
         """ Return a list of dict of the given meetings with the attendees details
             Used by:
-
-            - many2many_attendee.js: Many2ManyAttendee
-            - calendar_model.js (calendar.CalendarModel)
+                - many2many_attendee.js: Many2ManyAttendee
+                - calendar_model.js (calendar.CalendarModel)
         """
         attendees_details = []
         meetings = self.env['calendar.event'].browse(meeting_ids)
@@ -102,21 +94,3 @@ class ResPartner(models.Model):
         }
         action['domain'] = ['|', ('id', 'in', self._compute_meeting()[self.id]), ('partner_ids', 'in', self.ids)]
         return action
-
-    def _get_busy_calendar_events(self, start_datetime, end_datetime):
-        """Get a mapping from partner id to attended events intersecting with the time interval.
-
-        :rtype: dict[int, <calendar.event>]
-        """
-        events = self.env['calendar.event'].search([
-            ('stop', '>=', start_datetime.replace(tzinfo=None)),
-            ('start', '<=', end_datetime.replace(tzinfo=None)),
-            ('partner_ids', 'in', self.ids),
-            ('show_as', '=', 'busy'),
-        ])
-
-        event_by_partner_id = defaultdict(lambda: self.env['calendar.event'])
-        for event in events:
-            for partner in event.partner_ids:
-                event_by_partner_id[partner.id] |= event
-        return dict(event_by_partner_id)

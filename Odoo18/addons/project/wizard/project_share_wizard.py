@@ -7,7 +7,7 @@ from odoo import Command, api, fields, models, _
 
 class ProjectShareWizard(models.TransientModel):
     _name = 'project.share.wizard'
-    _inherit = ['portal.share']
+    _inherit = 'portal.share'
     _description = 'Project Sharing'
 
     @api.model
@@ -15,11 +15,11 @@ class ProjectShareWizard(models.TransientModel):
         # The project share action could be called in `project.collaborator`
         # and so we have to check the active_model and active_id to use
         # the right project.
-        active_model = self.env.context.get('active_model', '')
-        active_id = self.env.context.get('active_id', False)
+        active_model = self._context.get('active_model', '')
+        active_id = self._context.get('active_id', False)
         if active_model == 'project.collaborator':
             active_model = 'project.project'
-            active_id = self.env.context.get('default_project_id', False)
+            active_id = self._context.get('default_project_id', False)
         result = super(ProjectShareWizard, self.with_context(active_model=active_model, active_id=active_id)).default_get(fields)
         if result['res_model'] and result['res_id']:
             project = self.env[result['res_model']].browse(result['res_id'])
@@ -114,7 +114,6 @@ class ProjectShareWizard(models.TransientModel):
             if collaborator_ids_to_add:
                 partners = project._get_new_collaborators(self.env['res.partner'].browse(collaborator_ids_to_add))
                 collaborator_ids_vals_list.extend(Command.create({'partner_id': partner_id}) for partner_id in partners.ids)
-                project.tasks.message_subscribe(partner_ids=partners.ids)
             if collaborator_ids_to_add_with_limited_access:
                 partners = project._get_new_collaborators(self.env['res.partner'].browse(collaborator_ids_to_add_with_limited_access))
                 collaborator_ids_vals_list.extend(

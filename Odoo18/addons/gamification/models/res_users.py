@@ -5,7 +5,7 @@ from odoo import _, api, fields, models
 from odoo.tools import SQL
 
 
-class ResUsers(models.Model):
+class Users(models.Model):
     _inherit = 'res.users'
 
     karma = fields.Integer('Karma', compute='_compute_karma', store=True, readonly=False)
@@ -14,7 +14,7 @@ class ResUsers(models.Model):
     gold_badge = fields.Integer('Gold badges count', compute="_get_user_badge_level")
     silver_badge = fields.Integer('Silver badges count', compute="_get_user_badge_level")
     bronze_badge = fields.Integer('Bronze badges count', compute="_get_user_badge_level")
-    rank_id = fields.Many2one('gamification.karma.rank', 'Rank', index='btree_not_null')
+    rank_id = fields.Many2one('gamification.karma.rank', 'Rank')
     next_rank_id = fields.Many2one('gamification.karma.rank', 'Next Rank')
 
     @api.depends('karma_tracking_ids.new_value')
@@ -68,8 +68,8 @@ class ResUsers(models.Model):
             self.browse(user_id)['{}_badge'.format(level)] = count
 
     @api.model_create_multi
-    def create(self, vals_list):
-        res = super().create(vals_list)
+    def create(self, values_list):
+        res = super(Users, self).create(values_list)
 
         self._add_karma_batch({
             user: {
@@ -78,23 +78,23 @@ class ResUsers(models.Model):
                 'origin_ref': f'res.users,{self.env.uid}',
                 'reason': _('User Creation'),
             }
-            for user, vals in zip(res, vals_list)
+            for user, vals in zip(res, values_list)
             if vals.get('karma')
         })
 
         return res
 
-    def write(self, vals):
-        if 'karma' in vals:
+    def write(self, values):
+        if 'karma' in values:
             self._add_karma_batch({
                 user: {
-                    'gain': int(vals['karma']) - user.karma,
+                    'gain': int(values['karma']) - user.karma,
                     'origin_ref': f'res.users,{self.env.uid}',
                 }
                 for user in self
-                if int(vals['karma']) != user.karma
+                if int(values['karma']) != user.karma
             })
-        return super().write(vals)
+        return super().write(values)
 
     def _add_karma(self, gain, source=None, reason=None):
         self.ensure_one()
@@ -140,22 +140,16 @@ class ResUsers(models.Model):
         :param to_date: compute karma gained before this date (included) or until
           end of time;
 
-        :rtype: list[dict]
-        :return:
-          ::
-
-            [{
-                'user_id': user_id (belonging to current record set),
-                'karma_gain_total': integer, karma gained in the given timeframe,
-                'karma_position': integer, ranking position
-            }, {..}]
-
-          ordered by descending karma position
+        :return list: [{
+            'user_id': user_id (belonging to current record set),
+            'karma_gain_total': integer, karma gained in the given timeframe,
+            'karma_position': integer, ranking position
+        }, {..}] ordered by karma_position desc
         """
         if not self:
             return []
 
-        where_query = self.env['res.users']._search(user_domain, bypass_access=True)
+        where_query = self.env['res.users']._where_calc(user_domain)
 
         sql = SQL("""
 SELECT final.user_id, final.karma_gain_total, final.karma_position
@@ -165,7 +159,7 @@ FROM (
         SELECT "res_users".id as user_id, COALESCE(SUM("tracking".new_value - "tracking".old_value), 0) as karma_gain_total
         FROM %s
         LEFT JOIN "gamification_karma_tracking" as "tracking"
-        ON "res_users".id = "tracking".user_id AND "res_users"."active" IS TRUE
+        ON "res_users".id = "tracking".user_id AND "res_users"."active" = TRUE
         WHERE %s %s %s
         GROUP BY "res_users".id
         ORDER BY karma_gain_total DESC
@@ -195,20 +189,15 @@ WHERE final.user_id IN %s""",
         :param user_domain: general domain (i.e. active, karma > 1, website, ...)
           to compute the absolute position of the current record set
 
-        :rtype: list[dict]
-        :return:
-
-            ::
-
-                [{
-                    'user_id': user_id (belonging to current record set),
-                    'karma_position': integer, ranking position
-                }, {..}] ordered by karma_position desc
+        :return list: [{
+            'user_id': user_id (belonging to current record set),
+            'karma_position': integer, ranking position
+        }, {..}] ordered by karma_position desc
         """
         if not self:
             return {}
 
-        where_query = self.env['res.users']._search(user_domain, bypass_access=True)
+        where_query = self.env['res.users']._where_calc(user_domain)
 
         # we search on every user in the DB to get the real positioning (not the one inside the subset)
         # then, we filter to get only the subset.

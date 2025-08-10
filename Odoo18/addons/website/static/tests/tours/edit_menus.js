@@ -5,9 +5,7 @@ import {
     clickOnEditAndWaitEditMode,
     clickOnExtraMenuItem,
     clickOnSave,
-    goBackToBlocks,
     insertSnippet,
-    openLinkPopup,
     registerWebsitePreviewTour,
 } from '@website/js/tours/tour_utils';
 
@@ -67,10 +65,14 @@ registerWebsitePreviewTour('edit_menus', {
     },
     // Add a menu item in edit mode.
     ...clickOnEditAndWaitEditMode(),
-    ...openLinkPopup(":iframe .top_menu .nav-item a:contains('Home')", "Home"),
+    {
+        content: "Click on a menu item",
+        trigger: ":iframe .top_menu .nav-item a",
+        run: "click",
+    },
     {
         content: "Click on Edit Menu",
-        trigger: '.o-we-linkpopover a.js_edit_menu',
+        trigger: ':iframe .o_edit_menu_popover a.js_edit_menu',
         run: "click",
     },
     {
@@ -91,13 +93,8 @@ registerWebsitePreviewTour('edit_menus', {
     },
     {
         content: "It didn't save without a label. Fill label input.",
-        trigger: ".modal:not(.o_inactive_modal) .modal-dialog .o_website_dialog input:eq(0)",
+            trigger: ".modal:not(.o_inactive_modal) .modal-dialog .o_website_dialog input:eq(0)",
         run: "edit Random!",
-    },
-    {
-        content: "Remove the URL input value",
-        trigger: ".modal:not(.o_inactive_modal) .modal-dialog .o_website_dialog input#url_input",
-        run: "edit ",
     },
     {
         content: "Confirm the new menu entry without a url",
@@ -105,12 +102,15 @@ registerWebsitePreviewTour('edit_menus', {
         run: "click",
     },
     {
-        content: "It didn't save without URL input value. Fill url input.",
-        trigger: ".modal:not(.o_inactive_modal) .modal-dialog .o_website_dialog input#url_input",
+        trigger: ".modal:not(.o_inactive_modal) .modal-dialog .o_website_dialog input.is-invalid",
+    },
+    {
+        content: "It didn't save without a url. Fill url input.",
+        trigger: '.modal:not(.o_inactive_modal) .modal-dialog .o_website_dialog input:eq(1)',
         run: "edit #",
     },
     {
-        content: "Confirm the new menu entry with # url",
+        content: "Confirm the new menu entry",
         trigger: ".modal:not(.o_inactive_modal) .modal-footer .btn-primary:contains(ok)",
         run: "click",
     },
@@ -125,16 +125,27 @@ registerWebsitePreviewTour('edit_menus', {
     {
         trigger: "body:not(:has(.modal))",
     },
+    {
+        trigger: "#oe_snippets.o_loaded",
+    },
     // Edit the new menu item from the "edit link" popover button
     clickOnExtraMenuItem({}, true),
-    ...openLinkPopup(":iframe .top_menu .nav-item a:contains('Random!')", "Random!"),
+    {
+        trigger: ".o_website_preview.editor_enable.editor_has_snippets:not(.o_is_blocked)",
+    },
+    {
+        content: "Menu should have a new link item",
+        trigger: ':iframe .top_menu .nav-item a:contains("Random!")',
+        // Don't click the new menu when the editor is still blocked.
+        run: "click",
+    },
     {
         content: "navbar shouldn't have any zwnbsp and no o_link_in_selection class",
         trigger: ':iframe nav.navbar:not(:has(.o_link_in_selection)):not(:contains("\ufeff"))',
     },
     {
         content: "Click on Edit Link",
-        trigger: '.o-we-linkpopover a.o_we_edit_link',
+        trigger: ':iframe .o_edit_menu_popover a.o_we_edit_link',
         run: "click",
     },
     {
@@ -156,10 +167,14 @@ registerWebsitePreviewTour('edit_menus', {
     // Edit the menu item from the "edit menu" popover button
     ...clickOnEditAndWaitEditMode(),
     clickOnExtraMenuItem({}, true),
-    ...openLinkPopup(":iframe .top_menu .nav-item a:contains('Modnar')", "Modnar"),
+    {
+        content: "Click on the 'Modnar' link",
+        trigger: ':iframe .top_menu .nav-item a:contains("Modnar")',
+        run: "click",
+    },
     {
         content: "Click on the popover Edit Menu button",
-        trigger: '.o-we-linkpopover a.js_edit_menu',
+        trigger: ':iframe .o_edit_menu_popover a.js_edit_menu',
         run: "click",
     },
     {
@@ -189,8 +204,7 @@ registerWebsitePreviewTour('edit_menus', {
         run: "click",
     },
     // Drag a block to be able to scroll later.
-    goBackToBlocks(),
-    ...insertSnippet({ id: "s_media_list", name: "Media List", groupName: "Content" }),
+    ...insertSnippet({id: "s_media_list", name: "Media List", groupName: "Content"}),
     ...clickOnSave(),
     clickOnExtraMenuItem({}, true),
     {
@@ -215,7 +229,7 @@ registerWebsitePreviewTour('edit_menus', {
             return helpers.drag_and_drop('.oe_menu_editor li:contains("Home")', {
                 position: {
                     top: 57,
-                    left: 5,
+                    left:5,
                 },
                 relative: true,
             });
@@ -265,7 +279,7 @@ registerWebsitePreviewTour('edit_menus', {
         run() {
             // Scroll down.
             this.anchor.closest("body").querySelector(".o_footer_copyright_name")
-                .scrollIntoView({ block: "start", inline: "nearest", behavior: "smooth" });
+                .scrollIntoView(true);
         },
     },
     {
@@ -275,10 +289,7 @@ registerWebsitePreviewTour('edit_menus', {
     {
         content: "Open the Home menu after scroll",
         trigger: ':iframe .top_menu .nav-item a.dropdown-toggle:contains("Home")',
-        async run(helpers) {
-            await delay(1000);
-            await helpers.click();
-        },
+        run: "click",
     },
     {
         content: "Check that the Home menu is opened",
@@ -325,7 +336,7 @@ registerWebsitePreviewTour('edit_menus', {
     {
         content: "Check that the mega menu is opened",
         trigger: ':iframe .top_menu .nav-item:has(a.o_mega_menu_toggle:contains("Megaaaaa!")) ' +
-            '.s_mega_menu_odoo_menu',
+                 '.s_mega_menu_odoo_menu',
     },
     ...clickOnEditAndWaitEditMode(),
     {
@@ -333,8 +344,13 @@ registerWebsitePreviewTour('edit_menus', {
     },
     {
         content: "Open nested menu item",
-        trigger: ':iframe .o_top_fixed_element .nav-item:contains("Home"):nth-child(2) .dropdown-toggle',
-        run: "click",
+        trigger: ':iframe .o_header_is_scrolled.o_top_fixed_element .nav-item:contains("Home"):nth-child(2) .dropdown-toggle',
+        async run(actions) {
+            // If you scroll after click on dropdown, nested menu disappears.
+            await delay(500);
+            // So wait that scroll is finished before click.
+            await actions.click();
+        },
     },
     {
         // If this step fails, it means that a patch inside bootstrap was lost.

@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
 import { Dropdown } from "@web/core/dropdown/dropdown";
 import { rpc } from "@web/core/network/rpc";
@@ -39,6 +41,7 @@ export class AddToBoard extends Component {
     async addToBoard() {
         const { domain, globalContext } = this.env.searchModel;
         const { context, groupBys, orderBy } = this.env.searchModel.getPreFavoriteValues();
+        const comparison = this.env.searchModel.comparison;
         const contextToSave = {
             ...Object.fromEntries(
                 Object.entries(globalContext).filter(
@@ -50,6 +53,9 @@ export class AddToBoard extends Component {
             group_by: groupBys,
             dashboard_merge_domains_contexts: false,
         };
+        if (comparison) {
+            contextToSave.comparison = comparison;
+        }
 
         const result = await rpc("/board/add_to_dashboard", {
             action_id: this.env.config.actionId || false,

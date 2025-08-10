@@ -4,12 +4,9 @@ import {
     isAllowedContent,
     isButton,
     isContentEditable,
-    isEditorTab,
     isEmpty,
     isInPre,
-    isMediaElement,
     isProtected,
-    isSelfClosingElement,
     isShrunkBlock,
     isTangible,
     isTextNode,
@@ -44,7 +41,6 @@ import { CTYPES } from "../utils/content_types";
 import { withSequence } from "@html_editor/utils/resource";
 import { compareListTypes } from "@html_editor/main/list/utils";
 import { hasTouch, isBrowserChrome, isMacOS } from "@web/core/browser/feature_detection";
-import { normalizeDeepCursorPosition, normalizeFakeBR } from "@html_editor/utils/selection";
 
 /**
  * @typedef {Object} RangeLike
@@ -61,21 +57,12 @@ import { normalizeDeepCursorPosition, normalizeFakeBR } from "@html_editor/utils
  * @property { DeletePlugin['delete'] } delete
  * @property { DeletePlugin['deleteRange'] } deleteRange
  * @property { DeletePlugin['deleteSelection'] } deleteSelection
- * @property { DeletePlugin['deleteBackward'] } deleteBackward
- * @property { DeletePlugin['deleteForward'] } deleteForward
  */
-
-// @todo @phoenix: move these predicates to different plugins
-export const unremovableNodePredicates = [
-    (node) => node.classList?.contains("oe_unremovable"),
-    // Monetary field
-    (node) => node.matches?.("[data-oe-type='monetary'] > span"),
-];
 
 export class DeletePlugin extends Plugin {
     static dependencies = ["baseContainer", "selection", "history", "input", "userCommand"];
     static id = "delete";
-    static shared = ["deleteBackward", "deleteForward", "deleteRange", "deleteSelection", "delete"];
+    static shared = ["deleteRange", "deleteSelection", "delete"];
     resources = {
         user_commands: [
             { id: "deleteBackward", run: () => this.delete("backward", "character") },
@@ -108,7 +95,12 @@ export class DeletePlugin extends Plugin {
         delete_forward_word_overrides: this.deleteForwardUnmergeable.bind(this),
         delete_forward_line_overrides: this.deleteForwardUnmergeable.bind(this),
 
-        unremovable_node_predicates: unremovableNodePredicates,
+        // @todo @phoenix: move these predicates to different plugins
+        unremovable_node_predicates: [
+            (node) => node.classList?.contains("oe_unremovable"),
+            // Monetary field
+            (node) => node.matches?.("[data-oe-type='monetary'] > span"),
+        ],
         invalid_for_base_container_predicates: (node) => this.isUnremovable(node, this.editable),
     };
 
@@ -147,24 +139,6 @@ export class DeletePlugin extends Plugin {
         }
     }
 
-    /**
-     * @param {EditorSelection} selection
-     * @returns {Range}
-     */
-    getNormalizedRange(selection) {
-        let { startContainer, startOffset, endContainer, endOffset, isCollapsed } = selection;
-        for (const normalizer of [normalizeDeepCursorPosition, normalizeFakeBR]) {
-            [startContainer, startOffset] = normalizer(startContainer, startOffset);
-            [endContainer, endOffset] = isCollapsed
-                ? [startContainer, startOffset]
-                : normalizer(endContainer, endOffset);
-        }
-        const range = this.document.createRange();
-        range.setStart(startContainer, startOffset);
-        range.setEnd(endContainer, endOffset);
-        return range;
-    }
-
     // --------------------------------------------------------------------------
     // commands
     // --------------------------------------------------------------------------
@@ -176,8 +150,10 @@ export class DeletePlugin extends Plugin {
         // @todo @phoenix: handle non-collapsed selection around a ZWS
         // see collapseIfZWS
 
-        let range = this.getNormalizedRange(selection);
-        if (range.collapsed) {
+        // Normalize selection
+        selection = this.dependencies.selection.setSelection(selection);
+
+        if (selection.isCollapsed) {
             return;
         }
         // Delete only if the targeted nodes are all editable or if every
@@ -193,7 +169,8 @@ export class DeletePlugin extends Plugin {
         if (selectedNodes.some((node) => !canBeDeleted(node))) {
             return;
         }
-        range = this.adjustRange(range, [
+
+        let range = this.adjustRange(selection, [
             this.expandRangeToIncludeNonEditables,
             this.includeEndOrStartBlock,
             this.fullyIncludeLinks,
@@ -237,10 +214,8 @@ export class DeletePlugin extends Plugin {
      * @param {"character"|"word"|"line"} granularity
      */
     deleteBackward(selection, granularity) {
-        const { endContainer, endOffset } = this.getNormalizedRange(selection);
-        if (!closestElement(endContainer).isContentEditable) {
-            return;
-        }
+        // Normalize selection
+        const { endContainer, endOffset } = this.dependencies.selection.setSelection(selection);
 
         let range = this.getRangeForDelete(endContainer, endOffset, "backward", granularity);
 
@@ -268,10 +243,8 @@ export class DeletePlugin extends Plugin {
      * @param {"character"|"word"|"line"} granularity
      */
     deleteForward(selection, granularity) {
-        const { startContainer, startOffset } = this.getNormalizedRange(selection);
-        if (!closestElement(startContainer).isContentEditable) {
-            return;
-        }
+        // Normalize selection
+        const { startContainer, startOffset } = this.dependencies.selection.setSelection(selection);
 
         let range = this.getRangeForDelete(startContainer, startOffset, "forward", granularity);
 
@@ -832,10 +805,7 @@ export class DeletePlugin extends Plugin {
         if (
             block === commonAncestorContainer ||
             !this.isCursorAtEndOfElement(block, endContainer, endOffset) ||
-            (startList &&
-                endList &&
-                !compareListTypes(startList, endList) &&
-                !startList.contains(endList))
+            (startList && endList && !compareListTypes(startList, endList))
         ) {
             return range;
         }
@@ -955,11 +925,8 @@ export class DeletePlugin extends Plugin {
         return range;
     }
 
+    // Expand the range to fully include all contentEditable=False elements.
     /**
-     * Expand the range to fully include all contentEditable=False elements.
-     * This scenario happens when the range has one end inside a non-editable
-     * element and the other end outside of it.
-     *
      * @param {Range} range
      * @returns {Range}
      */
@@ -977,7 +944,15 @@ export class DeletePlugin extends Plugin {
             !previousLeaf(startContainer, closestBlock(startContainer)) &&
             findFurthest(startContainer, commonAncestor, isNonEditable);
         if (startUneditable) {
-            range.setStartBefore(startUneditable);
+            // @todo @phoenix: Review this spec. I suggest this instead (no block merge after removing):
+            // startContainer = startUneditable.parentElement;
+            // startOffset = childNodeIndex(startUneditable);
+            const leaf = previousLeaf(startUneditable, this.editable);
+            if (leaf) {
+                range.setStart(leaf, nodeSize(leaf));
+            } else {
+                range.setStart(commonAncestor, 0);
+            }
         }
         const endUneditable =
             endOffset === nodeSize(endContainer) &&
@@ -1165,9 +1140,10 @@ export class DeletePlugin extends Plugin {
         if (leaf.nodeName === "BR" && isFakeLineBreak(leaf)) {
             return true;
         }
-        // @todo: register these as resources by other plugins?
         if (
-            [isSelfClosingElement, isMediaElement, isEditorTab].some((predicate) => predicate(leaf))
+            this.getResource("functional_empty_node_predicates").some((predicate) =>
+                predicate(leaf)
+            )
         ) {
             return false;
         }

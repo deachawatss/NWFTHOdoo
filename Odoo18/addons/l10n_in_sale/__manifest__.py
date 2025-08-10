@@ -11,13 +11,13 @@
         'sale',
     ],
     'data': [
-        'views/sale_order_views.xml',
+        'views/report_sale_order.xml',
+        'views/sale_views.xml',
     ],
     'demo': [
         'data/product_demo.xml',
     ],
     'installable': True,
     'auto_install': True,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

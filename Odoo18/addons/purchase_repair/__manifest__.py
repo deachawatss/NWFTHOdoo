@@ -4,8 +4,7 @@
     'name': 'Purchase Repair',
     'summary': 'Keep track of linked purchase and repair orders',
     'version': '1.0',
-    'category': 'Supply Chain/Purchase',
-    'author': 'Odoo S.A.',
+    'category': 'Repair/Purchase',
     'license': 'LGPL-3',
     'depends': ['repair', 'purchase_stock'],
     'data': [

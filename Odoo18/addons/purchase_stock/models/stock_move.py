@@ -30,31 +30,10 @@ class StockMove(models.Model):
             excluded_fields += ['procure_method']
         return excluded_fields
 
-    @api.depends('purchase_line_id', 'purchase_line_id.product_uom_id')
-    def _compute_packaging_uom_id(self):
-        super()._compute_packaging_uom_id()
-        for move in self:
-            if move.purchase_line_id:
-                move.packaging_uom_id = move.purchase_line_id.product_uom_id
-
     def _compute_partner_id(self):
         # dropshipped moves should have their partner_ids directly set
         not_dropshipped_moves = self.filtered(lambda m: not m._is_dropshipped())
         super(StockMove, not_dropshipped_moves)._compute_partner_id()
-
-    @api.depends('purchase_line_id.name')
-    def _compute_description_picking(self):
-        super()._compute_description_picking()
-        for move in self:
-            if move.purchase_line_id:
-                seller = move.purchase_line_id.selected_seller_id
-                vendor_reference = f'[{seller.product_code}]' if seller.product_code else ''
-                vendor_reference += f' {seller.product_name}' if seller.product_name else ''
-                no_variant_attributes = '\n'.join(f'{attribute.attribute_id.name}: {attribute.name}' for attribute in move.purchase_line_id.product_no_variant_attribute_value_ids)
-                move.description_picking = (no_variant_attributes + '\n' + vendor_reference + '\n' + move.description_picking).strip()
-
-    def _get_description(self):
-        return self.purchase_line_id.name if self.purchase_line_id else super()._get_description()
 
     def _should_ignore_pol_price(self):
         self.ensure_one()
@@ -69,7 +48,7 @@ class StockMove(models.Model):
         line = self.purchase_line_id
         order = line.order_id
         received_qty = self._get_qty_received_without_self()
-        if line.product_id.purchase_method == 'purchase' and line.product_uom_id.compare(line.qty_invoiced, received_qty) > 0:
+        if line.product_id.purchase_method == 'purchase' and float_compare(line.qty_invoiced, received_qty, precision_rounding=line.product_uom.rounding) > 0:
             move_layer = line.move_ids.sudo().stock_valuation_layer_ids
             invoiced_layer = line.sudo().invoice_lines.stock_valuation_layer_ids
             # value on valuation layer is in company's currency, while value on invoice line is in order's currency
@@ -104,7 +83,7 @@ class StockMove(models.Model):
             # TODO currency check
             remaining_value = total_invoiced_value - receipt_value
             # TODO qty_received in product uom
-            remaining_qty = invoiced_qty - line.product_uom_id._compute_quantity(received_qty, line.product_id.uom_id, rounding_method="HALF-UP")
+            remaining_qty = invoiced_qty - line.product_uom._compute_quantity(received_qty, line.product_id.uom_id, rounding_method="HALF-UP")
             has_remaining = (
                 not order.currency_id.is_zero(remaining_value)
                 and not float_is_zero(remaining_qty, precision_rounding=line.product_id.uom_id.rounding)
@@ -130,7 +109,7 @@ class StockMove(models.Model):
         qty_received = self.purchase_line_id.qty_received
         if self.state == 'done':
             qty_received -= self.product_uom._compute_quantity(
-                self.quantity, self.purchase_line_id.product_uom_id, rounding_method='HALF-UP'
+                self.quantity, self.purchase_line_id.product_uom, rounding_method='HALF-UP'
             )
         return qty_received
 
@@ -147,7 +126,7 @@ class StockMove(models.Model):
 
         # Use currency rate at bill date when invoice before receipt
         qty_received = self._get_qty_received_without_self()
-        if line.product_uom_id.compare(line.qty_invoiced, qty_received) > 0:
+        if float_compare(line.qty_invoiced, qty_received, precision_rounding=line.product_uom.rounding) > 0:
             posted_bills = line.sudo().invoice_lines.move_id.filtered(lambda m: m.state == 'posted')
             convert_date = max(posted_bills.mapped('invoice_date'), default=convert_date)
         return convert_date
@@ -223,7 +202,7 @@ class StockMove(models.Model):
         move = (self | returned_move).with_prefetch(self._prefetch_ids)
         pdiff_exists = bool(move.stock_valuation_layer_ids.stock_valuation_layer_ids.account_move_line_id)
 
-        if not am_vals_list or not self.purchase_line_id or pdiff_exists or self.product_id.uom_id.is_zero(qty):
+        if not am_vals_list or not self.purchase_line_id or pdiff_exists or float_is_zero(qty, precision_rounding=self.product_id.uom_id.rounding):
             return am_vals_list
 
         layer = self.env['stock.valuation.layer'].browse(svl_id)
@@ -271,10 +250,10 @@ class StockMove(models.Model):
         self.write({'created_purchase_line_ids': [Command.clear()]})
 
     def _get_upstream_documents_and_responsibles(self, visited):
-        created_pl = self.created_purchase_line_ids.filtered(lambda cpl: cpl.state != 'cancel' and (cpl.state != 'draft' or self.env.context.get('include_draft_documents')))
+        created_pl = self.created_purchase_line_ids.filtered(lambda cpl: cpl.state not in ('done', 'cancel') and (cpl.state != 'draft' or self._context.get('include_draft_documents')))
         if created_pl:
             return [(pl.order_id, pl.order_id.user_id, visited) for pl in created_pl]
-        elif self.purchase_line_id and self.purchase_line_id.state != 'cancel':
+        elif self.purchase_line_id and self.purchase_line_id.state not in ('done', 'cancel'):
             return[(self.purchase_line_id.order_id, self.purchase_line_id.order_id.user_id, visited)]
         else:
             return super(StockMove, self)._get_upstream_documents_and_responsibles(visited)
@@ -306,7 +285,7 @@ class StockMove(models.Model):
                 layers_values, to_curr, related_aml.company_id, valuation_date, round=False,
             )
             valuation_total_qty += layers_qty
-        if related_aml.product_uom_id.rounding or related_aml.product_id.uom_id.is_zero(valuation_total_qty):
+        if float_is_zero(valuation_total_qty, precision_rounding=related_aml.product_uom_id.rounding or related_aml.product_id.uom_id.rounding):
             raise UserError(
                 _('Odoo is not able to generate the anglo saxon entries. The total valuation of %s is zero.',
                   related_aml.product_id.display_name))

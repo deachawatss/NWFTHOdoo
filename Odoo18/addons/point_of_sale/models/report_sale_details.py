@@ -1,16 +1,17 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 from datetime import timedelta
 
 import pytz
 
 from odoo import api, fields, models, _
-from odoo.fields import Domain
+from odoo.osv.expression import AND
 from odoo.tools import SQL
 
 
-class ReportPoint_Of_SaleReport_Saledetails(models.AbstractModel):
-    _name = 'report.point_of_sale.report_saledetails'
+class ReportSaleDetails(models.AbstractModel):
 
+    _name = 'report.point_of_sale.report_saledetails'
     _description = 'Point of Sale Details'
 
     def _get_date_start_and_date_stop(self, date_start, date_stop):
@@ -34,18 +35,20 @@ class ReportPoint_Of_SaleReport_Saledetails(models.AbstractModel):
         return date_start, date_stop
 
     def _get_domain(self, date_start=False, date_stop=False, config_ids=False, session_ids=False):
-        domain = Domain('state', 'in', ['paid', 'done'])
+        domain = [('state', 'in', ['paid', 'invoiced', 'done'])]
 
         if (session_ids):
-            domain &= Domain('session_id', 'in', session_ids)
+            domain = AND([domain, [('session_id', 'in', session_ids)]])
         else:
             date_start, date_stop = self._get_date_start_and_date_stop(date_start, date_stop)
 
-            domain &= Domain('date_order', '>=', fields.Datetime.to_string(date_start))
-            domain &= Domain('date_order', '<=', fields.Datetime.to_string(date_stop))
+            domain = AND([domain,
+                [('date_order', '>=', fields.Datetime.to_string(date_start)),
+                ('date_order', '<=', fields.Datetime.to_string(date_stop))]
+            ])
 
             if config_ids:
-                domain &= Domain('config_id', 'in', config_ids)
+                domain = AND([domain, [('config_id', 'in', config_ids)]])
 
         return domain
 
@@ -98,7 +101,7 @@ class ReportPoint_Of_SaleReport_Saledetails(models.AbstractModel):
             currency = order.session_id.currency_id
 
             for line in order.lines:
-                if line.price_subtotal_incl >= 0:
+                if line.qty >= 0:
                     products_sold, taxes = self._get_products_and_taxes_dict(line, products_sold, taxes, currency)
                 else:
                     refund_done, refund_taxes = self._get_products_and_taxes_dict(line, refund_done, refund_taxes, currency)
@@ -247,16 +250,15 @@ class ReportPoint_Of_SaleReport_Saledetails(models.AbstractModel):
                 'name': category_name,
                 'products': sorted([{
                     'product_id': product.id,
-                    'product_name': product.display_name,
-                    'barcode': product.barcode,
+                    'product_name': product.name,
+                    'code': product.default_code,
                     'quantity': qty,
                     'price_unit': price_unit,
                     'discount': discount,
                     'uom': product.uom_id.name,
                     'total_paid': product_total,
                     'base_amount': base_amount,
-                    'combo_products_label': combo_products_label,
-                } for (product, price_unit, discount), (qty, product_total, base_amount, combo_products_label) in product_list.items()], key=lambda l: l['product_name']),
+                } for (product, price_unit, discount), (qty, product_total, base_amount) in product_list.items()], key=lambda l: l['product_name']),
             }
             products.append(category_dictionnary)
         products = sorted(products, key=lambda l: str(l['name']))
@@ -266,16 +268,15 @@ class ReportPoint_Of_SaleReport_Saledetails(models.AbstractModel):
                 'name': category_name,
                 'products': sorted([{
                     'product_id': product.id,
-                    'product_name': product.display_name,
-                    'barcode': product.barcode,
+                    'product_name': product.name,
+                    'code': product.default_code,
                     'quantity': qty,
                     'price_unit': price_unit,
                     'discount': discount,
                     'uom': product.uom_id.name,
                     'total_paid': product_total,
                     'base_amount': base_amount,
-                    'combo_products_label': combo_products_label,
-                } for (product, price_unit, discount), (qty, product_total, base_amount, combo_products_label) in product_list.items()], key=lambda l: l['product_name']),
+                } for (product, price_unit, discount), (qty, product_total, base_amount) in product_list.items()], key=lambda l: l['product_name']),
             }
             refund_products.append(category_dictionnary)
         refund_products = sorted(refund_products, key=lambda l: str(l['name']))
@@ -357,15 +358,10 @@ class ReportPoint_Of_SaleReport_Saledetails(models.AbstractModel):
         key1 = line.product_id.product_tmpl_id.pos_categ_ids[0].name if len(line.product_id.product_tmpl_id.pos_categ_ids) else _('Not Categorized')
         precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
         products.setdefault(key1, {})
-        products[key1].setdefault(key2, [0.0, 0.0, 0.0, ''])
-        products[key1][key2][0] = round(products[key1][key2][0] + abs(line.qty), precision)
+        products[key1].setdefault(key2, [0.0, 0.0, 0.0])
+        products[key1][key2][0] = round(products[key1][key2][0] + line.qty, precision)
         products[key1][key2][1] += self._get_product_total_amount(line)
         products[key1][key2][2] += line.price_subtotal
-
-        # Name of each combo products along with the combo
-        if line.combo_line_ids:
-            combo_products_label = ' (' + ", ".join(line.combo_line_ids.product_id.mapped('name')) + ')'
-            products[key1][key2][3] = combo_products_label
 
         if line.tax_ids_after_fiscal_position:
             line_taxes = line.tax_ids_after_fiscal_position.sudo().compute_all(line.price_unit * (1-(line.discount or 0.0)/100.0), currency, line.qty, product=line.product_id, partner=line.order_id.partner_id or False)

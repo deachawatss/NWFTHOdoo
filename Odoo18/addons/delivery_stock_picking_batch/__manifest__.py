@@ -4,7 +4,7 @@
 {
     'name': 'Delivery Stock Picking Batch',
     'version': '1.0',
-    'category': 'Supply Chain/Inventory',
+    'category': 'Hidden',
     'summary': 'Batch Transfer, Carrier',
     'description': """
 This module makes the link between the batch pickings and carrier applications.
@@ -17,6 +17,5 @@ Allows to prepare batches depending on their carrier
     ],
     'installable': True,
     'auto_install': True,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

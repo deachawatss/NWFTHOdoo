@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { onWillStart } from "@odoo/owl";
 import { user } from "@web/core/user";
 import { ColumnProgress } from "@web/views/view_components/column_progress";

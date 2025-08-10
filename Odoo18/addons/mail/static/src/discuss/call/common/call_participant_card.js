@@ -1,41 +1,38 @@
 import { CallContextMenu } from "@mail/discuss/call/common/call_context_menu";
 import { CallParticipantVideo } from "@mail/discuss/call/common/call_participant_video";
-import { CallPopover } from "@mail/discuss/call/common/call_popover";
 import { CONNECTION_TYPES } from "@mail/discuss/call/common/rtc_service";
 import { useHover } from "@mail/utils/common/hooks";
-import { isEventHandled } from "@web/core/utils/misc";
+import { isEventHandled, markEventHandled } from "@web/core/utils/misc";
 import { browser } from "@web/core/browser/browser";
-import { isMobileOS } from "@web/core/browser/feature_detection";
 
-import { Component, onMounted, onWillUnmount, useRef, useExternalListener } from "@odoo/owl";
+import {
+    Component,
+    onMounted,
+    onWillUnmount,
+    useRef,
+    useState,
+    useExternalListener,
+} from "@odoo/owl";
+import { usePopover } from "@web/core/popover/popover_hook";
 import { useService } from "@web/core/utils/hooks";
 import { rpc } from "@web/core/network/rpc";
 
 const HIDDEN_CONNECTION_STATES = new Set([undefined, "connected", "completed"]);
 
 export class CallParticipantCard extends Component {
-    static props = [
-        "className",
-        "cardData",
-        "thread",
-        "minimized?",
-        "inset?",
-        "isSidebarItem?",
-        "compact?",
-    ];
-    static components = { CallParticipantVideo, CallContextMenu, CallPopover };
+    static props = ["className", "cardData", "thread", "minimized?", "inset?"];
+    static components = { CallParticipantVideo };
     static template = "discuss.CallParticipantCard";
 
     setup() {
         super.setup();
         this.contextMenuAnchorRef = useRef("contextMenuAnchor");
         this.root = useRef("root");
-        this.rtc = useService("discuss.rtc");
-        this.store = useService("mail.store");
-        this.ui = useService("ui");
+        this.popover = usePopover(CallContextMenu);
+        this.rtc = useState(useService("discuss.rtc"));
+        this.store = useState(useService("mail.store"));
+        this.ui = useState(useService("ui"));
         this.rootHover = useHover("root");
-        this.resumeStreamHover = useHover("resumeStream");
-        this.isMobileOS = isMobileOS();
         this.dragPos = undefined;
         this.isDrag = false;
         this.parentBoundingRect = undefined;
@@ -68,57 +65,16 @@ export class CallParticipantCard extends Component {
         );
     }
 
-    get isRemoteVideo() {
-        if (!this.rtcSession) {
-            return false;
-        }
-        return (
-            this.rtc.isRemote &&
-            (this.rtcSession.is_screen_sharing_on || this.rtcSession.is_camera_on)
-        );
-    }
-
-    get isSmall() {
-        return Boolean(
-            this.props.isSidebarItem || this.ui.isSmall || this.props.minimized || this.props.inset
-        );
-    }
-
-    get window() {
-        return this.env.pipWindow || window;
-    }
-
-    get showLiveLabel() {
-        if (this.props.isSidebarItem) {
-            return false;
-        }
-        if (this.props.cardData.type === "screen") {
-            if (this.props.inset) {
-                return true;
-            } else {
-                return (
-                    !this.rtcSession.eq(this.rtcSession.channel.activeRtcSession) &&
-                    !this.props.minimized
-                );
-            }
-        }
-        return false;
-    }
-
-    get showRemoteWarning() {
-        return !this.props.minimized && !this.props.inset && this.isRemoteVideo;
-    }
-
     get rtcSession() {
         return this.props.cardData.session;
     }
 
     get channelMember() {
-        return this.rtcSession ? this.rtcSession.channel_member_id : this.props.cardData.member;
+        return this.rtcSession ? this.rtcSession.channelMember : this.props.cardData.member;
     }
 
     get isOfActiveCall() {
-        return Boolean(this.rtcSession && this.rtcSession.channel?.eq(this.rtc.channel));
+        return Boolean(this.rtcSession && this.rtcSession.channel?.eq(this.rtc.state.channel));
     }
 
     get showConnectionState() {
@@ -144,7 +100,7 @@ export class CallParticipantCard extends Component {
     }
 
     get name() {
-        return this.channelMember?.name;
+        return this.channelMember?.persona.name;
     }
 
     get hasMediaError() {
@@ -160,7 +116,7 @@ export class CallParticipantCard extends Component {
 
     get isTalking() {
         return Boolean(
-            this.rtcSession && this.rtcSession.isActuallyTalking && !this.rtc.selfSession?.is_deaf
+            this.rtcSession && this.rtcSession.isActuallyTalking && !this.rtc.selfSession?.isDeaf
         );
     }
 
@@ -170,10 +126,6 @@ export class CallParticipantCard extends Component {
             this.rtcSession.raisingHand &&
                 (!screenStream || screenStream !== this.props.cardData.videoStream)
         );
-    }
-
-    get isActiveRtcSession() {
-        return this.rtcSession && this.rtcSession.eq(this.rtcSession.channel?.activeRtcSession);
     }
 
     async onClick(ev) {
@@ -210,6 +162,24 @@ export class CallParticipantCard extends Component {
         this.env.bus.trigger("RTC-SERVICE:PLAY_MEDIA");
     }
 
+    /**
+     * @param {Event} ev
+     */
+    onContextMenu(ev) {
+        ev.preventDefault();
+        markEventHandled(ev, "CallParticipantCard.clickVolumeAnchor");
+        if (this.popover.isOpen) {
+            this.popover.close();
+            return;
+        }
+        if (!this.contextMenuAnchorRef?.el) {
+            return;
+        }
+        this.popover.open(this.contextMenuAnchorRef.el, {
+            rtcSession: this.rtcSession,
+        });
+    }
+
     onMouseDown() {
         if (!this.props.inset) {
             return;
@@ -217,7 +187,7 @@ export class CallParticipantCard extends Component {
         const onMousemove = (ev) => this.drag(ev);
         const onMouseup = () => {
             const insetEl = this.root.el;
-            const bottomOffset = this.env.inChatWindow ? this.window.innerHeight * 0.05 : 0; // 5vh in pixels
+            const bottomOffset = this.env.inChatWindow ? window.innerHeight * 0.05 : 0; // 5vh in pixels
             if (parseInt(insetEl.style.left) < insetEl.parentNode.offsetWidth / 2) {
                 insetEl.style.left = "1vh";
                 insetEl.style.right = "";
@@ -257,7 +227,7 @@ export class CallParticipantCard extends Component {
         const parent = insetEl.parentNode;
         const boundingRect =
             this.parentBoundingRect || (this.parentBoundingRect = parent.getBoundingClientRect());
-        const bottomOffset = this.env.inChatWindow ? this.window.innerHeight * 0.05 : 0; // 5vh in pixels
+        const bottomOffset = this.env.inChatWindow ? window.innerHeight * 0.05 : 0; // 5vh in pixels
         const clientX = Math.max((ev.clientX ?? ev.touches[0].clientX) - boundingRect.left, 0);
         const clientY = Math.max((ev.clientY ?? ev.touches[0].clientY) - boundingRect.top, 0);
         if (!this.dragPos) {

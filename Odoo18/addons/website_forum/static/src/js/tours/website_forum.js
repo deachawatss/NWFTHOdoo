@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
 import {
     registerBackendAndFrontendTour,
@@ -60,7 +62,7 @@ registerBackendAndFrontendTour("question", {
     expectUnloadPage: true,
 },
 {
-    trigger: ".o_wforum_content_wrapper .h3:contains(test)",
+    trigger: ".o_wforum_content_wrapper h3:contains(test)",
 },
 {
     isActive: ["auto"],
@@ -90,7 +92,7 @@ registerBackendAndFrontendTour("question", {
     expectUnloadPage: true,
 }, 
 {
-    trigger: ".o_wforum_content_wrapper .h3:contains(test)",
+    trigger: ".o_wforum_content_wrapper h3:contains(test)",
 },
 {
     isActive: ["auto"],

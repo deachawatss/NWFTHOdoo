@@ -16,10 +16,9 @@
         'web.assets_backend': [
             'hr_homeworking_calendar/static/src/**/*',
         ],
-        'web.assets_unit_tests': [
+        'web.qunit_suite_tests': [
             'hr_homeworking_calendar/static/tests/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

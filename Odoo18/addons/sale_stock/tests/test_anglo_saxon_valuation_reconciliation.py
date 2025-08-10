@@ -15,7 +15,7 @@ class TestValuationReconciliationCommon(ValuationReconciliationTestCommon):
         cls.test_product_delivery.invoice_policy = 'delivery'
 
     def _create_sale(self, product, date, quantity=1.0):
-        order = self.env['sale.order'].sudo().create({
+        rslt = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'currency_id': self.other_currency.id,
             'order_line': [
@@ -23,13 +23,13 @@ class TestValuationReconciliationCommon(ValuationReconciliationTestCommon):
                     'name': product.name,
                     'product_id': product.id,
                     'product_uom_qty': quantity,
-                    'product_uom_id': product.uom_id.id,
+                    'product_uom': product.uom_po_id.id,
                     'price_unit': 66.0,
                 })],
             'date_order': date,
         })
-        order.action_confirm()
-        return order
+        rslt.action_confirm()
+        return rslt
 
     def _create_invoice_for_so(self, sale_order, product, date, quantity=1.0):
         rslt = self.env['account.move'].create({
@@ -43,6 +43,7 @@ class TestValuationReconciliationCommon(ValuationReconciliationTestCommon):
                 'price_unit': 66.0,
                 'quantity': quantity,
                 'discount': 0.0,
+                'product_uom_id': product.uom_id.id,
                 'product_id': product.id,
                 'sale_line_ids': [(6, 0, sale_order.order_line.ids)],
             })],
@@ -53,6 +54,7 @@ class TestValuationReconciliationCommon(ValuationReconciliationTestCommon):
 
     def _set_initial_stock_for_product(self, product):
         move1 = self.env['stock.move'].create({
+            'name': 'Initial stock',
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.company_data['default_warehouse'].lot_stock_id.id,
             'product_id': product.id,
@@ -81,6 +83,7 @@ class TestValuationReconciliation(TestValuationReconciliationCommon):
             'type': 'consu',
             'categ_id': cls.stock_account_product_categ.id,
             'uom_id': uom_unit.id,
+            'uom_po_id': uom_unit.id,
         })
 
     def test_shipment_invoice(self):
@@ -175,7 +178,6 @@ class TestValuationReconciliation(TestValuationReconciliationCommon):
             'list_price': 10 * i,
             'standard_price': 10 * i,
             'is_storable': True,
-            'categ_id': self.env.ref('product.product_category_goods').id,
         } for i in range(1, 3)]))
         product_1.categ_id.property_valuation = 'real_time'
         product_1.categ_id.property_cost_method = 'fifo'
@@ -185,7 +187,7 @@ class TestValuationReconciliation(TestValuationReconciliationCommon):
         categ_2.property_stock_account_output_categ_id = account_2
         product_2.categ_id = categ_2
         # Create out_svls
-        so = self.env['sale.order'].sudo().create({
+        so = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'currency_id': self.other_currency.id,
             'order_line': [
@@ -193,7 +195,7 @@ class TestValuationReconciliation(TestValuationReconciliationCommon):
                     'name': product.name,
                     'product_id': product.id,
                     'product_uom_qty': 2,
-                    'product_uom_id': product.uom_id.id,
+                    'product_uom': product.uom_po_id.id,
                     'price_unit': 10.0,
                 }) for product in 2 * [product_1] + [product_2]],
             'date_order': '2021-01-01',
@@ -214,6 +216,7 @@ class TestValuationReconciliation(TestValuationReconciliationCommon):
                 'price_unit': 10.0,
                 'quantity': 2,
                 'discount': 0.0,
+                'product_uom_id': line.product_id.uom_id.id,
                 'product_id': line.product_id.id,
                 'sale_line_ids': [(6, 0, line.ids)],
             }) for line in so.order_line],
@@ -223,6 +226,7 @@ class TestValuationReconciliation(TestValuationReconciliationCommon):
         inv.action_post()
         # Create in_moves for P1/P2 such that the first move compensates the out_svls
         in_moves = self.env['stock.move'].create([{
+            'name': 'in %s units @ %s per unit' % (str(quantity), str(product.standard_price)),
             'description_picking': '%s-%s' % (str(quantity), str(product)),  # to not merge the moves
             'product_id': product.id,
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
@@ -272,7 +276,7 @@ class TestValuationReconciliation(TestValuationReconciliationCommon):
 
         products = [self.test_product_delivery, self.test_product_delivery_2]
 
-        sale_order = self.env['sale.order'].sudo().create({
+        sale_order = self.env['sale.order'].create({
             'name': "sale order product 2",
             'company_id': self.env.company.id,
             'partner_id': self.partner_a.id
@@ -336,6 +340,7 @@ class TestValuationReconciliation(TestValuationReconciliationCommon):
         })
 
         sm_1 = self.env['stock.move'].create({
+            'name': products[0].name,
             'product_id': products[0].id,
             'product_uom_qty': 1,
             'product_uom': products[0].uom_id.id,
@@ -346,13 +351,16 @@ class TestValuationReconciliation(TestValuationReconciliationCommon):
             'state': 'done'
         })
 
-        sale_order_line_1 = self.env['sale.order.line'].sudo().create({
+        sale_order_line_1 = self.env['sale.order.line'].create({
             'product_id': products[0].id,
             'order_id': sale_order.id,
             'move_ids': sm_1
         })
 
+        sm_1.sale_line_id = sale_order_line_1.id
+
         sm_2 = self.env['stock.move'].create({
+            'name': products[1].name,
             'product_id': products[1].id,
             'product_uom_qty': 1,
             'product_uom': products[1].uom_id.id,
@@ -363,11 +371,13 @@ class TestValuationReconciliation(TestValuationReconciliationCommon):
             'state': 'done'
         })
 
-        sale_order_line_2 = self.env['sale.order.line'].sudo().create({
+        sale_order_line_2 = self.env['sale.order.line'].create({
             'product_id': products[1].id,
             'order_id': sale_order.id,
             'move_ids': sm_2
         })
+
+        sm_2.sale_line_id = sale_order_line_2.id
 
         invoice_1.invoice_line_ids.sale_line_ids = sale_order_line_1 | sale_order_line_2
 

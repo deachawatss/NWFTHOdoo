@@ -5,7 +5,6 @@ import re
 
 import odoo.tests
 from odoo.tools import mute_logger
-import unittest
 
 
 def break_view(view, fr='<p>placeholder</p>', to='<p t-field="no_record.exist"/>'):

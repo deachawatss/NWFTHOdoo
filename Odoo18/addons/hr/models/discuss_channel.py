@@ -5,7 +5,7 @@ from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
 
-class DiscussChannel(models.Model):
+class Channel(models.Model):
     _inherit = 'discuss.channel'
 
     subscription_department_ids = fields.Many2many(
@@ -20,7 +20,7 @@ class DiscussChannel(models.Model):
 
     def _subscribe_users_automatically_get_members(self):
         """ Auto-subscribe members of a department to a channel """
-        new_members = super()._subscribe_users_automatically_get_members()
+        new_members = super(Channel, self)._subscribe_users_automatically_get_members()
         for channel in self:
             new_members[channel.id] = list(
                 set(new_members[channel.id]) |
@@ -29,7 +29,7 @@ class DiscussChannel(models.Model):
         return new_members
 
     def write(self, vals):
-        res = super().write(vals)
+        res = super(Channel, self).write(vals)
         if vals.get('subscription_department_ids'):
             self._subscribe_users_automatically()
         return res

@@ -6,7 +6,7 @@
         <field name="model_id" ref="model_stock_quant"/>
         <field name="path">physical-inventory</field>
         <field name="state">code</field>
-        <field name="group_ids" eval="[(4, ref('stock.group_stock_user'))]"/>
+        <field name="groups_id" eval="[(4, ref('stock.group_stock_user'))]"/>
         <field name="code">
             action = model.action_view_inventory()
         </field>
@@ -30,7 +30,7 @@
                 <field name="lot_id" groups="stock.group_production_lot"/>
                 <field name="owner_id" groups="stock.group_tracking_owner"/>
                 <field name="lot_properties"/>
-                <group string='Filters'>
+                <group expand='0' string='Filters'>
                     <filter name='internal_loc' string="Internal Locations" domain="[('location_id.usage','=', 'internal')]"/>
                     <filter name='transit_loc' string="Transit Locations" domain="[('location_id.usage' ,'=', 'transit')]"/>
                     <separator/>
@@ -48,7 +48,7 @@
                     <separator/>
                     <filter name="my_count" string="My Counts" domain="[('user_id', '=', uid)]"/>
                 </group>
-                <group string='Group by...'>
+                <group expand='0' string='Group by...'>
                     <filter string='Product' name="productgroup" context="{'group_by': 'product_id'}"/>
                     <filter string='Product Category' name="productcategorygroup" context="{'group_by': 'product_categ_id'}"/>
                     <filter string='Location' name="locationgroup" domain="[]" context="{'group_by': 'location_id'}"/>
@@ -145,7 +145,7 @@
                 <field name="inventory_quantity_auto_apply" string="On Hand Quantity" readonly="0" sum="Total On Hand"/>
                 <field name="reserved_quantity" optional="show" sum="Total Reserved"/>
                 <field name="available_quantity" optional="hide" sum="Total Available"/>
-                <field name="product_uom_id" groups="uom.group_uom" widget="many2one_uom"/>
+                <field name="product_uom_id" string="Unit" groups="uom.group_uom"/>
                 <field name="lot_properties" optional="hide"/>
                 <button name="action_view_stock_moves" string="History" type="object" class="btn-link" icon="fa-history"/>
                 <button name="action_view_orderpoints" string="Replenishment" type="object" context="{'default_product_id': product_id, 'search_default_location_id': location_id}" class="btn-link" icon="fa-refresh"/>
@@ -167,8 +167,8 @@
                 <field name="package_id" groups="stock.group_tracking_lot"/>
                 <field name="owner_id" groups="stock.group_tracking_owner"/>
                 <field name="quantity" string="On Hand"/>
-                <field name="available_quantity" string="Available" column_invisible="context.get('hide_available', False)"/>
-                <field name="product_uom_id" groups="uom.group_uom"/>
+                <field name="available_quantity" string="Available"/>
+                <field name="product_uom_id" groups="uom.group_uom" string="Unit"/>
                 <field name="company_id" groups="base.group_multi_company" optional="hidden"/>
             </list>
         </field>
@@ -217,8 +217,7 @@
         <field name="name">Inventory</field>
         <field name="model_id" ref="model_stock_quant"/>
         <field name="state">code</field>
-        <field name="path">stock-locations</field>
-        <field name="group_ids" eval="[(4, ref('stock.group_stock_user'))]"/>
+        <field name="groups_id" eval="[(4, ref('stock.group_stock_user'))]"/>
         <field name="code">
             action = model.with_context(
                 search_default_internal_loc=1,
@@ -227,21 +226,19 @@
         </field>
     </record>
 
-    <record model="ir.actions.act_window" id="stock_quant_action"> <!-- Used in dashboard -->
-        <field name="name">Locations</field>
-        <field name="context">
-        {
-            'search_default_internal_loc': 1,
-            'inventory_mode':True,
-        }
-        </field>
+    <record model="ir.actions.act_window" id="dashboard_open_quants"> <!-- Used in dashboard -->
+        <field name="name">Update Quantity</field>
+        <field name="context">{'search_default_internal_loc': 1, 'search_default_productgroup':1, 'search_default_locationgroup':1, 'inventory_mode':True}</field>
         <field name="res_model">stock.quant</field>
-        <field name="view_mode">list,form</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_empty_folder">
-No Stock On Hand. This analysis gives you an overview of the current stock level of your products.
-            </p>
-        </field>
+        <field name="view_id" ref="view_stock_quant_tree_editable"/>
+    </record>
+
+    <record model="ir.actions.act_window" id="location_open_quants"> <!-- Used in location -->
+        <field name="context">{'search_default_productgroup': 1}</field>
+        <field name="domain">[('location_id', 'child_of', active_ids)]</field>
+        <field name="name">Current Stock</field>
+        <field name="res_model">stock.quant</field>
+        <field name="view_id" ref="view_stock_quant_tree"/>
     </record>
 
     <record id="quant_package_search_view" model="ir.ui.view">
@@ -254,7 +251,7 @@ No Stock On Hand. This analysis gives you an overview of the current stock level
                 <field name="location_id"/>
                 <field name="package_type_id"/>
                 <filter string="In internal locations" name="internal" domain="['|', ('location_id.usage', '=', 'internal'), ('location_id', '=', False)]" groups="stock.group_stock_multi_locations"/>
-                <group string='Group by...'>
+                <group  expand='0' string='Group by...'>
                    <filter string='Location' name="location" domain="[]" context="{'group_by' : 'location_id'}" groups="stock.group_stock_multi_locations"/>
                    <filter string='Package Type' name="package_type" domain="[]" context="{'group_by' : 'package_type_id'}"/>
                </group>
@@ -298,7 +295,7 @@ No Stock On Hand. This analysis gives you an overview of the current stock level
                             <field name="product_id"/>
                             <field name="lot_id" groups="stock.group_production_lot"/>
                             <field name="quantity"/>
-                            <field name="product_uom_id" groups="uom.group_uom" widget="many2one_uom"/>
+                            <field name="product_uom_id" groups="uom.group_uom"/>
                         </list>
                         <kanban class="o_kanban_mobile">
                             <templates>
@@ -452,7 +449,7 @@ in this location. That leads to a negative stock.
                 <field name="last_count_date" optional='hidden' readonly='1'/>
                 <field name="available_quantity" string="Available Quantity" decoration-danger="available_quantity &lt; 0" optional="hidden"/>
                 <field name="quantity" optional="show" decoration-warning="quantity &lt; 0" string="On Hand Quantity"/>
-                <field name="product_uom_id" groups="uom.group_uom"/>
+                <field name="product_uom_id" groups="uom.group_uom" string="UoM"/>
                 <field name="inventory_quantity" widget="counted_quantity_widget"/>
                 <field name="inventory_diff_quantity" string="Difference"  invisible="not inventory_quantity_set" decoration-muted="inventory_diff_quantity == 0" decoration-danger="inventory_diff_quantity &lt; 0" decoration-success="inventory_diff_quantity &gt; 0" decoration-bf="inventory_diff_quantity != 0"/>
                 <field name="inventory_date" optional="show"/>
@@ -471,9 +468,9 @@ in this location. That leads to a negative stock.
         <field name="name">Set to quantity on hand</field>
         <field name="model_id" ref="model_stock_quant"/>
         <field name="binding_model_id" ref="stock.model_stock_quant"/>
-        <field name="binding_view_types">list,kanban</field>
+        <field name="binding_view_types">list</field>
         <field name="state">code</field>
-        <field name="group_ids" eval="[(4, ref('stock.group_stock_user'))]"/>
+        <field name="groups_id" eval="[(4, ref('stock.group_stock_user'))]"/>
         <field name="code">
             action = records.action_set_inventory_quantity()
         </field>
@@ -483,9 +480,9 @@ in this location. That leads to a negative stock.
         <field name="name">Set to 0</field>
         <field name="model_id" ref="model_stock_quant"/>
         <field name="binding_model_id" ref="stock.model_stock_quant"/>
-        <field name="binding_view_types">list,kanban</field>
+        <field name="binding_view_types">list</field>
         <field name="state">code</field>
-        <field name="group_ids" eval="[(4, ref('stock.group_stock_manager'))]"/>
+        <field name="groups_id" eval="[(4, ref('stock.group_stock_manager'))]"/>
         <field name="code">
             action = records.action_set_inventory_quantity_zero()
         </field>

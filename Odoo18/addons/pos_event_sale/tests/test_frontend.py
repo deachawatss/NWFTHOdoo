@@ -12,7 +12,7 @@ class TestPoSEventSale(TestUi):
 
     def test_sale_status_event_in_pos(self):
         self.pos_user.write({
-            'group_ids': [
+            'groups_id': [
                 (4, self.env.ref('event.group_event_user').id),
             ]
         })

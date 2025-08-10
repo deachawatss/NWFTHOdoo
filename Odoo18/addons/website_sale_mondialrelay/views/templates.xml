@@ -12,17 +12,22 @@
     </template>
 
     <template id="website_sale_mondialrelay_address_kanban" inherit_id="website_sale.address_kanban">
+        <xpath expr="//t[@t-esc='contact']" position="before">
+            <t t-if="contact.is_mondialrelay">
+                <img class="float-end" title="Mondial Relay" height="20px" src="/website_sale_mondialrelay/static/src/img/logo.png" />
+            </t>
+        </xpath>
         <div name="address_card" position="attributes">
             <attribute name="t-att-data-is-mondialrelay">contact.is_mondialrelay</attribute>
         </div>
     </template>
 
-    <template id="address_on_checkout" inherit_id="website_sale.address_on_checkout">
-        <t t-out="order.partner_shipping_id" position="before">
+    <template id="website_sale_mondialrelay_address_on_payment" inherit_id="website_sale.address_on_payment">
+        <xpath expr="//span[@t-out='order.partner_shipping_id']" position="before">
             <t t-if="order.partner_shipping_id.is_mondialrelay" >
-                <img src="/delivery_mondialrelay/static/src/img/logo.png" title="Mondial Relay" height="20px"/>
+                <img src="/website_sale_mondialrelay/static/src/img/logo.png" title="Mondial Relay" height="20px" />
             </t>
-        </t>
+        </xpath>
     </template>
 
 </odoo>

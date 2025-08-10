@@ -6,7 +6,6 @@ from markupsafe import Markup
 from odoo import api, models, fields, _, SUPERUSER_ID
 from odoo.exceptions import AccessError
 from odoo.tools.misc import clean_context
-from odoo.addons.mail.tools.discuss import Store
 
 
 HR_READABLE_FIELDS = [
@@ -19,11 +18,9 @@ HR_READABLE_FIELDS = [
     'last_activity',
     'last_activity_time',
     'can_edit',
-    'is_hr_user',
     'is_system',
     'employee_resource_calendar_id',
     'work_contact_id',
-    'bank_account_id',
 ]
 
 HR_WRITABLE_FIELDS = [
@@ -39,7 +36,6 @@ HR_WRITABLE_FIELDS = [
     'address_id',
     'barcode',
     'birthday',
-    'birthday_public_display',
     'category_ids',
     'children',
     'coach_id',
@@ -50,7 +46,7 @@ HR_WRITABLE_FIELDS = [
     'emergency_phone',
     'employee_bank_account_id',
     'employee_country_id',
-    'sex',
+    'gender',
     'identification_id',
     'ssnid',
     'job_title',
@@ -79,8 +75,8 @@ HR_WRITABLE_FIELDS = [
 ]
 
 
-class ResUsers(models.Model):
-    _inherit = 'res.users'
+class User(models.Model):
+    _inherit = ['res.users']
 
     def _employee_ids_domain(self):
         # employee_ids is considered a safe field and as such will be fetched as sudo.
@@ -92,15 +88,15 @@ class ResUsers(models.Model):
     employee_id = fields.Many2one('hr.employee', string="Company employee",
         compute='_compute_company_employee', search='_search_company_employee', store=False)
 
-    job_title = fields.Char(related='employee_id.job_title')
+    job_title = fields.Char(related='employee_id.job_title', readonly=False, related_sudo=False)
     work_phone = fields.Char(related='employee_id.work_phone', readonly=False, related_sudo=False)
     mobile_phone = fields.Char(related='employee_id.mobile_phone', readonly=False, related_sudo=False)
     work_email = fields.Char(related='employee_id.work_email', readonly=False, related_sudo=False)
     category_ids = fields.Many2many(related='employee_id.category_ids', string="Employee Tags", readonly=False, related_sudo=False)
-    department_id = fields.Many2one(related='employee_id.department_id')
+    department_id = fields.Many2one(related='employee_id.department_id', readonly=False, related_sudo=False)
     address_id = fields.Many2one(related='employee_id.address_id', readonly=False, related_sudo=False)
     work_contact_id = fields.Many2one(related='employee_id.work_contact_id', readonly=False, related_sudo=False)
-    work_location_id = fields.Many2one(related='employee_id.work_location_id')
+    work_location_id = fields.Many2one(related='employee_id.work_location_id', readonly=False, related_sudo=False)
     work_location_name = fields.Char(related="employee_id.work_location_name")
     work_location_type = fields.Selection(related="employee_id.work_location_type")
     employee_parent_id = fields.Many2one(related='employee_id.parent_id', readonly=False, related_sudo=False)
@@ -125,9 +121,8 @@ class ResUsers(models.Model):
     identification_id = fields.Char(related='employee_id.identification_id', readonly=False, related_sudo=False)
     ssnid = fields.Char(related='employee_id.ssnid', readonly=False, related_sudo=False)
     passport_id = fields.Char(related='employee_id.passport_id', readonly=False, related_sudo=False)
-    sex = fields.Selection(related='employee_id.sex', readonly=False, related_sudo=False)
+    gender = fields.Selection(related='employee_id.gender', readonly=False, related_sudo=False)
     birthday = fields.Date(related='employee_id.birthday', readonly=False, related_sudo=False)
-    birthday_public_display = fields.Boolean(related='employee_id.birthday_public_display', readonly=False, related_sudo=False)
     place_of_birth = fields.Char(related='employee_id.place_of_birth', readonly=False, related_sudo=False)
     country_of_birth = fields.Many2one(related='employee_id.country_of_birth', readonly=False, related_sudo=False)
     marital = fields.Selection(related='employee_id.marital', readonly=False, related_sudo=False)
@@ -151,14 +146,12 @@ class ResUsers(models.Model):
     last_activity_time = fields.Char(related='employee_id.last_activity_time')
     employee_type = fields.Selection(related='employee_id.employee_type', readonly=False, related_sudo=False)
     employee_resource_calendar_id = fields.Many2one(related='employee_id.resource_calendar_id', string="Employee's Working Hours", readonly=True)
-    bank_account_id = fields.Many2one(related="employee_id.bank_account_id")
 
     create_employee = fields.Boolean(store=False, default=False, copy=False, string="Technical field, whether to create an employee")
     create_employee_id = fields.Many2one('hr.employee', store=False, copy=False, string="Technical field, bind user to this employee on create")
 
     can_edit = fields.Boolean(compute='_compute_can_edit')
     is_system = fields.Boolean(compute="_compute_is_system")
-    is_hr_user = fields.Boolean(compute='_compute_is_hr_user')
 
     @api.depends_context('uid')
     def _compute_is_system(self):
@@ -168,11 +161,6 @@ class ResUsers(models.Model):
         can_edit = self.env['ir.config_parameter'].sudo().get_param('hr.hr_employee_self_edit') or self.env.user.has_group('hr.group_hr_user')
         for user in self:
             user.can_edit = can_edit
-
-    def _compute_is_hr_user(self):
-        is_hr_user = self.env.user.has_group('hr.group_hr_user')
-        for user in self:
-            user.is_hr_user = is_hr_user
 
     @api.depends('employee_ids')
     def _compute_employee_count(self):
@@ -214,7 +202,7 @@ class ResUsers(models.Model):
         profile_view = self.env.ref("hr.res_users_view_form_profile")
         if profile_view and view_id == profile_view.id:
             self = self.with_user(SUPERUSER_ID)
-        result = super().get_view(view_id, view_type, **options)
+        result = super(User, self).get_view(view_id, view_type, **options)
         return result
 
     @api.model_create_multi
@@ -283,7 +271,7 @@ class ResUsers(models.Model):
                         ),
                         partner_ids=partner_ids,
                     )
-        result = super().write(vals)
+        result = super(User, self).write(vals)
 
         employee_values = {}
         for fname in [f for f in self._get_employee_fields_to_sync() if f in vals]:
@@ -309,7 +297,7 @@ class ResUsers(models.Model):
     def action_get(self):
         if self.env.user.employee_id:
             return self.env['ir.actions.act_window']._for_xml_id('hr.res_users_action_my')
-        return super().action_get()
+        return super(User, self).action_get()
 
     @api.depends('employee_ids')
     @api.depends_context('company')
@@ -353,33 +341,3 @@ class ResUsers(models.Model):
             'res_id': employees.id,
             'view_mode': 'form',
         }
-
-    def action_related_contact(self):
-        return {
-            'name': _("Related Contact"),
-            'res_id': self.partner_id.id,
-            'type': 'ir.actions.act_window',
-            'res_model': 'res.partner',
-            'view_mode': 'form',
-        }
-
-    def get_formview_action(self, access_uid=None):
-        """ Override this method in order to redirect many2one towards the full user form view
-        incase the user is ERP manager and the request coming from employee form."""
-
-        res = super().get_formview_action(access_uid=access_uid)
-        user = self.env.user
-        if access_uid:
-            user = self.env['res.users'].browse(access_uid).sudo()
-
-        if self.env.context.get('default_create_employee_id') and user.has_group('base.group_erp_manager'):
-            res['views'] = [(self.env.ref('base.view_users_form').id, 'form')]
-
-        return res
-
-    def _get_store_avatar_card_fields(self, target):
-        avatar_card_fields = super()._get_store_avatar_card_fields(target)
-        if target.is_internal(self.env):
-            employee_fields = self.employee_ids._get_store_avatar_card_fields(target)
-            avatar_card_fields.append(Store.Many("employee_ids", employee_fields, mode="ADD"))
-        return avatar_card_fields

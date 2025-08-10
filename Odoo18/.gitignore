@@ -4,9 +4,9 @@ _build/
 # dotfiles
 .*
 !.gitignore
-!.gitkeep
 !.github
 !.mailmap
+!.weblate.json
 # compiled python files
 *.py[co]
 __pycache__/
@@ -21,7 +21,7 @@ status
 odoo/filestore
 # maintenance migration scripts
 odoo/addons/base/maintenance
-# windows installation config file
+# window installation config file
 /odoo.conf
 
 # generated for windows installer?

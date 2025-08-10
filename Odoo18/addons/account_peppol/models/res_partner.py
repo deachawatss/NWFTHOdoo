@@ -1,5 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+import contextlib
 import logging
 import requests
 from lxml import etree
@@ -22,6 +23,7 @@ class ResPartner(models.Model):
     invoice_sending_method = fields.Selection(
         selection_add=[('peppol', 'by Peppol')],
     )
+    peppol_eas = fields.Selection(selection_add=[('odemo', 'Odoo Demo ID')])  # Not a real EAS, used for demonstration.
     available_peppol_sending_methods = fields.Json(compute='_compute_available_peppol_sending_methods')
     available_peppol_edi_formats = fields.Json(compute='_compute_available_peppol_edi_formats')
     peppol_verification_state = fields.Selection(
@@ -55,6 +57,14 @@ class ResPartner(models.Model):
                 partner.available_peppol_edi_formats = self._get_peppol_formats()
             else:
                 partner.available_peppol_edi_formats = list(dict(self._fields['invoice_edi_format'].selection))
+
+    def _compute_available_peppol_eas(self):
+        # EXTENDS 'account_edi_ubl_cii'
+        super()._compute_available_peppol_eas()
+        eas_codes = set(self.available_peppol_eas)
+        if self.env.company._get_peppol_edi_mode() != 'demo' and 'odemo' in eas_codes:
+            eas_codes.remove('odemo')
+            self.available_peppol_eas = list(eas_codes)
 
     # -------------------------------------------------------------------------
     # HELPERS
@@ -107,8 +117,7 @@ class ResPartner(models.Model):
         return etree.fromstring(response.content)
 
     @api.model
-    @handle_demo
-    def _check_peppol_participant_exists(self, participant_info, edi_identification):
+    def _check_peppol_participant_exists(self, participant_info, edi_identification, check_company=False):
         participant_identifier = participant_info.findtext('{*}ParticipantIdentifier')
         service_metadata = participant_info.find('.//{*}ServiceMetadataReference')
         service_href = ''
@@ -119,6 +128,19 @@ class ResPartner(models.Model):
             # all Belgian companies are pre-registered on hermes-belgium, so they will
             # technically have an existing SMP url but they are not real Peppol participants
             return False
+
+        if check_company:
+            # if we are only checking company's existence on the network, we don't care about what documents they can receive
+            if not service_href:
+                return True
+
+            access_point_contact = True
+            with contextlib.suppress(requests.exceptions.RequestException, etree.XMLSyntaxError):
+                response = requests.get(service_href, timeout=TIMEOUT)
+                if response.status_code == 200:
+                    access_point_info = etree.fromstring(response.content)
+                    access_point_contact = access_point_info.findtext('.//{*}TechnicalContactUrl') or access_point_info.findtext('.//{*}TechnicalInformationUrl')
+            return access_point_contact
 
         return True
 
@@ -146,11 +168,7 @@ class ResPartner(models.Model):
                 continue
 
             if all_companies is None:
-                # We only check it for companies that are actually using Peppol.
-                can_send = self.env['account_edi_proxy_client.user']._get_can_send_domain()
-                all_companies = self.env['res.company'].sudo().search([
-                    ('account_peppol_proxy_state', 'in', can_send),
-                ])
+                all_companies = self.env['res.company'].sudo().search([])
 
             for company in all_companies:
                 partner.button_account_peppol_check_partner_endpoint(company=company)
@@ -158,6 +176,11 @@ class ResPartner(models.Model):
     # -------------------------------------------------------------------------
     # LOW-LEVEL METHODS
     # -------------------------------------------------------------------------
+
+    def write(self, vals):
+        res = super().write(vals)
+        self._update_peppol_state_per_company(vals=vals)
+        return res
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -170,6 +193,7 @@ class ResPartner(models.Model):
     # BUSINESS ACTIONS
     # -------------------------------------------------------------------------
 
+    @handle_demo
     def button_account_peppol_check_partner_endpoint(self, company=None):
         """ A basic check for whether a participant is reachable at the given
         Peppol participant ID - peppol_eas:peppol_endpoint (ex: '9999:test')
@@ -185,15 +209,15 @@ class ResPartner(models.Model):
 
         self_partner = self.with_company(company)
         old_value = self_partner.peppol_verification_state
-        new_value = self._get_peppol_verification_state(
+        self_partner.peppol_verification_state = self._get_peppol_verification_state(
             self.peppol_endpoint,
             self.peppol_eas,
             self_partner._get_peppol_edi_format(),
         )
+        if self_partner.peppol_verification_state == 'valid' and not self_partner.invoice_sending_method:
+            self_partner.invoice_sending_method = 'peppol'
 
-        if old_value != new_value:
-            self_partner.peppol_verification_state = new_value
-            self._log_verification_state_update(company, old_value, self_partner.peppol_verification_state)
+        self._log_verification_state_update(company, old_value, self_partner.peppol_verification_state)
         return False
 
     @api.model
@@ -216,9 +240,3 @@ class ResPartner(models.Model):
                     return 'not_valid_format'
             else:
                 return 'not_valid'
-
-    def _get_frontend_writable_fields(self):
-        frontend_writable_fields = super()._get_frontend_writable_fields()
-        frontend_writable_fields.update({'peppol_eas', 'peppol_endpoint'})
-
-        return frontend_writable_fields

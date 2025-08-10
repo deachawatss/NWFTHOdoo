@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import {
     changeOption,
     clickOnSave,
@@ -17,15 +19,10 @@ registerWebsitePreviewTour('website_replace_grid_image', {
     edition: true,
 }, () => [
     ...insertSnippet(snippet),
-    {
-        // TODO: should check if o_loading_screen is not present (TO check with PIPU)
-        // Await step in the history
-        trigger: `:iframe:has(#wrap[contenteditable='true'])`,
-    },
     ...clickOnSnippet(snippet),
     {
         content: "Toggle to grid mode",
-        trigger: "[data-action-id='setGridLayout']",
+        trigger: '.o_we_user_value_widget[data-name="grid_mode"]',
         run: "click",
     },
     {
@@ -40,17 +37,17 @@ registerWebsitePreviewTour('website_replace_grid_image', {
     },
     {
         content: "Add new image column",
-        trigger: "[data-action-id='addElImage']",
+        trigger: '.o_we_user_value_widget[data-add-element="image"]',
         run: "click",
     },
     {
         content: "Pick new image",
-        trigger: '.o_select_media_dialog img[title="s_banner_default_image2.webp"]',
+        trigger: '.o_select_media_dialog img[title="s_banner_default_image2.jpg"]',
         run: "click",
     },
     {
         content: "Replace new image",
-        trigger: ':iframe .s_text_image img[src*="s_banner_default_image2.webp"]',
+        trigger: ':iframe .s_text_image img[src*="s_banner_default_image2.jpg"]',
         run: 'dblclick',
     },
     {
@@ -71,9 +68,9 @@ registerWebsitePreviewTour("scroll_to_new_grid_item", {
     ...insertSnippet({id: "s_image_text", name: "Image - Text", groupName: "Content"}),
     // Toggle the first snippet to grid mode.
     ...clickOnSnippet({id: "s_text_image", name: "Text - Image"}),
-    changeOption("Text - Image", "setGridLayout"),
+    changeOption("layout_column", 'we-button[data-name="grid_mode"]'),
     // Add a new grid item.
-    changeOption("Text - Image", "addElImage"),
+    changeOption("layout_column", 'we-button[data-add-element="image"]'),
     {
         content: "Select the new image in the media dialog",
         trigger: '.o_select_media_dialog img[title="s_banner_default_image.jpg"]',

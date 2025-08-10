@@ -32,6 +32,33 @@ class TestPurchaseOrderProcess(PurchaseTestCommon):
         # Check that order is cancelled.
         self.assertEqual(po_edit_with_user.state, 'cancel', 'Purchase: PO state should be "Cancel')
 
+    def test_01_packaging_propagation(self):
+        """Create a PO with lines using packaging, check the packaging propagate
+        to its move.
+        """
+        product = self.env['product.product'].create({
+            'name': 'Product with packaging',
+            'is_storable': True,
+        })
+
+        packaging = self.env['product.packaging'].create({
+            'name': 'box',
+            'product_id': product.id,
+        })
+
+        po = self.env['purchase.order'].create({
+            'partner_id': self.env['res.partner'].create({'name': 'My Partner'}).id,
+            'order_line': [
+                (0, 0, {
+                    'product_id': product.id,
+                    'product_qty': 1.0,
+                    'product_uom': product.uom_id.id,
+                    'product_packaging_id': packaging.id,
+                })],
+        })
+        po.button_confirm()
+        self.assertEqual(po.order_line.move_ids.product_packaging_id, packaging)
+
     def test_02_vendor_delay_report_partially_cancelled_purchase_order(self):
         """ Test vendor delay reports for partially cancelled purchase order"""
         partner = self.partner_1
@@ -41,12 +68,12 @@ class TestPurchaseOrderProcess(PurchaseTestCommon):
                 Command.create({
                     'product_id': self.product_1.id,
                     'product_qty': 2.0,
-                    'product_uom_id': self.product_1.uom_id.id,
+                    'product_uom': self.product_1.uom_id.id,
                 }),
                 Command.create({
                     'product_id': self.product_2.id,
                     'product_qty': 3.0,
-                    'product_uom_id': self.product_2.uom_id.id,
+                    'product_uom': self.product_2.uom_id.id,
                 })],
         })
         purchase_order.button_confirm()

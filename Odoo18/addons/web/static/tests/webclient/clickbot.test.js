@@ -416,6 +416,7 @@ test("clickbot show rpc error when an error dialog is detected", async () => {
                         uid: 7,
                         allowed_company_ids: [1],
                         bin_size: true,
+                        current_company_id: 1,
                     },
                     count_limit: 10001,
                     domain: [
@@ -428,11 +429,11 @@ test("clickbot show rpc error when an error dialog is detected", async () => {
                 },
             },
         },
-        settings: { silent: false, cached: false },
+        settings: { silent: false },
         error: {
             name: "RPC_ERROR",
             type: "server",
-            code: 0,
+            code: 200,
             data: {
                 name: "odoo.exceptions.Programming error",
                 debug: "traceback",
@@ -442,6 +443,7 @@ test("clickbot show rpc error when an error dialog is detected", async () => {
             exceptionName: "odoo.exceptions.Programming error",
             subType: "server",
             message: "This is a server Error, it should be displayed in an error dialog",
+            id: null,
             model: "foo",
             errorEvent: { isTrusted: true },
         },

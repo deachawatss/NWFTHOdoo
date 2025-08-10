@@ -46,8 +46,10 @@ class TestRecruitmentSurvey(common.TransactionCase):
             'description': None,
         })
         cls.job_applicant = cls.env['hr.applicant'].create({
-            'partner_name': 'Jane Doe',
-            'email_from': 'customer@example.com',
+            'candidate_id': cls.env['hr.candidate'].create({
+                'partner_name': 'Jane Doe',
+                'email_from': 'customer@example.com',
+            }).id,
             'department_id': cls.department_admins.id,
             'job_id': cls.job.id,
         })

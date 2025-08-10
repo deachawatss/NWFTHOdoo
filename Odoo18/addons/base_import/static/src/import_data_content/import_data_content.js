@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { Component } from "@odoo/owl";
 import { SelectMenu } from "@web/core/select_menu/select_menu";
 import { ImportDataColumnError } from "../import_data_column_error/import_data_column_error";

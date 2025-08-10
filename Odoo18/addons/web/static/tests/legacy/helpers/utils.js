@@ -10,7 +10,6 @@ import { patch } from "@web/core/utils/patch";
 import { isVisible } from "@web/core/utils/ui";
 import { _t } from "@web/core/l10n/translation";
 import { registerCleanup } from "./cleanup";
-import { customDirectives, globalValues } from "@web/env";
 
 import {
     App,
@@ -780,8 +779,6 @@ export async function mount(Comp, target, config = {}) {
         getTemplate,
         test: true,
         props,
-        customDirectives,
-        globalValues,
     };
     if (env.services && "localization" in env.services) {
         configuration.translateFn = _t;

@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { sprintf } from '@web/core/utils/strings';
 import { renderToElement } from "@web/core/utils/render";
 import publicWidget from '@web/legacy/js/public/public_widget';

@@ -5,7 +5,7 @@ from dateutil.relativedelta import relativedelta
 from odoo import api, fields, models
 
 
-class HrResumeLine(models.Model):
+class ResumeLine(models.Model):
     _inherit = 'hr.resume.line'
 
     display_type = fields.Selection(selection_add=[('certification', 'Certification')])
@@ -25,7 +25,3 @@ class HrResumeLine(models.Model):
                     line.expiration_status = 'expired'
                 elif line.date_end + relativedelta(months=-3) <= fields.Date.today():
                     line.expiration_status = 'expiring'
-
-    def copy_data(self, default=None):
-        vals_list = super().copy_data(default=default)
-        return [dict(vals, name=self.env._("%s (copy)", resume_line.name)) for resume_line, vals in zip(self, vals_list)]

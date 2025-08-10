@@ -14,7 +14,6 @@ from hashlib import md5
 from io import BytesIO
 from itertools import islice
 from lxml import etree, html
-from markupsafe import escape as markup_escape
 from textwrap import shorten
 from werkzeug.exceptions import NotFound
 from xml.etree import ElementTree as ET
@@ -23,8 +22,8 @@ import odoo
 
 from odoo import http, models, fields, _
 from odoo.exceptions import AccessError, UserError
-from odoo.fields import Domain
 from odoo.http import request, SessionExpiredException
+from odoo.osv import expression
 from odoo.tools import OrderedSet, escape_psql, html_escape as escape, py_to_js_locale
 from odoo.addons.base.models.ir_http import EXTENSION_TO_WEB_MIMETYPES
 from odoo.addons.base.models.ir_qweb import QWebException
@@ -67,9 +66,7 @@ class QueryURL:
                     paths[key] = "%s" % value
             elif value:
                 if isinstance(value, (list, set)):
-                    fragments.append(
-                        werkzeug.urls.url_encode([(key, item) for item in value if item])
-                    )
+                    fragments.append(werkzeug.urls.url_encode([(key, item) for item in value]))
                 else:
                     fragments.append(werkzeug.urls.url_encode([(key, value)]))
         for key in path_args:
@@ -203,7 +200,7 @@ class Website(Home):
     # Business
     # ------------------------------------------------------
 
-    @http.route('/website/get_languages', type='jsonrpc', auth="user", website=True, readonly=True)
+    @http.route('/website/get_languages', type='json', auth="user", website=True, readonly=True)
     def website_languages(self, **kwargs):
         return [(py_to_js_locale(lg.code), lg.url_code, lg.name) for lg in request.website.language_ids]
 
@@ -221,7 +218,7 @@ class Website(Home):
         redirect.set_cookie('frontend_lang', lang_code)
         return redirect
 
-    @http.route(['/website/country_infos/<model("res.country"):country>'], type='jsonrpc', auth="public", methods=['POST'], website=True, readonly=True)
+    @http.route(['/website/country_infos/<model("res.country"):country>'], type='json', auth="public", methods=['POST'], website=True, readonly=True)
     def country_infos(self, country, **kw):
         fields = country.get_address_fields()
         return dict(fields=fields, states=[(st.id, st.name, st.code) for st in country.state_ids], phone_code=country.phone_code)
@@ -231,10 +228,15 @@ class Website(Home):
         # Don't use `request.website.domain` here, the template is in charge of
         # detecting if the current URL is the domain one and add a `Disallow: /`
         # if it's not the case to prevent the crawler to continue.
-        return request.render('website.robots', {
-            'allowed_routes': self._get_allowed_robots_routes(),
-            'url_root': request.httprequest.url_root,
-        }, mimetype='text/plain')
+        allowed_routes = self._get_allowed_robots_routes()
+        content = request.env['ir.ui.view']._render_template('website.robots',
+            {'url_root': request.httprequest.url_root})
+
+        if allowed_routes:
+            content += '\nUser-agent: *'
+            content += '\n' + '\n'.join(f"Allow: {route}" for route in allowed_routes)
+
+        return request.make_response(content, headers=[('Content-Type', 'text/plain')])
 
     @http.route('/sitemap.xml', type='http', auth="public", website=True, multilang=False, sitemap=False)
     def sitemap_xml_index(self, **kwargs):
@@ -322,8 +324,8 @@ class Website(Home):
     def sitemap_website_info(env, rule, qs):
         website = env['website'].get_current_website()
         if not (
-            website.is_view_active('website.website_info')
-            and website.is_view_active('website.show_website_info')
+            website.viewref('website.website_info', False).active
+            and website.viewref('website.show_website_info', False).active
         ):
             # avoid 404 or blank page in sitemap
             return False
@@ -363,7 +365,7 @@ class Website(Home):
             raise werkzeug.exceptions.NotFound()
         return request.redirect(url, local=False)
 
-    @http.route('/website/get_suggested_links', type='jsonrpc', auth="user", website=True, readonly=True)
+    @http.route('/website/get_suggested_links', type='json', auth="user", website=True, readonly=True)
     def get_suggested_link(self, needle, limit=10):
         current_website = request.website
 
@@ -403,38 +405,37 @@ class Website(Home):
             ]
         }
 
-    @http.route('/website/save_session_layout_mode', type='jsonrpc', auth='public', website=True, readonly=True)
+    @http.route('/website/save_session_layout_mode', type='json', auth='public', website=True, readonly=True)
     def save_session_layout_mode(self, layout_mode, view_id):
         assert layout_mode in ('grid', 'list'), "Invalid layout mode"
         request.session[f'website_{view_id}_layout_mode'] = layout_mode
 
-    @http.route('/website/snippet/filters', type='jsonrpc', auth='public', website=True, readonly=True)
+    @http.route('/website/snippet/filters', type='json', auth='public', website=True, readonly=True)
     def get_dynamic_filter(self, filter_id, template_key, limit=None, search_domain=None, with_sample=False, **custom_template_data):
         dynamic_filter = request.env['website.snippet.filter'].sudo().search(
-            Domain('id', '=', filter_id) & request.website.website_domain()
+            [('id', '=', filter_id)] + request.website.website_domain()
         )
         return dynamic_filter and dynamic_filter._render(template_key, limit, search_domain, with_sample, **custom_template_data) or []
 
-    @http.route('/website/snippet/options_filters', type='jsonrpc', auth='user', website=True, readonly=True)
+    @http.route('/website/snippet/options_filters', type='json', auth='user', website=True, readonly=True)
     def get_dynamic_snippet_filters(self, model_name=None, search_domain=None):
         if not request.env.user.has_group('website.group_website_restricted_editor'):
             raise werkzeug.exceptions.NotFound()
         domain = request.website.website_domain()
         if search_domain:
-            search_domain = Domain(search_domain)
-            assert all(condition.field_expr in request.env['website.snippet.filter']._fields for condition in search_domain.iter_conditions())
-            domain &= search_domain
+            assert all(leaf[0] in request.env['website.snippet.filter']._fields for leaf in search_domain)
+            domain = expression.AND([domain, search_domain])
         if model_name:
-            domain &= (
-                Domain('filter_id.model_id', '=', model_name)
-                | Domain('action_server_id.model_id.model', '=', model_name)
-            )
+            domain = expression.AND([
+                domain,
+                ['|', ('filter_id.model_id', '=', model_name), ('action_server_id.model_id.model', '=', model_name)]
+            ])
         dynamic_filter = request.env['website.snippet.filter'].sudo().search_read(
-            domain, ['id', 'name', 'limit', 'model_name', 'help'], order='id asc'
+            domain, ['id', 'name', 'limit', 'model_name'], order='id asc'
         )
         return dynamic_filter
 
-    @http.route('/website/snippet/filter_templates', type='jsonrpc', auth='public', website=True, readonly=True)
+    @http.route('/website/snippet/filter_templates', type='json', auth='public', website=True, readonly=True)
     def get_dynamic_snippet_templates(self, filter_name=False):
         domain = [['key', 'ilike', '.dynamic_filter_template_'], ['type', '=', 'qweb']]
         if filter_name:
@@ -454,7 +455,7 @@ class Website(Home):
             t['thumb'] = attribs.get('data-thumb')
         return templates
 
-    @http.route('/website/get_current_currency', type='jsonrpc', auth="public", website=True, readonly=True)
+    @http.route('/website/get_current_currency', type='json', auth="public", website=True, readonly=True)
     def get_current_currency(self, **kwargs):
         return {
             'id': request.website.company_id.currency_id.id,
@@ -472,7 +473,7 @@ class Website(Home):
         order = order or 'name ASC'
         return 'is_published desc, %s, id desc' % order
 
-    @http.route('/website/snippet/autocomplete', type='jsonrpc', auth='public', website=True, readonly=True)
+    @http.route('/website/snippet/autocomplete', type='json', auth='public', website=True, readonly=True)
     def autocomplete(self, search_type=None, term=None, order=None, limit=5, max_nb_chars=999, options=None):
         """
         Returns list of results according to the term and options
@@ -683,7 +684,7 @@ class Website(Home):
             return json.dumps({'view_id': page.get('view_id')})
         return json.dumps({'url': url})
 
-    @http.route('/website/get_new_page_templates', type='jsonrpc', auth='user', website=True, readonly=True)
+    @http.route('/website/get_new_page_templates', type='json', auth='user', website=True, readonly=True)
     def get_new_page_templates(self, **kw):
         View = request.env['ir.ui.view']
         result = []
@@ -740,17 +741,17 @@ class Website(Home):
                 result.append(group)
         return result
 
-    @http.route('/website/save_xml', type='jsonrpc', auth='user', website=True)
+    @http.route('/website/save_xml', type='json', auth='user', website=True)
     def save_xml(self, view_id, arch):
         request.env['ir.ui.view'].browse(view_id).with_context(lang=request.website.default_lang_id.code).arch = arch
 
-    @http.route("/website/get_switchable_related_views", type="jsonrpc", auth="user", website=True, readonly=True)
+    @http.route("/website/get_switchable_related_views", type="json", auth="user", website=True, readonly=True)
     def get_switchable_related_views(self, key):
         views = request.env["ir.ui.view"].get_related_views(key, bundles=False).filtered(lambda v: v.customize_show)
         views = views.sorted(key=lambda v: (v.inherit_id.id, v.name))
         return views.with_context(display_website=False).read(['name', 'id', 'key', 'xml_id', 'active', 'inherit_id'])
 
-    @http.route('/website/reset_template', type='jsonrpc', auth='user', methods=['POST'])
+    @http.route('/website/reset_template', type='json', auth='user', methods=['POST'])
     def reset_template(self, view_id, mode='soft', **kwargs):
         """ This method will try to reset a broken view.
         Given the mode, the view can either be:
@@ -763,7 +764,7 @@ class Website(Home):
         view.with_context(website_id=None).reset_arch(mode)
         return True
 
-    @http.route(['/website/seo_suggest'], type='jsonrpc', auth="user", website=True, readonly=True)
+    @http.route(['/website/seo_suggest'], type='json', auth="user", website=True, readonly=True)
     def seo_suggest(self, keywords=None, lang=None):
         """
         Suggests search keywords based on a given input using Google's
@@ -808,79 +809,7 @@ class Website(Home):
         xmlroot = ET.fromstring(response)
         return json.dumps([sugg[0].attrib['data'] for sugg in xmlroot if len(sugg) and sugg[0].attrib['data']])
 
-    @http.route(['/website/get_alt_images'], type='jsonrpc', auth="user", website=True)
-    def get_alt_images(self, models):
-        result = []
-        for model in models:
-            record = request.env[model['model']].browse(model['id'])
-            model['field'] = 'arch_db' if model['field'] == 'arch' else model['field']
-            tree = html.fromstring(str(record[model['field']]))
-            for index, el in enumerate(tree.xpath('//img')):
-                role = el.get('role')
-                decorative = role == "presentation"
-                alt = el.get('alt')
-                if not decorative or alt is None:
-                    result.append({
-                        "src": el.get("src"),
-                        "alt": alt or "",
-                        "decorative": False,
-                        "updated": False,
-                        "res_model": model['model'],
-                        "res_id": model['id'],
-                        "id": f"{model['model']}-{model['id']}-{index}",
-                        "field": model.get('field'),
-                    })
-        return json.dumps(result)
-
-    @http.route(['/website/update_alt_images'], type='jsonrpc', auth="user", website=True)
-    def update_alt_images(self, imgs):
-        if not request.env.user.has_group('website.group_website_restricted_editor'):
-            raise werkzeug.exceptions.Forbidden()
-        for img in imgs:
-            record = request.env[img['res_model']].browse(img['res_id'])
-            if not record.has_access('write'):
-                continue
-            img['field'] = 'arch_db' if img['field'] == 'arch' else img['field']
-            tree = html.fromstring(str(record[img['field']]))
-            modified = False
-            for index, element in enumerate(tree.xpath('//img')):
-                imgId = f"{img['res_model']}-{img['res_id']}-{index!s}"
-                if imgId == img['id']:
-                    if (img['decorative']):
-                        element.set('alt', '')
-                        element.set('role', 'presentation')
-                    else:
-                        element.set('alt', markup_escape(img['alt']))
-                        element.attrib.pop('role', None)
-                    modified = True
-            if modified:
-                new_html_content = html.tostring(tree, encoding='unicode', method='html')
-                record.write({img['field']: new_html_content})
-
-    @http.route(['/website/update_broken_links'], type='jsonrpc', auth="user", website=True)
-    def update_broken_links(self, links):
-        if not request.env.user.has_group('website.group_website_restricted_editor'):
-            raise werkzeug.exceptions.Forbidden()
-        for link in links:
-            record = request.env[link['res_model']].browse(link['res_id'])
-            if not record.has_access('write'):
-                continue
-            link['field'] = 'arch_db' if link['field'] == 'arch' else link['field']
-            tree = html.fromstring(str(record[link['field']]))
-            modified = False
-            for element in tree.xpath('//a'):
-                href = element.get('href')
-                if href and (link['oldLink'] == href or link['oldLink'] == href + '/'):
-                    if link['remove']:
-                        element.drop_tag()
-                    else:
-                        element.set('href', markup_escape(link['newLink']))
-                    modified = True
-            if modified:
-                new_html_content = html.tostring(tree, encoding='unicode', method='html')
-                record.write({link['field']: new_html_content})
-
-    @http.route(['/website/get_seo_data'], type='jsonrpc', auth="user", website=True, readonly=True)
+    @http.route(['/website/get_seo_data'], type='json', auth="user", website=True, readonly=True)
     def get_seo_data(self, res_id, res_model):
         if not request.env.user.has_group('website.group_website_restricted_editor'):
             # Still ok if user can access the record anyway.
@@ -913,7 +842,7 @@ class Website(Home):
 
         return res
 
-    @http.route(['/website/check_can_modify_any'], type='jsonrpc', auth="user", website=True, readonly=True)
+    @http.route(['/website/check_can_modify_any'], type='json', auth="user", website=True, readonly=True)
     def check_can_modify_any(self, records):
         if not request.env.user.has_group('website.group_website_restricted_editor'):
             raise werkzeug.exceptions.Forbidden()
@@ -946,7 +875,7 @@ class Website(Home):
 
         return request.make_response("google-site-verification: %s" % request.website.google_search_console)
 
-    @http.route('/website/google_maps_api_key', type='jsonrpc', auth='public', website=True, readonly=True)
+    @http.route('/website/google_maps_api_key', type='json', auth='public', website=True, readonly=True)
     def google_maps_api_key(self):
         return json.dumps({
             'google_maps_api_key': request.website.google_maps_api_key or ''
@@ -956,7 +885,7 @@ class Website(Home):
     # Themes
     # ------------------------------------------------------
 
-    @http.route('/website/google_font_metadata', type='jsonrpc', auth='user', website=True)
+    @http.route('/website/google_font_metadata', type='json', auth='user', website=True)
     def google_font_metadata(self):
         """ Avoid CORS by caching google fonts metadata on server """
         Attachment = request.env['ir.attachment']
@@ -987,15 +916,15 @@ class Website(Home):
     def _get_customize_data(self, keys, is_view_data):
         model = 'ir.ui.view' if is_view_data else 'ir.asset'
         Model = request.env[model].with_context(active_test=False)
-        domain = Domain("key", "in", keys) & request.website.website_domain()
+        domain = expression.AND([[("key", "in", keys)], request.website.website_domain()])
         return Model.search(domain).filter_duplicate()
 
-    @http.route(['/website/theme_customize_data_get'], type='jsonrpc', auth='user', website=True, readonly=True)
+    @http.route(['/website/theme_customize_data_get'], type='json', auth='user', website=True, readonly=True)
     def theme_customize_data_get(self, keys, is_view_data):
         records = self._get_customize_data(keys, is_view_data)
         return records.filtered('active').mapped('key')
 
-    @http.route(['/website/theme_customize_data'], type='jsonrpc', auth='user', website=True)
+    @http.route(['/website/theme_customize_data'], type='json', auth='user', website=True)
     def theme_customize_data(self, is_view_data, enable=None, disable=None, reset_view_arch=False):
         """
         Enables and/or disables views/assets according to list of keys.
@@ -1015,7 +944,7 @@ class Website(Home):
             records = self._get_customize_data(enable, is_view_data)
             records.filtered(lambda x: not x.active).write({'active': True})
 
-    @http.route(['/website/theme_customize_bundle_reload'], type='jsonrpc', auth='user', website=True, readonly=True)
+    @http.route(['/website/theme_customize_bundle_reload'], type='json', auth='user', website=True, readonly=True)
     def theme_customize_bundle_reload(self):
         """
         Reloads asset bundles and returns their unique URLs.
@@ -1024,54 +953,11 @@ class Website(Home):
             'web.assets_frontend': request.env['ir.qweb']._get_asset_link_urls('web.assets_frontend', request.session.debug),
         }
 
-    @http.route(['/website/update_footer_template'], type='jsonrpc', auth='user', website=True)
-    def update_footer_template(self, template_key, possible_values):
-        """ Enables the footer template and its corresponding copyright template
-            on template change. The goal is to ensure that the content width of
-            the copyright aligns with the footer.
-        """
-
-        # Define templates views to enable/disable
-        views_enable = [template_key]
-        views_disable = self.theme_customize_data_get(possible_values, is_view_data=True)
-
-        # Define the possible footer classes and corresponding views
-        width_views = {
-            'container-fluid': 'website.footer_copyright_content_width_fluid',
-            'o_container_small': 'website.footer_copyright_content_width_small',
-        }
-
-        # Parse new footer template and get the content width
-        new_template = self._get_customize_data([template_key], is_view_data=True)
-        if not new_template or not new_template[0].arch:
-            return
-
-        tree = etree.HTML(new_template[0].arch)
-        container_classes = ['container', 'container-fluid', 'o_container_small']
-        classes_selector = ' or '.join([f"hasclass('{c}')" for c in container_classes])
-        res = tree.xpath(f"//div[{classes_selector}]")
-
-        # Define copyright views to enable/disable
-        if res:
-            classes = res[0].get('class').split()
-            width = next((c for c in container_classes if c in classes), False)
-            if width:
-                view = width_views.get(width)
-                if view is not None:
-                    views_enable += [view]
-                views_disable += [v for k, v in width_views.items() if k != width]
-
-        # Activate/Deactivate the computed views
-        self.theme_customize_data(is_view_data=True,
-                                  enable=views_enable,
-                                  disable=views_disable,
-                                  reset_view_arch=False)
-
     # ------------------------------------------------------
     # Server actions
     # ------------------------------------------------------
 
-    @http.route(['/website/theme_upload_font'], type='jsonrpc', auth='user', website=True)
+    @http.route(['/website/theme_upload_font'], type='json', auth='user', website=True)
     def theme_upload_font(self, name, data):
         """
         Uploads font binary data and returns metadata about accessing individual fonts.
@@ -1127,7 +1013,7 @@ class Website(Home):
         readable_data = BytesIO(binary_data)
         if zipfile.is_zipfile(readable_data):
             with zipfile.ZipFile(readable_data, "r") as zip_file:
-                for entry in zip_file.infolist():
+                for entry in zip_file.filelist:
                     if entry.file_size > MAX_FONT_FILE_SIZE:
                         raise UserError(_("File '%s' exceeds maximum allowed file size", entry.filename))
                     if entry.filename.rsplit('.', 1)[-1].lower() not in SUPPORTED_FONT_EXTENSIONS \

@@ -1,8 +1,7 @@
 /**
- * @typedef {{
- *  name: string;
- *  asc?: boolean;
- * }} OrderTerm
+ * @typedef {Object} OrderTerm
+ * @property {string} name
+ * @property {boolean} asc
  */
 
 /**

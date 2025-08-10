@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 """
@@ -33,19 +34,19 @@ REMOTE_CONNECTION_TIMEOUT = 2.5
 logger = logging.getLogger(__name__)
 
 
-class IrQweb(models.AbstractModel):
-    """ IrQweb object for rendering editor stuff
+class IrQWeb(models.AbstractModel):
+    """ IrQWeb object for rendering editor stuff
     """
     _inherit = 'ir.qweb'
 
-    def _compile_node(self, el, compile_context, level):
+    def _compile_node(self, el, compile_context, indent):
         snippet_key = compile_context.get('snippet-key')
         template = compile_context['template']
         sub_call_key = compile_context.get('snippet-sub-call-key')
         # We only add the 'data-snippet' & 'data-name' attrib once when
         # compiling the root node of the template.
         if template not in {snippet_key, sub_call_key} or el.getparent() is not None:
-            return super()._compile_node(el, compile_context, level)
+            return super()._compile_node(el, compile_context, indent)
 
         snippet_base_node = el
         if el.tag == 't':
@@ -71,22 +72,19 @@ class IrQweb(models.AbstractModel):
         snippet_name = compile_context.get('snippet-name')
         if snippet_name and 'data-name' not in snippet_base_node.attrib:
             snippet_base_node.attrib['data-name'] = snippet_name
-        return super()._compile_node(el, compile_context, level)
-
-    def _get_preload_attribute_xmlids(self):
-        return super()._get_preload_attribute_xmlids() + ['t-snippet', 't-snippet-call']
+        return super()._compile_node(el, compile_context, indent)
 
     # compile directives
 
     def _compile_directive_snippet(self, el, compile_context, indent):
         key = el.attrib.pop('t-snippet')
         el.set('t-call', key)
-        snippet_lang = self.env.context.get('snippet_lang')
+        snippet_lang = self._context.get('snippet_lang')
         if snippet_lang:
             el.set('t-lang', f"'{snippet_lang}'")
 
         el.set('t-options', f"{{'snippet-key': {key!r}}}")
-        view = self.env['ir.ui.view']._get_template_view(key)
+        view = self.env['ir.ui.view']._get(key).sudo()
         name = el.attrib.pop('string', view.name)
         thumbnail = el.attrib.pop('t-thumbnail', "oe-thumbnail")
         image_preview = el.attrib.pop('t-image-preview', None)
@@ -96,18 +94,15 @@ class IrQweb(models.AbstractModel):
         forbid_sanitize = el.attrib.pop('t-forbid-sanitize', None)
         snippet_group = el.attrib.pop('snippet-group', None)
         group = el.attrib.pop('group', None)
-        label = el.attrib.pop('label', None)
-        div = Markup('<div name="%s" data-oe-type="snippet" data-o-image-preview="%s" data-oe-thumbnail="%s" data-oe-snippet-id="%s" data-oe-snippet-key="%s" data-oe-keywords="%s" %s %s %s %s>') % (
+        div = Markup('<div name="%s" data-oe-type="snippet" data-o-image-preview="%s" data-oe-thumbnail="%s" data-oe-snippet-id="%s" data-oe-keywords="%s" %s %s %s>') % (
             name,
             escape_silent(image_preview),
             thumbnail,
             view.id,
-            key.split('.')[-1],
             escape_silent(el.findtext('keywords')),
             Markup('data-oe-forbid-sanitize="%s"') % forbid_sanitize if forbid_sanitize else '',
             Markup('data-o-snippet-group="%s"') % snippet_group if snippet_group else '',
             Markup('data-o-group="%s"') % group if group else '',
-            Markup('data-o-label="%s"') % label if label else '',
         )
         self._append_text(div, compile_context)
         code = self._compile_node(el, compile_context, indent)
@@ -126,20 +121,18 @@ class IrQweb(models.AbstractModel):
         thumbnail = el.attrib.pop('t-thumbnail', 'oe-thumbnail')
         image_preview = el.attrib.pop('t-image-preview', None)
         group = el.attrib.pop('group', None)
-        label = el.attrib.pop('label', None)
         if self.env.user.has_group('base.group_system'):
             module = self.env['ir.module.module'].search([('name', '=', key)])
             if not module or module.state == 'installed':
                 return []
             name = el.attrib.get('string') or 'Snippet'
-            div = Markup('<div name="%s" data-oe-type="snippet" data-module-id="%s" data-module-display-name="%s" data-o-image-preview="%s" data-oe-thumbnail="%s" %s %s><section/></div>') % (
+            div = Markup('<div name="%s" data-oe-type="snippet" data-module-id="%s" data-module-display-name="%s" data-o-image-preview="%s" data-oe-thumbnail="%s" %s><section/></div>') % (
                 name,
                 module.id,
                 module.display_name,
                 escape_silent(image_preview),
                 thumbnail,
                 Markup('data-o-group="%s"') % group if group else '',
-                Markup('data-o-label="%s"') % label if label else '',
             )
             self._append_text(div, compile_context)
         return []
@@ -170,14 +163,14 @@ class IrQweb(models.AbstractModel):
 #------------------------------------------------------
 
 
-class IrQwebField(models.AbstractModel):
+class Field(models.AbstractModel):
     _name = 'ir.qweb.field'
     _description = 'Qweb Field'
-    _inherit = ['ir.qweb.field']
+    _inherit = 'ir.qweb.field'
 
     @api.model
-    def attributes(self, record, field_name, options, values=None):
-        attrs = super().attributes(record, field_name, options, values)
+    def attributes(self, record, field_name, options, values):
+        attrs = super(Field, self).attributes(record, field_name, options, values)
         field = record._fields[field_name]
 
         placeholder = options.get('placeholder') or getattr(field, 'placeholder', None)
@@ -204,10 +197,10 @@ class IrQwebField(models.AbstractModel):
         return self.value_from_string(element.text_content().strip()) or False
 
 
-class IrQwebFieldInteger(models.AbstractModel):
+class Integer(models.AbstractModel):
     _name = 'ir.qweb.field.integer'
     _description = 'Qweb Field Integer'
-    _inherit = ['ir.qweb.field.integer']
+    _inherit = 'ir.qweb.field.integer'
 
     @api.model
     def from_html(self, model, field, element):
@@ -216,10 +209,10 @@ class IrQwebFieldInteger(models.AbstractModel):
         return int(value.replace(lang.thousands_sep or '', ''))
 
 
-class IrQwebFieldFloat(models.AbstractModel):
+class Float(models.AbstractModel):
     _name = 'ir.qweb.field.float'
     _description = 'Qweb Field Float'
-    _inherit = ['ir.qweb.field.float']
+    _inherit = 'ir.qweb.field.float'
 
     @api.model
     def from_html(self, model, field, element):
@@ -229,14 +222,14 @@ class IrQwebFieldFloat(models.AbstractModel):
                           .replace(lang.decimal_point, '.'))
 
 
-class IrQwebFieldMany2one(models.AbstractModel):
+class ManyToOne(models.AbstractModel):
     _name = 'ir.qweb.field.many2one'
     _description = 'Qweb Field Many to One'
-    _inherit = ['ir.qweb.field.many2one']
+    _inherit = 'ir.qweb.field.many2one'
 
     @api.model
-    def attributes(self, record, field_name, options, values=None):
-        attrs = super().attributes(record, field_name, options, values)
+    def attributes(self, record, field_name, options, values):
+        attrs = super(ManyToOne, self).attributes(record, field_name, options, values)
         if options.get('inherit_branding'):
             many2one = record[field_name]
             if many2one:
@@ -270,32 +263,32 @@ class IrQwebFieldMany2one(models.AbstractModel):
         return None
 
 
-class IrQwebFieldContact(models.AbstractModel):
+class Contact(models.AbstractModel):
     _name = 'ir.qweb.field.contact'
     _description = 'Qweb Field Contact'
-    _inherit = ['ir.qweb.field.contact']
+    _inherit = 'ir.qweb.field.contact'
 
     @api.model
-    def attributes(self, record, field_name, options, values=None):
-        attrs = super().attributes(record, field_name, options, values)
+    def attributes(self, record, field_name, options, values):
+        attrs = super(Contact, self).attributes(record, field_name, options, values)
         if options.get('inherit_branding'):
             attrs['data-oe-contact-options'] = json.dumps(options)
         return attrs
 
+    # helper to call the rendering of contact field
     @api.model
-    def get_record_to_html(self, contact_ids, options=None):
-        """ Helper to call the rendering of contact field. """
-        return self.value_to_html(self.env['res.partner'].search([('id', '=', contact_ids[0])]), options=options)
+    def get_record_to_html(self, ids, options=None):
+        return self.value_to_html(self.env['res.partner'].search([('id', '=', ids[0])]), options=options)
 
 
-class IrQwebFieldDate(models.AbstractModel):
+class Date(models.AbstractModel):
     _name = 'ir.qweb.field.date'
     _description = 'Qweb Field Date'
-    _inherit = ['ir.qweb.field.date']
+    _inherit = 'ir.qweb.field.date'
 
     @api.model
-    def attributes(self, record, field_name, options, values=None):
-        attrs = super().attributes(record, field_name, options, values)
+    def attributes(self, record, field_name, options, values):
+        attrs = super(Date, self).attributes(record, field_name, options, values)
         if options.get('inherit_branding'):
             attrs['data-oe-original'] = record[field_name]
 
@@ -326,14 +319,14 @@ class IrQwebFieldDate(models.AbstractModel):
         return fields.Date.to_string(date)
 
 
-class IrQwebFieldDatetime(models.AbstractModel):
+class DateTime(models.AbstractModel):
     _name = 'ir.qweb.field.datetime'
     _description = 'Qweb Field Datetime'
-    _inherit = ['ir.qweb.field.datetime']
+    _inherit = 'ir.qweb.field.datetime'
 
     @api.model
-    def attributes(self, record, field_name, options, values=None):
-        attrs = super().attributes(record, field_name, options, values)
+    def attributes(self, record, field_name, options, values):
+        attrs = super(DateTime, self).attributes(record, field_name, options, values)
 
         if options.get('inherit_branding'):
             value = record[field_name]
@@ -390,20 +383,20 @@ class IrQwebFieldDatetime(models.AbstractModel):
         return fields.Datetime.to_string(dt)
 
 
-class IrQwebFieldText(models.AbstractModel):
+class Text(models.AbstractModel):
     _name = 'ir.qweb.field.text'
     _description = 'Qweb Field Text'
-    _inherit = ['ir.qweb.field.text']
+    _inherit = 'ir.qweb.field.text'
 
     @api.model
     def from_html(self, model, field, element):
         return html_to_text(element)
 
 
-class IrQwebFieldSelection(models.AbstractModel):
+class Selection(models.AbstractModel):
     _name = 'ir.qweb.field.selection'
     _description = 'Qweb Field Selection'
-    _inherit = ['ir.qweb.field.selection']
+    _inherit = 'ir.qweb.field.selection'
 
     @api.model
     def from_html(self, model, field, element):
@@ -417,10 +410,10 @@ class IrQwebFieldSelection(models.AbstractModel):
                          value, selection))
 
 
-class IrQwebFieldHtml(models.AbstractModel):
+class HTML(models.AbstractModel):
     _name = 'ir.qweb.field.html'
     _description = 'Qweb Field HTML'
-    _inherit = ['ir.qweb.field.html']
+    _inherit = 'ir.qweb.field.html'
 
     @api.model
     def attributes(self, record, field_name, options, values=None):
@@ -460,7 +453,7 @@ class IrQwebFieldHtml(models.AbstractModel):
         return '\n'.join(content)
 
 
-class IrQwebFieldImage(models.AbstractModel):
+class Image(models.AbstractModel):
     """
     Widget options:
 
@@ -469,7 +462,7 @@ class IrQwebFieldImage(models.AbstractModel):
     """
     _name = 'ir.qweb.field.image'
     _description = 'Qweb Field Image'
-    _inherit = ['ir.qweb.field.image']
+    _inherit = 'ir.qweb.field.image'
 
     local_url_re = re.compile(r'^/(?P<module>[^]]+)/static/(?P<rest>.+)$')
     redirect_url_re = re.compile(r'\/web\/image\/\d+-redirect\/')
@@ -548,7 +541,8 @@ class IrQwebFieldImage(models.AbstractModel):
         return base64.b64encode(out.getvalue())
 
 
-class IrQwebFieldMonetary(models.AbstractModel):
+class Monetary(models.AbstractModel):
+    _name = 'ir.qweb.field.monetary'
     _inherit = 'ir.qweb.field.monetary'
 
     @api.model
@@ -561,14 +555,14 @@ class IrQwebFieldMonetary(models.AbstractModel):
                           .replace(lang.decimal_point, '.'))
 
 
-class IrQwebFieldDuration(models.AbstractModel):
+class Duration(models.AbstractModel):
     _name = 'ir.qweb.field.duration'
     _description = 'Qweb Field Duration'
-    _inherit = ['ir.qweb.field.duration']
+    _inherit = 'ir.qweb.field.duration'
 
     @api.model
-    def attributes(self, record, field_name, options, values=None):
-        attrs = super().attributes(record, field_name, options, values)
+    def attributes(self, record, field_name, options, values):
+        attrs = super(Duration, self).attributes(record, field_name, options, values)
         if options.get('inherit_branding'):
             attrs['data-oe-original'] = record[field_name]
         return attrs
@@ -581,18 +575,18 @@ class IrQwebFieldDuration(models.AbstractModel):
         return float(value)
 
 
-class IrQwebFieldRelative(models.AbstractModel):
+class RelativeDatetime(models.AbstractModel):
     _name = 'ir.qweb.field.relative'
     _description = 'Qweb Field Relative'
-    _inherit = ['ir.qweb.field.relative']
+    _inherit = 'ir.qweb.field.relative'
 
     # get formatting from ir.qweb.field.relative but edition/save from datetime
 
 
-class IrQwebFieldQweb(models.AbstractModel):
+class QwebView(models.AbstractModel):
     _name = 'ir.qweb.field.qweb'
     _description = 'Qweb Field qweb'
-    _inherit = ['ir.qweb.field.qweb']
+    _inherit = 'ir.qweb.field.qweb'
 
 
 def html_to_text(element):
@@ -600,7 +594,7 @@ def html_to_text(element):
     in roughly equivalent textual content.
 
     Used to replace and fixup the roundtripping of text and m2o: when using
-    libxml 2.8.0 (but not 2.9.1) and parsing IrQwebFieldHtml with lxml.html.fromstring
+    libxml 2.8.0 (but not 2.9.1) and parsing HTML with lxml.html.fromstring
     whitespace text nodes (text nodes composed *solely* of whitespace) are
     stripped out with no recourse, and fundamentally relying on newlines
     being in the text (e.g. inserted during user edition) is probably poor form

@@ -11,6 +11,8 @@ class AccountChartTemplate(models.AbstractModel):
         return {
             'property_account_receivable_id': 'uy_code_11300',
             'property_account_payable_id': 'uy_code_21100',
+            'property_account_income_categ_id': 'uy_code_4102',
+            'property_account_expense_categ_id': 'uy_code_5100',
             'code_digits': '6',
             'name': _('Uruguayan Generic Chart of Accounts'),
         }
@@ -32,8 +34,6 @@ class AccountChartTemplate(models.AbstractModel):
                 'account_purchase_tax_id': 'vat4',
                 'deferred_expense_account_id': 'uy_code_11407',
                 'deferred_revenue_account_id': 'uy_code_21321',
-                'income_account_id': 'uy_code_4102',
-                'expense_account_id': 'uy_code_5100',
             },
         }
 
@@ -41,13 +41,13 @@ class AccountChartTemplate(models.AbstractModel):
     def _get_uy_account_journal(self):
         return {
             'sale': {
-                "name": _("Sales"),
+                "name": _("Customer Invoices"),
                 "code": "0001",
                 "l10n_latam_use_documents": True,
                 "refund_sequence": False,
             },
             'purchase': {
-                "name": _("Purchases"),
+                "name": _("Vendor Bills"),
                 "code": "0002",
                 "l10n_latam_use_documents": True,
                 "refund_sequence": False,

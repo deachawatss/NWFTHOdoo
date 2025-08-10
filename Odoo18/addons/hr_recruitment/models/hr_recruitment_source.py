@@ -4,14 +4,14 @@
 from odoo import fields, models
 
 
-class HrRecruitmentSource(models.Model):
-    _name = 'hr.recruitment.source'
+class RecruitmentSource(models.Model):
+    _name = "hr.recruitment.source"
     _description = "Source of Applicants"
     _inherit = ['utm.source.mixin']
 
     email = fields.Char(related='alias_id.display_name', string="Email", readonly=True)
     has_domain = fields.Char(compute='_compute_has_domain')
-    job_id = fields.Many2one('hr.job', "Job", index=True, ondelete='cascade')
+    job_id = fields.Many2one('hr.job', "Job", ondelete='cascade')
     alias_id = fields.Many2one('mail.alias', "Alias ID", ondelete='restrict')
     medium_id = fields.Many2one('utm.medium', default=lambda self: self.env['utm.medium']._fetch_or_create_utm_medium('website'))
 
@@ -44,11 +44,6 @@ class HrRecruitmentSource(models.Model):
             # check that you can create source before to call mail.alias in sudo with known/controlled vals
             source.check_access('create')
             source.alias_id = self.env['mail.alias'].sudo().create(vals)
-
-    def create_and_get_alias(self):
-        self.ensure_one()
-        self.create_alias()
-        return self.email
 
     def unlink(self):
         """ Cascade delete aliases to avoid useless / badly configured aliases. """

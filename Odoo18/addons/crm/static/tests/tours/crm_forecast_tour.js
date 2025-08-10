@@ -1,6 +1,7 @@
+/** @odoo-module */
 import { queryAll } from "@odoo/hoot-dom";
 import { registry } from "@web/core/registry";
-import { stepUtils } from "@web_tour/tour_utils";
+import { stepUtils } from "@web_tour/tour_service/tour_utils";
 const today = luxon.DateTime.now();
 
 registry.category("web_tour.tours").add('crm_forecast', {
@@ -20,7 +21,7 @@ registry.category("web_tour.tours").add('crm_forecast', {
         content: 'Open Forecast menu',
         run: 'click',
     }, {
-        trigger: '.o_column_quick_create',
+        trigger: '.o_column_quick_create:contains(Add next month)',
         content: 'Wait page loading',
     }, {
         trigger: ".o-kanban-button-new",
@@ -67,16 +68,16 @@ registry.category("web_tour.tours").add('crm_forecast', {
         content: "complete expected closing",
         run: `edit ${today.plus({ months: 5 }).startOf("month").minus({ days: 1 }).toFormat("MM/dd/yyyy")} && press Escape`,
     }, {
-        trigger: "button[name=action_set_won_rainbowman]",
-        content: "win the lead",
-        run:"click"
+        trigger: ".o_field_widget[name=probability] input",
+        content: "max out probability",
+        run: "edit 100",
     }, {
         trigger: '.o_back_button',
         content: 'navigate back to the kanban view',
         tooltipPosition: "bottom",
         run: "click"
     }, {
-        trigger: '.o_column_quick_create.o_quick_create_folded div',
+        trigger: '.o_kanban_add_column',
         content: "add next month",
         run: "click"
     }, {

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import pytz
@@ -7,12 +8,10 @@ from uuid import uuid4
 
 from odoo import api, fields, models, tools, _
 from odoo.exceptions import ValidationError
-from odoo.fields import Domain
 
 from odoo.addons.google_calendar.utils.google_calendar import GoogleCalendarService
 
-
-class CalendarEvent(models.Model):
+class Meeting(models.Model):
     _name = 'calendar.event'
     _inherit = ['calendar.event', 'google.calendar.sync']
 
@@ -41,7 +40,7 @@ class CalendarEvent(models.Model):
     def _compute_videocall_source(self):
         events_with_google_url = self.filtered(lambda event: self.MEET_ROUTE in (event.videocall_location or ''))
         events_with_google_url.videocall_source = 'google_meet'
-        super(CalendarEvent, self - events_with_google_url)._compute_videocall_source()
+        super(Meeting, self - events_with_google_url)._compute_videocall_source()
 
     @api.model
     def _get_google_synced_fields(self):
@@ -57,7 +56,7 @@ class CalendarEvent(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         notify_context = self.env.context.get('dont_notify', False)
-        return super(CalendarEvent, self.with_context(dont_notify=notify_context)).create([
+        return super(Meeting, self.with_context(dont_notify=notify_context)).create([
             dict(vals, need_sync=False) if vals.get('recurrence_id') or vals.get('recurrency') else vals
             for vals in vals_list
         ])
@@ -87,15 +86,15 @@ class CalendarEvent(models.Model):
         archive_values = super()._get_archive_values()
         return {**archive_values, 'need_sync': False}
 
-    def write(self, vals):
-        recurrence_update_setting = vals.get('recurrence_update')
+    def write(self, values):
+        recurrence_update_setting = values.get('recurrence_update')
         if recurrence_update_setting in ('all_events', 'future_events') and len(self) == 1:
-            vals = dict(vals, need_sync=False)
+            values = dict(values, need_sync=False)
         notify_context = self.env.context.get('dont_notify', False)
         if not notify_context and ([self.env.user.id != record.user_id.id for record in self]):
-            self._check_modify_event_permission(vals)
-        res = super(CalendarEvent, self.with_context(dont_notify=notify_context)).write(vals)
-        if recurrence_update_setting == 'all_events' and len(self) == 1 and vals.keys() & self._get_google_synced_fields():
+            self._check_modify_event_permission(values)
+        res = super(Meeting, self.with_context(dont_notify=notify_context)).write(values)
+        if recurrence_update_setting in ('all_events',) and len(self) == 1 and values.keys() & self._get_google_synced_fields():
             self.recurrence_id.need_sync = True
         return res
 
@@ -121,13 +120,13 @@ class CalendarEvent(models.Model):
         day_range = int(ICP.get_param('google_calendar.sync.range_days', default=365))
         lower_bound = fields.Datetime.subtract(fields.Datetime.now(), days=day_range)
         upper_bound = fields.Datetime.add(fields.Datetime.now(), days=day_range)
-        return Domain([
+        return [
             ('partner_ids.user_ids', 'in', self.env.user.id),
             ('stop', '>', lower_bound),
             ('start', '<', upper_bound),
             # Do not sync events that follow the recurrence, they are already synced at recurrence creation
             '!', '&', '&', ('recurrency', '=', True), ('recurrence_id', '!=', False), ('follow_recurrence', '=', True)
-        ])
+        ]
 
     @api.model
     def _odoo_values(self, google_event, default_reminders=()):
@@ -283,7 +282,7 @@ class CalendarEvent(models.Model):
             # Increase performance handling 'future_events' edge case as it was an 'all_events' update.
             if archive_future_events:
                 recurrence_update_setting = 'all_events'
-        super().action_mass_archive(recurrence_update_setting)
+        super(Meeting, self).action_mass_archive(recurrence_update_setting)
 
     def _google_values(self):
         # In Google API, all-day events must have their 'dateTime' information set
@@ -367,7 +366,7 @@ class CalendarEvent(models.Model):
         for event in self:
             # remove the tracking data to avoid calling _track_template in the pre-commit phase
             self.env.cr.precommit.data.pop(f'mail.tracking.create.{event._name}.{event.id}', None)
-        super(CalendarEvent, my_cancelled_records)._cancel()
+        super(Meeting, my_cancelled_records)._cancel()
         attendees = (self - my_cancelled_records).attendee_ids.filtered(lambda a: a.partner_id == user.partner_id)
         attendees.state = 'declined'
 
@@ -376,3 +375,8 @@ class CalendarEvent(models.Model):
         if self.user_id and self.user_id.sudo().google_calendar_token:
             return self.user_id
         return self.env.user
+
+    def _is_google_insertion_blocked(self, sender_user):
+        self.ensure_one()
+        has_different_owner = self.user_id and self.user_id != sender_user
+        return has_different_owner

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 {
@@ -7,8 +8,7 @@
     'category': 'Human Resources/Time Off',
     'summary': 'Management of leaves for part-time workers in France',
     'depends': ['hr_holidays'],
-    'auto_install': ['hr_holidays'],
-    'author': 'Odoo S.A.',
+    'auto_install': True,
     'license': 'LGPL-3',
     'data': [
         'views/res_config_settings_views.xml',

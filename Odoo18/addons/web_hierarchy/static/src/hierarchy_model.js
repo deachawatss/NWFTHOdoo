@@ -1,9 +1,9 @@
-import { toRaw } from "@odoo/owl";
+/** @odoo-module */
+
 import { Domain } from "@web/core/domain";
 import { _t } from "@web/core/l10n/translation";
 import { KeepLast, Mutex } from "@web/core/utils/concurrency";
 import { Model } from "@web/model/model";
-import { getFieldsSpec } from "@web/model/relational_model/utils";
 import { orderByToString } from "@web/search/utils/order_by";
 
 let nodeId = 0;
@@ -17,7 +17,7 @@ let treeId = 0;
  * @returns {false | Number} id of the many2one
  */
 function getIdOfMany2oneField(value) {
-    return value && value.id;
+    return value && value[0];
 }
 
 export class HierarchyNode {
@@ -105,9 +105,7 @@ export class HierarchyNode {
      * @returns {Number[]}
      */
     get childResIds() {
-        return this._nodes.length
-            ? this._nodes.map((node) => node.resId)
-            : this.data[this.childFieldName]?.map((d) => (typeof d === "number" ? d : d.id)) || [];
+        return this.nodes.length ? this.nodes.map((node) => node.resId) : this.data[this.childFieldName]?.map((d) => typeof d === "number" ? d : d.id) || [];
     }
 
     /**
@@ -125,7 +123,7 @@ export class HierarchyNode {
      * @returns {Boolean}
      */
     get hasChildren() {
-        return this._nodes.length > 0 || this.data[this.childFieldName]?.length > 0;
+        return this.nodes.length > 0 || this.data[this.childFieldName]?.length > 0;
     }
 
     /**
@@ -137,13 +135,11 @@ export class HierarchyNode {
      *                    current node is not already displayed in another node.
      */
     get canShowParentNode() {
-        return (
-            Boolean(this.parentResId) &&
-            this.parentResId !== this.resId &&
-            !this.parentNode &&
-            this.tree.forest.resIds.filter((resId) => resId === this.resId).length === 1
-        );
+        return Boolean(this.parentResId)
+            && !this.parentNode
+            && this.tree.forest.resIds.filter((resId) => resId === this.resId).length === 1;
     }
+
 
     /**
      * Can show child nodes
@@ -154,22 +150,18 @@ export class HierarchyNode {
      *                    current node is not already displayed in another node.
      */
     get canShowChildNodes() {
-        return (
-            this.hasChildren &&
-            this.nodes.length === 0 &&
-            this.tree.forest.resIds.filter((resId) => resId === this.resId).length === 1
-        );
+        return this.hasChildren
+            && this.nodes.length === 0
+            && this.tree.forest.resIds.filter((resId) => resId === this.resId).length === 1;
     }
 
-    getDescendantNodes(hideNodesIncluded = false) {
+    get descendantNodes() {
         const subNodes = [];
-        const nodes = hideNodesIncluded ? this._nodes : this.nodes;
-        if (nodes.length) {
-            subNodes.push(...nodes);
-            for (const node of nodes) {
-                const descendantNodes = node.getDescendantNodes(hideNodesIncluded);
-                if (descendantNodes.length) {
-                    subNodes.push(...descendantNodes);
+        if (!this.isLeaf) {
+            subNodes.push(...this.nodes);
+            for (const node of this.nodes) {
+                if (node.descendantNodes.length) {
+                    subNodes.push(...node.descendantNodes);
                 }
             }
         }
@@ -203,11 +195,7 @@ export class HierarchyNode {
      * @returns {Number[]}
      */
     get allSubsidiaryResIds() {
-        return this.getDescendantNodes().map((n) => n.resId);
-    }
-
-    get nodes() {
-        return this._nodes.filter((n) => !n.hidden);
+        return this.descendantNodes.map((n) => n.resId);
     }
 
     /**
@@ -216,12 +204,12 @@ export class HierarchyNode {
      * Uses to create child nodes of the current one according to its data.
      */
     populateChildNodes() {
-        this._nodes = [];
+        this.nodes = [];
         const children = this.data[this.childFieldName] || [];
         if (
-            children.length &&
-            children[0] instanceof Object &&
-            this.tree.forest.resIds.filter((resId) => resId === this.resId).length === 1
+            children.length
+            && children[0] instanceof Object
+            && this.tree.forest.resIds.filter((resId) => resId === this.resId).length === 1
         ) {
             this.createChildNodes(children);
         }
@@ -233,8 +221,15 @@ export class HierarchyNode {
      * @param {Object[]} childNodesData data of child nodes to generate
      */
     createChildNodes(childNodesData) {
-        this._nodes = (childNodesData || this.data[this.childFieldName]).map(
-            (childData) => new HierarchyNode(this.model, this._config, childData, this.tree, this)
+        this.nodes = (childNodesData || this.data[this.childFieldName]).map(
+            (childData) =>
+                new HierarchyNode(
+                    this.model,
+                    this._config,
+                    childData,
+                    this.tree,
+                    this
+                )
         );
     }
 
@@ -255,21 +250,7 @@ export class HierarchyNode {
      * Fetch child nodes
      */
     async showChildNodes() {
-        if (this.hasChildren) {
-            if (this._nodes.length) {
-                const nodeToCollapse = this.model._searchNodeToCollapse(this);
-                if (nodeToCollapse) {
-                    nodeToCollapse.collapseChildNodes(true);
-                }
-                this.getDescendantNodes(true).map((n) => {
-                    n.hidden = false;
-                    this.tree.addNode(n);
-                });
-                this.model.notify();
-            } else {
-                await this.model.fetchSubordinates(this);
-            }
-        }
+        await this.model.fetchSubordinates(this);
     }
 
     /**
@@ -279,44 +260,36 @@ export class HierarchyNode {
      * the resIds of the child nodes in the data of the current one
      * to know it has child nodes to be able to show them again
      * when it is needed.
-     *
-     * @param hideNodes: hide the descendants when it is true to keep the data in cache (default: false)
      */
-    collapseChildNodes(hideNodes = false) {
+    collapseChildNodes() {
         const childrenData = [];
-        if (hideNodes) {
-            const nodesToHide = this.getDescendantNodes();
-            nodesToHide.map((n) => (n.hidden = true));
-            this.tree.removeNodes(nodesToHide);
-        } else {
-            for (const childNode of this.nodes) {
-                childNode.data[this.childFieldName] = childNode.childResIds;
-                childrenData.push(childNode.data);
-            }
-            this.data[this.childFieldName] = childrenData;
-            this.removeChildNodes();
+        for (const childNode of this.nodes) {
+            childNode.data[this.childFieldName] = childNode.childResIds;
+            childrenData.push(childNode.data);
         }
+        this.data[this.childFieldName] = childrenData;
+        this.removeChildNodes();
         this.model.notify();
     }
 
     removeChildNode(node) {
         node.removeChildNodes();
         this.tree.removeNodes([node]);
-        this._nodes = this._nodes.filter((n) => n.id !== node.id);
-        this.data[this.childFieldName] = this._nodes.map((n) => n.data);
+        this.nodes = this.nodes.filter((n) => n.id !== node.id);
+        this.data[this.childFieldName] = this.nodes.map((n) => n.data);
     }
 
     /**
      * Remove descendant nodes of the current one
      */
     removeChildNodes() {
-        for (const childNode of this._nodes) {
+        for (const childNode of this.nodes) {
             if (!childNode.isLeaf) {
                 childNode.removeChildNodes();
             }
         }
-        this.tree.removeNodes(this._nodes);
-        this._nodes = [];
+        this.tree.removeNodes(this.nodes);
+        this.nodes = [];
     }
 
     /**
@@ -325,6 +298,8 @@ export class HierarchyNode {
      * @param {HierarchyNode} node parent node to set
      */
     setParentNode(node) {
+        this.parentNode = node;
+        node.addChildNode(this);
         const tree = node.tree;
         if (tree.root === this) {
             tree.root = node;
@@ -332,8 +307,6 @@ export class HierarchyNode {
             this.tree.removeRoot();
             this.setTree(node.tree);
         }
-        this.parentNode = node;
-        node.addChildNode(this);
     }
 
     setTree(tree) {
@@ -349,7 +322,7 @@ export class HierarchyNode {
      * @param {HierarchyNode} node child node to add
      */
     addChildNode(node) {
-        this._nodes.push(node);
+        this.nodes.push(node);
         this.data[this.childFieldName].push(node.data);
         this.tree.addNode(node);
     }
@@ -406,10 +379,11 @@ export class HierarchyTree {
     removeNodes(nodes) {
         const nodeIds = nodes.map((node) => node.id);
         this.nodePerNodeId = Object.fromEntries(
-            Object.entries(this.nodePerNodeId).filter(
-                ([nodeId]) => !nodeIds.includes(Number(nodeId))
-            )
-        );
+            Object.entries(this.nodePerNodeId)
+                .filter(
+                    ([nodeId,]) => !nodeIds.includes(Number(nodeId))
+                )
+            );
         this.forest.removeNodes(nodes);
     }
 
@@ -428,13 +402,9 @@ export class HierarchyForest {
     constructor(model, config, data) {
         this.id = forestId++;
         this.nodePerNodeId = {};
-        this._trees = data.map((d) => new HierarchyTree(model, config, d, this));
+        this.trees = data.map((d) => new HierarchyTree(model, config, d, this));
         this.model = model;
         this._config = config;
-    }
-
-    get trees() {
-        return this._trees.filter((t) => !t.root.hidden);
     }
 
     /**
@@ -472,9 +442,10 @@ export class HierarchyForest {
     removeNodes(nodes) {
         const nodeIds = nodes.map((node) => node.id);
         this.nodePerNodeId = Object.fromEntries(
-            Object.entries(this.nodePerNodeId).filter(
-                ([nodeId]) => !nodeIds.includes(Number(nodeId))
-            )
+            Object.entries(this.nodePerNodeId)
+                .filter(
+                    ([nodeId,]) => !nodeIds.includes(Number(nodeId))
+                )
         );
     }
 
@@ -483,17 +454,20 @@ export class HierarchyForest {
         tree.root = node;
         node.tree = tree;
         tree.addNode(node);
-        for (const subNode of node.getDescendantNodes()) {
+        for (const subNode of node.descendantNodes) {
             tree.addNode(subNode);
         }
-        this._trees.push(tree);
+        this.trees.push(tree);
     }
 
     removeTree(tree) {
         this.nodePerNodeId = Object.fromEntries(
-            Object.entries(this.nodePerNodeId).filter(([nodeId]) => !(nodeId in tree.nodePerNodeId))
+            Object.entries(this.nodePerNodeId)
+                .filter(
+                    ([nodeId, ]) => !(nodeId in tree.nodePerNodeId)
+                )
         );
-        this._trees = this.trees.filter((t) => t.id !== tree.id);
+        this.trees = this.trees.filter((t) => t.id !== tree.id);
     }
 }
 
@@ -512,7 +486,6 @@ export class HierarchyModel extends Model {
         this.notification = notification;
         this.config = {
             domain: [],
-            ...params.config,
             isRoot: true,
         };
     }
@@ -577,19 +550,24 @@ export class HierarchyModel extends Model {
         return Object.keys(this.activeFields);
     }
 
+    /**
+     * Get fields to fetch
+     * @returns {String[]} fields to fetch
+     */
+    get fieldsToFetch() {
+        const fieldsToFetch = [
+            ...this.activeFieldNames,
+        ];
+        if (this.childFieldName) {
+            fieldsToFetch.push(this.childFieldName);
+        }
+        return fieldsToFetch;
+    }
+
     get context() {
         return {
             bin_size: true,
             ...(this.config.context || {}),
-        };
-    }
-
-    exportState() {
-        return {
-            config: toRaw({
-                ...this.config,
-                resIds: this.resIds,
-            }),
         };
     }
 
@@ -600,11 +578,11 @@ export class HierarchyModel extends Model {
      */
     async load(params = {}) {
         nodeId = forestId = treeId = 0;
-        const { resIds, ...config } = this._getNextConfig(this.config, params);
-        const data = await this.keepLast.add(this._loadData({ ...config, resIds }));
+        const config = this._getNextConfig(this.config, params);
+        const data = await this.keepLast.add(this._loadData(config));
         this.root = this._createRoot(config, data);
         this.config = config;
-        this.notify({ scrollTarget: "none" });
+        this.notify();
     }
 
     /**
@@ -632,25 +610,16 @@ export class HierarchyModel extends Model {
      * @param {HierarchyNode} node node to fetch its parent node
      */
     async fetchManager(node) {
-        if (this.root.trees.length > 1) {
-            // reset the hierarchy
+        if (this.root.trees.length > 1) { // reset the hierarchy
             const treeExpanded = this._findTreeExpanded();
             const resIdsToFetch = [node.parentResId, node.resId, ...node.allSubsidiaryResIds];
-            if (
-                treeExpanded &&
-                treeExpanded.root.id !== node.id &&
-                treeExpanded.root.parentResId === node.parentResId
-            ) {
+            if (treeExpanded && treeExpanded.root.id !== node.id && treeExpanded.root.parentResId === node.parentResId) {
                 resIdsToFetch.push(...treeExpanded.root.allSubsidiaryResIds);
             }
             const config = {
                 ...this.config,
-                domain: [
-                    "|",
-                    [this.parentFieldName, "=", node.parentResId],
-                    ["id", "in", resIdsToFetch],
-                ],
-            };
+                domain: ["|", [this.parentFieldName, "=", node.parentResId], ["id", "in", resIdsToFetch]],
+            }
             const data = await this._loadData(config);
             this.root = this._createRoot(config, data);
             this.notify();
@@ -658,17 +627,10 @@ export class HierarchyModel extends Model {
         }
         const managerData = await this.keepLast.add(this._fetchManager(node));
         if (managerData) {
-            const parentNode = new HierarchyNode(
-                this,
-                this.config,
-                managerData,
-                node.tree,
-                null,
-                false
-            );
+            const parentNode = new HierarchyNode(this, this.config, managerData, node.tree, null, false);
             parentNode.createChildNodes();
             node.setParentNode(parentNode);
-            this.notify({ scrollTarget: "up" });
+            this.notify();
         }
     }
 
@@ -684,30 +646,22 @@ export class HierarchyModel extends Model {
             const nodesToUpdate = [];
             if (!(children[0] instanceof Object)) {
                 const allNodeResIds = this.root.resIds;
-                const existingChildResIds = children.filter((childResId) =>
-                    allNodeResIds.includes(childResId)
-                );
-                if (existingChildResIds.length) {
-                    // special case with result found with the search view
+                const existingChildResIds = children.filter((childResId) => allNodeResIds.includes(childResId))
+                if (existingChildResIds.length) { // special case with result found with the search view
                     for (const tree of this.root.trees) {
-                        if (
-                            existingChildResIds.includes(tree.root.resId) &&
-                            tree.root.id !== node.id
-                        ) {
+                        if (existingChildResIds.includes(tree.root.resId)) {
                             nodesToUpdate.push(tree.root);
                         }
                     }
                 }
-                const subordinates = await this.keepLast.add(
-                    this._fetchSubordinates(node, existingChildResIds)
-                );
-                if (subordinates.length) {
-                    node.data[childFieldName] = subordinates;
+                const data = await this.keepLast.add(this._fetchSubordinates(node, existingChildResIds));
+                if (data && data.length) {
+                    node.data[childFieldName] = data;
                 }
             }
             const nodeToCollapse = this._searchNodeToCollapse(node);
             if (nodeToCollapse && !nodesToUpdate.includes(nodeToCollapse)) {
-                nodeToCollapse.collapseChildNodes(true);
+                nodeToCollapse.collapseChildNodes();
             }
             node.populateChildNodes();
             for (const n of nodesToUpdate) {
@@ -777,10 +731,6 @@ export class HierarchyModel extends Model {
         return config;
     }
 
-    _getFieldsSpec(context = this.config.context) {
-        return getFieldsSpec(this.activeFields, this.fields, context);
-    }
-
     /**
      * Evaluate if the current search query is the default one.
      *
@@ -822,8 +772,8 @@ export class HierarchyModel extends Model {
     async _loadData(config, reload = false) {
         let onlyRoots = false;
         let domain = config.domain;
-        const resIds = reload ? this.resIds : config.resIds;
-        if (resIds?.length > 0) {
+        const resIds = this.resIds;
+        if (reload && resIds.length > 0) {
             domain = [["id", "in", resIds]];
         } else if (this.isSearchDefaultOrEmpty()) {
             // If the current SearchModel query is the default one
@@ -835,14 +785,13 @@ export class HierarchyModel extends Model {
                 ? this.defaultDomain
                 : Domain.and([this.defaultDomain, domain]).toList({});
         }
-        const fieldsSpec = this._getFieldsSpec(config.context);
         const hierarchyRead = async () => {
             return await this.orm.call(
                 this.resModel,
                 "hierarchy_read",
                 [
                     domain,
-                    fieldsSpec,
+                    this.fieldsToFetch,
                     this.parentFieldName,
                     this.childFieldName,
                     orderByToString(config.orderBy),
@@ -910,37 +859,42 @@ export class HierarchyModel extends Model {
      * @param {HierarchyNode} node node to fetch its parent node
      * @returns {Object} the parent node data with children data inside childFieldName
      */
-    async _fetchManager(node, exclude_node = true) {
+    async _fetchManager(node, exclude_node=true) {
         let domain = new Domain([
             "|",
-            ["id", "=", node.parentResId],
-            [this.parentFieldName, "=", node.parentResId],
+                ["id", "=", node.parentResId],
+                [this.parentFieldName, "=", node.parentResId],
         ]);
         if (exclude_node) {
-            domain = Domain.and([domain, [["id", "!=", node.resId]]]);
+            domain = Domain.and([
+                domain,
+                [["id", "!=", node.resId]],
+            ])
         }
-        const result = await this.orm.webSearchRead(this.resModel, domain.toList({}), {
-            context: this.context,
-            specification: this._getFieldsSpec(),
-            order: orderByToString(this.config.orderBy),
-        });
+        const result = await this.orm.searchRead(
+            this.resModel,
+            domain.toList({}),
+            this.fieldsToFetch,
+            {
+                context: this.context,
+                order: orderByToString(this.config.orderBy),
+            },
+        );
         let managerData = {};
-        if (result?.length) {
-            const children = [];
-            for (const data of result.records) {
-                if (data.id === node.parentResId) {
-                    managerData = data;
-                } else {
-                    children.push(data);
-                }
+        const children = [];
+        for (const data of result) {
+            if (data.id === node.parentResId) {
+                managerData = data;
+            } else {
+                children.push(data);
             }
-            if (!this.childFieldName) {
-                if (children.length) {
-                    await this._fetchDescendants(children);
-                }
-            }
-            managerData[this.childFieldName || this.defaultChildFieldName] = children;
         }
+        if (!this.childFieldName) {
+            if (children.length) {
+                await this._fetchDescendants(children);
+            }
+        }
+        managerData[this.childFieldName || this.defaultChildFieldName] = children;
         return managerData;
     }
 
@@ -954,26 +908,21 @@ export class HierarchyModel extends Model {
     async _fetchSubordinates(node, excludeResIds = null) {
         let childrenResIds = node.data[this.childFieldName || this.defaultChildFieldName];
         if (excludeResIds) {
-            childrenResIds = childrenResIds.filter(
-                (childResId) => !excludeResIds.includes(childResId)
-            );
+            childrenResIds = childrenResIds.filter((childResId) => !excludeResIds.includes(childResId));
         }
-        if (!childrenResIds.length) {
-            return [];
-        }
-        const { records } = await this.orm.webSearchRead(
+        const data = await this.orm.searchRead(
             this.resModel,
             [["id", "in", childrenResIds]],
+            this.fieldsToFetch,
             {
-                specification: this._getFieldsSpec(),
                 context: this.context,
                 order: orderByToString(this.config.orderBy),
-            }
-        );
+            },
+        )
         if (!this.childFieldName) {
-            await this._fetchDescendants(records);
+            await this._fetchDescendants(data);
         }
-        return records;
+        return data;
     }
 
     /**
@@ -984,18 +933,18 @@ export class HierarchyModel extends Model {
     async _fetchDescendants(childrenData) {
         const resIds = childrenData.map((d) => d.id);
         if (resIds.length) {
-            const fetchChildren = await this.orm.formattedReadGroup(
+            const fetchChildren = await this.orm.readGroup(
                 this.resModel,
                 [[this.parentFieldName, "in", resIds]],
+                ['id:array_agg'],
                 [this.parentFieldName],
-                ["id:array_agg"],
                 {
                     context: this.context || {},
-                    order: orderByToString(this.config.orderBy),
+                    orderby: orderByToString(this.config.orderBy),
                 },
             );
             const childIdsPerId = Object.fromEntries(
-                fetchChildren.map((g) => [g[this.parentFieldName][0], g["id:array_agg"]])
+                fetchChildren.map((r) => [r[this.parentFieldName][0], r.id])
             );
             for (const d of childrenData) {
                 if (d.id.toString() in childIdsPerId) {
@@ -1061,15 +1010,11 @@ export class HierarchyModel extends Model {
         });
         // Reload impacted records.
         const domain = this.computeUpdateParentNodeDomain(node, parentResId, parentNode);
-        const data = await this.orm.webSearchRead(this.resModel, domain, {
-            specification: this._getFieldsSpec(),
+        const data = await this.orm.searchRead(this.resModel, domain, this.fieldsToFetch, {
             context: this.context,
             order: orderByToString(this.config.orderBy),
         });
-        if (!data.length) {
-            return this.reload();
-        }
-        const formattedData = this._formatData(data.records);
+        const formattedData = this._formatData(data);
         // Validate that data coming from the server is still compatible with the current
         // configuration of the hierarchy.
         for (const record of formattedData) {

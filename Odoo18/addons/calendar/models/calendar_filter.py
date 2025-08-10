@@ -1,9 +1,10 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, fields, models
 
 
-class CalendarFilters(models.Model):
+class Contacts(models.Model):
     _name = 'calendar.filters'
     _description = 'Calendar Filters'
 
@@ -12,10 +13,9 @@ class CalendarFilters(models.Model):
     active = fields.Boolean('Active', default=True)
     partner_checked = fields.Boolean('Checked', default=True)  # used to know if the partner is checked in the filter of the calendar view for the user_id.
 
-    _user_id_partner_id_unique = models.Constraint(
-        'UNIQUE(user_id, partner_id)',
-        'A user cannot have the same contact twice.',
-    )
+    _sql_constraints = [
+        ('user_id_partner_id_unique', 'UNIQUE(user_id, partner_id)', 'A user cannot have the same contact twice.')
+    ]
 
     @api.model
     def unlink_from_partner_id(self, partner_id):

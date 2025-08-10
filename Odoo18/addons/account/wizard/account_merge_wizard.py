@@ -41,7 +41,7 @@ class AccountMergeWizard(models.TransientModel):
     def _get_grouping_key(self, account):
         """ Return a grouping key for the given account. """
         self.ensure_one()
-        grouping_fields = ['account_type', 'non_trade', 'currency_id', 'reconcile', 'active']
+        grouping_fields = ['account_type', 'non_trade', 'currency_id', 'reconcile', 'deprecated']
         if self.is_group_by_name:
             grouping_fields.append('name')
         return tuple(account[field] for field in grouping_fields)
@@ -259,10 +259,10 @@ class AccountMergeWizardLine(models.TransientModel):
     @api.depends('account_id')
     def _compute_account_has_hashed_entries(self):
         # optimization to avoid having to re-check which accounts have hashed entries
-        query = self.env['account.move.line']._search([
+        query = self.env['account.move.line']._where_calc([
             ('account_id', 'in', self.account_id.ids),
             ('move_id.inalterable_hash', '!=', False),
-        ], bypass_access=True)
+        ])
         query_result = self.env.execute_query(query.select(SQL('DISTINCT account_move_line.account_id')))
         accounts_with_hashed_entries_ids = {r[0] for r in query_result}
         wizard_lines_with_hashed_entries = self.filtered(lambda l: l.account_id.id in accounts_with_hashed_entries_ids)
@@ -303,7 +303,7 @@ class AccountMergeWizardLine(models.TransientModel):
         if self.account_id.reconcile:
             other_name_elements.append(_("Reconcilable"))
 
-        if not self.account_id.active:
+        if self.account_id.deprecated:
             other_name_elements.append(_("Deprecated"))
 
         if not self.wizard_id.is_group_by_name:

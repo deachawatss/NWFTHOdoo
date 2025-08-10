@@ -5,7 +5,7 @@ from odoo import fields, models, _
 from odoo.exceptions import AccessError
 
 
-class DigestDigest(models.Model):
+class Digest(models.Model):
     _inherit = 'digest.digest'
 
     kpi_hr_recruitment_new_colleagues = fields.Boolean('New Employees')

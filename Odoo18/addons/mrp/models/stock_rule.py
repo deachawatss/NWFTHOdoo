@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from collections import defaultdict
@@ -5,8 +6,8 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models, SUPERUSER_ID, _
-from odoo.fields import Domain
-from odoo.tools import OrderedSet
+from odoo.osv import expression
+from odoo.tools import float_compare, OrderedSet
 
 
 class StockRule(models.Model):
@@ -27,10 +28,13 @@ class StockRule(models.Model):
         return message_dict
 
     def _compute_picking_type_code_domain(self):
-        super()._compute_picking_type_code_domain()
+        remaining = self.browse()
         for rule in self:
             if rule.action == 'manufacture':
-                rule.picking_type_code_domain = rule.picking_type_code_domain or [] + ['mrp_operation']
+                rule.picking_type_code_domain = 'mrp_operation'
+            else:
+                remaining |= rule
+        super(StockRule, remaining)._compute_picking_type_code_domain()
 
     def _should_auto_confirm_procurement_mo(self, p):
         return (not p.orderpoint_id and p.move_raw_ids) or (p.move_dest_ids.procure_method != 'make_to_order' and not p.move_raw_ids and not p.workorder_ids)
@@ -39,7 +43,7 @@ class StockRule(models.Model):
     def _run_manufacture(self, procurements):
         new_productions_values_by_company = defaultdict(lambda: defaultdict(list))
         for procurement, rule in procurements:
-            if procurement.product_uom.compare(procurement.product_qty, 0) <= 0:
+            if float_compare(procurement.product_qty, 0, precision_rounding=procurement.product_uom.rounding) <= 0:
                 # If procurement contains negative quantity, don't create a MO that would be for a negative value.
                 continue
             bom = rule._get_matching_bom(procurement.product_id, procurement.company_id, procurement.values)
@@ -54,7 +58,7 @@ class StockRule(models.Model):
                 if batch_size <= 0:
                     batch_size = procurement_qty
                 vals = rule._prepare_mo_vals(*procurement, bom)
-                while procurement.product_uom.compare(procurement_qty, 0) > 0:
+                while float_compare(procurement_qty, 0, precision_rounding=procurement.product_uom.rounding) > 0:
                     current_qty = min(procurement_qty, batch_size)
                     new_productions_values_by_company[procurement.company_id.id]['values'].append({
                         **vals,
@@ -90,7 +94,7 @@ class StockRule(models.Model):
             if rule.picking_type_id == warehouse_id.sam_type_id or (
                 warehouse_id.sam_loc_id and warehouse_id.sam_loc_id.parent_path in rule.location_src_id.parent_path
             ):
-                if procurement.product_uom.compare(procurement.product_qty, 0) < 0:
+                if float_compare(procurement.product_qty, 0, precision_rounding=procurement.product_uom.rounding) < 0:
                     procurement.values['group_id'] = procurement.values['group_id'].stock_move_ids.filtered(
                         lambda m: m.state not in ['done', 'cancel']).move_orig_ids.group_id[:1]
                     continue
@@ -119,10 +123,7 @@ class StockRule(models.Model):
             return values['bom_id']
         if values.get('orderpoint_id', False) and values['orderpoint_id'].bom_id:
             return values['orderpoint_id'].bom_id
-        bom = self.env['mrp.bom']._bom_find(product_id, picking_type=self.picking_type_id, bom_type='normal', company_id=company_id.id)[product_id]
-        if bom:
-            return bom
-        return self.env['mrp.bom']._bom_find(product_id, picking_type=False, bom_type='normal', company_id=company_id.id)[product_id]
+        return self.env['mrp.bom']._bom_find(product_id, picking_type=self.picking_type_id, bom_type='normal', company_id=company_id.id)[product_id]
 
     def _make_mo_get_domain(self, procurement, bom):
         gpo = self.group_propagation_option
@@ -152,7 +153,6 @@ class StockRule(models.Model):
     def _prepare_mo_vals(self, product_id, product_qty, product_uom, location_dest_id, name, origin, company_id, values, bom):
         date_planned = self._get_date_planned(bom, values)
         date_deadline = values.get('date_deadline') or date_planned + relativedelta(days=bom.produce_delay)
-        picking_type = bom.picking_type_id or self.picking_type_id
         mo_values = {
             'origin': origin,
             'product_id': product_id.id,
@@ -160,8 +160,8 @@ class StockRule(models.Model):
             'never_product_template_attribute_value_ids': values.get('never_product_template_attribute_value_ids'),
             'product_qty': product_uom._compute_quantity(product_qty, bom.product_uom_id) if bom else product_qty,
             'product_uom_id': bom.product_uom_id.id if bom else product_uom.id,
-            'location_src_id': picking_type.default_location_src_id.id,
-            'location_dest_id': picking_type.default_location_dest_id.id or location_dest_id.id,
+            'location_src_id': self.picking_type_id.default_location_src_id.id,
+            'location_dest_id': self.picking_type_id.default_location_dest_id.id or location_dest_id.id,
             'location_final_id': location_dest_id.id,
             'bom_id': bom.id,
             'date_deadline': date_deadline,
@@ -169,14 +169,14 @@ class StockRule(models.Model):
             'procurement_group_id': False,
             'propagate_cancel': self.propagate_cancel,
             'orderpoint_id': values.get('orderpoint_id', False) and values.get('orderpoint_id').id,
-            'picking_type_id': picking_type.id or values['warehouse_id'].manu_type_id.id,
+            'picking_type_id': self.picking_type_id.id or values['warehouse_id'].manu_type_id.id,
             'company_id': company_id.id,
             'move_dest_ids': values.get('move_dest_ids') and [(4, x.id) for x in values['move_dest_ids']] or False,
             'user_id': False,
         }
         # Use the procurement group created in _run_pull mrp override
         # Preserve the origin from the original stock move, if available
-        if location_dest_id.warehouse_id.manufacture_steps == 'pbm_sam' and values.get('move_dest_ids') and values.get('group_id') and not values['move_dest_ids'][0].origin.startswith(values['group_id'].name):
+        if location_dest_id.warehouse_id.manufacture_steps == 'pbm_sam' and values.get('move_dest_ids') and values.get('group_id') and values['group_id'].name not in values['move_dest_ids'][0].origin:
             origin = values['move_dest_ids'][0].origin
             mo_values.update({
                 'name': values['group_id'].name,
@@ -275,9 +275,9 @@ class ProcurementGroup(models.Model):
                         procurement.origin, procurement.company_id, values))
             else:
                 procurements_without_kit.append(procurement)
-        return super().run(procurements_without_kit, raise_user_error=raise_user_error)
+        return super(ProcurementGroup, self).run(procurements_without_kit, raise_user_error=raise_user_error)
 
     def _get_moves_to_assign_domain(self, company_id):
-        domain = super()._get_moves_to_assign_domain(company_id)
-        domain = Domain.AND([domain, Domain('production_id', '=', False)])
+        domain = super(ProcurementGroup, self)._get_moves_to_assign_domain(company_id)
+        domain = expression.AND([domain, [('production_id', '=', False)]])
         return domain

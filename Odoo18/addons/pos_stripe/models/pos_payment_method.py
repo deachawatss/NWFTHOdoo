@@ -6,7 +6,6 @@ from odoo import fields, models, api, _
 from odoo.exceptions import ValidationError, UserError, AccessError
 
 
-
 class PosPaymentMethod(models.Model):
     _inherit = 'pos.payment.method'
 
@@ -17,8 +16,8 @@ class PosPaymentMethod(models.Model):
     stripe_serial_number = fields.Char(help='[Serial number of the stripe terminal], for example: WSC513105011295', copy=False)
 
     @api.model
-    def _load_pos_data_fields(self, config):
-        params = super()._load_pos_data_fields(config)
+    def _load_pos_data_fields(self, config_id):
+        params = super()._load_pos_data_fields(config_id)
         params += ['stripe_serial_number']
         return params
 
@@ -44,6 +43,16 @@ class PosPaymentMethod(models.Model):
             raise UserError(_("Stripe payment provider for company %s is missing", self.env.company.name))
 
         return stripe_payment_provider
+
+    @api.model
+    def _get_stripe_secret_key(self):
+        # TODO: unused, remove in master
+        stripe_secret_key = self._get_stripe_payment_provider().stripe_secret_key
+
+        if not stripe_secret_key:
+            raise ValidationError(_('Complete the Stripe onboarding for company %s.', self.env.company.name))
+
+        return stripe_secret_key
 
     @api.model
     def stripe_connection_token(self):

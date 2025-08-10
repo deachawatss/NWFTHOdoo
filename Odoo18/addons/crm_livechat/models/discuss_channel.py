@@ -1,36 +1,20 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from markupsafe import Markup
-from odoo.addons.mail.tools.discuss import Store
 
-from odoo import api, fields, models, _
+from odoo import models, _
 from odoo.tools import html2plaintext
 
 
 class DiscussChannel(models.Model):
     _inherit = 'discuss.channel'
 
-    lead_ids = fields.One2many(
-        "crm.lead",
-        "origin_channel_id",
-        string="Leads",
-        groups="sales_team.group_sale_salesman",
-        help="The channel becomes accessible to sales users when leads are set.",
-    )
-    has_crm_lead = fields.Boolean(compute="_compute_has_crm_lead", store=True)
-    _has_crm_lead_index = models.Index("(has_crm_lead) WHERE has_crm_lead IS TRUE")
-
-    @api.depends("lead_ids")
-    def _compute_has_crm_lead(self):
-        for channel in self:
-            channel.has_crm_lead = bool(channel.lead_ids)
-
     def execute_command_lead(self, **kwargs):
         key = kwargs['body']
         lead_command = "/lead"
         if key.strip() == lead_command:
             msg = _(
-                "Create a new lead with: "
+                "Create a new lead: "
                 "%(pre_start)s%(lead_command)s %(i_start)slead title%(i_end)s%(pre_end)s",
                 lead_command=lead_command,
                 pre_start=Markup("<pre>"),
@@ -61,7 +45,6 @@ class DiscussChannel(models.Model):
 
         utm_source = self.env.ref('crm_livechat.utm_source_livechat', raise_if_not_found=False)
         return self.env['crm.lead'].create({
-            "origin_channel_id": self.id,
             'name': html2plaintext(key[5:]),
             'partner_id': customers[0].id if customers else False,
             'user_id': False,
@@ -70,13 +53,3 @@ class DiscussChannel(models.Model):
             'referred': partner.name,
             'source_id': utm_source and utm_source.id,
         })
-
-    def _get_livechat_session_fields_to_store(self):
-        fields_to_store = super()._get_livechat_session_fields_to_store()
-        fields_to_store.append(
-            Store.Many(
-                "livechat_customer_partner_ids",
-                [Store.Many("opportunity_ids", ["id", "name"])],
-            ),
-        )
-        return fields_to_store

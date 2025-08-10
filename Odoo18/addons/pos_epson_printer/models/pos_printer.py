@@ -4,8 +4,8 @@
 from odoo import fields, models, api, _
 from odoo.exceptions import ValidationError
 
-
 class PosPrinter(models.Model):
+
     _inherit = 'pos.printer'
 
     printer_type = fields.Selection(selection_add=[('epson_epos', 'Use an Epson printer')])
@@ -18,7 +18,7 @@ class PosPrinter(models.Model):
                 raise ValidationError(_("Epson Printer IP Address cannot be empty."))
 
     @api.model
-    def _load_pos_data_fields(self, config):
-        params = super()._load_pos_data_fields(config)
+    def _load_pos_data_fields(self, config_id):
+        params = super()._load_pos_data_fields(config_id)
         params += ['epson_printer_ip']
         return params

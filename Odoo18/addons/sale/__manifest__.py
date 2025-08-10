@@ -1,5 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+
 {
     'name': 'Sales',
     'version': '1.2',
@@ -25,6 +26,7 @@ This module contains all the common features of Sales Management and eCommerce.
 
         'data/ir_cron.xml',
         'data/ir_sequence_data.xml',
+        'data/mail_activity_type_data.xml',
         'data/mail_message_subtype_data.xml',
         'data/mail_template_data.xml',
         'data/sale_tour.xml',
@@ -35,6 +37,7 @@ This module contains all the common features of Sales Management and eCommerce.
         'wizard/payment_link_wizard_views.xml',
         'wizard/res_config_settings_views.xml',
         'wizard/sale_make_invoice_advance_views.xml',
+        'wizard/sale_order_cancel_views.xml',
         'wizard/sale_order_discount_views.xml',
 
         # Define sale order views before their references
@@ -46,7 +49,7 @@ This module contains all the common features of Sales Management and eCommerce.
         'views/mail_activity_plan_views.xml',
         'views/payment_views.xml',
         'views/product_document_views.xml',
-        'views/product_pricelist_item_views.xml',
+        'views/product_packaging_views.xml',
         'views/product_template_views.xml',
         'views/product_views.xml',
         'views/res_partner_views.xml',
@@ -84,8 +87,10 @@ This module contains all the common features of Sales Management and eCommerce.
             'sale/static/src/views/**/*',
         ],
         'web.assets_frontend': [
-            'sale/static/src/interactions/**/*',
             'sale/static/src/scss/sale_portal.scss',
+            'sale/static/src/js/sale_portal_sidebar.js',
+            'sale/static/src/js/sale_portal_prepayment.js',
+            'sale/static/src/js/sale_portal.js',
         ],
         'web.assets_tests': [
             'sale/static/tests/tours/**/*',
@@ -98,11 +103,17 @@ This module contains all the common features of Sales Management and eCommerce.
             'sale/static/tests/sale_test_helpers.js',
             'sale/static/tests/**/*.test.js',
         ],
+        'web.qunit_suite_tests': [
+            'sale/static/tests/**/*',
+            ('remove', 'sale/static/tests/tours/**/*'),
+            ('remove', 'sale/static/tests/mock_server/**/*'),
+            ('remove', 'sale/static/tests/sale_test_helpers.js'),
+            ('remove', 'sale/static/tests/**/*.test.js'),
+        ],
         'web.report_assets_common': [
             'sale/static/src/scss/sale_report.scss',
         ],
     },
     'post_init_hook': '_post_init_hook',
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

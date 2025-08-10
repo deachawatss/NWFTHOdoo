@@ -79,27 +79,22 @@ class EventRegistration(models.Model):
         buy tickets, not when bootstrapping a database. """
         return super(EventRegistration, self.with_context(event_lead_rule_skip=True))._load_records_write(values)
 
-    def _apply_lead_generation_rules(self, event_lead_rules=False):
+    def _apply_lead_generation_rules(self):
         leads = self.env['crm.lead']
         open_registrations = self.filtered(lambda reg: reg.state == 'open')
         done_registrations = self.filtered(lambda reg: reg.state == 'done')
 
-        if not event_lead_rules:
-            search_triggers = ['create']
-            if open_registrations:
-                search_triggers.append('confirm')
-            if done_registrations:
-                search_triggers.append('done')
-            event_lead_rules = self.env['event.lead.rule'].search([('lead_creation_trigger', 'in', search_triggers)])
-
-        create_lead_rules = event_lead_rules.filtered(lambda rule: rule.lead_creation_trigger == 'create')
-        leads += create_lead_rules.sudo()._run_on_registrations(self)
+        leads += self.env['event.lead.rule'].search(
+            [('lead_creation_trigger', '=', 'create')]
+        ).sudo()._run_on_registrations(self)
         if open_registrations:
-            confirm_lead_rules = event_lead_rules.filtered(lambda rule: rule.lead_creation_trigger == 'confirm')
-            leads += confirm_lead_rules.sudo()._run_on_registrations(open_registrations)
+            leads += self.env['event.lead.rule'].search(
+                [('lead_creation_trigger', '=', 'confirm')]
+            ).sudo()._run_on_registrations(open_registrations)
         if done_registrations:
-            done_lead_rules = event_lead_rules.filtered(lambda rule: rule.lead_creation_trigger == 'done')
-            leads += done_lead_rules.sudo()._run_on_registrations(done_registrations)
+            leads += self.env['event.lead.rule'].search(
+                [('lead_creation_trigger', '=', 'done')]
+            ).sudo()._run_on_registrations(done_registrations)
         return leads
 
     def _update_leads(self, new_vals, lead_tracked_vals):
@@ -173,8 +168,7 @@ class EventRegistration(models.Model):
         in which case first found non void value is taken. Note that all
         registrations should belong to the same event.
 
-        :returns: values used for create / write on a lead
-        :rtype: dict
+        :return dict lead_values: values used for create / write on a lead
         """
         sorted_self = self.sorted("id")
         lead_values = {
@@ -206,8 +200,7 @@ class EventRegistration(models.Model):
           * in batch mode: if a customer is found use it as main contact. Registrations
             details are included in lead description;
 
-        :returns: values used for create / write on a lead
-        :rtype: dict
+        :return dict: values used for create / write on a lead
         """
         sorted_self = self.sorted("id")
         valid_partner = next(
@@ -256,6 +249,11 @@ class EventRegistration(models.Model):
             'name': f'{self.event_id[:1].name} - {contact_name}',
             'partner_id': valid_partner.id,
         })
+        # try to avoid copying registration_phone on both phone and mobile fields
+        # as would be noise; pay attention partner.hone is propagated through compute
+        mobile = valid_partner.mobile or registration_phone
+        if mobile != contact_vals.get('phone', valid_partner.phone):
+            contact_vals['mobile'] = valid_partner.mobile or registration_phone
 
         return contact_vals
 
@@ -264,9 +262,8 @@ class EventRegistration(models.Model):
         lines. For example to enumerate participants or inform of an update in
         the information of a participant.
 
-        :returns: complete description for a lead taking into
+        :return string description: complete description for a lead taking into
           account all registrations contained in self
-        :rtype: str
         """
         reg_lines = [
             registration._get_lead_description_registration(
@@ -326,14 +323,13 @@ class EventRegistration(models.Model):
         :param rule_to_new_regs: dict: for each rule, subset of self matching
           rule conditions. Used to speedup batch computation;
 
-        :returns: for each rule, rule (key of dict) gives a list of groups.
+        :return dict: for each rule, rule (key of dict) gives a list of groups.
           Each group is a tuple (
             existing_lead: existing lead to update;
             group_record: record used to group;
             registrations: sub record set of self, containing registrations
                            belonging to the same group;
           )
-        :rtype: dict
         """
         grouped_registrations = {
             (create_date, event): sub_registrations

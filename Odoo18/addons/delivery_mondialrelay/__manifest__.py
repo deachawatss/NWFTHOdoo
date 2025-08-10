@@ -9,12 +9,11 @@ This module doesn't implement the WebService. It is only the integration of the 
 
 Delivery price pre-configured is an example, you need to adapt the pricing's rules.
     """,
-    'category': 'Shipping Connectors',
+    'category': 'Inventory/Delivery',
     'version': '0.1',
     'depends': ['stock_delivery'],
     'data': [
         'data/data.xml',
-        'views/portal_address_templates.xml',
         'views/views.xml',
         'wizard/choose_delivery_carrier_views.xml',
     ],
@@ -24,6 +23,5 @@ Delivery price pre-configured is an example, you need to adapt the pricing's rul
             'delivery_mondialrelay/static/src/scss/mondialrelay.scss',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

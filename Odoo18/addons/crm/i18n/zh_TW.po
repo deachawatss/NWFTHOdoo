@@ -3,16 +3,16 @@
 # 	* crm
 # 
 # Translators:
-# Tiffany Chang, 2025
+# Martin Trigaux, 2024
 # Wil Odoo, 2025
 # Tony Ng, 2025
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~18.3\n"
+"Project-Id-Version: Odoo Server 18.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-05-09 20:35+0000\n"
-"PO-Revision-Date: 2025-05-06 12:03+0000\n"
+"POT-Creation-Date: 2025-02-10 13:22+0000\n"
+"PO-Revision-Date: 2024-09-25 09:41+0000\n"
 "Last-Translator: Tony Ng, 2025\n"
 "Language-Team: Chinese (Taiwan) (https://app.transifex.com/odoo/teams/41243/zh_TW/)\n"
 "MIME-Version: 1.0\n"
@@ -30,6 +30,16 @@ msgstr "本月已指派的潛在客戶/銷售機會數目"
 #: model:ir.model.fields,field_description:crm.field_crm_recurring_plan__number_of_months
 msgid "# Months"
 msgstr "月數"
+
+#. module: crm
+#: model:ir.model.fields,field_description:crm.field_crm_team__opportunities_count
+msgid "# Opportunities"
+msgstr "銷售機會數目"
+
+#. module: crm
+#: model:ir.model.fields,field_description:crm.field_crm_team__opportunities_overdue_count
+msgid "# Overdue Opportunities"
+msgstr "逾期銷售機會數目"
 
 #. module: crm
 #: model:ir.model.fields,field_description:crm.field_crm_team__lead_unassigned_count
@@ -75,12 +85,6 @@ msgstr "%s的商機"
 
 #. module: crm
 #. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "(sample data)"
-msgstr "（範例數據）"
-
-#. module: crm
-#. odoo-javascript
 #: code:addons/crm/static/src/js/tours/crm.js:0
 msgid "<b>Create your first opportunity.</b>"
 msgstr "<b>創造你的第一個商機</b>"
@@ -100,19 +104,11 @@ msgid "<b>Write a few letters</b> to look for a company, or create a new one."
 msgstr "<b>寫幾封信</b>來尋找一家公司，或建立一家新公司。"
 
 #. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.quick_create_opportunity_form
-msgid "<i class=\"fa fa-briefcase\" title=\"Opportunity Name\"/>"
-msgstr "<i class=\"fa fa-briefcase\" title=\"機會名稱\"/>"
-
-#. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.quick_create_opportunity_form
-msgid "<i class=\"fa fa-building\" title=\"Company\"/>"
-msgstr "<i class=\"fa fa-building\" title=\"公司\"/>"
-
-#. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.quick_create_opportunity_form
-msgid "<i class=\"fa fa-envelope\" title=\"Contact Email\"/>"
-msgstr "<i class=\"fa fa-envelope\" title=\"聯絡電郵\"/>"
+#: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
+msgid ""
+"<i class=\"fa fa-gear\" role=\"img\" title=\"Switch to automatic "
+"probability\" aria-label=\"Switch to automatic probability\"/>"
+msgstr "<i class=\"fa fa-gear\" role=\"img\" title=\"切換至自動成功率\" aria-label=\"切換至自動成功率\"/>"
 
 #. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.sales_team_form_view_in_crm
@@ -120,24 +116,11 @@ msgid "<i class=\"fa fa-info-circle me-2\" title=\"Assigned Lead Count\"/>"
 msgstr "<i class=\"fa fa-info-circle me-2\" title=\"已指派潛在客戶數目\"/>"
 
 #. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.quick_create_opportunity_form
-msgid "<i class=\"fa fa-mobile fa-lg\" title=\"Contact Phone\"/>"
-msgstr "<i class=\"fa fa-mobile fa-lg\" title=\"聯絡電話\"/>"
-
-#. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.quick_create_opportunity_form
-msgid "<i class=\"fa fa-money\" title=\"Expected Revenue\"/>"
-msgstr "<i class=\"fa fa-money\" title=\"預期收入\"/>"
-
-#. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.quick_create_opportunity_form
-msgid "<i class=\"fa fa-refresh\" title=\"Recurring Revenue\"/>"
-msgstr "<i class=\"fa fa-refresh\" title=\"經常性收入\"/>"
-
-#. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.quick_create_opportunity_form
-msgid "<i class=\"fa fa-user\" title=\"Contact\"/>"
-msgstr "<i class=\"fa fa-user\" title=\"聯絡人\"/>"
+#: model_terms:ir.ui.view,arch_db:crm.crm_lead_partner_kanban_view
+msgid ""
+"<i class=\"fa fa-star me-1\" aria-label=\"Opportunities\" role=\"img\" "
+"title=\"Opportunities\"/>"
+msgstr "<i class=\"fa fa-star me-1\" aria-label=\"銷售機會\" role=\"img\" title=\"銷售機會\"/>"
 
 #. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.res_config_settings_view_form
@@ -200,27 +183,32 @@ msgstr "<span class=\"o_stat_text\"> 潛在商機</span>"
 
 #. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
-msgid "<span class=\"opacity-50 p-2 text-nowrap d-none d-sm-block\"> at </span>"
-msgstr "<span class=\"opacity-50 p-2 text-nowrap d-none d-sm-block\"> : </span>"
+msgid "<span class=\"oe_grey p-2 text-nowrap d-none d-sm-block\"> at </span>"
+msgstr "<span class=\"oe_grey p-2 text-nowrap d-none d-sm-block\"> : </span>"
 
 #. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
 msgid ""
-"<span class=\"opacity-50 p-2\" groups=\"crm.group_use_recurring_revenues\"> + </span>\n"
-"                                        <span class=\"opacity-50 p-2\" groups=\"!crm.group_use_recurring_revenues\"> at </span>"
+"<span class=\"oe_grey p-2\" groups=\"crm.group_use_recurring_revenues\"> + </span>\n"
+"                                        <span class=\"oe_grey p-2\" groups=\"!crm.group_use_recurring_revenues\"> at </span>"
 msgstr ""
-"<span class=\"opacity-50 p-2\" groups=\"crm.group_use_recurring_revenues\"> + </span>\n"
-"                                        <span class=\"opacity-50 p-2\" groups=\"!crm.group_use_recurring_revenues\"> : </span>"
+"<span class=\"oe_grey p-2\" groups=\"crm.group_use_recurring_revenues\"> + </span>\n"
+"                                        <span class=\"oe_grey p-2\" groups=\"!crm.group_use_recurring_revenues\"> : </span>"
 
 #. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
-msgid "<span class=\"opacity-50 p-2\"> %</span>"
-msgstr "<span class=\"opacity-50 p-2\">%</span>"
+msgid "<span class=\"oe_grey p-2\"> %</span>"
+msgstr "<span class=\"oe_grey p-2\">%</span>"
 
 #. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.crm_team_member_view_form
-msgid "<span> leads assigned the last 30 days out of a maximum of </span>"
-msgstr "<span> 個潛在客戶已在最近 30 天指派，最多為 </span>"
+msgid "<span class=\"oe_inline\"> (max) </span>"
+msgstr "<span class=\"oe_inline\">（最大限度）</span>"
+
+#. module: crm
+#: model_terms:ir.ui.view,arch_db:crm.crm_team_member_view_form
+msgid "<span class=\"oe_inline\"> / </span>"
+msgstr "<span class=\"oe_inline\">/</span>"
 
 #. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.sales_team_form_view_in_crm
@@ -244,22 +232,167 @@ msgstr "<span>已合併潛在客戶/銷售機會</span>"
 #. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.res_config_settings_view_form
 msgid ""
-"<span>Periodically assign leads based on priorities and filters.</span><br/>\n"
+"<span>Periodically assign leads based on rules</span><br/>\n"
 "                                <span invisible=\"not crm_use_auto_assignment\">\n"
 "                                    All sales teams will use this setting by default unless\n"
 "                                    specified otherwise.\n"
 "                                </span>"
 msgstr ""
-"<span>定期根據優先次序及篩選器，將潛在客戶分派。</span><br/>\n"
+"<span>根據規則定期分配潛在客戶</span><br/>\n"
 "                                <span invisible=\"not crm_use_auto_assignment\">\n"
-"                                    除非另行指定，否則所有銷售團隊都會\n"
-"                                    預設使用此設定。\n"
+"                                    所有銷售團隊預設使用此設置，\n"
+"                                    除非另有指定。\n"
 "                                </span>"
 
 #. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.crm_lead_merge_summary
 msgid "<span>into this one.</span>"
 msgstr "<span>至這一個之中。</span>"
+
+#. module: crm
+#: model:mail.template,body_html:crm.mail_template_demo_crm_lead
+msgid ""
+"<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" style=\"padding-top: 16px; background-color: #F1F1F1; font-family:Verdana, Arial,sans-serif; color: #454748; width: 100%; border-collapse:separate;\"><tr><td align=\"center\">\n"
+"<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"590\" style=\"padding: 24px; background-color: white; color: #454748; border-collapse:separate;\">\n"
+"<tbody>\n"
+"    <!-- HEADER -->\n"
+"    <tr>\n"
+"        <td align=\"center\" style=\"min-width: 590px;\">\n"
+"            <table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"background-color: white; padding: 0; border-collapse:separate;\">\n"
+"                <tr><td valign=\"middle\">\n"
+"                    <span style=\"font-size: 10px;\">Your Lead/Opportunity</span><br/>\n"
+"                    <span style=\"font-size: 20px; font-weight: bold;\" t-out=\"object.name or ''\">Interest in your products</span>\n"
+"                </td><td valign=\"middle\" align=\"right\">\n"
+"                    <img t-attf-src=\"/logo.png?company={{ object.company_id.id }}\" style=\"padding: 0px; margin: 0px; height: 48px;\" t-att-alt=\"object.company_id.name\"/>\n"
+"                </td></tr>\n"
+"                <tr><td colspan=\"2\" style=\"text-align:center;\">\n"
+"                    <hr width=\"100%\" style=\"background-color:rgb(204,204,204);border:medium none;clear:both;display:block;font-size:0px;min-height:1px;line-height:0; margin:4px 0px 32px 0px;\"/>\n"
+"                </td></tr>\n"
+"            </table>\n"
+"        </td>\n"
+"    </tr>\n"
+"    <!-- CONTENT -->\n"
+"    <tr>\n"
+"        <td style=\"min-width: 590px;\">\n"
+"            <table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"590\" style=\"min-width: 590px; background-color: white; padding: 0px 8px 0px 8px; border-collapse:separate;\">\n"
+"                <tr>\n"
+"                    <td valign=\"top\" style=\"font-size: 13px;\">\n"
+"                        <div>\n"
+"                            Hi <t t-out=\"object.partner_id and object.partner_id.name or ''\">Deco Addict</t>,<br/><br/>\n"
+"                            Welcome to <t t-out=\"object.company_id.name or ''\">My Company (San Francisco)</t>.\n"
+"                            It's great to meet you! Now that you're on board, you'll discover what <t t-out=\"object.company_id.name or ''\">My Company (San Francisco)</t> has to offer. My name is <t t-out=\"object.user_id.name or ''\">Marc Demo</t> and I'll help you get the most out of Odoo. Could we plan a quick demo soon?<br/>\n"
+"                            Feel free to reach out at any time!<br/><br/>\n"
+"                            Best,<br/>\n"
+"                            <t t-if=\"object.user_id\">\n"
+"                                <b><t t-out=\"object.user_id.name or ''\">Marc Demo</t></b>\n"
+"                                <br/>Email: <t t-out=\"object.user_id.email or ''\">mark.brown23@example.com</t>\n"
+"                                <br/>Phone: <t t-out=\"object.user_id.phone or ''\">+1 650-123-4567</t>\n"
+"                            </t>\n"
+"                            <t t-else=\"\">\n"
+"                                <t t-out=\"object.company_id.name or ''\">My Company (San Francisco)</t>\n"
+"                            </t>\n"
+"                        </div>\n"
+"                    </td>\n"
+"                </tr>\n"
+"            </table>\n"
+"        </td>\n"
+"    </tr>\n"
+"    <!-- FOOTER -->\n"
+"    <tr>\n"
+"        <td align=\"center\" style=\"min-width: 590px; padding: 0 8px 0 8px; font-size:11px;\">\n"
+"            <hr width=\"100%\" style=\"background-color:rgb(204,204,204);border:medium none;clear:both;display:block;font-size:0px;min-height:1px;line-height:0; margin: 16px 0px 4px 0px;\"/>\n"
+"            <b t-out=\"object.company_id.name or ''\">My Company (San Francisco)</b><br/>\n"
+"            <div style=\"color: #999999;\">\n"
+"                <t t-out=\"object.company_id.phone or ''\">+1 650-123-4567</t>\n"
+"                <t t-if=\"object.company_id.email\">\n"
+"                    | <a t-attf-href=\"'mailto:%s' % {{ object.company_id.email }}\" style=\"text-decoration:none; color: #999999;\" t-out=\"object.company_id.email or ''\">info@yourcompany.com</a>\n"
+"                </t>\n"
+"                <t t-if=\"object.company_id.website\">\n"
+"                    | <a t-attf-href=\"'%s' % {{ object.company_id.website }}\" style=\"text-decoration:none; color: #999999;\" t-out=\"object.company_id.website or ''\">http://www.example.com</a>\n"
+"                </t>\n"
+"            </div>\n"
+"        </td>\n"
+"    </tr>\n"
+"</tbody>\n"
+"</table>\n"
+"</td></tr>\n"
+"<!-- POWERED BY -->\n"
+"<tr><td align=\"center\" style=\"min-width: 590px;\">\n"
+"    Powered by <a target=\"_blank\" href=\"https://www.odoo.com?utm_source=db&amp;utm_medium=email\" style=\"color: #875A7B;\">Odoo</a>\n"
+"</td></tr>\n"
+"</table>\n"
+"        "
+msgstr ""
+"<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" style=\"padding-top: 16px; background-color: #F1F1F1; font-family:Verdana, Arial,sans-serif; color: #454748; width: 100%; border-collapse:separate;\"><tr><td align=\"center\">\n"
+"<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"590\" style=\"padding: 24px; background-color: white; color: #454748; border-collapse:separate;\">\n"
+"<tbody>\n"
+"    <!-- HEADER -->\n"
+"    <tr>\n"
+"        <td align=\"center\" style=\"min-width: 590px;\">\n"
+"            <table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"background-color: white; padding: 0; border-collapse:separate;\">\n"
+"                <tr><td valign=\"middle\">\n"
+"                    <span style=\"font-size: 10px;\">潛在客戶 / 潛在銷售對象新動向</span><br/>\n"
+"                    <span style=\"font-size: 20px; font-weight: bold;\" t-out=\"object.name or ''\">對你的產品感興趣</span>\n"
+"                </td><td valign=\"middle\" align=\"right\">\n"
+"                    <img t-attf-src=\"/logo.png?company={{ object.company_id.id }}\" style=\"padding: 0px; margin: 0px; height: 48px;\" t-att-alt=\"object.company_id.name\"/>\n"
+"                </td></tr>\n"
+"                <tr><td colspan=\"2\" style=\"text-align:center;\">\n"
+"                    <hr width=\"100%\" style=\"background-color:rgb(204,204,204);border:medium none;clear:both;display:block;font-size:0px;min-height:1px;line-height:0; margin:4px 0px 32px 0px;\"/>\n"
+"                </td></tr>\n"
+"            </table>\n"
+"        </td>\n"
+"    </tr>\n"
+"    <!-- CONTENT -->\n"
+"    <tr>\n"
+"        <td style=\"min-width: 590px;\">\n"
+"            <table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"590\" style=\"min-width: 590px; background-color: white; padding: 0px 8px 0px 8px; border-collapse:separate;\">\n"
+"                <tr>\n"
+"                    <td valign=\"top\" style=\"font-size: 13px;\">\n"
+"                        <div>\n"
+"                            <t t-out=\"object.partner_id and object.partner_id.name or ''\">Deco Addict</t> 你好！<br/><br/>\n"
+"                            歡迎來到 <t t-out=\"object.company_id.name or ''\">My Company (San Francisco)</t>，\n"
+"                            很高興認識你！現在你已能夠進入系統，將可以發掘 <t t-out=\"object.company_id.name or ''\">My Company (San Francisco)</t> 有售的產品和提供的服務。我的名字是 <t t-out=\"object.user_id.name or ''\">Marc Demo</t>，會協助你探索和好好利用 Odoo 各項功能。首先，我們能在短期內會面，讓我先簡單示範系統功能嗎？<br/>\n"
+"                            如有任何疑問，歡迎隨時聯絡我。<br/><br/>\n"
+"                            順祝 安康<br/>\n"
+"                            <t t-if=\"object.user_id\">\n"
+"                                <b><t t-out=\"object.user_id.name or ''\">Marc Demo</t></b>\n"
+"                                <br/>電郵： <t t-out=\"object.user_id.email or ''\">mark.brown23@example.com</t>\n"
+"                                <br/>電話： <t t-out=\"object.user_id.phone or ''\">+852 2632 9300</t>\n"
+"                            </t>\n"
+"                            <t t-else=\"\">\n"
+"                                <t t-out=\"object.company_id.name or ''\">My Company (San Francisco)</t>\n"
+"                            </t>\n"
+"                        </div>\n"
+"                    </td>\n"
+"                </tr>\n"
+"            </table>\n"
+"        </td>\n"
+"    </tr>\n"
+"    <!-- FOOTER -->\n"
+"    <tr>\n"
+"        <td align=\"center\" style=\"min-width: 590px; padding: 0 8px 0 8px; font-size:11px;\">\n"
+"            <hr width=\"100%\" style=\"background-color:rgb(204,204,204);border:medium none;clear:both;display:block;font-size:0px;min-height:1px;line-height:0; margin: 16px 0px 4px 0px;\"/>\n"
+"            <b t-out=\"object.company_id.name or ''\">My Company (San Francisco)</b><br/>\n"
+"            <div style=\"color: #999999;\">\n"
+"                <t t-out=\"object.company_id.phone or ''\">+852 2632 9300</t>\n"
+"                <t t-if=\"object.company_id.email\">\n"
+"                    | <a t-attf-href=\"'mailto:%s' % {{ object.company_id.email }}\" style=\"text-decoration:none; color: #999999;\" t-out=\"object.company_id.email or ''\">info@yourcompany.com</a>\n"
+"                </t>\n"
+"                <t t-if=\"object.company_id.website\">\n"
+"                    | <a t-attf-href=\"'%s' % {{ object.company_id.website }}\" style=\"text-decoration:none; color: #999999;\" t-out=\"object.company_id.website or ''\">http://www.example.com</a>\n"
+"                </t>\n"
+"            </div>\n"
+"        </td>\n"
+"    </tr>\n"
+"</tbody>\n"
+"</table>\n"
+"</td></tr>\n"
+"<!-- POWERED BY -->\n"
+"<tr><td align=\"center\" style=\"min-width: 590px;\">\n"
+"    由 <a target=\"_blank\" href=\"https://www.odoo.com?utm_source=db&amp;utm_medium=email\" style=\"color: #875A7B;\">Odoo 系統</a>驅動\n"
+"</td></tr>\n"
+"</table>\n"
+"        "
 
 #. module: crm
 #: model:ir.model.fields,help:crm.field_crm_team__alias_defaults
@@ -282,12 +415,6 @@ msgstr ""
 #. module: crm
 #. odoo-python
 #: code:addons/crm/models/crm_lead.py:0
-msgid "A lead in a Won stage cannot be lost. Move it to another stage first."
-msgstr "處於已贏得階段的潛在客戶，不可設為已損失。請先將其移至其他階段。"
-
-#. module: crm
-#. odoo-python
-#: code:addons/crm/models/crm_lead.py:0
 msgid "A new lead has been created and is not assigned to any team."
 msgstr "已建立新的潛在客戶，它未分配給任何團隊。"
 
@@ -296,25 +423,6 @@ msgstr "已建立新的潛在客戶，它未分配給任何團隊。"
 #: code:addons/crm/models/crm_lead.py:0
 msgid "A new lead has been created for the team \"%(team_name)s\"."
 msgstr "已為「%(team_name)s」團隊建立新的潛在客戶。"
-
-#. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-#: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
-msgid "AI"
-msgstr "AI 人工智能"
-
-#. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "AI-computed chances of winning"
-msgstr "AI 計算的贏得機率"
-
-#. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "AI-computed chances of winning for"
-msgstr "AI 計算的贏得機率："
 
 #. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.sales_team_form_view_in_crm
@@ -358,17 +466,17 @@ msgid "Activities Analysis"
 msgstr "活動分析"
 
 #. module: crm
+#: model:ir.model.fields,field_description:crm.field_res_users__target_sales_done
+msgid "Activities Done Target"
+msgstr "活動完成目標"
+
+#. module: crm
 #: model_terms:ir.actions.act_window,help:crm.crm_activity_report_action
 #: model_terms:ir.actions.act_window,help:crm.crm_activity_report_action_team
 msgid ""
 "Activities marked as Done on Leads will appear here, providing an overview "
 "of lead interactions."
 msgstr "為潛在客戶標記為「已完成」的活動，將在此處顯示，提供與潛在客戶互動情況的概覽。"
-
-#. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.view_crm_case_leads_filter
-msgid "Activities of"
-msgstr "活動："
 
 #. module: crm
 #: model:ir.model,name:crm.model_mail_activity
@@ -427,11 +535,6 @@ msgstr ""
 "                    （例如：演示準備流程、評定資格等）"
 
 #. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.view_crm_case_leads_filter
-msgid "Activity type"
-msgstr "活動類型"
-
-#. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
 msgid "Add a description..."
 msgstr "加入描述⋯"
@@ -442,9 +545,10 @@ msgid "Add a qualification step before the creation of an opportunity"
 msgstr "在建立商機之前添加審核資料步驟"
 
 #. module: crm
-#: model:ir.actions.act_window,name:crm.mail_followers_edit_action_from_lead
-msgid "Add/Remove Followers"
-msgstr "加入/移除關注者"
+#. odoo-javascript
+#: code:addons/crm/static/src/views/forecast_kanban/forecast_kanban_column_quick_create.js:0
+msgid "Add next %s"
+msgstr "加入下一個 %s"
 
 #. module: crm
 #: model:ir.model.fields,help:crm.field_crm_team__assignment_domain
@@ -527,8 +631,6 @@ msgstr "套用消除重複"
 
 #. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.crm_activity_report_view_search
-#: model_terms:ir.ui.view,arch_db:crm.crm_case_kanban_view_leads
-#: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
 #: model_terms:ir.ui.view,arch_db:crm.crm_lost_reason_view_form
 #: model_terms:ir.ui.view,arch_db:crm.crm_lost_reason_view_search
 #: model_terms:ir.ui.view,arch_db:crm.crm_opportunity_report_view_search
@@ -652,15 +754,14 @@ msgid "Average Leads Capacity (on 30 days)"
 msgstr "平均潛在商機胃納量（30 天）"
 
 #. module: crm
-#. odoo-python
-#: code:addons/crm/models/crm_lead.py:0
-msgid "Belgium"
-msgstr "比利時"
-
-#. module: crm
 #: model:ir.model.fields,field_description:crm.field_crm_lead__is_blacklisted
 msgid "Blacklist"
 msgstr "黑名單"
+
+#. module: crm
+#: model:ir.model.fields,field_description:crm.field_crm_lead__mobile_blacklisted
+msgid "Blacklisted Phone Is Mobile"
+msgstr "列入黑名單的電話是手機"
 
 #. module: crm
 #: model:ir.model.fields,field_description:crm.field_crm_lead__phone_blacklisted
@@ -711,6 +812,11 @@ msgid "Calendar Event"
 msgstr "日曆活動"
 
 #. module: crm
+#: model:mail.activity.type,name:crm.mail_activity_demo_call_demo
+msgid "Call for Demo"
+msgstr "來電要求演示"
+
+#. module: crm
 #: model:ir.model.fields,field_description:crm.field_crm_lead__campaign_id
 #: model_terms:ir.ui.view,arch_db:crm.crm_opportunity_report_view_search
 #: model_terms:ir.ui.view,arch_db:crm.view_crm_case_leads_filter
@@ -724,20 +830,13 @@ msgid "Campaign:"
 msgstr "推廣活動："
 
 #. module: crm
+#: model_terms:ir.ui.view,arch_db:crm.crm_lead_lost_view_form
+#: model_terms:ir.ui.view,arch_db:crm.crm_lead_pls_update_view_form
 #: model_terms:ir.ui.view,arch_db:crm.merge_opportunity_form
 #: model_terms:ir.ui.view,arch_db:crm.view_crm_lead2opportunity_partner
 #: model_terms:ir.ui.view,arch_db:crm.view_crm_lead2opportunity_partner_mass
 msgid "Cancel"
 msgstr "取消"
-
-#. module: crm
-#. odoo-python
-#: code:addons/crm/models/crm_stage.py:0
-msgid ""
-"Changing the value of 'Is Won Stage' may induce a large number of "
-"operations, as the probabilities of opportunities in this stage will be "
-"recomputed on saving."
-msgstr "更改「是已贏得階段」的值，可能會引發大量操作，因為此階段銷售機會的成交機率，將會在儲存時重新計算。"
 
 #. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.crm_lost_reason_view_tree
@@ -789,12 +888,6 @@ msgid ""
 msgstr "點擊麵包屑以返回你的管道。Odoo 會在你切換瀏覽畫面時儲存所有修改。"
 
 #. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "Close opportunities to get insights."
-msgstr "關閉機會以獲取分析見解。"
-
-#. module: crm
 #: model:ir.model.fields,field_description:crm.field_crm_activity_report__date_closed
 #: model:ir.model.fields,field_description:crm.field_crm_lead__date_closed
 #: model_terms:ir.ui.view,arch_db:crm.crm_activity_report_view_search
@@ -816,37 +909,21 @@ msgid "Closing Note"
 msgstr "結束備註"
 
 #. module: crm
-#: model:ir.model.fields,field_description:crm.field_crm_lead_scoring_frequency_field__color
-msgid "Color"
-msgstr "顏色"
-
-#. module: crm
 #: model:ir.model.fields,field_description:crm.field_crm_lead__color
 msgid "Color Index"
 msgstr "顏色索引"
 
 #. module: crm
 #: model:ir.model.fields,field_description:crm.field_crm_activity_report__company_id
-#: model:ir.model.fields,field_description:crm.field_crm_lead2opportunity_partner__commercial_partner_id
-#: model:ir.model.fields,field_description:crm.field_crm_lead2opportunity_partner_mass__commercial_partner_id
 #: model:ir.model.fields,field_description:crm.field_crm_lead__company_id
 #: model_terms:ir.ui.view,arch_db:crm.crm_activity_report_view_search
 #: model_terms:ir.ui.view,arch_db:crm.crm_opportunity_report_view_search
-#: model_terms:ir.ui.view,arch_db:crm.quick_create_opportunity_form
 #: model_terms:ir.ui.view,arch_db:crm.view_crm_case_leads_filter
 #: model_terms:ir.ui.view,arch_db:crm.view_crm_case_opportunities_filter
-#: model_terms:ir.ui.view,arch_db:crm.view_crm_lead2opportunity_partner
 msgid "Company"
 msgstr "公司"
 
 #. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
-msgid "Company Information"
-msgstr "公司資訊"
-
-#. module: crm
-#: model:ir.model.fields,field_description:crm.field_crm_lead2opportunity_partner__lead_partner_name
-#: model:ir.model.fields,field_description:crm.field_crm_lead2opportunity_partner_mass__lead_partner_name
 #: model:ir.model.fields,field_description:crm.field_crm_lead__partner_name
 msgid "Company Name"
 msgstr "公司名稱"
@@ -866,12 +943,6 @@ msgstr "公司："
 #: model_terms:ir.ui.view,arch_db:crm.crm_activity_report_view_search
 msgid "Completion Date"
 msgstr "完成日期"
-
-#. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "Computed by Odoo AI using your data."
-msgstr "由 Odoo AI 使用你的資料計算。"
 
 #. module: crm
 #: model:ir.model,name:crm.model_res_config_settings
@@ -894,12 +965,6 @@ msgid "Consider leads created as of the:"
 msgstr "考慮從以下日期建立的潛在商機："
 
 #. module: crm
-#. odoo-python
-#: code:addons/crm/models/crm_lead.py:0
-msgid "Consulting"
-msgstr "諮詢"
-
-#. module: crm
 #: model:ir.model,name:crm.model_res_partner
 #: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
 #: model_terms:ir.ui.view,arch_db:crm.quick_create_opportunity_form
@@ -912,36 +977,19 @@ msgid "Contact Details:"
 msgstr "聯絡資料："
 
 #. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.quick_create_opportunity_form
-msgid "Contact Email"
-msgstr "聯繫電郵"
-
-#. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
 msgid "Contact Information"
 msgstr "聯繫資訊"
 
 #. module: crm
-#: model:ir.model.fields,field_description:crm.field_crm_lead2opportunity_partner__lead_contact_name
-#: model:ir.model.fields,field_description:crm.field_crm_lead2opportunity_partner_mass__lead_contact_name
 #: model:ir.model.fields,field_description:crm.field_crm_lead__contact_name
 msgid "Contact Name"
 msgstr "聯絡人姓名"
 
 #. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.quick_create_opportunity_form
-msgid "Contact Phone"
-msgstr "聯絡電話"
-
-#. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.crm_lead_merge_summary
 msgid "Contact:"
 msgstr "聯絡人："
-
-#. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
-msgid "Contacts"
-msgstr "聯絡人"
 
 #. module: crm
 #: model:ir.model.fields,field_description:crm.field_crm_lead2opportunity_partner__name
@@ -995,6 +1043,8 @@ msgid "Convert to opportunities"
 msgstr "轉為商機"
 
 #. module: crm
+#. odoo-python
+#: code:addons/crm/models/crm_lead.py:0
 #: model:ir.actions.act_window,name:crm.action_crm_lead2opportunity_partner
 #: model:ir.model.fields.selection,name:crm.selection__crm_lead2opportunity_partner__name__convert
 #: model:ir.model.fields.selection,name:crm.selection__crm_lead2opportunity_partner_mass__name__convert
@@ -1040,11 +1090,6 @@ msgid "Create Opportunity"
 msgstr "建立商機"
 
 #. module: crm
-#: model:ir.model,website_form_label:crm.model_res_partner
-msgid "Create a Customer"
-msgstr "建立客戶"
-
-#. module: crm
 #: model_terms:ir.actions.act_window,help:crm.crm_lead_all_leads
 msgid "Create a Lead"
 msgstr "建立潛在商機"
@@ -1086,7 +1131,6 @@ msgstr "建立新潛在商機"
 #. module: crm
 #. odoo-python
 #: code:addons/crm/models/crm_team.py:0
-#: model:ir.model,website_form_label:crm.model_crm_lead
 msgid "Create an Opportunity"
 msgstr "建立銷售機會"
 
@@ -1162,18 +1206,22 @@ msgid "Custom Bounced Message"
 msgstr "自訂彈跳訊息"
 
 #. module: crm
+#. odoo-python
+#: code:addons/crm/models/crm_lead.py:0
 #: model:ir.model.fields,field_description:crm.field_crm_activity_report__partner_id
 #: model:ir.model.fields,field_description:crm.field_crm_lead2opportunity_partner__partner_id
 #: model:ir.model.fields,field_description:crm.field_crm_lead2opportunity_partner_mass__partner_id
 #: model:ir.model.fields,field_description:crm.field_crm_lead__partner_id
 #: model_terms:ir.ui.view,arch_db:crm.view_crm_case_opportunities_filter
+#: model_terms:ir.ui.view,arch_db:crm.view_crm_lead2opportunity_partner
 msgid "Customer"
 msgstr "客戶"
 
 #. module: crm
-#: model:ir.model.fields,field_description:crm.field_crm_lead__commercial_partner_id
-msgid "Customer Company"
-msgstr "客戶公司"
+#. odoo-python
+#: code:addons/crm/models/crm_lead.py:0
+msgid "Customer Email"
+msgstr "客戶信件"
 
 #. module: crm
 #: model:ir.ui.menu,name:crm.res_partner_menu_customer
@@ -1262,13 +1310,6 @@ msgid "Digest"
 msgstr "摘要"
 
 #. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.crm_lead_lost_view_form
-#: model_terms:ir.ui.view,arch_db:crm.crm_lead_pls_update_view_form
-msgid "Discard"
-msgstr "捨棄"
-
-#. module: crm
-#: model:ir.model.fields,field_description:crm.field_calendar_event__display_name
 #: model:ir.model.fields,field_description:crm.field_crm_activity_report__display_name
 #: model:ir.model.fields,field_description:crm.field_crm_lead2opportunity_partner__display_name
 #: model:ir.model.fields,field_description:crm.field_crm_lead2opportunity_partner_mass__display_name
@@ -1281,14 +1322,6 @@ msgstr "捨棄"
 #: model:ir.model.fields,field_description:crm.field_crm_merge_opportunity__display_name
 #: model:ir.model.fields,field_description:crm.field_crm_recurring_plan__display_name
 #: model:ir.model.fields,field_description:crm.field_crm_stage__display_name
-#: model:ir.model.fields,field_description:crm.field_crm_team__display_name
-#: model:ir.model.fields,field_description:crm.field_crm_team_member__display_name
-#: model:ir.model.fields,field_description:crm.field_digest_digest__display_name
-#: model:ir.model.fields,field_description:crm.field_ir_config_parameter__display_name
-#: model:ir.model.fields,field_description:crm.field_mail_activity__display_name
-#: model:ir.model.fields,field_description:crm.field_res_config_settings__display_name
-#: model:ir.model.fields,field_description:crm.field_res_partner__display_name
-#: model:ir.model.fields,field_description:crm.field_utm_campaign__display_name
 msgid "Display Name"
 msgstr "顯示名稱"
 
@@ -1299,32 +1332,16 @@ msgid "Do not have access, skip this data for user's digest email"
 msgstr "沒有存取權限，使用者摘要電郵將跳過此數據"
 
 #. module: crm
-#. odoo-python
-#: code:addons/crm/models/crm_stage.py:0
-msgid "Do you really want to update this stage?"
-msgstr "確定要更新此階段？"
+#: model:ir.model.fields.selection,name:crm.selection__crm_lead2opportunity_partner__action__nothing
+#: model:ir.model.fields.selection,name:crm.selection__crm_lead2opportunity_partner_mass__action__nothing
+msgid "Do not link to a customer"
+msgstr "不要連結至客戶"
 
 #. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "Does not have a"
-msgstr "沒有"
-
-#. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "Does not have an"
-msgstr "沒有"
-
-#. module: crm
+#: model_terms:ir.ui.view,arch_db:crm.crm_team_member_view_form
 #: model_terms:ir.ui.view,arch_db:crm.sales_team_form_view_in_crm
 msgid "Domain"
 msgstr "篩選範圍"
-
-#. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.view_crm_lead2opportunity_partner
-msgid "Don't link to a company"
-msgstr "不要連結至公司"
 
 #. module: crm
 #. odoo-javascript
@@ -1352,6 +1369,7 @@ msgstr "編輯"
 #: model:ir.model.fields,field_description:crm.field_crm_lead__email_from
 #: model_terms:ir.ui.view,arch_db:crm.crm_case_tree_view_oppor
 #: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
+#: model_terms:ir.ui.view,arch_db:crm.quick_create_opportunity_form
 msgid "Email"
 msgstr "電郵"
 
@@ -1390,6 +1408,11 @@ msgstr "電子郵件網域，例如 odoo@example.com 之內的「example.com」"
 #: model_terms:ir.ui.view,arch_db:crm.crm_lead_merge_summary
 msgid "Email:"
 msgstr "電郵："
+
+#. module: crm
+#: model:mail.activity.type,name:crm.mail_activity_type_demo_email_with_template
+msgid "Email: Welcome Demo"
+msgstr "電子郵件：歡迎演示"
 
 #. module: crm
 #: model:ir.model.fields.selection,name:crm.selection__res_config_settings__lead_enrich_auto__auto
@@ -1468,12 +1491,6 @@ msgid "Expected Revenues"
 msgstr "預期收入"
 
 #. module: crm
-#. odoo-python
-#: code:addons/crm/models/crm_lead.py:0
-msgid "Exploration"
-msgstr "探索"
-
-#. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.crm_opportunity_report_view_search
 msgid "Extended Filters"
 msgstr "擴展篩選"
@@ -1484,13 +1501,16 @@ msgid "Extra Info"
 msgstr "額外資訊"
 
 #. module: crm
+#: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
+msgid "Extra Information"
+msgstr "額外資訊"
+
+#. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.crm_lead_pls_update_view_form
 msgid "Extra fields..."
 msgstr "額外的欄位..."
 
 #. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
 #: model:ir.model.fields,field_description:crm.field_crm_lead_scoring_frequency_field__field_id
 msgid "Field"
 msgstr "欄位"
@@ -1505,7 +1525,7 @@ msgstr "欄位備註"
 msgid ""
 "Field used to store sanitized phone number. Helps speeding up searches and "
 "comparisons."
-msgstr "用於存儲已清理電話號碼的欄位。説明加快搜索和比較。"
+msgstr "此欄位用於儲存已清理格式的電話號碼，有助加快資料搜尋及比對。"
 
 #. module: crm
 #: model:ir.model,name:crm.model_crm_lead_scoring_frequency_field
@@ -1516,6 +1536,11 @@ msgstr "可用於預測性引線評分計算的欄位"
 #: model:ir.model.fields,field_description:crm.field_crm_stage__fold
 msgid "Folded in Pipeline"
 msgstr "商機漏斗中折疊"
+
+#. module: crm
+#: model:mail.activity.type,name:crm.mail_activity_demo_followup_quote
+msgid "Follow-up Quote"
+msgstr "跟進報價"
 
 #. module: crm
 #: model:ir.model.fields,field_description:crm.field_crm_lead__message_follower_ids
@@ -1619,21 +1644,9 @@ msgid "Has Message"
 msgstr "有訊息"
 
 #. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "Has a"
-msgstr "有"
-
-#. module: crm
 #: model:ir.model.fields.selection,name:crm.selection__crm_lead__priority__2
 msgid "High"
 msgstr "高"
-
-#. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "Historic win rate"
-msgstr "歷史贏得率"
 
 #. module: crm
 #: model:ir.model.fields.selection,name:crm.selection__res_config_settings__crm_auto_assignment_interval_type__hours
@@ -1641,7 +1654,6 @@ msgid "Hours"
 msgstr "小時"
 
 #. module: crm
-#: model:ir.model.fields,field_description:crm.field_calendar_event__id
 #: model:ir.model.fields,field_description:crm.field_crm_activity_report__id
 #: model:ir.model.fields,field_description:crm.field_crm_lead2opportunity_partner__id
 #: model:ir.model.fields,field_description:crm.field_crm_lead2opportunity_partner_mass__id
@@ -1654,14 +1666,6 @@ msgstr "小時"
 #: model:ir.model.fields,field_description:crm.field_crm_merge_opportunity__id
 #: model:ir.model.fields,field_description:crm.field_crm_recurring_plan__id
 #: model:ir.model.fields,field_description:crm.field_crm_stage__id
-#: model:ir.model.fields,field_description:crm.field_crm_team__id
-#: model:ir.model.fields,field_description:crm.field_crm_team_member__id
-#: model:ir.model.fields,field_description:crm.field_digest_digest__id
-#: model:ir.model.fields,field_description:crm.field_ir_config_parameter__id
-#: model:ir.model.fields,field_description:crm.field_mail_activity__id
-#: model:ir.model.fields,field_description:crm.field_res_config_settings__id
-#: model:ir.model.fields,field_description:crm.field_res_partner__id
-#: model:ir.model.fields,field_description:crm.field_utm_campaign__id
 msgid "ID"
 msgstr "識別號"
 
@@ -1746,12 +1750,25 @@ msgid "Incorrect"
 msgstr "不正確"
 
 #. module: crm
+#: model:ir.model.fields,help:crm.field_crm_lead__mobile_blacklisted
+msgid ""
+"Indicates if a blacklisted sanitized phone number is a mobile number. Helps "
+"distinguish which number is blacklisted             when there is both a "
+"mobile and phone field in a model."
+msgstr "指示列入黑名單的已清理電話號碼是否為手機號碼。當模型中同時存在手機和電話欄位時，有助於區分哪個號碼被列入黑名單。"
+
+#. module: crm
 #: model:ir.model.fields,help:crm.field_crm_lead__phone_blacklisted
 msgid ""
 "Indicates if a blacklisted sanitized phone number is a phone number. Helps "
 "distinguish which number is blacklisted             when there is both a "
 "mobile and phone field in a model."
 msgstr "指示列入黑名單的已清理電話號碼是否為電話號碼。當模型中同時存在手機和電話欄位時，有助於區分哪個號碼被列入黑名單。"
+
+#. module: crm
+#: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
+msgid "Internal Notes"
+msgstr "內部備註"
 
 #. module: crm
 #: model:ir.model.fields,help:crm.field_res_config_settings__crm_auto_assignment_interval_type
@@ -1775,11 +1792,6 @@ msgstr "是關注人"
 #: model:ir.model.fields,field_description:crm.field_crm_lead__is_partner_visible
 msgid "Is Partner Visible"
 msgstr "是否顯示合作夥伴"
-
-#. module: crm
-#: model:ir.model.fields,field_description:crm.field_crm_activity_report__won_status
-msgid "Is Won"
-msgstr "已贏得"
 
 #. module: crm
 #: model:ir.model.fields,field_description:crm.field_crm_stage__is_won
@@ -1825,12 +1837,6 @@ msgstr "生效語言數目"
 #: model:ir.model.fields,field_description:crm.field_crm_lead__lang_id
 msgid "Language"
 msgstr "語言"
-
-#. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "Language is"
-msgstr "語言是"
 
 #. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.crm_lead_merge_summary
@@ -1896,7 +1902,6 @@ msgid "Late Activities"
 msgstr "逾期活動"
 
 #. module: crm
-#: model:ir.model,name:crm.model_crm_lead
 #: model:ir.model.fields.selection,name:crm.selection__crm_activity_report__lead_type__lead
 #: model:ir.model.fields.selection,name:crm.selection__crm_lead__type__lead
 #: model_terms:ir.ui.view,arch_db:crm.crm_case_tree_view_leads
@@ -1905,25 +1910,10 @@ msgid "Lead"
 msgstr "潛在商機"
 
 #. module: crm
-#: model:ir.actions.act_window,name:crm.mail_activity_plan_action_lead
-msgid "Lead Activity Plans"
-msgstr "潛在客戶活動計劃"
-
-#. module: crm
 #: model:ir.model.fields,field_description:crm.field_crm_team__assignment_enabled
 #: model:ir.model.fields,field_description:crm.field_crm_team_member__assignment_enabled
 msgid "Lead Assign"
 msgstr "指定潛在商機"
-
-#. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.crm_team_member_view_form
-msgid "Lead Assignment"
-msgstr "潛在客戶分派"
-
-#. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.crm_team_member_view_form
-msgid "Lead Assignment Filter"
-msgstr "潛在客戶分配篩選器"
 
 #. module: crm
 #. odoo-python
@@ -1952,9 +1942,9 @@ msgid "Lead Mining"
 msgstr "潛在商機挖掘"
 
 #. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.crm_team_member_view_form
-msgid "Lead Priority Filter"
-msgstr "潛在客戶優先等級篩選器"
+#: model:ir.actions.act_window,name:crm.mail_activity_plan_action_lead
+msgid "Lead Plans"
+msgstr "潛在客戶計劃"
 
 #. module: crm
 #: model:ir.model.fields,field_description:crm.field_crm_team__lead_properties_definition
@@ -2015,6 +2005,11 @@ msgid ""
 "Lead/Opportunities automatic assignment is limited to managers or "
 "administrators"
 msgstr "潛在商機/商機將自動分配僅限於經理或管理員"
+
+#. module: crm
+#: model:ir.model,name:crm.model_crm_lead
+msgid "Lead/Opportunity"
+msgstr "潛在商機/商機"
 
 #. module: crm
 #: model:mail.message.subtype,description:crm.mt_lead_create
@@ -2128,12 +2123,6 @@ msgstr "潛在商機/商機數量"
 
 #. module: crm
 #. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "Learn More"
-msgstr "瞭解更多"
-
-#. module: crm
-#. odoo-javascript
 #: code:addons/crm/static/src/js/tours/crm.js:0
 msgid "Let's <b>Schedule an Activity.</b>"
 msgstr "讓我們<b>安排一個活動</b>"
@@ -2174,12 +2163,6 @@ msgid "Locale Code"
 msgstr "地區代碼"
 
 #. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "Located in"
-msgstr "位於"
-
-#. module: crm
 #: model_terms:ir.actions.act_window,help:crm.crm_lead_action_my_activities
 msgid "Looks like nothing is planned."
 msgstr "似乎未有任何計劃。"
@@ -2193,11 +2176,8 @@ msgid ""
 msgstr "似乎沒有已排定的任務。 :(<br><br>提示：你可將任務預先排期，以好好掌握所有必須做的事情！"
 
 #. module: crm
-#: model:ir.model.fields.selection,name:crm.selection__crm_activity_report__won_status__lost
-#: model:ir.model.fields.selection,name:crm.selection__crm_lead__won_status__lost
-#: model_terms:ir.ui.view,arch_db:crm.crm_activity_report_view_search
-#: model_terms:ir.ui.view,arch_db:crm.crm_case_kanban_view_leads
 #: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
+#: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_kanban_forecast
 #: model_terms:ir.ui.view,arch_db:crm.crm_opportunity_report_view_search
 #: model_terms:ir.ui.view,arch_db:crm.view_crm_case_leads_filter
 #: model_terms:ir.ui.view,arch_db:crm.view_crm_case_opportunities_filter
@@ -2246,6 +2226,11 @@ msgid "Low"
 msgstr "低"
 
 #. module: crm
+#: model:mail.activity.type,name:crm.mail_activity_demo_make_quote
+msgid "Make Quote"
+msgstr "製作報價"
+
+#. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.res_config_settings_view_form
 msgid ""
 "Make and receive calls from Odoo with Ringover's dialer. Track calls, SMS "
@@ -2257,13 +2242,6 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:crm.res_config_settings_view_form
 msgid "Manage Recurring Plans"
 msgstr "管理循環計劃"
-
-#. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.res_config_settings_view_form
-msgid ""
-"Manage members or partners. Members get grades and pricelists, partners "
-"allow lead assignment and commission plans."
-msgstr "管理會員或合作夥伴。會員可分等級及套用不同價目表；合作夥伴讓你可分配潛在客戶及使用佣金計劃。"
 
 #. module: crm
 #: model:ir.model.fields,help:crm.field_res_config_settings__crm_auto_assignment_action
@@ -2279,11 +2257,17 @@ msgid "Manually"
 msgstr "手工"
 
 #. module: crm
+#. odoo-python
+#: code:addons/crm/models/crm_lead.py:0
 #: model:ir.actions.act_window,name:crm.crm_lead_lost_action
-#: model_terms:ir.ui.view,arch_db:crm.crm_case_tree_view_leads
-#: model_terms:ir.ui.view,arch_db:crm.crm_case_tree_view_oppor
 msgid "Mark Lost"
 msgstr "標記為已損失"
+
+#. module: crm
+#. odoo-python
+#: code:addons/crm/models/crm_lead.py:0
+msgid "Mark Won"
+msgstr "標記為已贏得"
 
 #. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.crm_lead_lost_view_form
@@ -2355,19 +2339,6 @@ msgid ""
 msgstr "使用者 %(user)s 和團隊 %(team)s 的成員分配篩選條件格式不正確"
 
 #. module: crm
-#. odoo-python
-#: code:addons/crm/models/crm_team_member.py:0
-msgid ""
-"Member preferred assignment domain for user %(user)s and team %(team)s is "
-"incorrectly formatted"
-msgstr "使用者 %(user)s 及團隊 %(team)s 的成員偏好分配篩選條件，格式不正確"
-
-#. module: crm
-#: model:ir.model.fields,field_description:crm.field_res_config_settings__module_partnership
-msgid "Membership / Partnership"
-msgstr "會員計劃 / 合作夥伴計劃"
-
-#. module: crm
 #: model:ir.actions.act_window,name:crm.action_merge_opportunities
 #: model_terms:ir.ui.view,arch_db:crm.merge_opportunity_form
 msgid "Merge"
@@ -2410,6 +2381,17 @@ msgid "Minutes"
 msgstr "分鐘"
 
 #. module: crm
+#: model:ir.model.fields,field_description:crm.field_crm_lead__mobile
+#: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
+msgid "Mobile"
+msgstr "行動電話"
+
+#. module: crm
+#: model_terms:ir.ui.view,arch_db:crm.crm_lead_merge_summary
+msgid "Mobile:"
+msgstr "手提："
+
+#. module: crm
 #: model:crm.recurring.plan,name:crm.crm_recurring_plan_monthly
 msgid "Monthly"
 msgstr "每月"
@@ -2427,7 +2409,6 @@ msgstr "多團隊"
 #. module: crm
 #: model:ir.actions.act_window,name:crm.crm_lead_action_my_activities
 #: model:ir.ui.menu,name:crm.crm_lead_menu_my_activities
-#: model_terms:ir.ui.view,arch_db:crm.view_crm_case_leads_filter
 #: model_terms:ir.ui.view,arch_db:crm.view_crm_case_my_activities_filter
 msgid "My Activities"
 msgstr "我的活動"
@@ -2455,8 +2436,7 @@ msgid "My Pipeline"
 msgstr "我的商機"
 
 #. module: crm
-#. odoo-python
-#: code:addons/crm/models/crm_lead.py:0 model:crm.stage,name:crm.stage_lead1
+#: model:crm.stage,name:crm.stage_lead1
 msgid "New"
 msgstr "新潛在客戶"
 
@@ -2555,11 +2535,6 @@ msgid ""
 msgstr "沒有分配給任何團隊或銷售人員的潛在商機。檢查您的銷售團隊和銷售人員配置以及未分配的潛在商機。"
 
 #. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
-msgid "No closing estimate"
-msgstr "沒有結算估算"
-
-#. module: crm
 #: model_terms:ir.actions.act_window,help:crm.crm_opportunity_report_action
 #: model_terms:ir.actions.act_window,help:crm.crm_opportunity_report_action_lead
 msgid "No data found!"
@@ -2609,13 +2584,7 @@ msgid "Not enough stock"
 msgstr "庫存不足"
 
 #. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
-msgid "Not specified"
-msgstr "未指定"
-
-#. module: crm
 #: model:ir.model.fields,field_description:crm.field_crm_lead__description
-#: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
 msgid "Notes"
 msgstr "備註"
 
@@ -2688,8 +2657,14 @@ msgid "Ongoing"
 msgstr "進行中"
 
 #. module: crm
+#: model_terms:ir.ui.view,arch_db:crm.crm_team_view_kanban_dashboard
 #: model_terms:ir.ui.view,arch_db:crm.view_crm_case_opportunities_filter
 msgid "Open Opportunities"
+msgstr "打開商機"
+
+#. module: crm
+#: model_terms:ir.ui.view,arch_db:crm.crm_team_view_kanban_dashboard
+msgid "Open Opportunity"
 msgstr "打開商機"
 
 #. module: crm
@@ -2698,8 +2673,6 @@ msgid "Opp. Lost Reason"
 msgstr "商機未成交的原因"
 
 #. module: crm
-#. odoo-python
-#: code:addons/crm/models/res_partner.py:0
 #: model:ir.actions.act_window,name:crm.crm_case_form_view_salesteams_opportunity
 #: model:ir.actions.act_window,name:crm.crm_lead_opportunities
 #: model:ir.model.fields,field_description:crm.field_crm_lead2opportunity_partner__duplicated_lead_ids
@@ -2716,7 +2689,7 @@ msgstr "商機未成交的原因"
 #: model_terms:ir.ui.view,arch_db:crm.view_crm_lead2opportunity_partner
 #: model_terms:ir.ui.view,arch_db:crm.view_partners_form_crm1
 msgid "Opportunities"
-msgstr "商機/線索"
+msgstr "商機"
 
 #. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.crm_opportunity_report_view_search
@@ -2738,6 +2711,11 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_graph_forecast
 msgid "Opportunities Forecast"
 msgstr "商機預測"
+
+#. module: crm
+#: model:ir.model.fields,field_description:crm.field_crm_team__opportunities_amount
+msgid "Opportunities Revenues"
+msgstr "商機收入"
 
 #. module: crm
 #: model:ir.model.fields,field_description:crm.field_digest_digest__kpi_crm_opportunities_won
@@ -2814,11 +2792,6 @@ msgid "Opportunity won"
 msgstr "贏得的商機"
 
 #. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.quick_create_opportunity_form
-msgid "Opportunity's Name"
-msgstr "銷售機會名稱"
-
-#. module: crm
 #: model:ir.model.fields,help:crm.field_crm_team__alias_force_thread_id
 msgid ""
 "Optional ID of a thread (record) to which all incoming messages will be "
@@ -2838,14 +2811,20 @@ msgstr "超過 5 年 "
 
 #. module: crm
 #: model:ir.actions.act_window,name:crm.crm_lead_action_team_overdue_opportunity
+#: model_terms:ir.ui.view,arch_db:crm.crm_team_view_kanban_dashboard
 #: model_terms:ir.ui.view,arch_db:crm.view_crm_case_opportunities_filter
 msgid "Overdue Opportunities"
 msgstr "逾期的商機"
 
 #. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
-msgid "Ownership"
-msgstr "擁有權"
+#: model:ir.model.fields,field_description:crm.field_crm_team__opportunities_overdue_amount
+msgid "Overdue Opportunities Revenues"
+msgstr "逾期商機收入"
+
+#. module: crm
+#: model_terms:ir.ui.view,arch_db:crm.crm_team_view_kanban_dashboard
+msgid "Overdue Opportunity"
+msgstr "逾期商機"
 
 #. module: crm
 #: model:ir.model.fields,field_description:crm.field_crm_team__alias_parent_model_id
@@ -2882,18 +2861,8 @@ msgid "Partner is blacklisted"
 msgstr "合作夥伴黑名單"
 
 #. module: crm
-#: model:ir.model.fields,field_description:crm.field_crm_team_member__assignment_optout
-msgid "Pause assignment"
-msgstr "暫停分派"
-
-#. module: crm
-#: model:ir.model.fields.selection,name:crm.selection__crm_activity_report__won_status__pending
-#: model:ir.model.fields.selection,name:crm.selection__crm_lead__won_status__pending
-msgid "Pending"
-msgstr "暫停"
-
-#. module: crm
 #: model:ir.model.fields,field_description:crm.field_crm_lead__phone
+#: model_terms:ir.ui.view,arch_db:crm.quick_create_opportunity_form
 msgid "Phone"
 msgstr "電話"
 
@@ -2903,14 +2872,14 @@ msgid "Phone Blacklisted"
 msgstr "電話黑名單"
 
 #. module: crm
-#: model:ir.model.fields,field_description:crm.field_crm_lead__phone_mobile_search
-msgid "Phone Number"
-msgstr "電話號碼"
-
-#. module: crm
 #: model:ir.model.fields,field_description:crm.field_crm_lead__phone_state
 msgid "Phone Quality"
 msgstr "電話內容確認"
+
+#. module: crm
+#: model:ir.model.fields,field_description:crm.field_crm_lead__phone_mobile_search
+msgid "Phone/Mobile"
+msgstr "電話/手機"
 
 #. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.crm_lead_merge_summary
@@ -2993,11 +2962,6 @@ msgstr "預測潛在商機評分欄位標籤"
 #: model:ir.actions.server,name:crm.website_crm_score_cron_ir_actions_server
 msgid "Predictive Lead Scoring: Recompute Automated Probabilities"
 msgstr "預測潛在商機評分：重新計算自動概率"
-
-#. module: crm
-#: model:ir.model.fields,field_description:crm.field_crm_team_member__assignment_domain_preferred
-msgid "Preference assignment Domain"
-msgstr "偏好分配條件"
 
 #. module: crm
 #: model:ir.model.fields,field_description:crm.field_crm_lead__priority
@@ -3261,17 +3225,6 @@ msgid "Search Opportunities"
 msgstr "搜尋商機"
 
 #. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "See AI-computed chances details"
-msgstr "查看 AI 人工智能計算的機率詳情"
-
-#. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.crm_lead_lost_view_form
-msgid "Select a Lost Reason..."
-msgstr "選擇一個未成交原因⋯"
-
-#. module: crm
 #. odoo-python
 #: code:addons/crm/models/crm_lead.py:0
 msgid "Select at least two Leads/Opportunities from the list to merge them."
@@ -3346,6 +3299,7 @@ msgstr "只顯示銷售機會"
 
 #. module: crm
 #: model:ir.model.fields,field_description:crm.field_crm_team__assignment_optout
+#: model:ir.model.fields,field_description:crm.field_crm_team_member__assignment_optout
 msgid "Skip auto assignment"
 msgstr "跳過自動分配"
 
@@ -3361,12 +3315,6 @@ msgstr "延後7天"
 #: model_terms:ir.ui.view,arch_db:crm.view_crm_case_opportunities_filter
 msgid "Source"
 msgstr "來源"
-
-#. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "Source is"
-msgstr "來源是"
 
 #. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.crm_lead_merge_summary
@@ -3489,11 +3437,6 @@ msgid "Subtype"
 msgstr "子類型"
 
 #. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
-msgid "Switch to AI-computed probabilities"
-msgstr "切換至 AI 人工智能計算機率"
-
-#. module: crm
 #: model:ir.model,name:crm.model_ir_config_parameter
 msgid "System Parameter"
 msgstr "系統參數"
@@ -3503,12 +3446,6 @@ msgstr "系統參數"
 #: model_terms:ir.ui.view,arch_db:crm.view_crm_case_opportunities_filter
 msgid "Tag"
 msgstr "標籤"
-
-#. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "Tagged as"
-msgstr "標記為"
 
 #. module: crm
 #: model:ir.model.fields,field_description:crm.field_crm_activity_report__tag_ids
@@ -3547,12 +3484,6 @@ msgid ""
 "The email address associated with this channel. New emails received will "
 "automatically create new leads assigned to the channel."
 msgstr "與此管道關聯的電郵地址。收到新電郵時，會自動建立新的潛在客戶，並分配至此管道。"
-
-#. module: crm
-#. odoo-python
-#: code:addons/crm/models/crm_lead.py:0
-msgid "The lead %s cannot be won and lost at the same time."
-msgstr "潛在客戶「%s」不可同時設為已贏得及已損失。"
 
 #. module: crm
 #: model:ir.model.fields,help:crm.field_crm_team__alias_model_id
@@ -3725,6 +3656,12 @@ msgid "Tip: Turn a selection of opportunities into a map"
 msgstr "提示：將選擇的商機變成地圖"
 
 #. module: crm
+#: model:ir.model.fields,field_description:crm.field_crm_lead__title
+#: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
+msgid "Title"
+msgstr "稱謂"
+
+#. module: crm
 #. odoo-python
 #: code:addons/crm/models/crm_lead.py:0
 msgid ""
@@ -3745,16 +3682,9 @@ msgid "Too expensive"
 msgstr "太貴了"
 
 #. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "Top Negatives"
-msgstr "最大虧損"
-
-#. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "Top Positives"
-msgstr "最大盈餘"
+#: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
+msgid "Tracking"
+msgstr "追蹤"
 
 #. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.crm_activity_report_view_search
@@ -3810,6 +3740,11 @@ msgstr "UX：如果沒有設定公司，則僅限於潛在商機公司或全部"
 #: model_terms:ir.ui.view,arch_db:crm.view_crm_case_opportunities_filter
 msgid "Unassigned"
 msgstr "未分派"
+
+#. module: crm
+#: model_terms:ir.ui.view,arch_db:crm.crm_team_view_kanban_dashboard
+msgid "Unassigned Lead"
+msgstr "未分派潛在商機"
 
 #. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.crm_team_view_kanban_dashboard
@@ -3921,6 +3856,11 @@ msgid "Used to order stages. Lower is better."
 msgstr "用於階段的排序。數字越小越好。"
 
 #. module: crm
+#: model:ir.model,name:crm.model_res_users
+msgid "User"
+msgstr "使用者"
+
+#. module: crm
 #: model:ir.model.fields,field_description:crm.field_crm_lead__user_company_ids
 msgid "User Company"
 msgstr "用戶公司"
@@ -3939,11 +3879,6 @@ msgstr "可變"
 #: model:ir.model.fields.selection,name:crm.selection__crm_lead__priority__3
 msgid "Very High"
 msgstr "非常高"
-
-#. module: crm
-#: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
-msgid "Visible to all"
-msgstr "向全部人顯示"
 
 #. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.res_config_settings_view_form
@@ -3986,14 +3921,17 @@ msgid "Weeks"
 msgstr "星期"
 
 #. module: crm
+#: model:mail.template,name:crm.mail_template_demo_crm_lead
+msgid "Welcome Demo"
+msgstr "歡迎演示"
+
+#. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.crm_lead_lost_view_form
 msgid "What went wrong?"
 msgstr "什麼地方出錯？"
 
 #. module: crm
 #: model:crm.stage,name:crm.stage_lead4
-#: model:ir.model.fields.selection,name:crm.selection__crm_activity_report__won_status__won
-#: model:ir.model.fields.selection,name:crm.selection__crm_lead__won_status__won
 #: model_terms:ir.ui.view,arch_db:crm.crm_activity_report_view_search
 #: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
 #: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_kanban_forecast
@@ -4008,9 +3946,9 @@ msgid "Won Count"
 msgstr "贏得數量"
 
 #. module: crm
-#: model:ir.model.fields,field_description:crm.field_crm_lead__won_status
-msgid "Won/Lost"
-msgstr "贏得/已損失"
+#: model:ir.model.fields,field_description:crm.field_res_users__target_sales_won
+msgid "Won in Opportunities Target"
+msgstr "贏得商機的最終目標"
 
 #. module: crm
 #. odoo-python
@@ -4080,10 +4018,20 @@ msgid "alias"
 msgstr "別名"
 
 #. module: crm
+#: model_terms:ir.ui.view,arch_db:crm.quick_create_opportunity_form
+msgid "e.g. \"0123456789\""
+msgstr "例:\"0123456789\""
+
+#. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
 #: model_terms:ir.ui.view,arch_db:crm.quick_create_opportunity_form
 msgid "e.g. \"Monthly\""
 msgstr "例:\"每月\""
+
+#. module: crm
+#: model_terms:ir.ui.view,arch_db:crm.quick_create_opportunity_form
+msgid "e.g. \"email@address.com\""
+msgstr "例:\"email@address.com\""
 
 #. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.crm_stage_form
@@ -4092,6 +4040,7 @@ msgstr "例:談判"
 
 #. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.crm_lead_view_form
+#: model_terms:ir.ui.view,arch_db:crm.quick_create_opportunity_form
 msgid "e.g. Product Pricing"
 msgstr "例如： 產品定價"
 
@@ -4111,12 +4060,6 @@ msgid "e.g. mycompany.com"
 msgstr "例：mycompany.com"
 
 #. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "email address"
-msgstr "電郵地址"
-
-#. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.res_config_settings_view_form
 msgid "for the leads created as of the"
 msgstr "對於截至日期建立的潛在商機"
@@ -4127,57 +4070,14 @@ msgid "generate opportunities in your pipeline?<br>"
 msgstr "在您的管道中產生銷售機會？<br>"
 
 #. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "has value"
-msgstr "有資料值"
-
-#. module: crm
-#. odoo-python
-#: code:addons/crm/models/crm_lost_reason.py:0
-msgid "lost_reason_id"
-msgstr "lost_reason_id"
-
-#. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/forecast_kanban/forecast_kanban_column_quick_create.js:0
-msgid "next %s"
-msgstr "下一個 %s"
-
-#. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "phone number"
-msgstr "電話號碼"
-
-#. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "sample data"
-msgstr "範例資料"
-
-#. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "stage"
-msgstr "階段"
-
-#. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "team"
-msgstr "團隊"
+#: model_terms:ir.ui.view,arch_db:crm.crm_case_kanban_view_leads
+msgid "lost"
+msgstr "遺失"
 
 #. module: crm
 #: model:ir.model.fields,field_description:crm.field_crm_stage__team_count
 msgid "team_count"
 msgstr "team_count"
-
-#. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "this lead"
-msgstr "此潛在客戶"
 
 #. module: crm
 #: model_terms:ir.ui.view,arch_db:crm.crm_action_helper
@@ -4192,23 +4092,5 @@ msgstr "到您的 CRM。此電子郵件地址可由銷售團隊成員配置。"
 #. module: crm
 #. odoo-python
 #: code:addons/crm/models/crm_lead.py:0
-msgid "type"
-msgstr "類型"
-
-#. module: crm
-#. odoo-python
-#: code:addons/crm/models/crm_lead.py:0
 msgid "unknown"
 msgstr "未知"
-
-#. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "valid email address"
-msgstr "有效電郵地址"
-
-#. module: crm
-#. odoo-javascript
-#: code:addons/crm/static/src/views/crm_form/crm_pls_tooltip_button.xml:0
-msgid "valid phone number"
-msgstr "有效電話號碼"

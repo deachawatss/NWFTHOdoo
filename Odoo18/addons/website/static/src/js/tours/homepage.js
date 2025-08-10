@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import {
     changeBackgroundColor,
     clickOnSnippet,
@@ -24,7 +26,7 @@ const snippets = [
         groupName: "Content",
     },
     {
-        id: 's_masonry_block_default_template',
+        id: 's_masonry_block',
         name: 'Masonry',
         groupName: "Images",
     },
@@ -50,8 +52,8 @@ const snippets = [
     },
 ];
 
-registerThemeHomepageTour("homepage", () => [
-    ...insertSnippet(snippets[0], { position: "top" }),
+registerThemeHomepageTour('homepage', () => [
+    ...insertSnippet(snippets[0], "top"),
     ...clickOnText(snippets[0], "h1"),
     goBackToBlocks(),
     ...insertSnippet(snippets[1]),
@@ -60,7 +62,7 @@ registerThemeHomepageTour("homepage", () => [
     changeBackgroundColor(),
     goBackToBlocks(),
     ...insertSnippet(snippets[3]),
-    ...insertSnippet(snippets[4], { position: "top" }),
+    ...insertSnippet(snippets[4], "top"),
     ...insertSnippet(snippets[5]),
     ...insertSnippet(snippets[6]),
     ...insertSnippet(snippets[7]),

@@ -1,5 +1,7 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
-import { stepUtils } from '@web_tour/tour_utils';
+import { stepUtils } from '@web_tour/tour_service/tour_utils';
 registry.category("web_tour.tours").add('test_mrp_manual_consumption_02', {
     steps: () => [
         {
@@ -11,7 +13,11 @@ registry.category("web_tour.tours").add('test_mrp_manual_consumption_02', {
         },
         {
             trigger: 'div[name="quantity"] input',
-            run: "edit 16.0 && click body",
+            run: "edit 16.0",
+        },
+        {
+            trigger: 'div[name="picked"] input',
+            run: "click",
         },
         {
             content: "Click Pager",

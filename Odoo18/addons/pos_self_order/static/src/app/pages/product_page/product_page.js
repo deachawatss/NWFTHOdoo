@@ -1,66 +1,64 @@
-import { Component, onWillUnmount, useState, useSubEnv, useRef, onMounted } from "@odoo/owl";
-import { useSelfOrder } from "@pos_self_order/app/services/self_order_service";
-import { useService } from "@web/core/utils/hooks";
+import { Component, onWillUnmount, useState, useSubEnv } from "@odoo/owl";
+import { useSelfOrder } from "@pos_self_order/app/self_order_service";
 import { AttributeSelection } from "@pos_self_order/app/components/attribute_selection/attribute_selection";
-import { computeProductPrice } from "../../services/card_utils";
-import { useScrollShadow } from "../../utils/scroll_shadow_hook";
+import { useService } from "@web/core/utils/hooks";
 
 export class ProductPage extends Component {
     static template = "pos_self_order.ProductPage";
+    static props = ["product", "back?", "onValidate?"];
     static components = { AttributeSelection };
-    static props = ["productTemplate"];
 
     setup() {
         this.selfOrder = useSelfOrder();
         this.router = useService("router");
+        useSubEnv({ selectedValues: {}, customValues: {}, editable: this.editableProductLine });
 
-        if (!this.props.productTemplate) {
-            this.goBack();
+        if (!this.props.product) {
+            this.router.navigate("product_list");
             return;
         }
 
-        const editedLine = this.selfOrder.editedLine;
-        useSubEnv({ selectedValues: {} });
-
-        this.selfOrder.lastEditedProductId = this.props.productTemplate.id;
+        this.selfOrder.lastEditedProductId = this.props.product.id;
         this.state = useState({
-            qty: editedLine ? editedLine.qty : 1,
+            qty: 1,
+            customer_note: "",
+            product: this.props.product,
             selectedValues: this.env.selectedValues,
-            topShadowOpacity: 0,
-            bottomShadowOpacity: 0,
-            showStickyTitle: false,
         });
-        this.productNameRef = useRef("productName");
-        this.scrollContainerRef = useRef("scrollContainer");
-        this.scrollShadow = useScrollShadow(this.scrollContainerRef);
 
-        onMounted(() => {
-            const productNameEl = this.productNameRef.el;
-            if (productNameEl) {
-                this.observer = new IntersectionObserver(
-                    ([entry]) => {
-                        this.state.showStickyTitle = !entry.isIntersecting;
-                    },
-                    {
-                        root: null,
-                        threshold: 0,
-                    }
-                );
-                this.observer.observe(productNameEl);
-            }
-        });
+        this.initState();
 
         onWillUnmount(() => {
             this.selfOrder.editedLine = null;
-
-            if (this.observer) {
-                this.observer.unobserve(this.productNameRef.el);
-            }
         });
     }
 
-    get productTemplate() {
-        return this.props.productTemplate;
+    get product() {
+        return this.props.product;
+    }
+
+    get attributes() {
+        return this.product.attributes;
+    }
+
+    get editableProductLine() {
+        const order = this.selfOrder.currentOrder;
+        return !(
+            this.selfOrder.editedLine &&
+            this.selfOrder.editedLine.uuid &&
+            order.lastChangesSent[this.selfOrder.editedLine.uuid]
+        );
+    }
+
+    initState() {
+        const editedLine = this.selfOrder.editedLine;
+
+        if (editedLine) {
+            this.state.customer_note = editedLine.customer_note;
+            this.state.qty = editedLine.qty;
+        }
+
+        return 0;
     }
 
     changeQuantity(increase) {
@@ -73,88 +71,28 @@ export class ProductPage extends Component {
         return increase ? this.state.qty++ : this.state.qty--;
     }
 
-    isProductAvailable() {
-        return this.props.productTemplate.self_order_available;
-    }
-
     get showQtyButtons() {
-        return this.isProductAvailable();
+        return this.props.product.self_order_available;
     }
-
-    hasMissingAttributeValues() {
-        const selection = this.state.selectedValues[this.productTemplate.id];
-        if (!selection) {
-            return true;
-        }
-        return selection.hasMissingAttributeValues(this.productTemplate.attribute_line_ids);
-    }
-
-    isAddToCartEnabled() {
-        return (
-            this.isProductAvailable() &&
-            !this.hasMissingAttributeValues() &&
-            !this.isArchivedCombination()
+    addToCart() {
+        this.selfOrder.addToCart(
+            this.props.product,
+            this.state.qty,
+            this.state.customer_note,
+            this.env.selectedValues,
+            this.env.customValues
         );
+        this.router.back();
+    }
+
+    isEveryValueSelected() {
+        return Object.values(this.state.selectedValues).every((value) => value);
     }
 
     isArchivedCombination() {
-        if (this.hasMissingAttributeValues()) {
-            return false;
-        }
-        const selection = this.state.selectedValues[this.productTemplate.id];
-        if (!selection) {
-            return false;
-        }
-        const variantAttributeValueIds = selection
-            .getAllSelectedAttributeValuesIds()
+        const variantAttributeValueIds = Object.values(this.state.selectedValues)
+            .filter((attr) => typeof attr !== "object")
             .map((attr) => Number(attr));
-        return this.props.productTemplate._isArchivedCombination(variantAttributeValueIds);
+        return this.props.product._isArchivedCombination(variantAttributeValueIds);
     }
-
-    getProductPrice() {
-        return computeProductPrice(
-            this.selfOrder,
-            this.props.productTemplate,
-            this.getSelectedAttributesValues(),
-            this.state.qty
-        );
-    }
-
-    getSelectedAttributesValues() {
-        return (
-            this.state.selectedValues[
-                this.productTemplate.id
-            ]?.getAllSelectedAttributeValuesIds() || []
-        );
-    }
-
-    addToCart() {
-        if (!this.isAddToCartEnabled()) {
-            return;
-        }
-        this.selfOrder.addToCart(
-            this.props.productTemplate,
-            this.state.qty,
-            "",
-            this.getSelectedAttributesValues(),
-            this.state.selectedValues[this.productTemplate.id]?.getAllCustomValues()
-        );
-
-        this.goBack();
-    }
-
-    goBack() {
-        this.router.navigate("product_list");
-    }
-
-    /*
-    // TODO
-    get editableProductLine() {
-        const order = this.selfOrder.currentOrder;
-        return !(
-            this.selfOrder.editedLine &&
-            this.selfOrder.editedLine.uuid &&
-            order.lastChangesSent[this.selfOrder.editedLine.uuid]
-        );
-    }*/
 }

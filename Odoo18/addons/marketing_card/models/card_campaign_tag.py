@@ -13,7 +13,4 @@ class CardCampaignTag(models.Model):
     name = fields.Char(required=True)
     color = fields.Integer(default=_get_default_color)
 
-    _name_uniq = models.Constraint(
-        'unique(name)',
-        'Tags may not reuse existing names.',
-    )
+    _sql_constraints = [('name_uniq', "unique(name)", "Tags may not reuse existing names.")]

@@ -102,15 +102,21 @@
                         <setting id="tenor_api_key" string="Tenor GIF API key" help="Add a Tenor GIF API key to enable GIFs support." documentation="https://developers.google.com/tenor/guides/quickstart#setup">
                             <field name="tenor_api_key" placeholder="Paste your API key"/>
                         </setting>
+                        <setting id="tenor_content_filter" string="Tenor GIF content filter" help="Select the content filter used for filtering GIFs" documentation="https://developers.google.com/tenor/guides/content-filtering">
+                            <field name="tenor_content_filter"/>
+                        </setting>
+                        <setting id="tenor_gif_limit" string="Tenor GIF limits" help="Fetch up to the specified number of GIF.">
+                            <field name="tenor_gif_limit"/>
+                        </setting>
                         <setting string="Message Translation" help="Google Translate Integration" id="message_translation_setting" documentation="https://cloud.google.com/translate/docs/setup">
                             <field name="google_translate_api_key" placeholder="Paste your API key"/>
                         </setting>
                     </block>
                 </div>
                 <setting id="document_layout_setting" position="after">
-                    <setting string="Email Templates" help="Customize the look and feel of automated emails" id="mail_templates_setting" groups="mail.group_mail_template_editor,base.group_system" company_dependent="1">
+                    <setting string="Email Templates" help="Customize the look and feel of automated emails" id="mail_templates_setting" groups="mail.group_mail_template_editor,base.group_system">
                         <div class="w-50 row">
-                            <span class="d-block w-75 py-2">Button Text</span>
+                            <span class="d-block w-75 py-2">Header Color</span>
                             <field name="email_primary_color" class="d-block w-25 p-0 m-0" widget="color"/>
                         </div>
                         <div class="w-50 row mt-1">

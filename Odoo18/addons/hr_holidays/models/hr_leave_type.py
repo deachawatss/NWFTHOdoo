@@ -3,7 +3,6 @@
 # Copyright (c) 2005-2006 Axelor SARL. (http://www.axelor.com)
 
 import logging
-import operator as py_operator
 import pytz
 
 from collections import defaultdict
@@ -12,26 +11,15 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
-from odoo.fields import Domain
 from odoo.tools import format_date, frozendict
 from odoo.tools.translate import _
 from odoo.tools.float_utils import float_round
 
 _logger = logging.getLogger(__name__)
 
-PY_OPERATORS = {
-    '>': py_operator.gt,
-    '<': py_operator.lt,
-    '>=': py_operator.ge,
-    '<=': py_operator.le,
-    '=': py_operator.eq,
-    '!=': py_operator.ne,
-    'in': lambda elem, container: elem in container,
-}
 
-
-class HrLeaveType(models.Model):
-    _name = 'hr.leave.type'
+class HolidaysType(models.Model):
+    _name = "hr.leave.type"
     _description = "Time Off Type"
     _order = 'sequence'
 
@@ -39,7 +27,7 @@ class HrLeaveType(models.Model):
     def _model_sorting_key(self, leave_type):
         remaining = leave_type.virtual_remaining_leaves > 0
         taken = leave_type.leaves_taken > 0
-        return -1 * leave_type.sequence, not leave_type.employee_requests and remaining, leave_type.employee_requests and remaining, taken
+        return -1 * leave_type.sequence, leave_type.employee_requests == 'no' and remaining, leave_type.employee_requests == 'yes' and remaining, taken
 
     name = fields.Char('Time Off Type', required=True, translate=True)
     sequence = fields.Integer(default=100,
@@ -49,7 +37,7 @@ class HrLeaveType(models.Model):
     icon_id = fields.Many2one('ir.attachment', string='Cover Image', domain="[('res_model', '=', 'hr.leave.type'), ('res_field', '=', 'icon_id')]")
     active = fields.Boolean('Active', default=True,
                             help="If the active field is set to false, it will allow you to hide the time off type without removing it.")
-    hide_on_dashboard = fields.Boolean(default=False, string="Hide On Dashboard", help="Non-visible allocations can still be selected when taking a leave, but will simply not be displayed on the leave dashboard.")
+    show_on_dashboard = fields.Boolean(default=True, help="Non-visible allocations can still be selected when taking a leave, but will simply not be displayed on the leave dashboard.")
 
     # employee specific computed data
     max_leaves = fields.Float(compute='_compute_leaves', string='Maximum Allowed', search='_search_max_leaves',
@@ -65,32 +53,33 @@ class HrLeaveType(models.Model):
         compute='_compute_allocation_count', string='Allocations')
     group_days_leave = fields.Float(
         compute='_compute_group_days_leave', string='Group Time Off')
-    is_used = fields.Boolean(compute="_compute_is_used")
-    company_id = fields.Many2one('res.company', string='Company',
-                                 domain=lambda self: [('id', 'in', self.env.companies.ids)])
-    country_id = fields.Many2one('res.country', string='Country',
-                                 default=lambda self: self.env.company.country_id,
-                                 compute="_compute_country_id",
-                                 store=True,
-                                 domain=lambda self: [('id', 'in', self.env.companies.country_id.ids)])
+    company_id = fields.Many2one('res.company', string='Company', default=lambda self: self.env.company)
+    country_id = fields.Many2one('res.country', string='Country', related='company_id.country_id', readonly=True)
     country_code = fields.Char(related='country_id.code', depends=['country_id'], readonly=True)
     responsible_ids = fields.Many2many(
-        'res.users', 'hr_leave_type_res_users_rel', 'hr_leave_type_id', 'res_users_id', string='Notify HR',
-        domain=lambda self: [('all_group_ids', 'in', self.env.ref('hr_holidays.group_hr_holidays_user').id),
+        'res.users', 'hr_leave_type_res_users_rel', 'hr_leave_type_id', 'res_users_id', string='Notified Time Off Officer',
+        domain=lambda self: [('groups_id', 'in', self.env.ref('hr_holidays.group_hr_holidays_user').id),
                              ('share', '=', False),
                              ('company_ids', 'in', self.env.company.id)],
+                             auto_join=True,
         help="Choose the Time Off Officers who will be notified to approve allocation or Time Off Request. If empty, nobody will be notified")
     leave_validation_type = fields.Selection([
-        ('no_validation', 'None needed'),
+        ('no_validation', 'No Validation'),
         ('hr', 'By Time Off Officer'),
         ('manager', "By Employee's Approver"),
         ('both', "By Employee's Approver and Time Off Officer")], default='hr', string='Time Off Validation')
-    requires_allocation = fields.Boolean(default=True, required=True, string='Requires allocation')
-    employee_requests = fields.Boolean(default=False, required=True, string="Allow Employee Requests",
+    requires_allocation = fields.Selection([
+        ('yes', 'Yes'),
+        ('no', 'No Limit')], default="yes", required=True, string='Requires allocation',
+        help="""Yes: Time off requests need to have a valid allocation.\n
+              No Limit: Time Off requests can be taken without any prior allocation.""")
+    employee_requests = fields.Selection([
+        ('yes', 'Extra Days Requests Allowed'),
+        ('no', 'Not Allowed')], default="no", required=True, string="Employee Requests",
         help="""Extra Days Requests Allowed: User can request an allocation for himself.\n
         Not Allowed: User cannot request an allocation.""")
     allocation_validation_type = fields.Selection([
-        ('no_validation', 'None needed'),
+        ('no_validation', 'No Validation'),
         ('hr', 'By Time Off Officer'),
         ('manager', "By Employee's Approver"),
         ('both', "By Employee's Approver and Time Off Officer")], default='hr', string='Approval',
@@ -104,10 +93,10 @@ class HrLeaveType(models.Model):
                                  help="The distinction between working time (ex. Attendance) and absence (ex. Training) will be used in the computation of Accrual's plan rate.")
     request_unit = fields.Selection([
         ('day', 'Day'),
-        ('half_day', 'Half-Day'),
-        ('hour', 'Hours')], default='day', string='Duration Type', required=True)
+        ('half_day', 'Half Day'),
+        ('hour', 'Hours')], default='day', string='Take Time Off in', required=True)
     unpaid = fields.Boolean('Is Unpaid', default=False)
-    include_public_holidays_in_duration = fields.Boolean('Ignore Public Holidays', default=False, help="Public holidays should be counted in the leave duration when applying for leaves")
+    include_public_holidays_in_duration = fields.Boolean('Public Holiday Included', default=False, help="Public holidays should be counted in the leave duration when applying for leaves")
     leave_notif_subtype_id = fields.Many2one('mail.message.subtype', string='Time Off Notification Subtype', default=lambda self: self.env.ref('hr_holidays.mt_leave', raise_if_not_found=False))
     allocation_notif_subtype_id = fields.Many2one('mail.message.subtype', string='Allocation Notification Subtype', default=lambda self: self.env.ref('hr_holidays.mt_leave_allocation', raise_if_not_found=False))
     support_document = fields.Boolean(string='Supporting Document')
@@ -119,10 +108,11 @@ class HrLeaveType(models.Model):
     max_allowed_negative = fields.Integer(string="Maximum Excess Amount",
         help="Define the maximum level of negative days this kind of time off can reach. Value must be at least 1.")
 
-    _check_negative = models.Constraint(
+    _sql_constraints = [(
+        'check_negative',
         'CHECK(NOT allows_negative OR max_allowed_negative > 0)',
         'The maximum excess amount should be greater than 0. If you want to set 0, disable the negative cap instead.'
-    )
+    )]
 
     @api.model
     def _search_valid(self, operator, value):
@@ -130,23 +120,31 @@ class HrLeaveType(models.Model):
             or that don't need an allocation
             return [('id', domain_operator, [x['id'] for x in res])]
         """
-        if operator not in ('in', 'not in'):
-            return NotImplemented
 
-        if {'default_date_from', 'default_date_to', 'tz'} <= set(self.env.context):
-            default_date_from_dt = fields.Datetime.to_datetime(self.env.context.get('default_date_from'))
-            default_date_to_dt = fields.Datetime.to_datetime(self.env.context.get('default_date_to'))
+        if {'default_date_from', 'default_date_to', 'tz'} <= set(self._context):
+            default_date_from_dt = fields.Datetime.to_datetime(self._context.get('default_date_from'))
+            default_date_to_dt = fields.Datetime.to_datetime(self._context.get('default_date_to'))
 
             # Cast: Datetime -> Date using user's tz
             date_from = fields.Date.context_today(self, default_date_from_dt)
             date_to = fields.Date.context_today(self, default_date_to_dt)
 
         else:
-            current_year = fields.Date.today().year
-            date_from = date(current_year, 1, 1)
-            date_to = date(current_year, 12, 31)
+            date_from = fields.Date.today().strftime('%Y-1-1')
+            date_to = fields.Date.today().strftime('%Y-12-31')
 
-        employee_id = self.env.context.get('default_employee_id', self.env.context.get('employee_id')) or self.env.user.employee_id.id
+        employee_id = self._context.get('default_employee_id', self._context.get('employee_id')) or self.env.user.employee_id.id
+
+        if not isinstance(value, bool):
+            raise ValueError('Invalid value: %s' % (value))
+        if operator not in ['=', '!=']:
+            raise ValueError('Invalid operator: %s' % (operator))
+        # '!=' True or '=' False
+        if (operator == '=') ^ value:
+            new_operator = 'not in'
+        # '=' True or '!=' False
+        else:
+            new_operator = 'in'
 
         leave_types = self.env['hr.leave.allocation'].search([
             ('employee_id', '=', employee_id),
@@ -157,15 +155,14 @@ class HrLeaveType(models.Model):
             ('date_to', '=', False),
         ]).holiday_status_id
 
-        return [('id', operator, leave_types.ids)]
+        return [('id', new_operator, leave_types.ids)]
 
     @api.constrains('include_public_holidays_in_duration')
     def _check_overlapping_public_holidays(self):
-        # checking for the current user's company too
-        companies = self.company_id | self.env.company
         public_holidays = self.env['resource.calendar.leaves'].search([
             ('resource_id', '=', False),
-            ('company_id', 'in', companies.ids),
+            '|', ('company_id', 'in', self.company_id.ids),
+                 ('company_id', '=', self.env.company.id),
         ])
 
         # Define the date range for the current year
@@ -193,28 +190,23 @@ class HrLeaveType(models.Model):
 
     @api.depends('requires_allocation', 'max_leaves', 'virtual_remaining_leaves')
     def _compute_valid(self):
-        date_from = self.env.context.get('default_date_from', fields.Datetime.today())
-        date_to = self.env.context.get('default_date_to', fields.Datetime.today())
-        employee_id = self.env.context.get('default_employee_id', self.env.context.get('employee_id', self.env.user.employee_id.id))
-        allocation_by_leave_type = dict(self.env['hr.leave.allocation']._read_group(
-            domain=Domain([
-                ('holiday_status_id', 'in', self.filtered(lambda leave_type: leave_type.requires_allocation).ids),
-                ('employee_id', '=', employee_id),
-                ('date_from', '<=', date_from),
-                '|',
+        date_from = self._context.get('default_date_from', fields.Datetime.today())
+        date_to = self._context.get('default_date_to', fields.Datetime.today())
+        employee_id = self._context.get('default_employee_id', self._context.get('employee_id', self.env.user.employee_id.id))
+        for leave_type in self:
+            if leave_type.requires_allocation == 'yes':
+                allocations = self.env['hr.leave.allocation'].search([
+                    ('holiday_status_id', '=', leave_type.id),
+                    ('employee_id', '=', employee_id),
+                    ('date_from', '<=', date_from),
+                    '|',
                     ('date_to', '>=', date_to),
                     ('date_to', '=', False),
-            ]),
-            groupby=['holiday_status_id'],
-            aggregates=['id:recordset'],
-        ))
-        for leave_type in self:
-            if leave_type.requires_allocation:
-                allocations = allocation_by_leave_type.get(leave_type, self.env['hr.leave.allocation'])
+                ])
                 allowed_excess = leave_type.max_allowed_negative if leave_type.allows_negative else 0
                 allocations = allocations.filtered(lambda alloc:
                     alloc.allocation_type == 'accrual'
-                    or (alloc.max_leaves > 0 and alloc.virtual_remaining_leaves > -allowed_excess)
+                    or (alloc.max_leaves > 0 and (alloc.max_leaves - alloc.leaves_taken) > -allowed_excess)
                 )
                 leave_type.has_valid_allocation = bool(allocations)
             else:
@@ -227,21 +219,11 @@ class HrLeaveType(models.Model):
 
     @api.constrains('requires_allocation')
     def check_allocation_requirement_edit_validity(self):
-        if not self.env.context.get('install_mode') and self.env['hr.leave'].search_count([('holiday_status_id', 'in', self.ids)], limit=1):
+        if self.env['hr.leave'].search_count([('holiday_status_id', 'in', self.ids)], limit=1):
             raise UserError(_("The allocation requirement of a time off type cannot be changed once leaves of that type have been taken. You should create a new time off type instead."))
 
-    @api.depends('company_id')
-    def _compute_country_id(self):
-        for holiday_type in self:
-            if holiday_type.company_id:
-                holiday_type.country_id = holiday_type.company_id.country_id
-
     def _search_max_leaves(self, operator, value):
-        op = PY_OPERATORS.get(operator)
-        if not op:
-            return NotImplemented
-        if operator != 'in':
-            value = float(value)
+        value = float(value)
         employee = self.env['hr.employee']._get_contextual_employee()
         leaves = defaultdict(int)
 
@@ -252,26 +234,57 @@ class HrLeaveType(models.Model):
             ])
             for allocation in allocations:
                 leaves[allocation.holiday_status_id.id] += allocation.number_of_days
-        valid_leaves = [leaf for leaf, number in leaves.items() if op(number, value)]
-        return [('id', 'in', valid_leaves)]
+        valid_leave = []
+        for leave in leaves:
+            if operator == '>':
+                if leaves[leave] > value:
+                    valid_leave.append(leave)
+            elif operator == '<':
+                if leaves[leave] < value:
+                    valid_leave.append(leave)
+            elif operator == '=':
+                if leaves[leave] == value:
+                    valid_leave.append(leave)
+            elif operator == '!=':
+                if leaves[leave] != value:
+                    valid_leave.append(leave)
+
+        return [('id', 'in', valid_leave)]
 
     def _search_virtual_remaining_leaves(self, operator, value):
-        def is_valid(leave_type):
-            return leave_type.requires_allocation != "yes" or op(leave_type.virtual_remaining_leaves, value)
-        op = PY_OPERATORS.get(operator)
-        if not op:
-            return NotImplemented
-        if operator != 'in':
-            value = float(value)
+        value = float(value)
         leave_types = self.env['hr.leave.type'].search([])
-        return [('id', 'in', leave_types.filtered(is_valid).ids)]
+        valid_leave_types = self.env['hr.leave.type']
 
-    @api.depends_context('employee_id', 'default_employee_id', 'leave_date_from', 'default_date_from')
+        for leave_type in leave_types:
+            if leave_type.requires_allocation == "yes":
+                if operator == '>' and leave_type.virtual_remaining_leaves > value:
+                    valid_leave_types |= leave_type
+                elif operator == '<' and leave_type.virtual_remaining_leaves < value:
+                    valid_leave_types |= leave_type
+                elif operator == '>=' and leave_type.virtual_remaining_leaves >= value:
+                    valid_leave_types |= leave_type
+                elif operator == '<=' and leave_type.virtual_remaining_leaves <= value:
+                    valid_leave_types |= leave_type
+                elif operator == '=' and leave_type.virtual_remaining_leaves == value:
+                    valid_leave_types |= leave_type
+                elif operator == '!=' and leave_type.virtual_remaining_leaves != value:
+                    valid_leave_types |= leave_type
+            else:
+                valid_leave_types |= leave_type
+
+        return [('id', 'in', valid_leave_types.ids)]
+
+    @api.depends_context('employee_id', 'default_employee_id', 'default_date_from')
     def _compute_leaves(self):
         employee = self.env['hr.employee']._get_contextual_employee()
+        target_date = self._context['default_date_from'] if 'default_date_from' in self._context else None
         # This is a workaround to save the date value in context for next triggers
         # when context gets cleaned and 'default_' context keys gets removed
-        target_date = self.env.context.get('leave_date_from') or self.env.context.get('default_date_from')
+        if target_date:
+            self.env.context = frozendict(self.env.context, leave_date_from=self._context['default_date_from'])
+        else:
+            target_date = self._context.get('leave_date_from', None)
         data_days = self.get_allocation_data(employee, target_date)[employee]
         for holiday_status in self:
             result = [item for item in data_days if item[0] == holiday_status.name]
@@ -287,7 +300,7 @@ class HrLeaveType(models.Model):
             ('holiday_status_id', 'in', self.ids),
             ('date_from', '>=', min_datetime),
             ('date_from', '<=', max_datetime),
-            ('state', 'in', ('confirm', 'validate', 'validate1')),
+            ('state', 'in', ('confirm', 'validate')),
         ]
 
         grouped_res = self.env['hr.leave.allocation']._read_group(
@@ -323,36 +336,14 @@ class HrLeaveType(models.Model):
         for leave_type in self:
             leave_type.accrual_count = mapped_data.get(leave_type.id, 0)
 
-    def _compute_is_used(self):
-        leaves_count = self._leaves_count_by_leave_type_id()
-        allocations_count = self._allocations_count_by_leave_type_id()
+    @api.depends('employee_requests')
+    def _compute_allocation_validation_type(self):
         for leave_type in self:
-            leave_type.is_used = leaves_count.get(leave_type.id, 0) or allocations_count.get(leave_type.id, 0)
-
-    def _leaves_count_by_leave_type_id(self):
-        leave_domain = [
-            ('holiday_status_id', 'in', self.ids),
-        ]
-        leaves_count = self.env['hr.leave']._read_group(
-            leave_domain,
-            ['holiday_status_id'],
-            ['__count'],
-        )
-        return {holiday_status.id: count for holiday_status, count in leaves_count}
-
-    def _allocations_count_by_leave_type_id(self):
-        allocation_domain = [
-            ('holiday_status_id', 'in', self.ids),
-        ]
-        allocations_count = self.env['hr.leave.allocation']._read_group(
-            allocation_domain,
-            ['holiday_status_id'],
-            ['__count'],
-        )
-        return {holiday_status.id: count for holiday_status, count in allocations_count}
+            if leave_type.employee_requests == 'no':
+                leave_type.allocation_validation_type = 'hr'
 
     def requested_display_name(self):
-        return self.env.context.get('holiday_status_display_name', True) and self.env.context.get('employee_id')
+        return self._context.get('holiday_status_display_name', True) and self._context.get('employee_id')
 
     @api.depends('requires_allocation', 'virtual_remaining_leaves', 'max_leaves', 'request_unit')
     @api.depends_context('holiday_status_display_name', 'employee_id')
@@ -362,7 +353,7 @@ class HrLeaveType(models.Model):
             return super()._compute_display_name()
         for record in self:
             name = record.name
-            if record.requires_allocation:
+            if record.requires_allocation == "yes":
                 remaining_time = float_round(record.virtual_remaining_leaves, precision_digits=2) or 0.0
                 maximum = float_round(record.max_leaves, precision_digits=2) or 0.0
 
@@ -373,7 +364,7 @@ class HrLeaveType(models.Model):
             record.display_name = name
 
     @api.model
-    def _search(self, domain, offset=0, limit=None, order=None, **kwargs):
+    def _search(self, domain, offset=0, limit=None, order=None):
         """ Override _search to order the results, according to some employee.
         The order is the following
 
@@ -388,11 +379,11 @@ class HrLeaveType(models.Model):
         employee = self.env['hr.employee']._get_contextual_employee()
         if order == self._order and employee:
             # retrieve all leaves, sort them, then apply offset and limit
-            leaves = self.browse(super()._search(domain, **kwargs))
+            leaves = self.browse(super()._search(domain))
             leaves = leaves.sorted(key=self._model_sorting_key, reverse=True)
             leaves = leaves[offset:(offset + limit) if limit else None]
             return leaves._as_query()
-        return super()._search(domain, offset, limit, order, **kwargs)
+        return super()._search(domain, offset, limit, order)
 
     def copy_data(self, default=None):
         vals_list = super().copy_data(default=default)
@@ -460,7 +451,7 @@ class HrLeaveType(models.Model):
             ('company_id', '=', False),
         ]
         if not hidden_allocations:
-            domain.append(('hide_on_dashboard', '=', False))
+            domain.append(('show_on_dashboard', '=', True))
         leave_types = self.search(domain, order='id')
         employee = self.env['hr.employee']._get_contextual_employee()
         if employee:
@@ -479,7 +470,7 @@ class HrLeaveType(models.Model):
         allocations_leaves_consumed, extra_data = employees.with_context(
             ignored_leave_ids=self.env.context.get('ignored_leave_ids')
         )._get_consumed_leaves(self, target_date)
-        leave_type_requires_allocation = self.filtered(lambda lt: lt.requires_allocation)
+        leave_type_requires_allocation = self.filtered(lambda lt: lt.requires_allocation == 'yes')
 
         for employee in employees:
             for leave_type in leave_type_requires_allocation:
@@ -506,7 +497,6 @@ class HrLeaveType(models.Model):
                         'icon': leave_type.sudo().icon_id.url,
                         'allows_negative': leave_type.allows_negative,
                         'max_allowed_negative': leave_type.max_allowed_negative,
-                        'employee_company': employee.company_id.id,
                     },
                     leave_type.requires_allocation,
                     leave_type.id)
@@ -610,9 +600,9 @@ class HrLeaveType(models.Model):
             expiration_date = allocation.date_to
 
             accrual_plan_level = allocation.sudo()._get_current_accrual_plan_level_id(target_date)[0]
+            carryover_policy = accrual_plan_level.action_with_unused_accruals if accrual_plan_level else False
             carryover_date = False
-            if accrual_plan_level and (accrual_plan_level.action_with_unused_accruals == 'lost'
-            or accrual_plan_level.carryover_options == 'limited'):
+            if carryover_policy in ['maximum', 'lost']:
                 carryover_date = allocation.sudo()._get_carryover_date(target_date)
                 # If carry over date == target date, then add 1 year to carry over date.
                 # Rational: for example if carry over date = 01/01 this year and target date = 01/01 this year,

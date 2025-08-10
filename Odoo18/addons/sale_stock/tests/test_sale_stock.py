@@ -21,25 +21,26 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
             'is_storable': True,
         })
 
-    def _get_new_sale_order(self, amount=10.0, product=False, sol_vals=False):
+    def _get_new_sale_order(self, amount=10.0, product=False):
         """ Creates and returns a sale order with one default order line.
 
         :param float amount: quantity of product for the order line (10 by default)
         """
-        sol_vals = sol_vals or {}
         product = product or self.company_data['product_delivery_no']
         sale_order_vals = {
             'partner_id': self.partner_a.id,
             'partner_invoice_id': self.partner_a.id,
             'partner_shipping_id': self.partner_a.id,
-            'order_line': [Command.create({
+            'order_line': [(0, 0, {
+                'name': product.name,
                 'product_id': product.id,
                 'product_uom_qty': amount,
-                'price_unit': product.list_price,
-                **sol_vals
-            })]
+                'product_uom': product.uom_id.id,
+                'price_unit': product.list_price})],
+            'pricelist_id': self.company_data['default_pricelist'].id,
         }
-        return self.env['sale.order'].create(sale_order_vals)
+        sale_order = self.env['sale.order'].create(sale_order_vals)
+        return sale_order
 
     def test_00_sale_stock_invoice(self):
         """
@@ -55,6 +56,7 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
                     'name': p.name,
                     'product_id': p.id,
                     'product_uom_qty': 2,
+                    'product_uom': p.uom_id.id,
                     'price_unit': p.list_price,
                 }) for p in (
                     self.company_data['product_order_no'],
@@ -62,6 +64,7 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
                     self.company_data['product_service_order'],
                     self.company_data['product_delivery_no'],
                 )],
+            'pricelist_id': self.company_data['default_pricelist'].id,
             'picking_policy': 'direct',
         })
 
@@ -137,8 +140,10 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
                 'name': p.name,
                 'product_id': p.id,
                 'product_uom_qty': 2,
+                'product_uom': p.uom_id.id,
                 'price_unit': p.list_price,
                 }) for p in product_list],
+            'pricelist_id': self.company_data['default_pricelist'].id,
             'picking_policy': 'direct',
         })
         # confirm our standard so, check the picking
@@ -154,7 +159,7 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
             'advance_payment_method': 'percentage',
             'amount': 5.0,
         })
-        act = adv_wiz.create_invoices()
+        act = adv_wiz.with_context(open_invoices=True).create_invoices()
         inv = self.env['account.move'].browse(act['res_id'])
         self.assertEqual(inv.amount_untaxed, self.so.amount_untaxed * 5.0 / 100.0, 'Sale Stock: deposit invoice is wrong')
         self.assertEqual(self.so.invoice_status, 'to invoice', 'Sale Stock: so should be to invoice after invoicing deposit')
@@ -188,7 +193,9 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
                 'name': self.product.name,
                 'product_id': self.product.id,
                 'product_uom_qty': 5.0,
+                'product_uom': self.product.uom_id.id,
                 'price_unit': self.product.list_price})],
+            'pricelist_id': self.company_data['default_pricelist'].id,
         }
         self.so = self.env['sale.order'].create(so_vals)
 
@@ -237,7 +244,7 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
         adv_wiz = self.env['sale.advance.payment.inv'].with_context(active_ids=[self.so.id]).create({
             'advance_payment_method': 'delivered',
         })
-        adv_wiz.create_invoices()
+        adv_wiz.with_context(open_invoices=True).create_invoices()
         self.inv_2 = self.so.invoice_ids.filtered(lambda r: r.state == 'draft')
         self.assertAlmostEqual(self.inv_2.invoice_line_ids.sorted()[0].quantity, 2.0, msg='Sale Stock: refund quantity on the invoice should be 2.0 instead of "%s".' % self.inv_2.invoice_line_ids.sorted()[0].quantity)
         self.assertEqual(self.so.invoice_status, 'no', 'Sale Stock: so invoice_status should be "no" instead of "%s" after invoicing the return' % self.so.invoice_status)
@@ -256,8 +263,8 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
         self.so = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'order_line': [
-                (0, 0, {'name': item1.name, 'product_id': item1.id, 'product_uom_qty': 1, 'price_unit': item1.list_price}),
-                (0, 0, {'name': item2.name, 'product_id': item2.id, 'product_uom_qty': 1, 'price_unit': item2.list_price}),
+                (0, 0, {'name': item1.name, 'product_id': item1.id, 'product_uom_qty': 1, 'product_uom': item1.uom_id.id, 'price_unit': item1.list_price}),
+                (0, 0, {'name': item2.name, 'product_id': item2.id, 'product_uom_qty': 1, 'product_uom': item2.uom_id.id, 'price_unit': item2.list_price}),
             ],
         })
         self.so.action_confirm()
@@ -304,7 +311,7 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
         # add a new sale order lines
         self.so.write({
             'order_line': [
-                (0, 0, {'name': item1.name, 'product_id': item1.id, 'product_uom_qty': 1, 'price_unit': item1.list_price}),
+                (0, 0, {'name': item1.name, 'product_id': item1.id, 'product_uom_qty': 1, 'product_uom': item1.uom_id.id, 'price_unit': item1.list_price}),
             ]
         })
         self.assertEqual(sum(backorder.move_ids.filtered(lambda m: m.product_id.id == item1.id).mapped('product_qty')), 2)
@@ -323,8 +330,8 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
         self.so = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'order_line': [
-                (0, 0, {'name': item1.name, 'product_id': item1.id, 'product_uom_qty': 1, 'price_unit': item1.list_price}),
-                (0, 0, {'name': item2.name, 'product_id': item2.id, 'product_uom_qty': 1, 'price_unit': item2.list_price}),
+                (0, 0, {'name': item1.name, 'product_id': item1.id, 'product_uom_qty': 1, 'product_uom': item1.uom_id.id, 'price_unit': item1.list_price}),
+                (0, 0, {'name': item2.name, 'product_id': item2.id, 'product_uom_qty': 1, 'product_uom': item2.uom_id.id, 'price_unit': item2.list_price}),
             ],
         })
         self.so.action_confirm()
@@ -358,6 +365,7 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
                 'name': item1.name,
                 'product_id': item1.id,
                 'product_uom_qty': 1,
+                'product_uom': item1.uom_id.id,
                 'price_unit': item1.list_price,
             })],
         })
@@ -381,7 +389,7 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
         lines to the moves and edit a last time the ordered quantities. Deliver, check the
         quantities.
         """
-        self.env.ref('uom.decimal_product_uom').digits = 0
+        self.env.ref('product.decimal_product_uom').digits = 0
         uom_unit = self.env.ref('uom.product_uom_unit')
         uom_dozen = self.env.ref('uom.product_uom_dozen')
         item1 = self.company_data['product_order_no']
@@ -393,7 +401,7 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
             'partner_id': self.partner_a.id,
             'order_line': [
                 Command.create({'name': "UoM Test", 'display_type': 'line_note'}),
-                Command.create({'product_id': item1.id, 'product_uom_id': uom_dozen.id}),
+                Command.create({'product_id': item1.id, 'product_uom': uom_dozen.id}),
                 Command.create({'name': "Downpayment", 'is_downpayment': True}),
             ],
         })
@@ -472,21 +480,21 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
                     'name': item1.name,
                     'product_id': item1.id,
                     'product_uom_qty': 1,
-                    'product_uom_id': uom_dozen.id,
+                    'product_uom': uom_dozen.id,
                     'price_unit': item1.list_price,
                 }),
                 (0, 0, {
                     'name': item1.name,
                     'product_id': item1.id,
                     'product_uom_qty': 1,
-                    'product_uom_id': uom_dozen.id,
+                    'product_uom': uom_dozen.id,
                     'price_unit': item1.list_price,
                 }),
                 (0, 0, {
                     'name': item1.name,
                     'product_id': item1.id,
                     'product_uom_qty': 1,
-                    'product_uom_id': uom_dozen.id,
+                    'product_uom': uom_dozen.id,
                     'price_unit': item1.list_price,
                 }),
             ],
@@ -520,7 +528,7 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
                     'name': item1.name,
                     'product_id': item1.id,
                     'product_uom_qty': 10,
-                    'product_uom_id': uom_unit.id,
+                    'product_uom': uom_unit.id,
                     'price_unit': item1.list_price,
                 }),
             ],
@@ -579,7 +587,7 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
         so = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'order_line': [
-                (0, 0, {'name': item1.name, 'product_id': item1.id, 'product_uom_qty': 1, 'price_unit': item1.list_price}),
+                (0, 0, {'name': item1.name, 'product_id': item1.id, 'product_uom_qty': 1, 'product_uom': item1.uom_id.id, 'price_unit': item1.list_price}),
             ],
         })
         line = so.order_line[0]
@@ -608,9 +616,9 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
         so = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'order_line': [
-                (0, 0, {'name': item1.name, 'product_id': item1.id, 'product_uom_qty': 5, 'price_unit': item1.list_price}),
-                (0, 0, {'name': item1.name, 'product_id': item1.id, 'product_uom_qty': 5, 'price_unit': item1.list_price}),
-                (0, 0, {'name': item1.name, 'product_id': item1.id, 'product_uom_qty': 5, 'price_unit': item1.list_price}),
+                (0, 0, {'name': item1.name, 'product_id': item1.id, 'product_uom_qty': 5, 'product_uom': item1.uom_id.id, 'price_unit': item1.list_price}),
+                (0, 0, {'name': item1.name, 'product_id': item1.id, 'product_uom_qty': 5, 'product_uom': item1.uom_id.id, 'price_unit': item1.list_price}),
+                (0, 0, {'name': item1.name, 'product_id': item1.id, 'product_uom_qty': 5, 'product_uom': item1.uom_id.id, 'price_unit': item1.list_price}),
             ],
         })
         self.assertEqual(so.order_line.mapped('free_qty_today'), [10, 5, 0])
@@ -880,7 +888,9 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
                 'name': product.name,
                 'product_id': product.id,
                 'product_uom_qty': 5.0,
+                'product_uom': product.uom_id.id,
                 'price_unit': product.list_price})],
+            'pricelist_id': self.company_data['default_pricelist'].id,
         }
         so = self.env['sale.order'].create(so_vals)
 
@@ -907,7 +917,9 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
         self.assertEqual(inv_2.state, 'draft', 'invoice should be in draft state')
 
         # check the status of invoices after cancelling the order
-        so.action_cancel()
+        so._action_cancel()
+        wizard = self.env['sale.order.cancel'].with_context({'order_id': so.id}).create({'order_id': so.id})
+        wizard.action_cancel()
         self.assertEqual(inv_1.state, 'posted', 'A posted invoice state should remain posted')
         self.assertEqual(inv_2.state, 'cancel', 'A drafted invoice state should be cancelled')
 
@@ -955,13 +967,69 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
         self.assertTrue(sale_order4.picking_ids)
         self.assertEqual(sale_order4.picking_ids.state, 'assigned')
 
+    def test_packaging_propagation(self):
+        """Create a SO with lines using packaging, check the packaging propagate
+        to its move.
+        """
+        warehouse = self.company_data['default_warehouse']
+        warehouse.delivery_steps = 'pick_pack_ship'
+        product = self.env['product.product'].create({
+            'name': 'Product with packaging',
+            'is_storable': True,
+        })
+
+        packOf10 = self.env['product.packaging'].create({
+            'name': 'PackOf10',
+            'product_id': product.id,
+            'qty': 10
+        })
+
+        packOf20 = self.env['product.packaging'].create({
+            'name': 'PackOf20',
+            'product_id': product.id,
+            'qty': 20
+        })
+
+        so = self.env['sale.order'].create({
+            'partner_id': self.partner_a.id,
+            'warehouse_id': self.warehouse_3_steps_pull.id,
+            'order_line': [
+                (0, 0, {
+                    'product_id': product.id,
+                    'product_uom_qty': 10.0,
+                    'product_uom': product.uom_id.id,
+                    'product_packaging_id': packOf10.id,
+                })],
+        })
+        so.action_confirm()
+        ship = so.order_line.move_ids
+        pack = ship.move_orig_ids
+        pick = pack.move_orig_ids
+        self.assertEqual(pick.product_packaging_id, packOf10)
+        self.assertEqual(pack.product_packaging_id, packOf10)
+        self.assertEqual(ship.product_packaging_id, packOf10)
+
+        so.order_line[0].write({
+            'product_packaging_id': packOf20.id,
+            'product_uom_qty': 20
+        })
+        self.assertEqual(so.order_line.move_ids.product_packaging_id, packOf20)
+        self.assertEqual(pick.product_packaging_id, packOf20)
+        self.assertEqual(pack.product_packaging_id, packOf20)
+        self.assertEqual(ship.product_packaging_id, packOf20)
+
+        so.order_line[0].write({'product_packaging_id': False})
+        self.assertFalse(pick.product_packaging_id)
+        self.assertFalse(pack.product_packaging_id)
+        self.assertFalse(ship.product_packaging_id)
+
     def test_15_cancel_delivery(self):
         """ Suppose the option "Lock Confirmed Sales" enabled and a product with the invoicing
         policy set to "Delivered quantities". When cancelling the delivery of such a product, the
         invoice status of the associated SO should be 'Nothing to Invoice'
         """
         group_auto_done = self.env.ref('sale.group_auto_done_setting')
-        self.group_user.implied_ids = [Command.link(group_auto_done.id)]
+        self.env.user.groups_id = [(4, group_auto_done.id)]
 
         product = self.product_a
         product.invoice_policy = 'delivery'
@@ -974,6 +1042,7 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
                 'name': product.name,
                 'product_id': product.id,
                 'product_uom_qty': 2,
+                'product_uom': product.uom_id.id,
                 'price_unit': product.list_price
             })],
         })
@@ -986,13 +1055,15 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
 
     def test_16_multi_uom(self):
         yards_uom = self.env['uom.uom'].create({
+            'category_id': self.env.ref('uom.uom_categ_length').id,
             'name': 'Yards',
-            'relative_factor': 0.9144,
-            'relative_uom_id': self.env.ref('uom.product_uom_meter').id,
+            'factor_inv': 0.9144,
+            'uom_type': 'bigger',
         })
         product = self.env['product.product'].create({
             'name': 'Test Product',
             'uom_id': self.env.ref('uom.product_uom_meter').id,
+            'uom_po_id': yards_uom.id,
         })
         so = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
@@ -1001,7 +1072,7 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
                     'name': product.name,
                     'product_id': product.id,
                     'product_uom_qty': 4.0,
-                    'product_uom_id': yards_uom.id,
+                    'product_uom': yards_uom.id,
                     'price_unit': 1.0,
                 })
             ],
@@ -1027,7 +1098,7 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
         sale_order = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'order_line': [
-                (0, 0, {'name': product.name, 'product_id': product.id, 'product_uom_qty': 50, 'price_unit': product.list_price}),
+                (0, 0, {'name': product.name, 'product_id': product.id, 'product_uom_qty': 50, 'product_uom': product.uom_id.id, 'price_unit': product.list_price}),
             ],
         })
         sale_order.action_confirm()
@@ -1069,6 +1140,7 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
         uom_km_id = self.ref("uom.product_uom_km")
         self.product_b.write({
             'uom_id': uom_m_id,
+            'uom_po_id': uom_m_id,
         })
 
         so = self._get_new_sale_order(product=self.product_a)
@@ -1079,6 +1151,7 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
             'picking_id': picking.id,
             'location_id': picking.location_id.id,
             'location_dest_id': picking.location_dest_id.id,
+            'name': self.product_b.name,
             'product_id': self.product_b.id,
             'product_uom_qty': 1,
             'product_uom': uom_km_id,
@@ -1088,7 +1161,7 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
 
         self.assertEqual(so.order_line[1].product_id, self.product_b)
         self.assertEqual(so.order_line[1].qty_delivered, 1)
-        self.assertEqual(so.order_line[1].product_uom_id.id, uom_km_id)
+        self.assertEqual(so.order_line[1].product_uom.id, uom_km_id)
 
     def test_19_deliver_update_so_line_qty(self):
         """
@@ -1192,6 +1265,41 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
         self.assertEqual(sol.product_uom_qty, 0)
         self.assertEqual(sol.qty_delivered, -2)
         self.assertEqual(sol.order_id, sale_order)
+
+    def test_return_for_exchange_and_cancel_sol_qty(self):
+        """
+        SO, deliver, generate the return for exchange
+        Process the return
+        Then, SOL qty to 0
+        The new delivery should be canceled
+        """
+        warehouse = self.company_data['default_warehouse']
+        stock_location = warehouse.lot_stock_id
+        customer_location = self.env.ref('stock.stock_location_customers')
+
+        so = self._get_new_sale_order()
+        so.action_confirm()
+
+        delivery = so.picking_ids
+        delivery.move_ids.write({'quantity': 10, 'picked': True})
+        delivery.button_validate()
+
+        return_picking_form = Form(self.env['stock.return.picking'].with_context(active_id=delivery.id, active_model='stock.picking'))
+        with return_picking_form.product_return_moves.edit(0) as line:
+            line.quantity = 10
+        return_wizard = return_picking_form.save()
+        res = return_wizard.action_create_exchanges()
+
+        return_picking = self.env['stock.picking'].browse(res['res_id'])
+        return_picking.move_ids.write({'quantity': 10, 'picked': True})
+        return_picking.button_validate()
+
+        so.order_line.product_uom_qty = 0
+        self.assertRecordValues(so.picking_ids.move_ids.sorted(key='id'), [
+            {'location_id': stock_location.id, 'location_dest_id': customer_location.id, 'state': 'done'},
+            {'location_id': customer_location.id, 'location_dest_id': stock_location.id, 'state': 'done'},
+            {'location_id': stock_location.id, 'location_dest_id': customer_location.id, 'state': 'cancel'},
+        ])
 
     def test_return_multisteps_receipt(self):
         """test extra product returned are added to the sale order only once in 3 steps receipt"""
@@ -1329,6 +1437,29 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
         self.assertEqual(ret_pack_sm.state, 'assigned')
         self.assertEqual(ret_pack_sm.move_line_ids.quantity, 2)
 
+    def test_packaging_and_qty_decrease(self):
+        packaging = self.env['product.packaging'].create({
+            'name': "Super Packaging",
+            'product_id': self.product_a.id,
+            'qty': 10.0,
+        })
+
+        so_form = Form(self.env['sale.order'])
+        so_form.partner_id = self.partner_a
+        with so_form.order_line.new() as line:
+            line.product_id = self.product_a
+            line.product_uom_qty = 10
+        so = so_form.save()
+        so.action_confirm()
+
+        self.assertEqual(so.order_line.product_packaging_id, packaging)
+
+        with Form(so) as so_form:
+            with so_form.order_line.edit(0) as line:
+                line.product_uom_qty = 8
+
+        self.assertEqual(so.picking_ids.move_ids.product_uom_qty, 8)
+
     def test_backorder_and_decrease_sol_qty(self):
         """
         2 steps delivery
@@ -1378,6 +1509,7 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
                 'name': self.product_a.name,
                 'product_id': self.product_a.id,
                 'product_uom_qty': 10,
+                'product_uom': self.product_a.uom_id.id,
                 'price_unit': 1,
             })],
         })
@@ -1388,7 +1520,7 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
             'amount': 5.0,
         })
 
-        act = adv_wiz.create_invoices()
+        act = adv_wiz.with_context(open_invoices=True).create_invoices()
         invoice = self.env['account.move'].browse(act['res_id'])
 
         self.assertEqual(invoice.invoice_incoterm_id.id, incoterm.id)
@@ -1483,7 +1615,7 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
             'name': "documents test basic user",
             'login': "dtbu",
             'email': "dtbu@yourcompany.com",
-            'group_ids': [(6, 0, [
+            'groups_id': [(6, 0, [
                 self.ref('base.group_user'),
                 self.ref('stock.group_stock_manager'),
                 self.ref('sales_team.group_sale_salesman')])]
@@ -1531,6 +1663,7 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
                 'name': p.name,
                 'product_id': p.id,
                 'product_uom_qty': 1,
+                'product_uom': p.uom_id.id,
                 'price_unit': p.list_price,
             }) for p in (
                 self.product_a,
@@ -1639,6 +1772,7 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
                 'name': self.product_a.name,
                 'product_id': self.product_a.id,
                 'product_uom_qty': 1,
+                'product_uom': self.product_a.uom_id.id,
                 'price_unit': self.product_a.list_price,
             })],
         })
@@ -1834,9 +1968,6 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
         the pick move in 2+ step deliveries.
         """
         admin = self.env.ref('base.user_admin')
-        admin.write({
-            'email': 'mitchell.admin@example.com',
-        })
         warehouse = self.env.ref('stock.warehouse0').with_user(admin)
         warehouse.delivery_steps = 'pick_pack_ship'
         product = self.product_a
@@ -1901,6 +2032,7 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
                     'name': 'sol_p1',
                     'product_id': self.env['product.product'].create({'name': 'p1'}).id,
                     'product_uom_qty': 10,
+                    'product_uom': self.env.ref('uom.product_uom_unit').id,
                 }),
             ],
         })
@@ -1947,6 +2079,7 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
                     'name': 'sol_p1',
                     'product_id': self.env['product.product'].create({'name': 'p1'}).id,
                     'product_uom_qty': 5,
+                    'product_uom': self.env.ref('uom.product_uom_unit').id,
                 }),
             ],
         })
@@ -2002,6 +2135,7 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
                     'name': storable_product.name,
                     'product_id': storable_product.id,
                     'product_uom_qty': 1,
+                    'product_uom': storable_product.uom_id.id,
                 }),
             ],
         })
@@ -2020,6 +2154,53 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
         error_message = "You must set a warehouse on your sale order to proceed."
         with self.assertRaisesRegex(UserError, error_message), self.env.cr.savepoint():
             so.with_company(new_company).action_confirm()
+
+    def test_package_with_moves_to_different_location_dest(self):
+        """
+        Create a two-step delivery with two products, and package both products together.
+        Ensure that the destination location is different for the two moves in the second
+        picking. check that the first picking can be validated.
+        """
+        # Set-up multi-step routes
+        self.env.user.groups_id += self.env.ref('stock.group_stock_multi_locations')
+        self.env.user.groups_id += self.env.ref('stock.group_adv_location')
+        warehouse = self.company_data['default_warehouse']
+        # Create two child locations.
+        parent_location = self.partner_a.property_stock_customer
+        child_location_1 = self.env['stock.location'].create({
+                'name': 'child_1',
+                'location_id': parent_location.id,
+        })
+        child_location_2 = self.env['stock.location'].create({
+                'name': 'child_2',
+                'location_id': parent_location.id,
+        })
+        # Enable 2-steps delivery
+        with Form(warehouse) as w:
+            w.delivery_steps = 'pick_ship'
+        delivery_route = warehouse.delivery_route_id
+        delivery_route.rule_ids[0].write({
+            'location_dest_id': delivery_route.rule_ids[1].location_src_id.id,
+        })
+        delivery_route.rule_ids[1].write({'action': 'pull'})
+        so = self._get_new_sale_order(product=self.product_a)
+        self.env['sale.order.line'].create({
+            'product_id': self.product_b.id,
+            'order_id': so.id,
+        })
+        self.assertEqual(len(so.order_line), 2)
+        so.action_confirm()
+        self.assertEqual(len(so.picking_ids), 2)
+        so.picking_ids[1].move_ids[0].location_dest_id = child_location_1
+        so.picking_ids[1].move_ids[1].location_dest_id = child_location_2
+        # Pack the moves of the first picking together.
+        package = so.picking_ids[0].action_put_in_pack()
+        # a new package is made and done quantities should be in same package
+        self.assertTrue(package)
+        so.picking_ids[0].button_validate()
+        self.assertEqual(so.picking_ids[0].state, 'done')
+        self.assertEqual(so.picking_ids[1].move_ids.move_line_ids[0].location_dest_id, child_location_1)
+        self.assertEqual(so.picking_ids[1].move_ids.move_line_ids[1].location_dest_id, child_location_2)
 
     def test_custom_delivery_route_new_sale_line(self):
         """
@@ -2134,38 +2315,6 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
         return_pick.button_validate()
         self.assertEqual(sale_order.order_line.mapped('sequence'), [42, 43, 44])
 
-    def test_move_description(self):
-        """
-        Test that the move description is correctly propagated to the move description
-        """
-        # product with all description items: delivery description, attribute variant value, attribute no variant value
-        product_with_description = self.env['product.template'].create({
-            'name': 'Product with description',
-            'description_pickingout': 'Deliver with care',
-            'description_sale': 'Sale description',
-            'attribute_line_ids': [
-                Command.create({
-                    'attribute_id': self.color_attribute.id,
-                    'value_ids': [Command.set(self.color_attribute.value_ids.ids)],
-                }),
-                Command.create({
-                    'attribute_id': self.no_variant_attribute.id,
-                    'value_ids': [Command.set(self.no_variant_attribute.value_ids.ids)],
-                })
-            ]
-        })
-        so = self._get_new_sale_order(
-            product=product_with_description.product_variant_ids.filtered(lambda p: p.product_template_attribute_value_ids.name == 'red'),
-            amount=1,
-            sol_vals={
-                'product_no_variant_attribute_value_ids': [Command.set(product_with_description.attribute_line_ids[1].product_template_value_ids[0].ids)],
-            }
-        )
-        self.assertEqual(so.order_line.name, 'Product with description (red)\nSale description\nNo variant: extra')
-        so.order_line.name += '\nRandom sale notes'
-        so.action_confirm()
-        self.assertEqual(so.picking_ids.move_ids.description_picking, 'No variant: extra\nDeliver with care')
-
     def test_multicompany_transit_with_one_company_for_user(self):
         """ Check that the inter-company transit location is created when
         user has only one allowed company. """
@@ -2176,7 +2325,6 @@ class TestSaleStock(TestSaleStockCommon, ValuationReconciliationTestCommon):
             'login': 'user a',
             'company_id': company_a.id,
             'company_ids': [Command.link(company_a.id)],
-            'group_ids': [Command.link(self.env.ref('sales_team.group_sale_salesman').id)],
         })
         product = self.new_product
         so = self.env['sale.order'].with_user(user_a).create({

@@ -3,7 +3,7 @@
 {
     'name': 'Payment Provider: Demo',
     'version': '2.0',
-    'category': 'Accounting/Accounting',
+    'category': 'Hidden',
     'sequence': 350,
     'summary': "A payment provider for running fake payment flows for demo purposes.",
     'description': " ",  # Non-empty string to avoid loading the README file.
@@ -24,6 +24,5 @@
             'payment_demo/static/src/js/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

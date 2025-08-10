@@ -18,7 +18,7 @@ Spanish charts of accounts (PGCE 2008).
     * Defines templates for sale and purchase VAT
     * Defines tax templates
     * Defines fiscal positions for spanish fiscal legislation
-    * Defines tax reports mod 111, 115, 130 and 303
+    * Defines tax reports mod 111, 115 and 303
 
 5.3: Update taxes starting Q4 2024 according to BOE-A-2024-12944 (Royal Decree 4/2024) https://www.boe.es/buscar/act.php?id=BOE-A-2024-12944
 """,
@@ -31,7 +31,6 @@ Spanish charts of accounts (PGCE 2008).
     'data': [
         'data/account.account.tag.csv',
         'data/res_partner_data.xml',
-        'data/res_country_group.xml',
         'views/account_move_views.xml',
         'views/account_tax_views.xml',
         'data/product_data.xml',
@@ -39,7 +38,6 @@ Spanish charts of accounts (PGCE 2008).
         'views/res_config_settings_views.xml',
         'data/mod111.xml',
         'data/mod115.xml',
-        'data/mod130.xml',
         'data/mod303.xml',
         'data/mod390/mod390_section1.xml',
         'data/mod390/mod390_section2.xml',

@@ -1,10 +1,11 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, fields, models
 
 
 class SaleOrderTemplateOption(models.Model):
-    _name = 'sale.order.template.option'
+    _name = "sale.order.template.option"
     _description = "Quotation Template Option"
     _check_company_auto = True
 
@@ -28,26 +29,21 @@ class SaleOrderTemplateOption(models.Model):
         store=True, readonly=False, precompute=True,
         required=True, translate=True)
 
-    allowed_uom_ids = fields.Many2many('uom.uom', compute='_compute_allowed_uom_ids')
     uom_id = fields.Many2one(
         comodel_name='uom.uom',
-        string="Unit",
-        domain="[('id', 'in', allowed_uom_ids)]",
+        string="Unit of Measure",
         compute='_compute_uom_id',
         store=True, readonly=False,
-        required=True, precompute=True)
+        required=True, precompute=True,
+        domain="[('category_id', '=', product_uom_category_id)]")
+    product_uom_category_id = fields.Many2one(related='product_id.uom_id.category_id')
     quantity = fields.Float(
         string="Quantity",
         required=True,
-        digits='Product Unit',
+        digits='Product Unit of Measure',
         default=1)
 
     #=== COMPUTE METHODS ===#
-
-    @api.depends('product_id', 'product_id.uom_id', 'product_id.uom_ids')
-    def _compute_allowed_uom_ids(self):
-        for option in self:
-            option.allowed_uom_ids = option.product_id.uom_id | option.product_id.uom_ids
 
     @api.depends('product_id')
     def _compute_name(self):

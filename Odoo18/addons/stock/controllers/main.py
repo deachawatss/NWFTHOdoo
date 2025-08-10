@@ -30,7 +30,7 @@ class StockReportController(http.Controller):
         except Exception as e:
             se = http.serialize_exception(e)
             error = {
-                'code': 0,
+                'code': 200,
                 'message': 'Odoo Server Error',
                 'data': se
             }

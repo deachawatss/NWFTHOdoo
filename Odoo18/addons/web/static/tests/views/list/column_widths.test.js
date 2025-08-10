@@ -130,8 +130,8 @@ beforeEach(() => {
     document.body.style.fontFamily = "sans-serif";
 });
 
-function getColumnWidths() {
-    return queryAllProperties(".o_list_table thead th", "offsetWidth");
+function getColumnWidths(root) {
+    return queryAllProperties(".o_list_table thead th", "offsetWidth", { root });
 }
 
 // width computation
@@ -479,7 +479,7 @@ test(`width computation: date and datetime with fancy formats`, async () => {
     expect(queryAllTexts(".o_data_row:eq(0) .o_data_cell")).toEqual([
         "yop",
         "Wed, 25 January 2017",
-        "Mon, 12 December 2016 11:55",
+        "Mon, 12 December 2016 11:55:05 AM",
     ]);
     expect(getColumnWidths()).toEqual([40, 307, 177, 276]);
 });
@@ -505,7 +505,7 @@ test(`width computation: date and datetime with fancy formats (2)`, async () => 
             <list>
                 <field name="foo"/>
                 <field name="date"/>
-                <field name="datetime" options="{'show_seconds': true}"/>
+                <field name="datetime"/>
             </list>`,
     });
 
@@ -1272,6 +1272,7 @@ test(`freeze widths: x2many, edit a record`, async () => {
                 </field>
             </form>`,
         resId: 1,
+        mode: "edit",
     });
 
     const initialWidths = getColumnWidths();
@@ -1302,6 +1303,7 @@ test(`freeze widths: x2many, remove last record`, async () => {
                 </field>
             </form>`,
         resId: 1,
+        mode: "edit",
     });
 
     const initialWidths = getColumnWidths();
@@ -1456,7 +1458,7 @@ test(`resize column and toggle check all`, async () => {
     });
 });
 
-test("resize column headers in editable list", async () => {
+test(`resize column headers in editable list`, async () => {
     await mountView({
         resModel: "foo",
         type: "list",
@@ -1467,18 +1469,15 @@ test("resize column headers in editable list", async () => {
             </list>
         `,
     });
-
     const originalWidths = getColumnWidths();
-
     await contains(`th:eq(1) .o_resize`, { visible: false }).dragAndDrop(`th:eq(2)`);
 
     const finalWidths = getColumnWidths();
     expect(finalWidths[0]).toBe(originalWidths[0]);
-    expect(finalWidths[1]).toBeGreaterThan(originalWidths[1]);
     expect(finalWidths[2]).toBe(originalWidths[2]);
 });
 
-test("resize column headers in editable list (2)", async () => {
+test.todo(`resize column headers in editable list (2)`, async () => {
     // This test will ensure that, on resize list header,
     // the resized element have the correct size and other elements are not resized
     Foo._records[0].foo = "a".repeat(200);
@@ -1494,18 +1493,18 @@ test("resize column headers in editable list (2)", async () => {
             </list>
         `,
     });
+    const originalWidth1 = queryRect(`th:eq(1)`).width;
+    const originalWidth2 = queryRect(`th:eq(2)`).width;
 
-    const originalWidths = getColumnWidths();
-
-    await contains(".o_resize:first", { visible: false }).dragAndDrop("th[data-name=foo]", {
-        position: { x: 100 },
-        relative: true,
+    await contains(`th:eq(1) .o_resize`, { visible: false }).dragAndDrop(`th:eq(2) .o_resize`, {
+        visible: false,
     });
-
-    const finalWidths = getColumnWidths();
-    expect(finalWidths[0]).toBe(originalWidths[0]);
-    expect(finalWidths[1]).toBeCloseTo(100, { margin: 10 });
-    expect(finalWidths[2]).toBe(originalWidths[2]);
+    const finalWidth1 = queryRect(`th:eq(1)`).width;
+    const finalWidth2 = queryRect(`th:eq(2)`).width;
+    expect(
+        Math.abs(Math.floor(finalWidth1) - Math.floor(originalWidth1 + originalWidth2))
+    ).toBeLessThan(1);
+    expect(Math.floor(finalWidth2)).toBe(Math.floor(originalWidth2));
 });
 
 test(`resize column with several x2many lists in form group`, async () => {
@@ -1617,6 +1616,7 @@ test(`resize: unnamed columns cannot be resized`, async () => {
             </form>
         `,
         resId: 1,
+        mode: "edit",
     });
     expect(Math.floor(queryRect(`.o_field_one2many th:eq(0)`).right)).toBe(
         Math.floor(queryRect(`.o_field_one2many th:eq(0) .o_resize`).right),
@@ -1627,25 +1627,4 @@ test(`resize: unnamed columns cannot be resized`, async () => {
     expect(`.o_field_one2many th:eq(1) .o_resize`).toHaveCount(0, {
         message: "Columns without name should not have a resize handle",
     });
-});
-
-test(`dblclick on resize handle to force a recomputation of all widths`, async () => {
-    await mountView({
-        type: "list",
-        resModel: "foo",
-        arch: `
-            <list>
-                <field name="foo"/>
-                <field name="int_field"/>
-            </list>`,
-    });
-
-    const originalWidths = getColumnWidths();
-    await contains(`th:eq(1) .o_resize`, { visible: false }).dragAndDrop(`th:eq(2)`);
-    const widthsAfterResize = getColumnWidths();
-    expect(widthsAfterResize[0]).toBe(originalWidths[0]);
-    expect(widthsAfterResize[1]).toBeGreaterThan(originalWidths[1]);
-
-    await contains(".o_list_table th .o_resize", { visible: false }).dblclick();
-    expect(getColumnWidths()).toEqual(originalWidths);
 });

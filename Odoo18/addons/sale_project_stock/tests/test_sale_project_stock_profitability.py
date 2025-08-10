@@ -2,12 +2,9 @@
 
 from odoo import Command, fields
 from odoo.addons.sale_project.tests.test_project_profitability import TestProjectProfitabilityCommon
-from odoo.addons.stock_account.tests.test_anglo_saxon_valuation_reconciliation_common import ValuationReconciliationTestCommon
-from odoo.tests import tagged
 
 
-@tagged('-at_install', 'post_install')
-class TestSaleProjectStockProfitability(TestProjectProfitabilityCommon, ValuationReconciliationTestCommon):
+class TestSaleProjectStockProfitability(TestProjectProfitabilityCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -16,14 +13,19 @@ class TestSaleProjectStockProfitability(TestProjectProfitabilityCommon, Valuatio
             'name': 'sale_project_stock project template',
             'account_id': cls.analytic_account.id,
         })
+        avco_real_time_product_category = cls.env['product.category'].create({
+            'name': 'avco real time',
+            'property_valuation': 'real_time',
+            'property_cost_method': 'average',
+        })
         cls.cogs_account = cls.env['account.account'].search([
             ('name', '=', 'Cost of Goods Sold'),
             ('company_ids', 'in', cls.env.company.id),
         ], limit=1)
-        cls.auto_valuated_product = cls.env['product.product'].create({
-            'name': 'auto valuated product',
+        cls.avco_product = cls.env['product.product'].create({
+            'name': 'avco product',
             'is_storable': True,
-            'categ_id': cls.stock_account_product_categ.id,
+            'categ_id': avco_real_time_product_category.id,
             'standard_price': 12.0,
             'list_price': 24.0,
         })
@@ -41,12 +43,9 @@ class TestSaleProjectStockProfitability(TestProjectProfitabilityCommon, Valuatio
         section of a project's profitability report (specifically, COGS lines).
         """
         self.env.company.anglo_saxon_accounting = True
-        self.stock_account_product_categ.write({
-            'property_account_expense_categ_id': self.cogs_account.id,
-            'property_cost_method': 'average',
-        })
+        self.avco_product.categ_id.property_account_expense_categ_id = self.cogs_account.id
         service_product = self.product_superb_service
-        avco_product = self.auto_valuated_product
+        avco_product = self.avco_product
         other_avco_product = self.env['product.product'].create({
             'name': 'other avco product',
             'is_storable': True,

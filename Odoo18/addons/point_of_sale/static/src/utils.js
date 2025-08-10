@@ -1,4 +1,5 @@
-import { session } from "@web/session";
+import { parseDateTime, deserializeDate } from "@web/core/l10n/dates";
+import { roundDecimals, floatIsZero } from "@web/core/utils/numbers";
 
 /*
  * comes from o_spreadsheet.js
@@ -30,7 +31,7 @@ export function deduceUrl(url) {
     return url;
 }
 
-export function constructAttributeString(line) {
+export function constructFullProductName(line) {
     let attributeString = "";
 
     if (line.attribute_value_ids && line.attribute_value_ids.length > 0) {
@@ -49,16 +50,10 @@ export function constructAttributeString(line) {
         }
 
         attributeString = attributeString.slice(0, -2);
+        attributeString = ` (${attributeString})`;
     }
 
-    return attributeString;
-}
-
-export function constructFullProductName(line) {
-    const attributeString = constructAttributeString(line);
-    return attributeString
-        ? `${line?.product_id?.name} (${attributeString})`
-        : `${line?.product_id?.name}`;
+    return `${line?.product_id?.display_name}${attributeString}`;
 }
 /**
  * Returns a random 5 digits alphanumeric code
@@ -93,6 +88,10 @@ export function getMin(entries, options) {
     return getMax(entries, { ...options, inverted: true });
 }
 export function getOnNotified(bus, channel) {
+    if (!channel || typeof channel !== "string") {
+        return () => false;
+    }
+
     bus.addChannel(channel);
     return (notif, callback) => bus.subscribe(`${channel}-${notif}`, callback);
 }
@@ -122,55 +121,137 @@ export function loadImage(url, options = {}) {
  * Load all images in the given element.
  * @param {HTMLElement} el
  */
+export function loadAllImages(el) {
+    if (!el) {
+        return Promise.resolve();
+    }
 
-export function waitImages(containerElement, timeoutMs = 3000) {
-    return new Promise((resolve) => {
-        const images = containerElement.querySelectorAll("img");
-        const total = images.length;
-        let loadedCount = 0;
-        let timedOut = false;
+    const images = el.querySelectorAll("img");
+    return Promise.all(Array.from(images).map((img) => loadImage(img.src)));
+}
+export function parseUTCString(utcStr) {
+    return parseDateTime(utcStr, { format: "yyyy-MM-dd HH:mm:ss", tz: "utc" });
+}
 
-        if (total === 0) {
-            resolve({ timedOut: false });
-            return;
+export function floatCompare(a, b, { decimals } = {}) {
+    if (decimals === undefined) {
+        throw new Error("decimals must be provided");
+    }
+    a = roundDecimals(a, decimals);
+    b = roundDecimals(b, decimals);
+    const delta = a - b;
+    if (floatIsZero(delta, decimals)) {
+        return 0;
+    }
+    return delta < 0 ? -1 : 1;
+}
+
+export function gte(a, b, { decimals } = {}) {
+    return floatCompare(a, b, { decimals }) >= 0;
+}
+
+export function gt(a, b, { decimals } = {}) {
+    return floatCompare(a, b, { decimals }) > 0;
+}
+
+export function lte(a, b, { decimals } = {}) {
+    return floatCompare(a, b, { decimals }) <= 0;
+}
+
+export function lt(a, b, { decimals } = {}) {
+    return floatCompare(a, b, { decimals }) < 0;
+}
+
+export function computeProductPricelistCache(service, data = []) {
+    // This function is called via the addEventListener callback initiated in the
+    // processServerData function when new products or pricelists are loaded into the PoS.
+    // It caches the heavy pricelist calculation when there are many products and pricelists.
+    const date = luxon.DateTime.now();
+    let pricelistItems = service.models["product.pricelist.item"].getAll();
+    let products = service.models["product.product"].getAll();
+
+    if (data.length > 0) {
+        if (data[0].model.modelName === "product.product") {
+            products = data;
         }
 
-        const timeoutId = setTimeout(() => {
-            timedOut = true;
-            resolve({ timedOut: true });
-        }, timeoutMs);
+        if (data[0].model.modelName === "product.pricelist.item") {
+            pricelistItems = data;
+            // it needs only to compute for the products that are affected by the pricelist items
+            const productTmplIds = new Set(data.map((item) => item.raw.product_tmpl_id));
+            const productIds = new Set(data.map((item) => item.raw.product_id));
+            products = products.filter(
+                (product) =>
+                    productTmplIds.has(product.raw.product_tmpl_id) || productIds.has(product.id)
+            );
+        }
+    }
 
-        const onLoadOrError = () => {
-            loadedCount++;
-            if (loadedCount === total && !timedOut) {
-                clearTimeout(timeoutId);
-                resolve({ timedOut: false });
-            }
-        };
+    const pushItem = (targetArray, key, item) => {
+        if (!targetArray[key]) {
+            targetArray[key] = [];
+        }
+        targetArray[key].push(item);
+    };
 
-        images.forEach((img) => {
-            if (img.complete) {
-                onLoadOrError();
+    const pricelistRules = {};
+
+    for (const item of pricelistItems) {
+        if (
+            (item.date_start && deserializeDate(item.date_start) > date) ||
+            (item.date_end && deserializeDate(item.date_end) < date)
+        ) {
+            continue;
+        }
+        const pricelistId = item.pricelist_id.id;
+
+        if (!pricelistRules[pricelistId]) {
+            pricelistRules[pricelistId] = {
+                productItems: {},
+                productTmlpItems: {},
+                categoryItems: {},
+                globalItems: [],
+            };
+        }
+
+        const productId = item.raw.product_id;
+        if (productId) {
+            pushItem(pricelistRules[pricelistId].productItems, productId, item);
+            continue;
+        }
+        const productTmplId = item.raw.product_tmpl_id;
+        if (productTmplId) {
+            pushItem(pricelistRules[pricelistId].productTmlpItems, productTmplId, item);
+            continue;
+        }
+        const categId = item.raw.categ_id;
+        if (categId) {
+            pushItem(pricelistRules[pricelistId].categoryItems, categId, item);
+        } else {
+            pricelistRules[pricelistId].globalItems.push(item);
+        }
+    }
+
+    for (const product of products) {
+        const applicableRules = product.getApplicablePricelistRules(pricelistRules);
+        for (const pricelistId in applicableRules) {
+            if (product.cachedPricelistRules[pricelistId]) {
+                const existingRuleIds = product.cachedPricelistRules[pricelistId].map(
+                    (rule) => rule.id
+                );
+                const newRules = applicableRules[pricelistId].filter(
+                    (rule) => !existingRuleIds.includes(rule.id)
+                );
+                product.cachedPricelistRules[pricelistId] = [
+                    ...newRules,
+                    ...product.cachedPricelistRules[pricelistId],
+                ];
             } else {
-                img.addEventListener("load", onLoadOrError);
-                img.addEventListener("error", onLoadOrError);
+                product.cachedPricelistRules[pricelistId] = applicableRules[pricelistId];
             }
-        });
-    });
-}
-
-export class Counter {
-    constructor(start = 0) {
-        this.value = start;
+        }
     }
-    next() {
-        this.value++;
-        return this.value;
+    if (data.length > 0 && data[0].model.modelName === "product.product") {
+        service._loadMissingPricelistItems(products);
     }
 }
-
-export function isValidEmail(email) {
-    return email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-export const LONG_PRESS_DURATION = session.test_mode ? 100 : 1000;

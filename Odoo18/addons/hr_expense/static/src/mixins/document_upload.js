@@ -1,5 +1,6 @@
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
-import { Domain } from "@web/core/domain";
 import { useBus, useRefListener, useService } from '@web/core/utils/hooks';
 import { onWillStart, useRef, useEffect, useState } from "@odoo/owl";
 
@@ -75,9 +76,6 @@ export const ExpenseDocumentUpload = (T) => class ExpenseDocumentUpload extends 
         this.fileInput = useRef('fileInput');
         this.root = useRef("root");
 
-        this.uploadsProcessing = 0;
-        this.createdExpenseIds = [];
-
         useBus(this.env.bus, "change_file_input", async (ev) => {
             this.fileInput.el.files = ev.detail.files;
             await this.onChangeFileInput();
@@ -91,34 +89,27 @@ export const ExpenseDocumentUpload = (T) => class ExpenseDocumentUpload extends 
         });
     }
 
+    displayCreateReport() {
+        const isExpenseSheet = this.model.config.resModel === "hr.expense.sheet";
+        const usesSampleData = this.model.useSampleModel;
+        const records = this.model.root.records;
+        return !usesSampleData && !isExpenseSheet && records.length && records.some(record => record.data.state === "draft");
+    }
+
+    async action_show_expenses_to_submit () {
+        const records = this.model.root.selection;
+        const res = await this.orm.call(this.model.config.resModel, 'get_expenses_to_submit', [records.map((record) => record.resId)]);
+        if (res) {
+            await this.actionService.doAction(res, {});
+        }
+    }
+
     uploadDocument() {
-        this.uploadsProcessing++;
         this.fileInput.el.click();
     }
 
     async onChangeFileInput() {
-        try {
-            await this._onChangeFileInput([...this.fileInput.el.files]);
-            if (this.uploadsProcessing === 1) {
-                const actionName = _t("Generate Expenses");
-                const currentAction = this.actionService.currentController.action;
-                let domain = [['id', 'in', this.createdExpenseIds]];
-                if (currentAction.name === actionName) {
-                    domain = Domain.or([domain, currentAction.domain]).toList();
-                }
-                await this.actionService.doAction({
-                    'name': actionName,
-                    'res_model': 'hr.expense',
-                    'type': 'ir.actions.act_window',
-                    'views': [[false, this.env.config.viewType], [false, 'form']],
-                    'domain': domain,
-                    'target': 'main',
-                    'context': this.props.context,
-                });
-            }
-        } finally {
-            this.uploadsProcessing--;
-        }
+        await this._onChangeFileInput([...this.fileInput.el.files]);
     }
 
     async _onChangeFileInput(files) {
@@ -146,12 +137,12 @@ export const ExpenseDocumentUpload = (T) => class ExpenseDocumentUpload extends 
             return;
         }
 
-        const createdExpenseIds = await this.orm.call(
+        const action = await this.orm.call(
             'hr.expense',
             'create_expense_from_attachments',
             [attachmentIds, this.env.config.viewType],
             { context: this.props.context },
         );
-        this.createdExpenseIds = [...this.createdExpenseIds, ...createdExpenseIds];
+        await this.actionService.doAction(action);
     }
 };

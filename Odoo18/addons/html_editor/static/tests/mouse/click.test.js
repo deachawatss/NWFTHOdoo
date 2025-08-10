@@ -93,11 +93,20 @@ test("should insert a paragraph before the table, then one after it", async () =
     const table = el.querySelector("table");
     await simulateMouseClick(table, true);
     expect(getContent(el)).toBe(
-        `<p o-we-hint-text='Type "/" for commands' class="o-we-hint">[]<br></p><table></table>`
+        `<p placeholder='Type "/" for commands' class="o-we-hint">[]<br></p><table></table>`
     );
     await simulateMouseClick(table);
     expect(getContent(el)).toBe(
-        `<p><br></p><table></table><p o-we-hint-text='Type "/" for commands' class="o-we-hint">[]<br></p>`
+        `<p><br></p><table></table><p placeholder='Type "/" for commands' class="o-we-hint">[]<br></p>`
+    );
+});
+
+test("should reset selection when empty", async () => {
+    const { el } = await setupEditor("<p>[<br>]</p>");
+    const p = el.querySelector("p");
+    await simulateMouseClick(p, true);
+    expect(getContent(el)).toBe(
+        `<p placeholder='Type "/" for commands' class="o-we-hint">[]<br></p>`
     );
 });
 

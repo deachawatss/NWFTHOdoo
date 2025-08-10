@@ -1,6 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import SUPERUSER_ID, _, api, fields, models
+from odoo import api, fields, models, SUPERUSER_ID, _
 
 
 class PaymentTransaction(models.Model):

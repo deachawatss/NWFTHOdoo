@@ -3,21 +3,21 @@
 
 import logging
 
-from odoo import api, exceptions, models, modules, _, release
+from odoo import api, models, exceptions, _, release
 from odoo.addons.iap.tools import iap_tools
 from requests.exceptions import HTTPError
 
 _logger = logging.getLogger(__name__)
 
 
-class IapAutocompleteApi(models.AbstractModel):
+class IapAutocompleteEnrichAPI(models.AbstractModel):
     _name = 'iap.autocomplete.api'
     _description = 'IAP Partner Autocomplete API'
     _DEFAULT_ENDPOINT = 'https://partner-autocomplete.odoo.com'
 
     @api.model
     def _contact_iap(self, local_endpoint, action, params, timeout=15):
-        if modules.module.current_test:
+        if self.env.registry.in_test_mode():
             raise exceptions.ValidationError(_('Test mode'))
         account = self.env['iap.account'].get('partner_autocomplete')
         if not account.account_token:
@@ -37,8 +37,7 @@ class IapAutocompleteApi(models.AbstractModel):
     def _request_partner_autocomplete(self, action, params, timeout=15):
         """ Contact endpoint to get autocomplete data.
 
-        :returns: a 2-element tuple (results, error code)
-        :rtype: tuple[dict, Literal[False]] | tuple[Literal[False], str]
+        :return tuple: results, error code
         """
         try:
             results = self._contact_iap('/api/dnb/1', action, params, timeout=timeout)

@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { Component, onWillStart, useChildSubEnv, useState } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
 import { download } from "@web/core/network/download";
@@ -14,7 +16,7 @@ registries.topbarMenuRegistry.addChild("download_public_excel", ["file"], {
     execute: (env) => env.downloadExcel(),
     isReadonlyAllowed: true,
     icon: "o-spreadsheet-Icon.DOWNLOAD",
-    isVisible: (env) => env.canDownloadExcel?.(),
+    isVisible: (env) => env.canDownloadExcel(),
 });
 
 export class PublicReadonlySpreadsheet extends Component {
@@ -63,9 +65,7 @@ export class PublicReadonlySpreadsheet extends Component {
         this.data = await this.http.get(this.props.dataUrl);
         this.model = new Model(
             this.data,
-            {
-                mode: this.props.mode === "dashboard" ? "dashboard" : "readonly",
-            },
+            { mode: this.props.mode === "dashboard" ? "dashboard" : "readonly" },
             this.data.revisions || []
         );
         if (this.env.debug) {

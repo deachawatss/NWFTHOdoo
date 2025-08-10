@@ -1,9 +1,13 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
+
+
+from dateutil.relativedelta import relativedelta
 
 from freezegun import freeze_time
 
 from odoo import Command, fields
-from odoo.tests.common import new_test_user, tagged, TransactionCase, users
+from odoo.tests.common import tagged, TransactionCase
 from odoo.addons.mail.tools.discuss import Store
 
 
@@ -18,7 +22,7 @@ class TestPartner(TransactionCase):
         cls.today = fields.Date.today()
         baseUser = cls.env['res.users'].create({
             'email': 'e.e@example.com',
-            'group_ids': [Command.link(cls.env.ref('base.group_user').id)],
+            'groups_id': [Command.link(cls.env.ref('base.group_user').id)],
             'login': 'emp',
             'name': 'Ernest Employee',
             'notification_type': 'inbox',
@@ -35,48 +39,34 @@ class TestPartner(TransactionCase):
             'user_id': user.id,
         } for user in cls.users])
         cls.leave_type = cls.env['hr.leave.type'].create({
-            'requires_allocation': False,
+            'requires_allocation': 'no',
             'name': 'Legal Leaves',
             'time_type': 'leave',
             'responsible_ids': cls.users.ids
         })
         cls.leaves = cls.env['hr.leave'].create([{
-            'request_date_from': "2024-06-03",
-            'request_date_to': "2024-06-06",
+            'request_date_from': cls.today + relativedelta(days=-1),
+            'request_date_to': cls.today + relativedelta(days=2),
             'employee_id': cls.employees[0].id,
             'holiday_status_id': cls.leave_type.id,
         }, {
-            'request_date_from': "2024-06-02",
-            'request_date_to': "2024-06-05",
+            'request_date_from': cls.today + relativedelta(days=-2),
+            'request_date_to': cls.today + relativedelta(days=1),
             'employee_id': cls.employees[1].id,
             'holiday_status_id': cls.leave_type.id,
         }])
-        cls.user_no_hr_access = new_test_user(
-            cls.env, login="user_no_hr_access",
-        )
 
     @freeze_time('2024-06-04')
     def test_res_partner_to_store(self):
         self.leaves.write({'state': 'validate'})
         self.assertEqual(
-            Store(self.partner).get_result()["hr.employee"][0]["leave_date_to"],
-            "2024-06-07",
-            "Return date is the return date of the main user of the partner",
+            Store(self.partner).get_result()["res.partner"][0]["out_of_office_date_end"],
+            fields.Date.to_string(self.today + relativedelta(days=2)),
+            'Return date is the first return date of all users associated with a partner',
         )
-        self.leaves[0].action_refuse()
+        self.leaves[1].action_refuse()
         self.assertEqual(
-            Store(self.partner).get_result()["hr.employee"][0]["leave_date_to"],
+            Store(self.partner).get_result()["res.partner"][0]["out_of_office_date_end"],
             False,
-            "Partner is not considered out of office if their main user is not on holiday",
-        )
-
-    @freeze_time("2024-06-04")
-    @users("user_no_hr_access")
-    def test_res_partner_to_store_no_hr_access(self):
-        self.leaves.write({"state": "validate"})
-        self.assertEqual(
-            Store(self.partner.with_user(self.user_no_hr_access)).get_result()["hr.employee"][0]["leave_date_to"],
-            "2024-06-07",
-            "Return date is the return date of the main user of the partner, "
-            "even if the user has no access to the company",
+            'Partner is not considered out of office if one of their users is not on holiday',
         )

@@ -14,14 +14,20 @@ class AccountEdiXmlUBLMyInvoisMY(models.AbstractModel):
     # CRUD, inherited methods
     # -----------------------
 
-    def _add_invoice_config_vals(self, vals):
-        super()._add_invoice_config_vals(vals)
-        invoice = vals['invoice']
+    def _export_invoice_vals(self, invoice):
+        # EXTENDS 'account_edi_ubl_cii'
+        vals = super()._export_invoice_vals(invoice)
 
         # Support the unlikely case where we invoice a refund of an order included in a consolidated invoice.
         consolidated_invoice = self._is_consolidated_invoice_refund(invoice)
         if consolidated_invoice:
-            # We need to match the customer, so we change it to the same as the consolidated invoice (General Public)
+            vals['vals'].update({
+                'billing_reference_vals': {
+                    'id': consolidated_invoice.name,
+                    'uuid': consolidated_invoice.myinvois_external_uuid,
+                },
+            })
+            # We also need to match the customer, so we change it to the same as the consolidated invoice (General Public)
             general_public = self.env["res.partner"].search(
                 domain=[
                     *self.env['res.partner']._check_company_domain(invoice.company_id),
@@ -33,46 +39,37 @@ class AccountEdiXmlUBLMyInvoisMY(models.AbstractModel):
             )
             if general_public:
                 vals['customer'] = general_public
-                vals['partner_shipping'] = general_public
+                vals['vals']['accounting_customer_party_vals']['party_vals'] = self._get_partner_party_vals(general_public, role='customer')
+                vals['vals']['delivery_vals_list'] = [{
+                    'accounting_delivery_party_vals': self._l10n_my_edi_get_delivery_party_vals(general_public),
+                }]
 
-    def _add_invoice_header_nodes(self, document_node, vals):
-        super()._add_invoice_header_nodes(document_node, vals)
-        invoice = vals['invoice']
-        consolidated_invoice = self._is_consolidated_invoice_refund(invoice)
-        if consolidated_invoice:
-            document_node['cac:BillingReference'] = {
-                'cac:InvoiceDocumentReference': {
-                    'cbc:ID': {'_text': consolidated_invoice.name},
-                    'cbc:UUID': {'_text': consolidated_invoice.myinvois_external_uuid},
-                }
-            }
+        return vals
 
-    def _add_invoice_line_item_nodes(self, line_node, vals):
+    def _get_invoice_line_item_vals(self, line, taxes_vals):
         # EXTENDS 'account_edi_ubl_cii'
-        super()._add_invoice_line_item_nodes(line_node, vals)
+        vals = super()._get_invoice_line_item_vals(line, taxes_vals)
         # When the invoice is sent for the general public (refunding an order in a consolidated invoice/...) the item code
         # must be fixed to 004 (consolidated invoice) even if the product has something else set.
-        if vals['customer']._l10n_my_edi_get_tin_for_myinvois() == 'EI00000000010' or self._is_consolidated_invoice_refund(vals['invoice']):
-            line_node["cac:Item"]["cac:CommodityClassification"] = {
-                'cbc:ItemClassificationCode': {
-                    '_text': '004',
-                    'listID': 'CLASS',
-                }
-            }
+        if line.partner_id._l10n_my_edi_get_tin_for_myinvois() == 'EI00000000010' or self._is_consolidated_invoice_refund(line.move_id):
+            vals['commodity_classification_vals'][0]['item_classification_code'] = '004'
         return vals
 
     def _export_invoice_constraints(self, invoice, vals):
         # EXTENDS 'l10n_my_edi'
         constraints = super()._export_invoice_constraints(invoice, vals)
-        if all(line_val['cac:Item']['cac:CommodityClassification']['cbc:ItemClassificationCode']['_text'] == '004' for line_val in vals['document_node']['cac:InvoiceLine']):
-            for base_line in vals['base_lines']:
-                # Ignore classification code errors if invoicing to the general public; the code is fixed.
-                if f"myinvois_{base_line['record'].id}_class_code_required" in constraints:
-                    del constraints[f"myinvois_{base_line['record'].id}_class_code_required"]
-                if f"myinvois_{base_line['record'].id}_class_code_required_line" in constraints:
-                    del constraints[f"myinvois_{base_line['record'].id}_class_code_required_line"]
+        # Ignore classification code errors if invoicing to the general public; the code is fixed.
+        for line in invoice.invoice_line_ids.filtered(lambda invoice_line: invoice_line.display_type not in ('line_note', 'line_section')):
+            to_general_public = vals['customer']._l10n_my_edi_get_tin_for_myinvois() == 'EI00000000010'
+            if to_general_public:
+                if f"myinvois_{line.product_id.id}_class_code_required" in constraints:
+                    del constraints[f"myinvois_{line.product_id.id}_class_code_required"]
+                if f"myinvois_{line.product_id.id}_class_code_required_line" in constraints:
+                    del constraints[f"myinvois_{line.product_id.id}_class_code_required_line"]
+
+        if all(line_val['item_vals']['commodity_classification_vals'][0]['item_classification_code'] == '04' for line_val in vals['vals']['line_vals']):
             # consolidated invoices must use a specific customer VAT number.
-            customer_vat = vals['document_node']['cac:AccountingCustomerParty']['cac:Party']['cac:PartyIdentification'][0]['cbc:ID']['_text']
+            customer_vat = vals['vals']['accounting_customer_party_vals']['party_vals']['party_identification_vals'][0]['id']
             if customer_vat != 'EI00000000010':
                 self._l10n_my_edi_make_validation_error(constraints, 'missing_general_public', vals['customer'].id, vals['customer'].name)
 
@@ -232,9 +229,6 @@ class AccountEdiXmlUBLMyInvoisMY(models.AbstractModel):
         })
 
     def _add_document_tax_grouping_function_vals(self, vals):
-        if 'consolidated_invoice' not in vals:
-            return super()._add_document_tax_grouping_function_vals(vals)
-
         def total_grouping_function(_base_line, _tax_data):
             return True
 
@@ -372,9 +366,6 @@ class AccountEdiXmlUBLMyInvoisMY(models.AbstractModel):
 
     def _get_address_node(self, vals):
         """ Generic helper to generate the Address node for a res.partner or res.bank. """
-        if 'consolidated_invoice' not in vals:
-            return super()._get_address_node(vals)
-
         partner = vals['partner']
         country_key = 'country' if partner._name == 'res.bank' else 'country_id'
         state_key = 'state' if partner._name == 'res.bank' else 'state_id'
@@ -424,10 +415,6 @@ class AccountEdiXmlUBLMyInvoisMY(models.AbstractModel):
         self._add_document_line_nodes(document_node, vals)
 
     def _add_document_line_item_nodes(self, line_node, vals):
-        if 'consolidated_invoice' not in vals:
-            super()._add_document_line_item_nodes(line_node, vals)
-            return
-
         line_node['cac:Item'] = {
             'cbc:Description': {'_text': vals['base_line']['line_name']},
             'cbc:Name': {'_text': vals['base_line']['line_name']},
@@ -441,9 +428,6 @@ class AccountEdiXmlUBLMyInvoisMY(models.AbstractModel):
 
     def _add_document_line_amount_nodes(self, line_node, vals):
         super()._add_document_line_amount_nodes(line_node, vals)
-        if 'consolidated_invoice' not in vals:
-            return
-
         line_node.update({
             'cac:ItemPriceExtension': {
                 'cbc:Amount': {
@@ -460,9 +444,6 @@ class AccountEdiXmlUBLMyInvoisMY(models.AbstractModel):
         pre-computed amount.
         """
         super()._add_document_line_gross_subtotal_and_discount_vals(vals)
-        if 'consolidated_invoice' not in vals:
-            return
-
         base_line = vals['base_line']
 
         for currency_suffix in ['', '_currency']:

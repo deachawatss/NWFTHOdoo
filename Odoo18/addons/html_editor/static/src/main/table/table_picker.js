@@ -55,7 +55,6 @@ export class TablePicker extends Component {
                     }
                     break;
                 default:
-                    ev.stopImmediatePropagation();
                     this.props.overlay.close();
                     break;
             }

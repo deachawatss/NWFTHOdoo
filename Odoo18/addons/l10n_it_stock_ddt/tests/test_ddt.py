@@ -49,14 +49,16 @@ class TestDDT(TestSaleCommon):
             'order_line': [(0, 0, {'name': p.name,
                                    'product_id': p.id,
                                    'product_uom_qty': 5,
+                                   'product_uom': p.uom_id.id,
                                    'price_unit': p.list_price,
-                                   'tax_ids': self.company_data['default_tax_sale']})
+                                   'tax_id': self.company_data['default_tax_sale']})
                            for p in (
                     self.company_data['product_order_no'],
                     self.company_data['product_service_delivery'],
                     self.company_data['product_service_order'],
                     self.company_data['product_delivery_no'],
                 )],
+            'pricelist_id': self.company_data['default_pricelist'].id,
             'picking_policy': 'direct',
         })
         self.so.action_confirm()
@@ -102,10 +104,12 @@ class TestDDT(TestSaleCommon):
             'order_line': [(0, 0, {
                                    'product_id': self.product_a.id,
                                    'product_uom_qty': 3,
+                                   'product_uom': self.product_a.uom_id.id,
                                    'price_unit': self.product_a.list_price,
-                                   'tax_ids': self.company_data['default_tax_sale']
+                                   'tax_id': self.company_data['default_tax_sale']
                                    }
                             )],
+            'pricelist_id': self.company_data['default_pricelist'].id,
             'picking_policy': 'direct',
         })
         so.action_confirm()

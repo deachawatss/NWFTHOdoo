@@ -1,14 +1,12 @@
+/** @odoo-module **/
+
 import publicWidget from '@web/legacy/js/public/public_widget';
 import { _t } from "@web/core/l10n/translation";
+import { rpc } from "@web/core/network/rpc";
 import { SlideCoursePage } from '@website_slides/js/slides_course_page';
 
 publicWidget.registry.websiteSlidesCourseSlidesList = SlideCoursePage.extend({
     selector: '.o_wslides_slides_list',
-
-    init: function () {
-        this._super(...arguments);
-        this.orm = this.bindService("orm");
-    },
 
     start: function () {
         this._super.apply(this,arguments);
@@ -109,11 +107,12 @@ publicWidget.registry.websiteSlidesCourseSlidesList = SlideCoursePage.extend({
     },
     _reorderSlides: function (){
         var self = this;
-        this.orm
-            .webResequence("slide.slide", this._getSlides())
-            .then(function (res) {
-                self._checkForEmptySections();
-            });
+        rpc('/web/dataset/resequence', {
+            model: "slide.slide",
+            ids: self._getSlides(),
+        }).then(function (res) {
+            self._checkForEmptySections();
+        });
     },
 
     /**

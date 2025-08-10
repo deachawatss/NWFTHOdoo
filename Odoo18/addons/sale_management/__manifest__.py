@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 {
@@ -59,13 +60,12 @@ The Dashboard for the Sales Manager will include
     ],
     'assets': {
         'web.assets_frontend': [
-            'sale_management/static/src/interactions/**/*',
+            'sale_management/static/src/js/**/*',
         ],
     },
     'application': True,
     'pre_init_hook': 'pre_init_hook',
     'post_init_hook': 'post_init_hook',
     'uninstall_hook': 'uninstall_hook',
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

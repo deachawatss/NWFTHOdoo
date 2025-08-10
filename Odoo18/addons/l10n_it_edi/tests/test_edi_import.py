@@ -6,7 +6,6 @@ from freezegun import freeze_time
 from unittest.mock import patch
 
 from odoo import fields, sql_db, tools, Command
-from odoo.exceptions import ValidationError
 from odoo.tests import new_test_user, tagged
 from odoo.addons.l10n_it_edi.tests.common import TestItEdi
 
@@ -46,6 +45,14 @@ class TestItEdiImport(TestItEdi):
     # Vendor bills
     # -----------------------------
 
+    def test_receive_invalid_xml(self):
+        xml_decode = self.env['ir.attachment']._decode_edi_l10n_it_edi
+        with tools.mute_logger("odoo.addons.l10n_it_edi.models.ir_attachment"):
+            self.assertEqual([], xml_decode("none.xml", None))
+            self.assertEqual([], xml_decode("empty.xml", ""))
+            self.assertEqual([], xml_decode("invalid.xml", "invalid"))
+            self.assertEqual([], xml_decode("invalid2.xml", "<invalid/>"))
+
     def test_receive_vendor_bill(self):
         """ Test a sample e-invoice file from
         https://www.fatturapa.gov.it/export/documenti/fatturapa/v1.2/IT01234567890_FPR01.xml
@@ -82,6 +89,12 @@ class TestItEdiImport(TestItEdi):
                 'price_unit': 10.0,
                 'discount': 52.5,
                 'debit': 23.75,
+            },
+            {
+                'quantity': 1.0,
+                'price_unit': 0.0,
+                'discount': 0.0,
+                'debit': 0.0,
             }],
         }])
 
@@ -140,19 +153,6 @@ class TestItEdiImport(TestItEdi):
                 'amount_tax': 3.95,
             }])
 
-    def test_import_invoice_with_multiple_same_vat(self):
-        (self.italian_partner_a | self.italian_partner_b).update({
-            'vat': "IT06655971007",
-            'l10n_it_codice_fiscale': '06655971007',
-        })
-        self._assert_import_invoice('IT01234567892_FPR01.xml', [{
-            'partner_id': self.italian_partner_b.id,
-        }], move_type="out_invoice")
-        self.italian_partner_b.active = False
-        self._assert_import_invoice('IT01234567892_FPR01.xml', [{
-            'partner_id': self.italian_partner_a.id,
-        }], move_type="out_invoice")
-
     def test_receive_bill_sequence(self):
         """ Ensure that the received bill gets assigned the right sequence. """
         def mock_commit(self):
@@ -180,39 +180,6 @@ class TestItEdiImport(TestItEdi):
                 self.proxy_user,
             )
             self.assertEqual(len(created_moves), 1)
-
-    def test_cron_receives_bill_in_preferred_journal(self):
-        """ Ensure that the received bill is in the preferred journal set from the setting. """
-        preferred_journal = self.company_data_2['default_journal_purchase'].copy()
-        filename = 'IT01234567890_FPR02.xml'
-
-        with self.assertRaisesRegex(ValidationError, "The Italian default purchase journal requires a default account."):
-            # When copying journal, the default_account_id are not copied.
-            # It should raise an error when we try to set the company's default purchase journal in the Settings.
-            self.company.l10n_it_edi_purchase_journal_id = preferred_journal
-
-        preferred_journal.default_account_id = self.company_data_2['default_journal_purchase'].default_account_id.id
-
-        with tools.file_open(f'{self.module}/tests/import_xmls/{filename}', mode='rb') as fd:
-            fake_bill_content = fd.read()
-
-        with (patch.object(self.env.registry['account_edi_proxy_client.user'], '_decrypt_data', return_value=fake_bill_content),
-              freeze_time('2019-01-01')):
-            self.env['account.move'].with_company(self.company)._l10n_it_edi_process_downloads({
-                '999999999': {
-                    'filename': filename,
-                    'file': fake_bill_content,
-                    'key': str(uuid.uuid4()),
-                }},
-                self.proxy_user,
-            )
-
-        imported_bill = self.env['account.move'].with_company(self.company).search([])
-        self.assertEqual(len(imported_bill), 1)
-        self.assertRecordValues(imported_bill.journal_id, [{
-            'id': preferred_journal.id,
-            'default_account_id': self.company_data_2['default_journal_purchase'].default_account_id.id,
-        }])
 
     def test_cron_receives_bill_from_another_company(self):
         """ Ensure that when from one of your company, you bill the other, the
@@ -281,7 +248,7 @@ class TestItEdiImport(TestItEdi):
         with (patch.object(proxy_user.__class__, '_decrypt_data', return_value=self.fake_test_content),
               patch.object(sql_db.Cursor, "commit", mock_commit),
               tools.mute_logger("odoo.addons.l10n_it_edi.models.account_move")):
-            for _dummy in range(2):
+            for dummy in range(2):
                 processed = self.env['account.move']._l10n_it_edi_process_downloads({
                     '999999999': {
                         'filename': filename,
@@ -367,53 +334,30 @@ class TestItEdiImport(TestItEdi):
             ],
         }], applied_xml)
 
-    def test_receive_two_bills_in_one_file(self):
-        self._assert_import_invoice('IT01234567890_FPR03.xml', [
-        {
-            'invoice_date': fields.Date.from_string('2014-12-18'),
-            'amount_tax': 5.5,
-            'amount_untaxed': 25.0,
-            'invoice_line_ids': [
-                {
-                    'name': 'DESCRIZIONE DELLA FORNITURA',
-                    'price_unit': 1.0,
-                    'quantity': 5.0,
-                },
-                {
-                    'name': 'FORNITURE VARIE PER UFFICIO',
-                    'price_unit': 2.0,
-                    'quantity': 10.0,
-                }
-            ],
-        },
-        {
-            'invoice_date': fields.Date.from_string('2014-12-20'),
-            'amount_untaxed': 2000.0,
-            'amount_tax': 440.0,
-            'invoice_line_ids': [{
-                'name': 'DESCRIZIONE DEL SERVIZIO',
-                'price_unit': 2000.0,
-                'quantity': 1.0,
-            }],
-        },
-    ])
-
     def test_invoice_user_can_compute_is_self_invoice(self):
         """Ensure that a user having only group_account_invoice can compute field l10n_it_edi_is_self_invoice"""
         user = new_test_user(self.env, login='jag', groups='account.group_account_invoice')
         move = self.env['account.move'].create({'move_type': 'in_invoice'})
         move.with_user(user).read(['l10n_it_edi_is_self_invoice'])  # should not raise
 
-    def test_l10n_it_payment_method_correctly_imported(self):
-        self._assert_import_invoice('IT01234567890_FPR01.xml', [{
+    def test_import_vendor_bill_with_ref_service_valid_tax(self):
+        """Ensure that importing vendor bill with a referenced service product, with a service tax of 22% S
+        only applies one tax on the product
+        """
+        sale_tax = self.env['account.tax'].search([('display_name', '=', '22%'), ('company_id', '=', self.company.id)])[0]
+        supplier_tax = self.env['account.tax'].search([('display_name', '=', '22% S'), ('company_id', '=', self.company.id)])[0]
+        self.env['product.product'].create({
+            'name': 'Servizio tecnico',
+            'default_code': 'abcdefgh',
+            'type': 'service',
+            'list_price': 150.0,
+            'taxes_id': [Command.set([sale_tax.id])],
+            'supplier_taxes_id': [Command.set([supplier_tax.id])],
+        })
+
+        self._assert_import_invoice('IT01234567889_FPR03.xml', [{
             'move_type': 'in_invoice',
             'invoice_date': fields.Date.from_string('2014-12-18'),
-            'amount_untaxed': 5.0,
-            'amount_tax': 1.1,
-            'invoice_line_ids': [{
-                'quantity': 5.0,
-                'price_unit': 1.0,
-                'debit': 5.0,
-            }],
-            'l10n_it_payment_method': 'MP01',
+            'amount_untaxed': 25.0,
+            'amount_tax': 5.5,
         }])

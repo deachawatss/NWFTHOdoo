@@ -1,3 +1,4 @@
+/** @odoo-module */
 import { browser } from "@web/core/browser/browser";
 const localStorage = browser.localStorage;
 

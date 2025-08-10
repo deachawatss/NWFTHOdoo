@@ -15,19 +15,21 @@ class TestSaleTimesheetReport(TestCommonSaleTimesheet):
         # Change product uom from hours to days
         self.product_order_timesheet3.write({
             'uom_id': uom_days,
+            'uom_po_id': uom_days,
         })
 
         sale_order = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'partner_invoice_id': self.partner_a.id,
             'partner_shipping_id': self.partner_a.id,
+            'pricelist_id': self.company_data['default_pricelist'].id,
         })
         so_line = self.env['sale.order.line'].create({
             'product_id': self.product_order_timesheet3.id,
             'product_uom_qty': 3,
             'order_id': sale_order.id,
             'price_unit': 10.0,
-            'tax_ids': [Command.set(self.tax_sale_a.ids)],
+            'tax_id': [Command.set(self.tax_sale_a.ids)],
         })
         sale_order.action_confirm()
         task = self.env['project.task'].search([('sale_line_id', '=', so_line.id)])

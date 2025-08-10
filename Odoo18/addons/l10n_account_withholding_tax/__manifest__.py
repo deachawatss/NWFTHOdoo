@@ -25,6 +25,5 @@
     },
     'installable': True,
     'post_init_hook': '_l10n_account_wth_post_init',
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

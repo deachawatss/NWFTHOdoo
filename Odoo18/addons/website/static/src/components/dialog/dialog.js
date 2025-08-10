@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { Dialog } from '@web/core/dialog/dialog';
 import { _t } from "@web/core/l10n/translation";
 import { useState, Component } from "@odoo/owl";

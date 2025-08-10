@@ -1,3 +1,4 @@
+/** @odoo-module **/
 import * as wsTourUtils from '@website_sale/js/tours/tour_utils';
 
 const closeModal = {

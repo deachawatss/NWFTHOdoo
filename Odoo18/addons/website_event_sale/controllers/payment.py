@@ -1,7 +1,4 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 from odoo.http import request
-
 from odoo.addons.website_sale.controllers.payment import PaymentPortal
 
 
@@ -17,16 +14,16 @@ class PaymentPortalOnsite(PaymentPortal):
             ('event_ticket_id', '!=', False),
             ('state', '!=', 'cancel'),
         ]
-        registrations_per_event = request.env['event.registration'].sudo()._read_group(
+        count_per_ticket = request.env['event.registration'].sudo()._read_group(
             registration_domain,
-            ['event_id'], ['id:recordset']
+            ['event_ticket_id'], ['__count']
         )
-        for event, registrations in registrations_per_event:
-            count_per_slot_ticket = request.env['event.registration'].sudo()._read_group(
-                [('id', 'in', registrations.ids)],
-                ['event_slot_id', 'event_ticket_id'], ['__count']
-            )
-            event._verify_seats_availability([
-                (slot, ticket, count)
-                for slot, ticket, count in count_per_slot_ticket
-            ])
+        for ticket, count in count_per_ticket:
+            ticket._check_seats_availability(minimal_availability=count)
+
+        count_per_event = request.env['event.registration'].sudo()._read_group(
+            registration_domain,
+            ['event_id'], ['__count']
+        )
+        for event, count in count_per_event:
+            event._check_seats_availability(minimal_availability=count)

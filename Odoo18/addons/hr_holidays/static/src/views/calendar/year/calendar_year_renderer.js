@@ -1,9 +1,12 @@
+/** @odoo-module **/
+
 import { CalendarYearRenderer } from "@web/views/calendar/calendar_year/calendar_year_renderer";
 
 import { useService } from "@web/core/utils/hooks";
 import { useMandatoryDays } from "../../hooks";
-import { useCalendarPopover } from "@web/views/calendar/hooks/calendar_popover_hook";
+import { useCalendarPopover } from "@web/views/calendar/hooks";
 import { TimeOffCalendarYearPopover } from "./calendar_year_popover";
+import { useEffect } from "@odoo/owl";
 
 export class TimeOffCalendarYearRenderer extends CalendarYearRenderer {
     setup() {
@@ -12,6 +15,22 @@ export class TimeOffCalendarYearRenderer extends CalendarYearRenderer {
         this.mandatoryDays = useMandatoryDays(this.props);
         this.mandatoryDaysList = [];
         this.mandatoryDayPopover = useCalendarPopover(TimeOffCalendarYearPopover);
+
+        useEffect(
+            (el) => {
+                for (const lastWeek of el) {
+                    // Remove the week if the week is empty.
+                    // FullCalendar always displays 6 weeks even when empty.
+                    if (!lastWeek.querySelector("[data-date]")) {
+                        lastWeek.remove();
+                    }
+                }
+            },
+            () => [
+                this.rootRef.el &&
+                    this.rootRef.el.querySelectorAll(".fc-scrollgrid-sync-table tr:nth-child(6)"),
+            ]
+        );
     }
 
     get options() {
@@ -53,39 +72,13 @@ export class TimeOffCalendarYearRenderer extends CalendarYearRenderer {
             );
             const props = this.getPopoverProps(date, records);
             props["records"] = mandatory_days_data.concat(props["records"]);
-            this.mandatoryDayPopover.open(target, props, "o_cw_popover_holidays o_cw_popover");
+            this.mandatoryDayPopover.open(target, props, "o_cw_popover");
         } else {
             super.onDateClick(info);
         }
     }
 
-    openPopover(target, date, records) {
-        this.popover.open(target, this.getPopoverProps(date, records), "o_cw_popover_holidays o_cw_popover");
-    }
-
     getDayCellClassNames(info) {
         return [...super.getDayCellClassNames(info), ...this.mandatoryDays(info)];
-    }
-
-    /**
-     * @override
-     */
-    eventClassNames({ event }) {
-        const classesToAdd = super.eventClassNames(...arguments);
-        const record = this.props.model.records[event.id];
-        if (record && record.request_date_from_period) {
-            record.request_date_from_period === "am"
-                ? classesToAdd.push("o_event_half_left")
-                : classesToAdd.push("o_event_half_right");
-        }
-        // handling half pill UX for custom_hours
-        if (record?.rawRecord?.request_unit_hours) {
-            if (record.end.c.hour < 12) {
-                classesToAdd.push("o_event_half_left");
-            } else if (record.end.c.hour >= 12) {
-                classesToAdd.push("o_event_half_right");
-            }
-        }
-        return classesToAdd;
     }
 }

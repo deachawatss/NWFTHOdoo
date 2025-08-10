@@ -1,15 +1,16 @@
 import { start, startServer } from "@mail/../tests/mail_test_helpers";
-import { click, contains } from "@mail/../tests/mail_test_helpers_contains";
+import { assertSteps, click, contains, step } from "@mail/../tests/mail_test_helpers_contains";
 import { beforeEach, describe, expect, test } from "@odoo/hoot";
 import { mockDate } from "@odoo/hoot-mock";
 import { defineTestMailModels } from "@test_mail/../tests/test_mail_test_helpers";
-import { asyncStep, mockService, waitForSteps } from "@web/../tests/web_test_helpers";
 import { serializeDate, today } from "@web/core/l10n/dates";
+import { user } from "@web/core/user";
+import { patchWithCleanup } from "@web/../tests/web_test_helpers";
 
 describe.current.tags("desktop");
 defineTestMailModels();
 // Avoid problem around midnight (Ex.: tomorrow activities become today activities when reaching midnight)
-beforeEach(() => mockDate("2023-04-08 10:00:00", 0));
+beforeEach(() => mockDate("2023-4-8 10:00:00", 0));
 
 test("menu with no records", async () => {
     await start();
@@ -67,21 +68,19 @@ test("activity menu widget: activity menu with 2 models", async () => {
             res_model: "mail.test.activity",
         },
     ]);
-    await start();
+    const env = await start();
     await contains(".o_menu_systray i[aria-label='Activities']");
     await contains(".o-mail-ActivityMenu-counter");
     await contains(".o-mail-ActivityMenu-counter", { text: "5" });
     const actionChecks = {
         context: {
-            active_test: false,
             force_search_count: 1,
-            search_default_filter_activities_my: 1,
             search_default_activities_overdue: 1,
             search_default_activities_today: 1,
         },
-        domain: [],
+        domain: [["activity_user_id", "=", user.userId]],
     };
-    mockService("action", {
+    patchWithCleanup(env.services.action, {
         doAction(action) {
             Object.entries(actionChecks).forEach(([key, value]) => {
                 if (Array.isArray(value) || typeof value === "object") {
@@ -90,7 +89,7 @@ test("activity menu widget: activity menu with 2 models", async () => {
                     expect(action[key]).toBe(value);
                 }
             });
-            asyncStep("do_action:" + action.name);
+            step("do_action:" + action.name);
         },
     });
     await click(".o_menu_systray i[aria-label='Activities']");
@@ -118,7 +117,7 @@ test("activity menu widget: activity menu with 2 models", async () => {
     await click(".o_menu_systray i[aria-label='Activities']");
     actionChecks.res_model = "mail.test.activity";
     await click(".o-mail-ActivityMenu .o-mail-ActivityGroup", { text: "mail.test.activity" });
-    await waitForSteps(["do_action:res.partner", "do_action:mail.test.activity"]);
+    await assertSteps(["do_action:res.partner", "do_action:mail.test.activity"]);
 });
 
 test("activity menu widget: close on messaging menu click", async () => {

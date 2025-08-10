@@ -7,10 +7,8 @@
         min-width: 20px;
     }
 
-    button {
-        &:hover, &.show {
-            background-color: var(--mail-NotificationSettings-btnHoverBg, $gray-200);
-        }
+    button:hover {
+        background-color: var(--mail-NotificationSettings-btnHoverBg, $gray-200);
     }
 }
 

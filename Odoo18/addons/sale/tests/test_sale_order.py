@@ -28,8 +28,6 @@ class TestSaleOrder(SaleCommon):
             {'name': 'Partner 1'},
             {'name': 'Partner 2'},
         ])
-        cls.confirmation_email_template = cls.sale_order._get_confirmation_template()
-        cls.async_emails_cron = cls.env.ref('sale.send_pending_emails_cron')
 
     def test_computes_auto_fill(self):
         free_product, dummy_product = self.env['product.product'].create([{
@@ -171,6 +169,125 @@ class TestSaleOrder(SaleCommon):
         with self.assertRaises(UserError):
             self.sale_order.unlink()
 
+    def test_compute_packaging_00(self):
+        """Create a SO and use packaging. Check we suggested suitable packaging
+        according to the product_qty. Also check product_qty or product_packaging
+        are correctly calculated when one of them changed.
+        """
+        # Required for `product_packaging_qty` to be visible in the view
+        self.env.user.groups_id += self.env.ref('product.group_stock_packaging')
+        packaging_single, packaging_dozen = self.env['product.packaging'].create([{
+            'name': "I'm a packaging",
+            'product_id': self.product.id,
+            'qty': 1.0,
+        }, {
+            'name': "I'm also a packaging",
+            'product_id': self.product.id,
+            'qty': 12.0,
+        }])
+
+        so = self.empty_order
+        so_form = Form(so)
+        with so_form.order_line.new() as line:
+            line.product_id = self.product
+            line.product_uom_qty = 1.0
+        so_form.save()
+        self.assertEqual(so.order_line.product_packaging_id, packaging_single)
+        self.assertEqual(so.order_line.product_packaging_qty, 1.0)
+        with so_form.order_line.edit(0) as line:
+            line.product_packaging_qty = 2.0
+        so_form.save()
+        self.assertEqual(so.order_line.product_uom_qty, 2.0)
+
+        with so_form.order_line.edit(0) as line:
+            line.product_uom_qty = 24.0
+        so_form.save()
+        self.assertEqual(so.order_line.product_packaging_id, packaging_dozen)
+        self.assertEqual(so.order_line.product_packaging_qty, 2.0)
+        with so_form.order_line.edit(0) as line:
+            line.product_packaging_qty = 1.0
+        so_form.save()
+        self.assertEqual(so.order_line.product_uom_qty, 12)
+
+        packaging_pack_of_10 = self.env['product.packaging'].create({
+            'name': "PackOf10",
+            'product_id': self.product.id,
+            'qty': 10.0,
+        })
+        packaging_pack_of_20 = self.env['product.packaging'].create({
+            'name': "PackOf20",
+            'product_id': self.product.id,
+            'qty': 20.0,
+        })
+
+        so2 = self.env['sale.order'].create({
+            'partner_id': self.partner.id,
+        })
+        so2_form = Form(so2)
+        with so2_form.order_line.new() as line:
+            line.product_id = self.product
+            line.product_uom_qty = 10
+        so2_form.save()
+        self.assertEqual(so2.order_line.product_packaging_id.id, packaging_pack_of_10.id)
+        self.assertEqual(so2.order_line.product_packaging_qty, 1.0)
+
+        with so2_form.order_line.edit(0) as line:
+            line.product_packaging_qty = 2
+        so2_form.save()
+        self.assertEqual(so2.order_line.product_uom_qty, 20)
+        # we should have 2 pack of 10, as we've set the package_qty manually,
+        # we shouldn't recompute the packaging_id, since the package_qty is protected,
+        # therefor cannot be recomputed during the same transaction, which could lead
+        # to an incorrect line like (qty=20,pack_qty=2,pack_id=PackOf20)
+        self.assertEqual(so2.order_line.product_packaging_qty, 2)
+        self.assertEqual(so2.order_line.product_packaging_id.id, packaging_pack_of_10.id)
+
+        with so2_form.order_line.edit(0) as line:
+            line.product_packaging_id = packaging_pack_of_20
+        so2_form.save()
+        self.assertEqual(so2.order_line.product_uom_qty, 20)
+        # we should have 1 pack of 20, as we've set the package type manually
+        self.assertEqual(so2.order_line.product_packaging_qty, 1)
+        self.assertEqual(so2.order_line.product_packaging_id.id, packaging_pack_of_20.id)
+
+    def test_compute_packaging_01(self):
+        """Create a SO and use packaging in a multicompany environment.
+        Ensure any suggested packaging matches the SO's.
+        """
+        company2 = self.env['res.company'].create([{'name': 'Company 2'}])
+        generic_single_pack = self.env['product.packaging'].create({
+            'name': "single pack",
+            'product_id': self.product.id,
+            'qty': 1.0,
+            'company_id': False,
+        })
+        company2_pack_of_10 = self.env['product.packaging'].create({
+            'name': "pack of 10 by Company 2",
+            'product_id': self.product.id,
+            'qty': 10.0,
+            'company_id': company2.id,
+        })
+
+        so1 = self.empty_order
+        so1_form = Form(so1)
+        with so1_form.order_line.new() as line:
+            line.product_id = self.product
+            line.product_uom_qty = 10.0
+        so1_form.save()
+        self.assertEqual(so1.order_line.product_packaging_id, generic_single_pack)
+        self.assertEqual(so1.order_line.product_packaging_qty, 10.0)
+
+        so2 = self.env['sale.order'].with_company(company2).create({
+            'partner_id': self.partner.id,
+        })
+        so2_form = Form(so2)
+        with so2_form.order_line.new() as line:
+            line.product_id = self.product
+            line.product_uom_qty = 10.0
+        so2_form.save()
+        self.assertEqual(so2.order_line.product_packaging_id, company2_pack_of_10)
+        self.assertEqual(so2.order_line.product_packaging_qty, 1.0)
+
     def _create_sale_order(self):
         """Create dummy sale order (without lines)"""
         return self.env['sale.order'].with_context(
@@ -296,11 +413,9 @@ class TestSaleOrder(SaleCommon):
         self.sale_order.action_quotation_sent()
 
         self.assertEqual(self.sale_order.state, 'sent')
-        self.assertNotIn(
-            self.sale_order.partner_id, self.sale_order.message_partner_ids,
-            'Customer should not be added automatically in followers')
+        self.assertIn(self.sale_order.partner_id, self.sale_order.message_follower_ids.partner_id)
 
-        self.env.user.group_ids += self.env.ref('sale.group_auto_done_setting')
+        self.env.user.groups_id += self.env.ref('sale.group_auto_done_setting')
         self.sale_order.action_confirm()
         self.assertEqual(self.sale_order.state, 'sale')
         self.assertTrue(self.sale_order.locked)
@@ -325,7 +440,7 @@ class TestSaleOrder(SaleCommon):
         """
         order_line = self.sale_order.order_line[0]
         order_line.product_uom_qty = 0.0
-        order_line.product_uom_id = self.uom_dozen
+        order_line.product_uom = self.uom_dozen
         self.assertEqual(order_line.product_uom_qty, 0.0)
 
     def test_discount_rounding(self):
@@ -366,14 +481,14 @@ class TestSaleOrder(SaleCommon):
                     'product_uom_qty': 1,
                     'price_unit': 6.7,
                     'discount': 0,
-                    'tax_ids': tax_a.ids,
+                    'tax_id': tax_a.ids,
                 }),
                 Command.create({
                     'product_id': self.product.id,
                     'product_uom_qty': 1,
                     'price_unit': 6.7,
                     'discount': 0,
-                    'tax_ids': tax_a.ids,
+                    'tax_id': tax_a.ids,
                 }),
             ],
         })
@@ -389,14 +504,14 @@ class TestSaleOrder(SaleCommon):
                     'product_uom_qty': 1,
                     'price_unit': 6.7,
                     'discount': 0,
-                    'tax_ids': tax_a.ids,
+                    'tax_id': tax_a.ids,
                 }),
                 Command.create({
                     'product_id': self.product.id,
                     'product_uom_qty': 1,
                     'price_unit': 6.7,
                     'discount': 0,
-                    'tax_ids': tax_a.ids,
+                    'tax_id': tax_a.ids,
                 }),
             ],
         })
@@ -404,51 +519,30 @@ class TestSaleOrder(SaleCommon):
 
     def test_order_auto_lock_with_public_user(self):
         public_user = self.env.ref('base.public_user')
-        self.sale_order.create_uid.group_ids += self.env.ref('sale.group_auto_done_setting')
+        self.sale_order.create_uid.groups_id += self.env.ref('sale.group_auto_done_setting')
         self.sale_order.with_user(public_user.id).sudo().action_confirm()
 
         self.assertFalse(public_user.has_group('sale.group_auto_done_setting'))
         self.assertTrue(self.sale_order.locked)
 
-    def test_order_status_email_is_sent_synchronously_if_not_configured(self):
-        """ Test that the order status email is sent synchronously when nothing is configured. """
-        self.env['ir.config_parameter'].set_param('sale.async_emails', 'False')
+    def test_draft_quotation_followers(self):
+        sale_order = self.env['sale.order'].create({
+            'partner_id': self.partner1.id,
+        })
 
-        self.sale_order._send_order_notification_mail(self.confirmation_email_template)
-        self.assertFalse(
-            self.env['ir.cron.trigger'].search_count([('cron_id', '=', self.async_emails_cron.id)]),
-            msg="The email should be sent synchronously when the system parameter is not set.",
-        )
+        sale_order.partner_id = self.partner2
 
-    def test_order_status_email_is_sent_asynchronously_if_configured(self):
-        """ Test that the order status email is sent asynchronously when configured. """
-        self.env['ir.config_parameter'].set_param('sale.async_emails', 'True')
+        self.assertNotIn(self.partner2, sale_order.message_partner_ids)
 
-        self.sale_order._send_order_notification_mail(self.confirmation_email_template)
-        self.assertTrue(
-            self.sale_order.pending_email_template_id,
-            msg="The email template should be saved on the sales order.",
-        )
-        self.assertTrue(
-            self.env['ir.cron.trigger'].search_count([('cron_id', '=', self.async_emails_cron.id)]),
-            msg="The asynchronous email sending cron should be triggered.",
-        )
+    def test_sent_quotation_followers(self):
+        sale_order = self.env['sale.order'].create({
+            'partner_id': self.partner1.id,
+        })
+        sale_order.action_quotation_sent()
 
-    def test_async_emails_cron_does_not_trigger_itself(self):
-        """ Test that the asynchronous email sending cron does not loop indefinitely. """
-        self.env['ir.config_parameter'].set_param('sale.async_emails', 'True')
-        self.sale_order.pending_email_template_id = self.confirmation_email_template
+        sale_order.partner_id = self.partner2
 
-        with self.enter_registry_test_mode():
-            self.env.ref('sale.send_pending_emails_cron').method_direct_trigger()
-        self.assertFalse(
-            self.sale_order.pending_email_template_id,
-            msg="The email template should be removed from the sales order.",
-        )
-        self.assertFalse(
-            self.env['ir.cron.trigger'].search_count([('cron_id', '=', self.async_emails_cron.id)]),
-            msg="The email should be sent synchronously when requested by the cron.",
-        )
+        self.assertIn(self.partner2, sale_order.message_partner_ids)
 
     def test_scheduled_mark_so_as_sent(self):
         """Check that a order gets marked as sent after a scheduled message was sent."""
@@ -458,11 +552,10 @@ class TestSaleOrder(SaleCommon):
             active_ids=order.ids,
             active_model=order._name,
             mark_so_as_sent=True,
-        ).new({
-            'body': '<h1>Your Sales Order</h1>',
-            'scheduled_date': fields.Datetime.now() + timedelta(days=1),
-        })
-        composer.action_schedule_message()
+        ).new({'body': '<h1>Your Sales Order</h1>'})
+        composer.action_schedule_message(
+            scheduled_date=fields.Datetime.now() + timedelta(hours=1),
+        )
 
         scheduled_message = self.env['mail.scheduled.message'].search([
             ('model', '=', order._name),
@@ -487,7 +580,7 @@ class TestSaleOrder(SaleCommon):
         company_2 = self.env['res.company'].create({
             'name': 'Company 2'
         })
-        self.env = self.env(context=dict(self.env.context, allowed_company_ids=[self.env.company.id, company_2.id]))
+        self.env.companies = [self.env.company, company_2]
         so_form = Form(self.env['sale.order'])
         with self.assertRaises(ValidationError):
             so_form.company_id = self.env['res.company']
@@ -631,10 +724,10 @@ class TestSaleOrder(SaleCommon):
             line.product_id = product_no_tax
         so = so_form.save()
         self.assertRecordValues(so.order_line, [
-            {'product_id': product_all_taxes.id, 'tax_ids': tax_xx.ids},
-            {'product_id': product_no_xx_tax.id, 'tax_ids': tax_x.ids},
-            {'product_id': product_no_branch_tax.id, 'tax_ids': (tax_a + tax_b).ids},
-            {'product_id': product_no_tax.id, 'tax_ids': []},
+            {'product_id': product_all_taxes.id, 'tax_id': tax_xx.ids},
+            {'product_id': product_no_xx_tax.id, 'tax_id': tax_x.ids},
+            {'product_id': product_no_branch_tax.id, 'tax_id': (tax_a + tax_b).ids},
+            {'product_id': product_no_tax.id, 'tax_id': []},
         ])
 
     def test_price_recomputation_on_readonly_unit_price(self):
@@ -679,36 +772,43 @@ class TestSaleOrder(SaleCommon):
         })
         self.assertEqual(new_order.order_line.price_unit, 22.0)
 
-    def test_sale_warnings(self):
-        """Test warnings when partner/products with sale warnings are used."""
-        partner_with_warning = self.env['res.partner'].create({
-            'name': 'Test Partner', 'sale_warn_msg': 'Highly infectious disease'})
-        sale_order = self.env['sale.order'].create({'partner_id': partner_with_warning.id})
+    def test_sale_order_unit_price_recompute_on_product_change(self):
+        """Ensure price_unit is correctly recomputed when the product is
+           changed after manually changing the price.
+        """
+        product2 = self.env['product.product'].create({
+            'name': "Test Product2",
+            'list_price': 0.0,
+        })
+        sol = self.sale_order.order_line[0]
+        # Manually change the product & price on the SO line
+        with Form(sol) as sol_form:
+            sol_form.product_id = product2
+            sol_form.price_unit = 100
+        # Expected price_subtotal = custom unit price * quantity
+        self.assertAlmostEqual(
+            sol.price_subtotal, 100 * sol.product_uom_qty,
+            msg="price_total should be equal to expected_total",
+        )
+        # Unit price should reset after changing the product
+        with Form(sol) as sol_form:
+            sol_form.product_id = self.product
+        # Expected price_subtotal = list price * quantity
+        self.assertAlmostEqual(
+            sol.price_subtotal, self.product.list_price * sol.product_uom_qty,
+            msg="price_total should be equal to expected_total",
+        )
 
-        product_with_warning1 = self.env['product.product'].create({
-            'name': 'Test Product 1', 'sale_line_warn_msg': 'Highly corrosive'})
-        product_with_warning2 = self.env['product.product'].create({
-            'name': 'Test Product 2', 'sale_line_warn_msg': 'Toxic pollutant'})
-        self.env['sale.order.line'].create([
-            {
-                'order_id': sale_order.id,
-                'product_id': product_with_warning1.id,
-            },
-            {
-                'order_id': sale_order.id,
-                'product_id': product_with_warning2.id,
-            },
-            # Warnings for duplicate products should not appear.
-            {
-                'order_id': sale_order.id,
-                'product_id': product_with_warning1.id,
-            },
-        ])
+    def test_sale_order_email_subtitle(self):
+        """Test email notification subtitle for Sale Order with and without partner name."""
+        partner = self.env['res.partner'].create({'type': 'invoice', 'parent_id': self.partner.id})
+        self.sale_order.partner_id = partner
+        context = self.sale_order._notify_by_email_prepare_rendering_context(message=self.env['mail.message'])
+        self.assertEqual(context['subtitles'][0], self.sale_order.name)
 
-        expected_warnings = ('Test Partner - Highly infectious disease',
-                             'Test Product 1 - Highly corrosive',
-                             'Test Product 2 - Toxic pollutant')
-        self.assertEqual(sale_order.sale_warning_text, '\n'.join(expected_warnings))
+        self.sale_order.partner_id.name = "Test Partner"
+        context = self.sale_order._notify_by_email_prepare_rendering_context(message=self.env['mail.message'])
+        self.assertEqual(context['subtitles'][0], f"{self.sale_order.name} - Test Partner")
 
 
 @tagged('post_install', '-at_install')
@@ -782,7 +882,7 @@ class TestSalesTeam(SaleCommon):
         self.assertEqual(sale_order.team_id.id, self.sale_team_2.id, 'Should not reset the team to default')
 
     def test_sale_order_analytic_distribution_change(self):
-        self.env.user.group_ids += self.env.ref('analytic.group_analytic_accounting')
+        self.env.user.groups_id += self.env.ref('analytic.group_analytic_accounting')
 
         analytic_plan = self.env['account.analytic.plan'].create({'name': 'Plan Test'})
         analytic_account_super = self.env['account.analytic.account'].create({'name': 'Super Account', 'plan_id': analytic_plan.id})
@@ -874,11 +974,11 @@ class TestSalesTeam(SaleCommon):
             'name': product.name,
             'product_id': product.id,
             'order_id': sale_order.id,
-            'tax_ids': tax_a,
+            'tax_id': tax_a,
         })
 
         with self.assertRaises(UserError):
-            sol.tax_ids = tax_b
+            sol.tax_id = tax_b
 
     def test_assign_tax_multi_company(self):
         root_company = self.env['res.company'].create({'name': 'B0 company'})
@@ -919,15 +1019,15 @@ class TestSalesTeam(SaleCommon):
             'name': product.name,
             'product_id': product.id,
             'order_id': sale_order.id,
-            'tax_ids': tax_b1,
+            'tax_id': tax_b1,
         })
 
         # should not raise anything
-        sol_b1.tax_ids = tax_b0
-        sol_b1.tax_ids = tax_b1
+        sol_b1.tax_id = tax_b0
+        sol_b1.tax_id = tax_b1
         # should raise (b2 is not on the same branch lineage as b1)
         with self.assertRaises(UserError):
-            sol_b1.tax_ids = tax_b2
+            sol_b1.tax_id = tax_b2
 
     def test_downpayment_amount_constraints(self):
         """Down payment amounts should be in the interval ]0, 1]."""
@@ -962,20 +1062,12 @@ class TestSalesTeam(SaleCommon):
             'price_include_override': 'tax_included',
         })
 
-        mapping_a = self.env['account.fiscal.position'].create({
-            'name': 'Special Tax Reduction',
-        })
-        mapping_b = self.env['account.fiscal.position'].create({
-            'name': 'Special Tax Reduction',
-        })
         mapped_tax_a = self.env['account.tax'].create({
             'name': "tax_a",
             'amount_type': 'percent',
             'amount': 12.5,
             'include_base_amount': True,
             'price_include_override': 'tax_included',
-            'fiscal_position_ids': mapping_a,
-            'original_tax_ids': special_tax,
         })
 
         mapped_tax_b = self.env['account.tax'].create({
@@ -984,8 +1076,6 @@ class TestSalesTeam(SaleCommon):
             'amount': 5.0,
             'include_base_amount': True,
             'price_include_override': 'tax_included',
-            'fiscal_position_ids': mapping_b,
-            'original_tax_ids': special_tax,
         })
 
         sales_tax = self.env['account.tax'].create({
@@ -995,6 +1085,14 @@ class TestSalesTeam(SaleCommon):
             'price_include_override': 'tax_included',
         })
 
+        mapping_a = self.env['account.fiscal.position'].create({
+            'name': 'Special Tax Reduction',
+            'tax_ids': [Command.create({'tax_src_id': special_tax.id, 'tax_dest_id': mapped_tax_a.id})],
+        })
+        mapping_b = self.env['account.fiscal.position'].create({
+            'name': 'Special Tax Reduction',
+            'tax_ids': [Command.create({'tax_src_id': special_tax.id, 'tax_dest_id': mapped_tax_b.id})],
+        })
 
         # taxes and standard price need to be set on the product, as they will be
         # recomputed when changing the fiscal position.
@@ -1025,7 +1123,6 @@ class TestSalesTeam(SaleCommon):
         order.action_update_taxes()
         self.assertEqual(order.amount_total, 252)
         self.assertEqual(order.amount_tax, 52)
-
 
 @tagged('post_install', '-at_install')
 class TestSaleMailComposerUI(MailCommon, HttpCase):

@@ -40,6 +40,5 @@ The module adds following features:
             'l10n_fr_pos_cert/static/src/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

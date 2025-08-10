@@ -3,7 +3,6 @@ import {
     contains,
     inputFiles,
     insertText,
-    listenStoreFetch,
     openFormView,
     patchUiSize,
     registerArchs,
@@ -11,12 +10,11 @@ import {
     start,
     startServer,
     triggerHotkey,
-    waitStoreFetch,
 } from "@mail/../tests/mail_test_helpers";
 import { describe, test } from "@odoo/hoot";
 import { defineTestMailModels } from "@test_mail/../tests/test_mail_test_helpers";
 import { MockServer, onRpc } from "@web/../tests/web_test_helpers";
-import { mail_data } from "@mail/../tests/mock_server/mail_mock_server";
+import { mail_thread_data } from "@mail/../tests/mock_server/mail_mock_server";
 
 describe.current.tags("desktop");
 defineTestMailModels();
@@ -42,16 +40,11 @@ test("Send message button activation (access rights dependent)", async () => {
         `,
     });
     let userAccess = {};
-    listenStoreFetch("mail.thread", {
-        async onRpc(request) {
-            const { params } = await request.json();
-            if (params.fetch_params.some((fetchParam) => fetchParam[0] === "mail.thread")) {
-                const res = await mail_data.bind(MockServer.current)(request);
-                res["mail.thread"][0].hasWriteAccess = userAccess.hasWriteAccess;
-                res["mail.thread"][0].hasReadAccess = userAccess.hasReadAccess;
-                return res;
-            }
-        },
+    onRpc("/mail/thread/data", async (req) => {
+        const res = await mail_thread_data.bind(MockServer.current)(req);
+        res["mail.thread"][0].hasWriteAccess = userAccess.hasWriteAccess;
+        res["mail.thread"][0].hasReadAccess = userAccess.hasReadAccess;
+        return res;
     });
     await start();
     const simpleId = pyEnv["mail.test.multi.company"].create({ name: "Test MC Simple" });
@@ -68,9 +61,6 @@ test("Send message button activation (access rights dependent)", async () => {
     ) {
         userAccess = { hasReadAccess, hasWriteAccess };
         await openFormView(model, resId);
-        if (resId) {
-            await waitStoreFetch("mail.thread");
-        }
         if (enabled) {
             await contains(".o-mail-Chatter-topbar button:enabled", { text: "Send message" });
         } else {
@@ -169,7 +159,7 @@ test("opened attachment box should remain open after adding a new attachment", a
     await click(".o-mail-Chatter-attachFiles");
     await contains(".o-mail-AttachmentBox");
     await click("button", { text: "Send message" });
-    await inputFiles(".o-mail-Composer .o_input_file", [
+    await inputFiles(".o-mail-Composer-coreMain .o_input_file", [
         new File(["image"], "testing.jpeg", { type: "image/jpeg" }),
     ]);
     await click(".o-mail-Composer-send:enabled");

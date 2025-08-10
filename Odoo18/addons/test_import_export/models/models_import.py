@@ -1,35 +1,35 @@
 from odoo import fields, models, api
 
 
-class ImportChar(models.Model):
+class Char(models.Model):
     _name = 'import.char'
     _description = 'Tests: Base Import Model, Character'
 
     value = fields.Char()
 
 
-class ImportCharRequired(models.Model):
+class CharRequired(models.Model):
     _name = 'import.char.required'
     _description = 'Tests: Base Import Model, Character required'
 
     value = fields.Char(required=True)
 
 
-class ImportCharReadonly(models.Model):
+class CharReadonly(models.Model):
     _name = 'import.char.readonly'
     _description = 'Tests: Base Import Model, Character readonly'
 
     value = fields.Char(readonly=True)
 
 
-class ImportCharNoreadonly(models.Model):
+class CharNoreadonly(models.Model):
     _name = 'import.char.noreadonly'
     _description = 'Tests: Base Import Model, Character No readonly'
 
     value = fields.Char(readonly=True)
 
 
-class ImportCharStillreadonly(models.Model):
+class CharStillreadonly(models.Model):
     _name = 'import.char.stillreadonly'
     _description = 'Tests: Base Import Model, Character still readonly'
 
@@ -37,35 +37,35 @@ class ImportCharStillreadonly(models.Model):
 
 
 # TODO: complex field (m2m, o2m, m2o)
-class ImportM2o(models.Model):
+class M2o(models.Model):
     _name = 'import.m2o'
     _description = 'Tests: Base Import Model, Many to One'
 
     value = fields.Many2one('import.m2o.related')
 
 
-class ImportM2oRelated(models.Model):
+class M2oRelated(models.Model):
     _name = 'import.m2o.related'
     _description = 'Tests: Base Import Model, Many to One related'
 
     value = fields.Integer(default=42)
 
 
-class ImportM2oRequired(models.Model):
+class M2oRequired(models.Model):
     _name = 'import.m2o.required'
     _description = 'Tests: Base Import Model, Many to One required'
 
     value = fields.Many2one('import.m2o.required.related', required=True)
 
 
-class ImportM2oRequiredRelated(models.Model):
+class M2oRequiredRelated(models.Model):
     _name = 'import.m2o.required.related'
     _description = 'Tests: Base Import Model, Many to One required related'
 
     value = fields.Integer(default=42)
 
 
-class ImportO2m(models.Model):
+class O2m(models.Model):
     _name = 'import.o2m'
     _description = 'Tests: Base Import Model, One to Many'
 
@@ -73,7 +73,7 @@ class ImportO2m(models.Model):
     value = fields.One2many('import.o2m.child', 'parent_id')
 
 
-class ImportO2mChild(models.Model):
+class O2mChild(models.Model):
     _name = 'import.o2m.child'
     _description = 'Tests: Base Import Model, One to Many child'
 
@@ -81,18 +81,16 @@ class ImportO2mChild(models.Model):
     value = fields.Integer()
 
 
-class ImportPreview(models.Model):
+class Preview(models.Model):
     _name = 'import.preview'
     _description = 'Tests: Base Import Model Preview'
 
     name = fields.Char('Name')
     somevalue = fields.Integer(string='Some Value', required=True)
     othervalue = fields.Integer(string='Other Variable')
-    date = fields.Date(string='Date')
-    datetime = fields.Datetime(string='Datetime')
 
 
-class ImportFloat(models.Model):
+class Float(models.Model):
     _name = 'import.float'
     _description = 'Tests: Base Import Model Float'
 
@@ -101,7 +99,7 @@ class ImportFloat(models.Model):
     currency_id = fields.Many2one('res.currency')
 
 
-class ImportComplex(models.Model):
+class Complex(models.Model):
     _name = 'import.complex'
     _description = 'Tests: Base Import Model Complex'
 
@@ -112,12 +110,10 @@ class ImportComplex(models.Model):
     d = fields.Date()
     dt = fields.Datetime()
     parent_id = fields.Many2one('import.complex')
-    html = fields.Html()
 
 
-class ImportPropertiesDefinition(models.Model):
-    _name = 'import.properties.definition'
-    _description = 'import.properties.definition'
+class PropertyDefinition(models.Model):
+    _name = _description = 'import.properties.definition'
     _rec_name = 'id'
 
     properties_definition = fields.PropertiesDefinition()
@@ -125,9 +121,8 @@ class ImportPropertiesDefinition(models.Model):
     main_properties_record_id = fields.Many2one('import.properties', 'record_definition_id')
 
 
-class ImportProperties(models.Model):
-    _name = 'import.properties'
-    _description = 'import.properties'
+class Property(models.Model):
+    _name = _description = 'import.properties'
 
     properties = fields.Properties(definition='record_definition_id.properties_definition')
     record_definition_id = fields.Many2one('import.properties.definition')

@@ -1,4 +1,4 @@
-from odoo import api, models, Command
+from odoo import api, models
 
 class PosConfig(models.Model):
     _inherit = 'pos.config'
@@ -13,17 +13,21 @@ class PosConfig(models.Model):
             fp = self.env['account.fiscal.position'].create({
                 'name': 'Take out',
             })
-            tax_6.copy({
-                'name': f"{tax_6.name} Take out",
-                'fiscal_position_ids': [Command.set(fp.ids)],
-                'original_tax_ids': [Command.set((tax_12 | tax_21).ids)],
+            self.env['account.fiscal.position.tax'].create({
+                'tax_src_id': tax_21.id,
+                'tax_dest_id': tax_6.id,
+                'position_id': fp.id
             })
-            takeaway_preset = self.env.ref('pos_restaurant.pos_takeout_preset', raise_if_not_found=False)
-            if takeaway_preset:
-                takeaway_preset.write({'fiscal_position_id': fp.id})
+            self.env['account.fiscal.position.tax'].create({
+                'tax_src_id': tax_12.id,
+                'tax_dest_id': tax_6.id,
+                'position_id': fp.id
+            })
+            config.write({'takeaway': True, 'takeaway_fp_id': fp.id})
 
-    def _load_bar_demo_data(self, with_demo_data=True):
-        super()._load_bar_demo_data(with_demo_data)
+    @api.model
+    def load_onboarding_bar_scenario(self):
+        super().load_onboarding_bar_scenario()
         if (self.env.company.chart_template or '').startswith('be'):
             ChartTemplate = self.env['account.chart.template'].with_company(self.env.company)
             tax_alcohol = ChartTemplate.ref('tax_alcohol_luxury')
@@ -34,10 +38,9 @@ class PosConfig(models.Model):
                 ]).write({'taxes_id': [(6, 0, [tax_alcohol.id])]})
 
     @api.model
-    def load_onboarding_restaurant_scenario(self, with_demo_data=True):
-        res = super().load_onboarding_restaurant_scenario(with_demo_data)
+    def load_onboarding_restaurant_scenario(self):
+        super().load_onboarding_restaurant_scenario()
         if (self.env.company.chart_template or '').startswith('be'):
             config = self.env.ref(self._get_suffixed_ref_name('pos_restaurant.pos_config_main_restaurant'), raise_if_not_found=False)
             if config:
                 self._create_takeaway_fiscal_position(config)
-        return res

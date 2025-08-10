@@ -40,9 +40,12 @@ that have no counterpart in the general financial accounts.
         ],
         'web.assets_unit_tests': [
             'analytic/static/tests/**/*',
+            ('remove', 'analytic/static/tests/analytic_distribution_tests.js'),
+        ],
+        'web.qunit_suite_tests': [
+            'analytic/static/tests/analytic_distribution_tests.js',
         ],
     },
     'installable': True,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

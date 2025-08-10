@@ -30,12 +30,6 @@ class AccountPayment(models.Model):
     payment_method_line_id = fields.Many2one(index=True)
     show_check_number = fields.Boolean(compute='_compute_show_check_number')
 
-    check_layout_available = fields.Boolean(
-        string='Has Check Layout',
-        store=False,
-        default=lambda self: len(self.env['res.company']._fields['account_check_printing_layout'].selection) > 1
-    )
-
     @api.depends('payment_method_line_id.code', 'check_number')
     def _compute_show_check_number(self):
         for payment in self:
@@ -126,6 +120,10 @@ class AccountPayment(models.Model):
         if 'readonly' in field_desc:
             field_desc['readonly'] = True
         return result
+
+    @api.model
+    def _get_trigger_fields_to_synchronize(self):
+        return super()._get_trigger_fields_to_synchronize() + ('check_number',)
 
     def _get_aml_default_display_name_list(self):
         # Extends 'account'

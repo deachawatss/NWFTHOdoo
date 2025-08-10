@@ -14,17 +14,16 @@ import { fixInvalidHTML } from "@html_editor/utils/sanitize";
  * EmbeddedComponent counterparts, ...
  *
  * How to use:
- * - Create a file to export a `migrate(element, env)` function which applies
+ * - Create a file to export a `upgrade(element, env)` function which applies
  *   the necessary modifications inside `element` related to a specific version:
  *    - HTMLElement `element`: a container for the HtmlField value
  *    - Object `env`: the typical `owl` environment (can be used to check
  *      the current record data, use a service, ...).
  * !!!  ALWAYS assume that the `env` may not have the resource used in your
- *      migrate function and adjust accordingly.
+ *      upgrade function and adjust accordingly.
  * - Refer to that file in the `html_editor_upgrade` registry, in the version
- *   category related to your change: `major.minor` (bump major for a change in
- *   master, and minor for a change in stable), in a sub-category related to
- *   your module.
+ *   category related to your change: `major.minor` (bump major for an IMP,
+ *   minor for a FIX), in a sub-category related to your module.
  *   Example for the version 1.1 in `html_editor`:
  *   `registry
  *        .category("html_editor_upgrade")
@@ -68,11 +67,10 @@ export class HtmlUpgradeManager {
             return this.value;
         }
         try {
-            const upgradeSequence = VERSIONS.filter(
-                (subVersion) =>
-                    // skip already applied versions
-                    compareVersions(subVersion, version) > 0
-            );
+            const upgradeSequence = VERSIONS.filter((subVersion) => {
+                // skip already applied versions
+                return compareVersions(subVersion, version) > 0;
+            });
             this.upgradedValue = this.upgrade(upgradeSequence);
         } catch {
             // If an upgrade fails, silently continue to use the raw value.
@@ -84,13 +82,13 @@ export class HtmlUpgradeManager {
         for (const version of upgradeSequence) {
             const modules = this.upgradeRegistry.category(version);
             for (const [key, module] of modules.getEntries()) {
-                const migrate = odoo.loader.modules.get(module).migrate;
-                if (!migrate) {
+                const upgrade = odoo.loader.modules.get(module).upgrade;
+                if (!upgrade) {
                     console.error(
-                        `A "${key}" migrate function could not be found at "${module}" or it did not load.`
+                        `An "${key}" upgrade function could not be found at "${module}" or it did not load.`
                     );
                 }
-                migrate(this.element, this.env);
+                upgrade(this.element, this.env);
             }
         }
         return this.element[this.containsComplexHTML ? "outerHTML" : "innerHTML"];

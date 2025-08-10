@@ -1,14 +1,14 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from datetime import date, datetime, timedelta
 
-from odoo import Command
-from odoo.tests import Form
 from odoo.addons.mail.tests.common import mail_new_test_user
-from odoo.addons.product.tests.common import ProductVariantsCommon
+from odoo.addons.product.tests import common
+from odoo.tests import Form
 
 
-class TestCreatePicking(ProductVariantsCommon):
+class TestCreatePicking(common.TestProductCommon):
 
     @classmethod
     def setUpClass(cls):
@@ -33,7 +33,7 @@ class TestCreatePicking(ProductVariantsCommon):
                     'name': cls.product_id_1.name,
                     'product_id': cls.product_id_1.id,
                     'product_qty': 5.0,
-                    'product_uom_id': cls.product_id_1.uom_id.id,
+                    'product_uom': cls.product_id_1.uom_po_id.id,
                     'price_unit': 500.0,
                 })],
         }
@@ -65,7 +65,7 @@ class TestCreatePicking(ProductVariantsCommon):
                 'name': self.product_id_2.name,
                 'product_id': self.product_id_2.id,
                 'product_qty': 5.0,
-                'product_uom_id': self.product_id_2.uom_id.id,
+                'product_uom': self.product_id_2.uom_po_id.id,
                 'price_unit': 250.0,
                 })]})
         self.assertEqual(self.po.incoming_picking_count, 2, 'New picking should be created')
@@ -86,7 +86,7 @@ class TestCreatePicking(ProductVariantsCommon):
         self.assertEqual(self.po.state, 'to approve', 'Purchase: PO state should be "to approve".')
 
         # PO approved by manager
-        self.po.env.user.group_ids += self.env.ref("purchase.group_purchase_manager")
+        self.po.env.user.groups_id += self.env.ref("purchase.group_purchase_manager")
         self.po.button_approve()
         self.assertEqual(self.po.state, 'purchase', 'PO state should be "Purchase".')
 
@@ -109,20 +109,22 @@ class TestCreatePicking(ProductVariantsCommon):
             'name': 'Roger'
         })
 
-        product = self.env['product.product'].create({
-            'name': 'product',
-            'is_storable': True,
-            'route_ids': [(4, self.ref('stock.route_warehouse0_mto')), (4, self.ref('purchase_stock.route_warehouse0_buy'))],
-            'supplier_taxes_id': [(6, 0, [])],
-        })
-
         seller = self.env['product.supplierinfo'].create({
-            'product_id': product.id,
             'partner_id': partner.id,
             'price': 12.0,
         })
 
+        product = self.env['product.product'].create({
+            'name': 'product',
+            'is_storable': True,
+            'route_ids': [(4, self.ref('stock.route_warehouse0_mto')), (4, self.ref('purchase_stock.route_warehouse0_buy'))],
+            'seller_ids': [(6, 0, [seller.id])],
+            'categ_id': self.env.ref('product.product_category_all').id,
+            'supplier_taxes_id': [(6, 0, [])],
+        })
+
         customer_move = self.env['stock.move'].create({
+            'name': 'move out',
             'location_id': stock_location.id,
             'location_dest_id': customer_location.id,
             'product_id': product.id,
@@ -155,7 +157,7 @@ class TestCreatePicking(ProductVariantsCommon):
                     'name': product.name,
                     'product_id': product.id,
                     'product_qty': 100.0,
-                    'product_uom_id': product.uom_id.id,
+                    'product_uom': product.uom_po_id.id,
                     'price_unit': 11.0,
                 })],
         })
@@ -185,18 +187,13 @@ class TestCreatePicking(ProductVariantsCommon):
         uom_unit = self.env.ref('uom.product_uom_unit')
         uom_dozen = self.env.ref('uom.product_uom_dozen')
 
-        self.assertEqual(self.product_id_1.uom_id.id, uom_unit.id)
-
-        self.env.user.group_ids += self.env.ref('uom.group_uom')
+        self.assertEqual(self.product_id_1.uom_po_id.id, uom_unit.id)
 
         # buy a dozen
-        po_form = Form(self.env['purchase.order'])
-        po_form.partner_id = self.partner_id
-        with po_form.order_line.new() as po_line:
-            po_line.product_id = self.product_id_1
-            po_line.product_qty = 1
-            po_line.product_uom_id = uom_dozen
-        po = po_form.save()
+        po = self.env['purchase.order'].create(self.po_vals)
+
+        po.order_line.product_qty = 1
+        po.order_line.product_uom = uom_dozen.id
         po.button_confirm()
 
         # the move should be 12 units
@@ -207,7 +204,7 @@ class TestCreatePicking(ProductVariantsCommon):
         self.assertEqual(move1.product_uom.id, uom_unit.id)
         self.assertEqual(move1.product_qty, 12)
 
-        # edit the po line, buy 2 dozen, the move should now be 24 units
+        # edit the so line, sell 2 dozen, the move should now be 24 units
         po.order_line.product_qty = 2
         move1 = po.picking_ids.move_ids.sorted()[0]
         self.assertEqual(move1.product_uom_qty, 24)
@@ -216,9 +213,7 @@ class TestCreatePicking(ProductVariantsCommon):
 
         # force the propagation of the uom, sell 3 dozen
         self.env['ir.config_parameter'].sudo().set_param('stock.propagate_uom', '1')
-        with po_form.order_line.edit(0) as po_line:
-            po_line.product_qty = 3
-        po_form.save()
+        po.order_line.product_qty = 3
         move2 = po.picking_ids.move_ids.filtered(lambda m: m.product_uom.id == uom_dozen.id)
         self.assertEqual(move2.product_uom_qty, 1)
         self.assertEqual(move2.product_uom.id, uom_dozen.id)
@@ -247,15 +242,15 @@ class TestCreatePicking(ProductVariantsCommon):
         mto_route.rule_ids.procure_method = 'mts_else_mto'
         buy_route = self.env.ref('purchase_stock.route_warehouse0_buy')
         buy_route.rule_ids.group_propagation_option = 'propagate'
+        seller = self.env['product.supplierinfo'].create({
+            'partner_id': self.partner_id.id,
+            'price': 12.0,
+        })
         self.product_id_1 = self.env['product.product'].create({
             'name': 'ProductA',
             'is_storable': True,
             'route_ids': [(4, self.ref('stock.route_warehouse0_mto')), (4, self.ref('purchase_stock.route_warehouse0_buy'))],
-            'seller_ids': [Command.create({
-                'partner_id': self.partner_id.id,
-                'min_qty': 5,
-                'price': 250,
-            })],
+            'seller_ids': [(6, 0, [seller.id])],
         })
 
         pg1 = self.env['procurement.group'].create({'name': 'Test-pg-mtso-mts-1'})
@@ -321,16 +316,17 @@ class TestCreatePicking(ProductVariantsCommon):
             'name': 'Jhon'
         })
 
+        seller = self.env['product.supplierinfo'].create({
+            'partner_id': partner.id,
+            'price': 12.0,
+        })
+
         product = self.env['product.product'].create({
             'name': 'product',
             'is_storable': True,
             'route_ids': [(4, self.ref('stock.route_warehouse0_mto')), (4, self.ref('purchase_stock.route_warehouse0_buy'))],
-        })
-
-        seller = self.env['product.supplierinfo'].create({
-            'product_id': product.id,
-            'partner_id': partner.id,
-            'price': 12.0,
+            'seller_ids': [(6, 0, [seller.id])],
+            'categ_id': self.env.ref('product.product_category_all').id,
         })
 
         # A picking is require since only moves inside the same picking are merged.
@@ -342,6 +338,7 @@ class TestCreatePicking(ProductVariantsCommon):
         })
 
         customer_move = self.env['stock.move'].create({
+            'name': 'move out',
             'location_id': stock_location.id,
             'location_dest_id': customer_location.id,
             'product_id': product.id,
@@ -364,6 +361,7 @@ class TestCreatePicking(ProductVariantsCommon):
         purchase_order.button_confirm()
 
         customer_move_2 = self.env['stock.move'].create({
+            'name': 'move out',
             'location_id': stock_location.id,
             'location_dest_id': customer_location.id,
             'product_id': product.id,
@@ -397,9 +395,8 @@ class TestCreatePicking(ProductVariantsCommon):
         """ We set the Unit(s) rounding to 1.0 and ensure buying 1.2 units in a PO is rounded to 1.0
             at reception.
         """
-        self.env['decimal.precision'].search([('name', '=', 'Product Unit')]).digits = 0
         uom_unit = self.env.ref('uom.product_uom_unit')
-        self.env['decimal.precision'].search([('name', '=', 'Product Unit')]).digits = 0
+        uom_unit.rounding = 1.0
 
         # buy a dozen
         po = self.env['purchase.order'].create(self.po_vals)
@@ -413,8 +410,8 @@ class TestCreatePicking(ProductVariantsCommon):
         self.assertEqual(move1.product_uom.id, uom_unit.id)
         self.assertEqual(move1.product_qty, 1.0)
 
-        # edit the po line, buy 2.4 units, the move should now be 2.0 units
-        po.order_line.product_qty = 2.4
+        # edit the so line, buy 2.4 units, the move should now be 2.0 units
+        po.order_line.product_qty = 2.0
         self.assertEqual(move1.product_uom_qty, 2.0)
         self.assertEqual(move1.product_uom.id, uom_unit.id)
         self.assertEqual(move1.product_qty, 2.0)
@@ -431,26 +428,25 @@ class TestCreatePicking(ProductVariantsCommon):
         """ We set the Unit(s) and Dozen(s) rounding to 1.0 and ensure buying 1.3 dozens in a PO is
             rounded to 1.0 at reception.
         """
-        self.env['decimal.precision'].search([('name', '=', 'Product Unit')]).digits = 0
-
         uom_unit = self.env.ref('uom.product_uom_unit')
         uom_dozen = self.env.ref('uom.product_uom_dozen')
-        self.env['decimal.precision'].search([('name', '=', 'Product Unit')]).digits = 0
+        uom_unit.rounding = 1.0
+        uom_dozen.rounding = 1.0
 
         # buy 1.3 dozen
         po = self.env['purchase.order'].create(self.po_vals)
 
-        po.order_line.product_uom_id = uom_dozen.id
         po.order_line.product_qty = 1.3
+        po.order_line.product_uom = uom_dozen.id
         po.button_confirm()
 
-        # the move should be 12.0 units
+        # the move should be 16.0 units
         move1 = po.picking_ids.move_ids[0]
-        self.assertEqual(move1.product_uom_qty, 12.0)
+        self.assertEqual(move1.product_uom_qty, 16.0)
         self.assertEqual(move1.product_uom.id, uom_unit.id)
-        self.assertEqual(move1.product_qty, 12.0)
+        self.assertEqual(move1.product_qty, 16.0)
 
-        # force the propagation of the uom, buy 2.6 dozen, the move 2 should have 2 dozen
+        # force the propagation of the uom, buy 2.6 dozens, the move 2 should have 2 dozens
         self.env['ir.config_parameter'].sudo().set_param('stock.propagate_uom', '1')
         po.order_line.product_qty = 2.6
         move2 = po.picking_ids.move_ids.filtered(lambda m: m.product_uom.id == uom_dozen.id)
@@ -464,6 +460,10 @@ class TestCreatePicking(ProductVariantsCommon):
         unit = self.ref("uom.product_uom_unit")
         picking_type_out = self.env.ref('stock.picking_type_out')
         partner = self.env['res.partner'].create({'name': 'AAA', 'email': 'from.test@example.com'})
+        supplier_info1 = self.env['product.supplierinfo'].create({
+            'partner_id': partner.id,
+            'price': 50,
+        })
 
         warehouse1 = self.env.ref('stock.warehouse0')
         route_buy = warehouse1.buy_pull_id.route_id
@@ -473,12 +473,9 @@ class TestCreatePicking(ProductVariantsCommon):
             'name': 'Usb Keyboard',
             'is_storable': True,
             'uom_id': unit,
+            'uom_po_id': unit,
+            'seller_ids': [(6, 0, [supplier_info1.id])],
             'route_ids': [(6, 0, [route_buy.id, route_mto.id])]
-        })
-        self.env['product.supplierinfo'].create({
-            'product_id': product.id,
-            'partner_id': partner.id,
-            'price': 50,
         })
 
         delivery_order = self.env['stock.picking'].create({
@@ -489,6 +486,7 @@ class TestCreatePicking(ProductVariantsCommon):
         })
 
         customer_move = self.env['stock.move'].create({
+            'name': 'move out',
             'location_id': stock_location.id,
             'location_dest_id': customer_location.id,
             'product_id': product.id,
@@ -528,7 +526,7 @@ class TestCreatePicking(ProductVariantsCommon):
 
     def test_07_differed_schedule_date(self):
         # Required for `reception_steps` to be visible in the view
-        self.env.user.group_ids += self.env.ref('stock.group_adv_location')
+        self.env.user.groups_id += self.env.ref('stock.group_adv_location')
         warehouse = self.env['stock.warehouse'].search([], limit=1)
 
         with Form(warehouse) as w:
@@ -616,6 +614,10 @@ class TestCreatePicking(ProductVariantsCommon):
         partner = self.env['res.partner'].create({
             'name': 'Jhon'
         })
+        seller = self.env['product.supplierinfo'].create({
+            'partner_id': partner.id,
+            'price': 12.0,
+        })
         vendor = self.env['res.partner'].create({
             'name': 'Roger'
         })
@@ -626,12 +628,9 @@ class TestCreatePicking(ProductVariantsCommon):
             'name': 'product',
             'is_storable': True,
             'route_ids': [(4, self.ref('stock.route_warehouse0_mto')), (4, self.ref('purchase_stock.route_warehouse0_buy'))],
+            'seller_ids': [(6, 0, [seller.id])],
+            'categ_id': self.env.ref('product.product_category_all').id,
             'supplier_taxes_id': [(6, 0, [])],
-        })
-        self.env['product.supplierinfo'].create({
-            'product_id': product.id,
-            'partner_id': partner.id,
-            'price': 12.0,
         })
 
         procurement_group = self.env['procurement.group'].create({
@@ -720,8 +719,8 @@ class TestCreatePicking(ProductVariantsCommon):
         self.assertEqual(purchase_order.picking_ids.move_ids.price_unit, 0)
 
     def test_return_to_vendor_multi_step(self):
-        self.env.user.group_ids += self.env.ref('stock.group_stock_multi_locations')
-        self.env.user.group_ids += self.env.ref('stock.group_adv_location')
+        self.env.user.groups_id += self.env.ref('stock.group_stock_multi_locations')
+        self.env.user.groups_id += self.env.ref('stock.group_adv_location')
         warehouse = self.env['stock.warehouse'].search([], limit=1)
 
         with Form(warehouse) as w:
@@ -798,6 +797,7 @@ class TestCreatePicking(ProductVariantsCommon):
             'location_dest_id': self.env.ref('stock.stock_location_stock').id,
             'picking_type_id': self.env.ref('stock.picking_type_out').id,
             'move_ids': [(0, 0, {
+                'name': 'outgoing_shipment_avg_move',
                 'product_id': self.product_id_2.id,
                 'product_uom_qty': 10,
                 'product_uom': self.product_id_2.uom_id.id,
@@ -848,47 +848,3 @@ class TestCreatePicking(ProductVariantsCommon):
         # Exchange: receipt for 1 item
         self.assertEqual(po.picking_ids[2].picking_type_id, picking_type_in)
         self.assertEqual(po.picking_ids[2].move_ids.quantity, 1)
-
-    def test_move_description(self):
-        """
-        Test that the pol description is correctly propagated to the move description
-        """
-        product_matrix_installed = 'purchase_product_matrix' in self.env['ir.module.module']._installed()
-        # product with all description items: vendor product name, vendor product code, receipt description, purchase description, attribute variant value, attribute no variant value
-        attribute_vals = [{
-            'attribute_id': self.color_attribute.id,
-            'value_ids': [Command.set(self.color_attribute.value_ids.ids)],
-        }]
-        if product_matrix_installed:
-            attribute_vals.append({
-                'attribute_id': self.no_variant_attribute.id,
-                'value_ids': [Command.set(self.no_variant_attribute.value_ids.ids)],
-            })
-        product_with_description = self.env['product.template'].create({
-            'name': 'Product with description',
-            'description_pickingin': 'Receive with care',
-            'description_purchase': 'Purchase description',
-            'seller_ids': [Command.create({
-                'partner_id': self.partner_id.id,
-                'product_name': 'ABC',
-                'product_code': '123',
-                'min_qty': 1,
-                'price': 1,
-            })],
-            'attribute_line_ids': [
-                Command.create(val) for val in attribute_vals
-            ]
-        })
-        po = self.env['purchase.order'].create({
-            'partner_id': self.partner_id.id,
-            'order_line': [Command.create({
-                    'product_id': product_with_description.product_variant_ids.filtered(lambda p: p.product_template_attribute_value_ids.name == 'red').id,
-                    'product_no_variant_attribute_value_ids': product_matrix_installed and [Command.set(product_with_description.attribute_line_ids[1].product_template_value_ids[0].ids)],
-                    'product_qty': 1,
-                }),
-            ]
-        })
-        self.assertEqual(po.order_line.name, '[123] ABC (red)\nPurchase description' + ('\nNo variant: extra' if product_matrix_installed else ''))
-        po.order_line.name += '\nRandom purchase notes'
-        po.button_confirm()
-        self.assertEqual(po.picking_ids.move_ids.description_picking, ('No variant: extra\n' if product_matrix_installed else '') + '[123] ABC\nReceive with care')

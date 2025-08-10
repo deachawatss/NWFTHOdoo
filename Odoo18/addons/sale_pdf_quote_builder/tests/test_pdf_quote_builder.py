@@ -7,10 +7,12 @@ from unittest.mock import patch
 
 from werkzeug.datastructures import FileStorage
 
-from odoo.fields import Command
+from odoo import Command
+from odoo.exceptions import ValidationError
 from odoo.tests import Form, tagged
 from odoo.tools.misc import file_open
 
+from odoo.addons.base.tests.common import BaseUsersCommon
 from odoo.addons.sale_management.tests.common import SaleManagementCommon
 from odoo.addons.sale_pdf_quote_builder.controllers.quotation_document import (
     QuotationDocumentController
@@ -19,7 +21,7 @@ from .files import forms_pdf, plain_pdf
 
 
 @tagged('-at_install', 'post_install')
-class TestPDFQuoteBuilder(SaleManagementCommon):
+class TestPDFQuoteBuilder(BaseUsersCommon, SaleManagementCommon):
 
     @classmethod
     def setUpClass(cls):
@@ -64,17 +66,8 @@ class TestPDFQuoteBuilder(SaleManagementCommon):
             'res_model': 'product.product',
             'res_id': cls.product.id,
         })
-        cls.internal_user = cls._create_new_internal_user(login='internal.user@test.odoo.com')
-        cls.alt_company = cls.env['res.company'].create({'name': "Backup Company"})
 
-    def _create_so_form(self, **values):
-        """Default values limited to preexisting ones. No Command"""
-        SaleOrder = self.env['sale.order'].with_context(default_partner_id=self.partner.id)
-        so_form = Form(SaleOrder)
-        for field_name, value in values.items():
-            so_form[field_name] = value
-        so_form.save()
-        return so_form
+        cls.alt_company = cls.env['res.company'].create({'name': "Backup Company"})
 
     def test_compute_customizable_pdf_form_fields_when_no_file(self):
         self.env['quotation.document'].search([]).action_archive()
@@ -124,7 +117,7 @@ class TestPDFQuoteBuilder(SaleManagementCommon):
         sol_1, sol_2 = self.sale_order.order_line
         sol_1.update({
             'discount': 4.99,
-            'tax_ids': [
+            'tax_id': [
                 Command.create({'name': "test tax1"}),
                 Command.create({'name': "test tax2"}),
             ],
@@ -142,7 +135,7 @@ class TestPDFQuoteBuilder(SaleManagementCommon):
 
             new_form_field(name="one2many_test", path='order_id.order_line'),
             new_form_field(name="many2one_test", path='order_id.company_id'),
-            new_form_field(name="many2many_test", path='tax_ids'),
+            new_form_field(name="many2many_test", path='tax_id'),
         ])
         expected = {
             'boolean_test': "No",
@@ -162,12 +155,12 @@ class TestPDFQuoteBuilder(SaleManagementCommon):
             result = self.env['ir.actions.report']._get_value_from_path(
                 form_field, self.sale_order, sol_1
             )
-            self.assertEqual(' '.join(result.split()), ' '.join(expected[form_field.name].split()))
+            self.assertEqual(result, expected[form_field.name])
 
     def test_product_document_dialog_params_access(self):
-        sale_order_internal_user = self.sale_order.copy({'user_id': self.internal_user.id})
-        dialog_param = sale_order_internal_user.with_user(
-            self.internal_user.id
+        sale_order_user_internal = self.sale_order.copy({'user_id': self.user_internal.id})
+        dialog_param = sale_order_user_internal.with_user(
+            self.user_internal.id
         ).get_update_included_pdf_params()
         # should return all document data regardless of access
         self.assertEqual('Header', dialog_param['headers']['files'][0]['name'])
@@ -191,7 +184,27 @@ class TestPDFQuoteBuilder(SaleManagementCommon):
         so_form.sale_order_template_id = so_tmpl_2
         so_form.save()
 
-        self.assertNotEqual(self.sale_order.quotation_document_ids, self.header)
+        self.assertIn(self.header, self.sale_order.available_product_document_ids)
+        so_form.record.quotation_document_ids[0].unlink()
+        so_form.save()
+        self.assertNotIn(self.header, self.sale_order.available_product_document_ids)
+        self.assertEqual(len(self.sale_order.quotation_document_ids), 0)
+
+    def test_non_pdf_attachment_inside_quote_form_save(self):
+        non_pdf_att = self.env['ir.attachment'].create({
+            'name': 'Not a PDF',
+            'datas': b64encode(b"hello"),
+            'mimetype': 'text/plain',
+        })
+
+        product_document = self.product_document
+
+        product_document.write({
+            'ir_attachment_id': non_pdf_att.id,
+        })
+        with self.assertRaises(ValidationError):
+            with Form(product_document) as doc_form:
+                doc_form.attached_on_sale = 'inside'
 
     def test_onchange_product_removes_previously_selected_documents(self):
         """ Check that changing a line that has a selected document unselect said document. """
@@ -215,12 +228,66 @@ class TestPDFQuoteBuilder(SaleManagementCommon):
         msg = "There shouldn't be any selected product documents left."
         self.assertFalse(self.sale_order.order_line[0].product_document_ids, msg=msg)
 
+    def test_available_documents_order(self):
+        product_document = self.product_document.copy()
+        product_document.sequence = self.product_document.sequence - 1
+        docs = self.sale_order.order_line[0].available_product_document_ids
+        self.assertEqual(len(docs), 2, "There should be 2 available documents.")
+        self.assertEqual(docs[0], product_document, "The first available document should be the one with the lowest sequence.")
+        self.assertEqual(
+            docs[1], self.product_document, "The second available document should be the one with the highest sequence."
+        )
+
+    def test_available_documents_multiple_products(self):
+        product_doc_copy = self.product_document.copy()
+        product2 = self._create_product(name="Test Product 2")
+        product_template_document2 = self.product_document.copy(
+            {'res_model': 'product.template', 'res_id': product2.product_tmpl_id.id, 'sequence': 1}
+        )
+        product_document2 = self.product_document.copy({'res_model': 'product.product', 'res_id': product2.id, 'sequence': 99})
+        self.sale_order.write(
+            {
+                'order_line': [
+                    Command.create({'product_id': self.product.id}),
+                    Command.create({'product_id': product2.id}),
+                ]
+            }
+        )
+        self.assertEqual(
+            self.sale_order.order_line[0].available_product_document_ids,
+            self.product_document | product_doc_copy,
+        )
+        self.assertFalse(
+            self.sale_order.order_line[1].available_product_document_ids,
+            "The second order line should not have any available product documents.",
+        )
+        self.assertEqual(
+            self.sale_order.order_line[0].available_product_document_ids,
+            self.sale_order.order_line[2].available_product_document_ids,
+            "The first and third order lines should have the same available product documents.",
+        )
+        self.assertEqual(
+            self.sale_order.order_line[3].available_product_document_ids[0].res_model,
+            'product.product',
+            "Alphabetical order of res_model should be respected.",
+        )
+        self.assertEqual(
+            self.sale_order.order_line[3].available_product_document_ids[0],
+            product_document2,
+        )
+        self.assertEqual(
+            self.sale_order.order_line[3].available_product_document_ids[1],
+            product_template_document2,
+        )
+
     def test_quotation_document_upload_no_template(self):
         """Check that uploading quotation documents get assigned the active company."""
         if 'website' not in self.env:
             self.skipTest("Module `website` not found")
         else:
-            from odoo.addons.http_routing.tests.common import MockRequest  # noqa: PLC0415
+            from odoo.addons.website.tools import MockRequest  # noqa: PLC0415
+
+        allowed_company_ids = [self.alt_company.id, self.env.company.id]
 
         # Upload document without Sale Order Template
         with (
@@ -228,10 +295,8 @@ class TestPDFQuoteBuilder(SaleManagementCommon):
             file_open(plain_pdf, 'rb') as file,
             patch.object(request.httprequest.files, 'getlist', lambda _key: [FileStorage(file)]),
         ):
-            res = self.QuotationDocumentController.upload_document(
-                ufile=FileStorage(file),
-                allowed_company_ids=json.dumps([self.alt_company.id, self.env.company.id]),
-            )
+            request.params['allowed_company_ids'] = json.dumps(allowed_company_ids)
+            res = self.QuotationDocumentController.upload_document(ufile=FileStorage(file))
             self.assertEqual(res.status_code, 200, "Upload should be successful")
 
         quotation_document = self.env['quotation.document'].search([
@@ -249,7 +314,9 @@ class TestPDFQuoteBuilder(SaleManagementCommon):
         if 'website' not in self.env:
             self.skipTest("Module `website` not found")
         else:
-            from odoo.addons.http_routing.tests.common import MockRequest  # noqa: PLC0415
+            from odoo.addons.website.tools import MockRequest  # noqa: PLC0415
+
+        allowed_company_ids = [self.alt_company.id, self.env.company.id]
 
         # Upload a document for a Sale Order Template without company id
         self.empty_order_template.company_id = False
@@ -258,10 +325,10 @@ class TestPDFQuoteBuilder(SaleManagementCommon):
             file_open(forms_pdf, 'rb') as file,
             patch.object(request.httprequest.files, 'getlist', lambda _key: [FileStorage(file)]),
         ):
+            request.params['allowed_company_ids'] = json.dumps(allowed_company_ids)
             res = self.QuotationDocumentController.upload_document(
                 ufile=FileStorage(file),
                 sale_order_template_id=str(self.empty_order_template.id),
-                allowed_company_ids=json.dumps([self.alt_company.id, self.env.company.id]),
             )
             self.assertEqual(res.status_code, 200, "Upload should be successful")
 
@@ -282,38 +349,3 @@ class TestPDFQuoteBuilder(SaleManagementCommon):
             login='admin',
         )
         # Assert documents are selected
-
-    def test_quotation_document_is_added_iff_default(self):
-        self.assertFalse(self._create_so().quotation_document_ids)
-
-        self.header.add_by_default = True
-
-        self.assertEqual(self._create_so().quotation_document_ids, self.header)
-
-    def test_default_quotation_document_is_added_iff_available(self):
-        # header is default but only for quote_tmpl
-        so_tmpl = self.env['sale.order.template'].create({'name': 'Awesome Template'})
-        self.header.write({
-            'add_by_default': True,
-            'quotation_template_ids': [Command.link(so_tmpl.id)],
-        })
-
-        sof_without_tmpl = self._create_so_form()
-        sof_with_tmpl = self._create_so_form(sale_order_template_id=so_tmpl)
-
-        self.assertFalse(sof_without_tmpl.record.quotation_document_ids)
-        self.assertEqual(sof_with_tmpl.record.quotation_document_ids, self.header)
-
-    def test_quotation_document_is_removed_if_unavailable(self):
-        so_tmpl = self.env['sale.order.template'].create({'name': "Awesome Template"})
-        self.header.write({
-            'add_by_default': True,
-            'quotation_template_ids': [Command.link(so_tmpl.id)],
-        })
-        sof = self._create_so_form(sale_order_template_id=so_tmpl)
-        self.assertEqual(sof.record.quotation_document_ids, self.header)
-
-        sof.sale_order_template_id = self.env['sale.order.template']
-        sof.save()
-
-        self.assertFalse(sof.record.quotation_document_ids)

@@ -24,8 +24,6 @@ export function getCurrency(id) {
  * @param {boolean} [options.noSymbol] this currency has not a sympbol
  * @param {boolean} [options.humanReadable] if true, large numbers are formatted
  *   to a human readable format.
- * @param {boolean} [options.trailingZeros] if false, numbers will have zeros
- *  to the right of the last non-zero digit hidden
  * @param {[number, number]} [options.digits] the number of digits that should
  *   be used, instead of the default digits precision in the field.  The first
  *   number is always ignored (legacy constraint)
@@ -39,7 +37,7 @@ export function formatCurrency(amount, currencyId, options = {}) {
     if (options.humanReadable) {
         formattedAmount = humanNumber(amount, { decimals: digits ? digits[1] : 2 });
     } else {
-        formattedAmount = formatFloat(amount, { digits, trailingZeros: options.trailingZeros });
+        formattedAmount = formatFloat(amount, { digits });
     }
 
     if (!currency || options.noSymbol) {

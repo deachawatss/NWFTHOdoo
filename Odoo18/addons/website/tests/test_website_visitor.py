@@ -25,7 +25,7 @@ class MockVisitor(common.BaseCase):
             yield
 
 
-@tagged('-at_install', 'post_install', 'website_visitor')
+@tagged('-at_install', 'post_install', 'website_visitor', 'is_query_count')
 class WebsiteVisitorTestsCommon(MockVisitor, HttpCaseWithUserDemo):
 
     def setUp(self):
@@ -98,7 +98,7 @@ class WebsiteVisitorTestsCommon(MockVisitor, HttpCaseWithUserDemo):
                 'login': 'portal',
                 'password': 'portal',
                 'partner_id': self.partner_portal.id,
-                'group_ids': [(6, 0, [self.env.ref('base.group_portal').id])],
+                'groups_id': [(6, 0, [self.env.ref('base.group_portal').id])],
             })
         # Partner with no user associated, to test partner merge that forbids merging partners with more than 1 user
         self.partner_admin_duplicate = self.env['res.partner'].create({'name': 'Mitchell'})
@@ -150,7 +150,7 @@ class WebsiteVisitorTestsCommon(MockVisitor, HttpCaseWithUserDemo):
         inactive_visitor_ids = inactive_visitors.ids
         active_visitor_ids = active_visitors.ids
 
-        self.env.ref('website.website_visitor_cron').method_direct_trigger()
+        WebsiteVisitor._cron_unlink_old_visitors()
         if inactive_visitor_ids:
             # all inactive visitors should be deleted
             self.assertFalse(bool(WebsiteVisitor.search([('id', 'in', inactive_visitor_ids)])))
@@ -185,10 +185,7 @@ class WebsiteVisitorTestsCommon(MockVisitor, HttpCaseWithUserDemo):
 
 class WebsiteVisitorTests(WebsiteVisitorTestsCommon):
 
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.set_registry_readonly_mode(False)
+    readonly_enabled = False
 
     def test_visitor_creation_on_tracked_page(self):
         """ Test various flows involving visitor creation and update. """

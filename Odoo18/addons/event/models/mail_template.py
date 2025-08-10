@@ -1,7 +1,8 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, models
-from odoo.fields import Domain
+from odoo.osv import expression
 
 
 class MailTemplate(models.Model):
@@ -17,7 +18,7 @@ class MailTemplate(models.Model):
         method to filtrate the mail templates.
         """
         if self.env.context.get('filter_template_on_event'):
-            domain = Domain('model', '=', 'event.registration') & Domain(domain)
+            domain = expression.AND([[('model', '=', 'event.registration')], domain])
         return super()._search(domain, *args, **kwargs)
 
     def unlink(self):

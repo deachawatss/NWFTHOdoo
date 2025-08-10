@@ -6,9 +6,9 @@
         <field name="model">sale.advance.payment.inv</field>
         <field name="inherit_id" ref="sale.view_sale_advance_payment_inv"/>
         <field name="arch" type="xml">
-            <form position="attributes">
+            <xpath expr="//form" position="attributes">
                 <attribute name="disable_autofocus">true</attribute>
-            </form>
+            </xpath>
             <group name="down_payment_specification" position="after">
                 <field name="invoicing_timesheet_enabled" invisible="1"/>
                 <group

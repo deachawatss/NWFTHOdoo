@@ -3,8 +3,7 @@
 
 from odoo import api, fields, models
 
-
-class Test_ConvertTest_Model(models.Model):
+class TestModel(models.Model):
     _name = 'test_convert.test_model'
     _description = "Test Convert Model"
 
@@ -23,8 +22,7 @@ class Test_ConvertTest_Model(models.Model):
     def action_test_timezone(self, timezone):
         return True
 
-
-class Test_ConvertUsered(models.Model):
+class Usered(models.Model):
     _name = 'test_convert.usered'
     _description = "z test model ignore"
 

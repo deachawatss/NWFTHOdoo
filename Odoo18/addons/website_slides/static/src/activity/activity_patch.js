@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { Activity } from "@mail/core/web/activity";
 
 import { patch } from "@web/core/utils/patch";
@@ -9,7 +11,7 @@ const ActivityPatch = {
             "slide.channel",
             "action_grant_access",
             [[this.props.activity.res_id]],
-            { partner_id: this.props.activity.request_partner_id.id }
+            { partner_id: this.props.activity.request_partner_id }
         );
         this.props.activity.remove();
         this.props.reloadParentView();
@@ -19,7 +21,7 @@ const ActivityPatch = {
             "slide.channel",
             "action_refuse_access",
             [[this.props.activity.res_id]],
-            { partner_id: this.props.activity.request_partner_id.id }
+            { partner_id: this.props.activity.request_partner_id }
         );
         this.props.activity.remove();
         this.props.reloadParentView();

@@ -34,7 +34,7 @@ class MailThread(models.AbstractModel):
     def _rating_get_operator(self):
         """ Return the operator (partner) that is the person who is rated.
 
-        :return: res.partner singleton
+        :return record: res.partner singleton
         """
         if 'user_id' in self and self.user_id.partner_id:
             return self.user_id.partner_id
@@ -43,7 +43,7 @@ class MailThread(models.AbstractModel):
     def _rating_get_partner(self):
         """ Return the customer (partner) that performs the rating.
 
-        :return: res.partner singleton
+        :return record: res.partner singleton
         """
         if 'partner_id' in self and self.partner_id:
             return self.partner_id
@@ -117,7 +117,7 @@ class MailThread(models.AbstractModel):
         :param notify_delay_send: Delay the sending by 2 hours of the email so the user
             can still change his feedback. If False, the email will be sent immediately.
 
-        :returns: rating.rating record
+        :returns rating: rating.rating record
         """
         if rate < 0 or rate > 5:
             raise ValueError(_('Wrong rating value. A rate should be between 0 and 5 (received %d).', rate))
@@ -161,6 +161,7 @@ class MailThread(models.AbstractModel):
                 )
         return rating
 
+    @api.returns('mail.message', lambda value: value.id)
     def message_post(self, **kwargs):
         rating_id = kwargs.pop('rating_id', False)
         rating_value = kwargs.pop('rating_value', False)
@@ -189,18 +190,3 @@ class MailThread(models.AbstractModel):
         if same_author and rating.res_model == message.model and rating.res_id == message.res_id:
             rating.message_id = message.id
         super()._message_post_after_hook(message, msg_values)
-
-    def _get_allowed_message_post_params(self):
-        return super()._get_allowed_message_post_params() | {"rating_value"}
-
-    @api.model
-    def _get_allowed_message_update_params(self):
-        return super()._get_allowed_message_update_params() | {"rating_value"}
-
-    def _message_update_content(self, message, body, *args, rating_value=None, **kwargs):
-        if rating_value:
-            message.rating_id.rating = rating_value
-            message.rating_id.feedback = tools.html2plaintext(body)
-        return super()._message_update_content(
-            message, body, *args, rating_value=rating_value, **kwargs
-        )

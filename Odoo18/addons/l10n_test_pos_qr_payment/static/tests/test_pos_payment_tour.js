@@ -1,7 +1,9 @@
-import * as ProductScreen from "@point_of_sale/../tests/pos/tours/utils/product_screen_util";
-import * as PaymentScreen from "@point_of_sale/../tests/pos/tours/utils/payment_screen_util";
-import * as Dialog from "@point_of_sale/../tests/generic_helpers/dialog_util";
-import * as Chrome from "@point_of_sale/../tests/pos/tours/utils/chrome_util";
+/** @odoo-module */
+
+import * as ProductScreen from "@point_of_sale/../tests/tours/utils/product_screen_util";
+import * as PaymentScreen from "@point_of_sale/../tests/tours/utils/payment_screen_util";
+import * as Dialog from "@point_of_sale/../tests/tours/utils/dialog_util";
+import * as Chrome from "@point_of_sale/../tests/tours/utils/chrome_util";
 
 import { registry } from "@web/core/registry";
 
@@ -23,7 +25,7 @@ function isQRDisplayedinDialog() {
 function addProductandPay() {
     return [
         ProductScreen.addOrderline("Hand Bag", "10"),
-        ProductScreen.selectedOrderlineHas("Hand Bag", "10"),
+        ProductScreen.selectedOrderlineHas("Hand Bag", "10.0"),
         ProductScreen.clickPayButton(),
 
         PaymentScreen.totalIs("48"),
@@ -81,7 +83,7 @@ registry.category("web_tour.tours").add("PaymentScreenWithQRPaymentSwiss", {
             Chrome.startPoS(),
             Dialog.confirm("Open Register"),
             ProductScreen.addOrderline("Hand Bag", "10"),
-            ProductScreen.selectedOrderlineHas("Hand Bag", "10"),
+            ProductScreen.selectedOrderlineHas("Hand Bag", "10.0"),
             ProductScreen.clickPartnerButton(),
             ProductScreen.clickCustomer("AAA Partner Swiss"),
             ProductScreen.clickPayButton(),

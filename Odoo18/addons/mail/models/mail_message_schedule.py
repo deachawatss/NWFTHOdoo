@@ -92,8 +92,7 @@ class MailMessageSchedule(models.Model):
           ``notify_thread``. Those are default values overridden by content of
           ``notification_parameters`` field.
 
-        :returns: False if no schedule has been found, True otherwise
-        :rtype: bool
+        :return bool: False if no schedule has been found, True otherwise
         """
         messages_scheduled = self.search(
             [('mail_message_id', 'in', messages.ids)]
@@ -113,8 +112,7 @@ class MailMessageSchedule(models.Model):
         :param datetime new_datetime: new datetime for sending. New triggers
           are created based on it;
 
-        :returns: False if no schedule has been found, True otherwise
-        :rtype: bool
+        :return bool: False if no schedule has been found, True otherwise
         """
         messages_scheduled = self.search(
             [('mail_message_id', 'in', messages.ids)]

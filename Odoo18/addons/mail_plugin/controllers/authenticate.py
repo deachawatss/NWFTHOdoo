@@ -56,7 +56,7 @@ class Authenticate(http.Controller):
         return request.redirect(updated_redirect.to_url(), local=False)
 
     # In this case, an exception will be thrown in case of preflight request if only POST is allowed.
-    @http.route(['/mail_client_extension/auth/access_token', '/mail_plugin/auth/access_token'], type='jsonrpc', auth="none", cors="*",
+    @http.route(['/mail_client_extension/auth/access_token', '/mail_plugin/auth/access_token'], type='json', auth="none", cors="*",
                 methods=['POST', 'OPTIONS'])
     def auth_access_token(self, auth_code='', **kw):
         """
@@ -106,7 +106,7 @@ class Authenticate(http.Controller):
             'name': name,
             'timestamp': int(datetime.datetime.utcnow().timestamp()),
             # <- elapsed time should be < 3 mins when verifying
-            'uid': request.env.uid,
+            'uid': request.uid,
         }
         auth_message = json.dumps(auth_dict, sort_keys=True).encode()
         signature = odoo.tools.misc.hmac(request.env(su=True), 'mail_plugin', auth_message).encode()

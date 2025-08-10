@@ -5,17 +5,34 @@
             white-space: nowrap;
             text-overflow: ellipsis;
         }
-    }
 
+        .modal-header .o_expand_button {
+            opacity: 75%;
+            &:hover {
+                opacity: 100%;
+            }
+        }
+    }
+    
     .modal-footer {
         text-align: left;
 
-        button {
-            margin: 0; // Reset boostrap.
+        // FIXME: These selectors should not be necessary if we used buttons
+        // as direct children of the modal-footer as normally required
+        footer, .o_form_buttons_edit, .o_form_buttons_view {
+            display: flex;
+            flex-wrap: wrap;
+            flex: 1 1 auto;
+            justify-content: space-around;
+            gap: map-get($spacers, 1);
+
+            @include media-breakpoint-up(md) {
+                justify-content: flex-start;
+            }
         }
 
-        button.o-default-button:not(:only-child) {
-            display: none;
+        button {
+            margin: 0; // Reset boostrap.
         }
         
         @include media-breakpoint-down(md) {

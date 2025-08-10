@@ -27,7 +27,4 @@
     <record model="utm.source" id="utm_source_craigslist">
         <field name="name">Craigslist</field>
     </record>
-    <record model="utm.source" id="utm_source_referral">
-        <field name="name">Referral</field>
-    </record>
 </odoo>

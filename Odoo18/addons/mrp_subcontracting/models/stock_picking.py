@@ -10,6 +10,7 @@ from dateutil.relativedelta import relativedelta
 
 
 class StockPicking(models.Model):
+    _name = 'stock.picking'
     _inherit = 'stock.picking'
 
     move_line_ids_without_package = fields.One2many(
@@ -60,8 +61,8 @@ class StockPicking(models.Model):
             recorded_productions = productions.filtered(lambda p: p._has_been_recorded())
             recorded_qty = sum(recorded_productions.mapped('qty_producing'))
             sm_done_qty = sum(productions._get_subcontract_move().filtered(lambda m: m.picked).mapped('quantity'))
-            rounding = self.env['decimal.precision'].precision_get('Product Unit')
-            if float_compare(move.product_uom_qty, move.quantity, precision_digits=rounding) > 0 and self.env.context.get('cancel_backorder'):
+            rounding = self.env['decimal.precision'].precision_get('Product Unit of Measure')
+            if float_compare(move.product_uom_qty, move.quantity, precision_digits=rounding) > 0 and self._context.get('cancel_backorder'):
                 move._update_subcontract_order_qty(move.quantity)
             if float_compare(recorded_qty, sm_done_qty, precision_digits=rounding) >= 0:
                 continue
@@ -72,7 +73,7 @@ class StockPicking(models.Model):
                 raise UserError(_("There shouldn't be multiple productions to record for the same subcontracted move."))
             # Manage additional quantities
             quantity_done_move = move.product_uom._compute_quantity(move.quantity, production.product_uom_id)
-            if production.product_uom_id.compare(production.product_qty, quantity_done_move) == -1:
+            if float_compare(production.product_qty, quantity_done_move, precision_rounding=production.product_uom_id.rounding) == -1:
                 change_qty = self.env['change.production.qty'].create({
                     'mo_id': production.id,
                     'product_qty': quantity_done_move
@@ -163,9 +164,6 @@ class StockPicking(models.Model):
         }
         return vals
 
-    def _get_subcontract_mo_confirmation_ctx(self):
-        return {}  # To override in mrp_subcontracting_purchase
-
     def _subcontracted_produce(self, subcontract_details):
         self.ensure_one()
         group_move = defaultdict(list)
@@ -175,7 +173,7 @@ class StockPicking(models.Model):
             if move.move_orig_ids.production_id:
                 continue
             quantity = move.product_qty or move.quantity
-            if move.product_uom.compare(quantity, 0) <= 0:
+            if float_compare(quantity, 0, precision_rounding=move.product_uom.rounding) <= 0:
                 # If a subcontracted amount is decreased, don't create a MO that would be for a negative value.
                 continue
 
@@ -191,7 +189,7 @@ class StockPicking(models.Model):
             all_mo.update(grouped_mo.ids)
 
         all_mo = self.env['mrp.production'].browse(sorted(all_mo))
-        all_mo.with_context(self._get_subcontract_mo_confirmation_ctx()).action_confirm()
+        all_mo.action_confirm()
 
         for mo in all_mo:
             move = group_move[mo.procurement_group_id.id][0]

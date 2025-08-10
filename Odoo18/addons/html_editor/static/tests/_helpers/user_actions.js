@@ -1,9 +1,9 @@
+import { closestBlock } from "@html_editor/utils/blocks";
+import { endPos } from "@html_editor/utils/position";
 import { findInSelection } from "@html_editor/utils/selection";
 import { click, manuallyDispatchProgrammaticEvent, press, tick, waitFor } from "@odoo/hoot-dom";
 import { setSelection } from "./selection";
 import { execCommand } from "./userCommands";
-import { isMobileOS } from "@web/core/browser/feature_detection";
-import { isTextNode } from "@html_editor/utils/dom_info";
 
 /** @typedef {import("@html_editor/plugin").Editor} Editor */
 
@@ -156,18 +156,6 @@ export function strikeThrough(editor) {
 export function setFontSize(size) {
     return (editor) => execCommand(editor, "formatFontSize", { size });
 }
-export function setFontFamily(fontFamily) {
-    return (editor) => {
-        editor.shared.format.formatSelection("fontFamily", {
-            applyStyle: fontFamily !== false,
-            formatProps: {
-                name: fontFamily + "_name",
-                nameShort: fontFamily + "_nameShort",
-                fontFamily: fontFamily,
-            },
-        });
-    };
-}
 /** @param {Editor} editor */
 export function switchDirection(editor) {
     return execCommand(editor, "switchDirection");
@@ -238,18 +226,6 @@ export function alignRight(editor) {
 export function justify(editor) {
     execCommand(editor, "justify");
 }
-/** @param {Editor} editor */
-export function alignTop(editor) {
-    execCommand(editor, "alignTop");
-}
-/** @param {Editor} editor */
-export function alignMiddle(editor) {
-    execCommand(editor, "alignMiddle");
-}
-/** @param {Editor} editor */
-export function alignBottom(editor) {
-    execCommand(editor, "alignBottom");
-}
 
 /**
  * @param {string} color
@@ -297,35 +273,34 @@ export function pasteOdooEditorHtml(editor, html) {
     return pasteData(editor, html, "application/vnd.odoo.odoo-editor");
 }
 /**
- * For desktop use only.
- *
  * @param {Node} node
  */
 export async function tripleClick(node) {
-    if (isMobileOS()) {
-        throw new Error("This function can only be used for desktop tests.");
-    }
-    const element = isTextNode(node) ? node.parentElement : node;
-    const selection = element.ownerDocument.getSelection();
-    // First click
-    await click(element);
-    setSelection({ anchorNode: element, anchorOffset: 0 });
-    await tick();
+    const release = await splitTripleClick(node);
+    await release();
+}
 
-    // Second click of a double click
-    await click(element);
-    selection.modify("extend", "forward", "word");
-    await tick();
-
-    // Third click of a triple click
-    const eventList = await click(element);
-    const mouseDownEvent = eventList.find((event) => event.type === "mousedown");
-    if (!mouseDownEvent) {
-        throw new Error("Triple click requires a mousedown event.");
+/**
+ * @param {Node} node
+ */
+export async function splitTripleClick(node) {
+    const anchorNode = node;
+    node = node.nodeType === Node.ELEMENT_NODE ? node : node.parentNode;
+    await manuallyDispatchProgrammaticEvent.silent(node, "mousedown", { detail: 3 });
+    let focusNode = closestBlock(anchorNode).nextSibling;
+    let focusOffset = 0;
+    if (!focusNode) {
+        [focusNode, focusOffset] = endPos(anchorNode);
     }
-    if (mouseDownEvent.defaultPrevented) {
-        // Default prevented, no effects on selection to simulate.
-        return;
-    }
-    await tick();
+    setSelection({
+        anchorNode,
+        anchorOffset: 0,
+        focusNode,
+        focusOffset,
+    });
+    return async function release() {
+        await manuallyDispatchProgrammaticEvent.silent(node, "mouseup", { detail: 3 });
+        await manuallyDispatchProgrammaticEvent.as("tripleClick")(node, "click", { detail: 3 });
+        await tick();
+    };
 }

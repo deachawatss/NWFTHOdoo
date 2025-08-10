@@ -1,4 +1,5 @@
 import { DiscussClientAction } from "@mail/core/public_web/discuss_client_action";
+import { useState } from "@odoo/owl";
 import "@mail/discuss/core/public/discuss_client_action_patch";
 
 import { browser } from "@web/core/browser/browser";
@@ -8,10 +9,10 @@ import { patch } from "@web/core/utils/patch";
 patch(DiscussClientAction.prototype, {
     setup() {
         super.setup(...arguments);
-        this.rtc = useService("discuss.rtc");
+        this.rtc = useState(useService("discuss.rtc"));
     },
     async joinCallWithWelcomeSettings() {
-        if (this.store.discuss_public_thread.default_display_mode !== "video_full_screen") {
+        if (this.store.discuss_public_thread.defaultDisplayMode !== "video_full_screen") {
             return;
         }
         const mute = browser.localStorage.getItem("discuss_call_preview_join_mute") === "true";

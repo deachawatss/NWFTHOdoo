@@ -1,25 +1,20 @@
 import { Plugin } from "@html_editor/plugin";
 import {
     ICON_SELECTOR,
-    MEDIA_SELECTOR,
     EDITABLE_MEDIA_CLASS,
     isIconElement,
     isMediaElement,
     isProtected,
     isProtecting,
 } from "@html_editor/utils/dom_info";
-import {
-    backgroundImageCssToParts,
-    backgroundImagePartsToCss,
-    getImageSrc,
-} from "@html_editor/utils/image";
+import { backgroundImageCssToParts, backgroundImagePartsToCss } from "@html_editor/utils/image";
 import { _t } from "@web/core/l10n/translation";
 import { rpc } from "@web/core/network/rpc";
 import { MediaDialog } from "./media_dialog/media_dialog";
-import { isHtmlContentSupported } from "@html_editor/core/selection_plugin";
 import { rightPos } from "@html_editor/utils/position";
 import { withSequence } from "@html_editor/utils/resource";
-import { closestElement } from "@html_editor/utils/dom_traversal";
+
+const MEDIA_SELECTOR = `${ICON_SELECTOR} , .o_image, .media_iframe_video`;
 
 /**
  * @typedef { Object } MediaShared
@@ -29,19 +24,13 @@ import { closestElement } from "@html_editor/utils/dom_traversal";
 export class MediaPlugin extends Plugin {
     static id = "media";
     static dependencies = ["selection", "history", "dom", "dialog"];
-    static shared = ["savePendingImages", "openMediaDialog"];
-    static defaultConfig = {
-        allowImage: true,
-        allowMediaDialogVideo: true,
-    };
+    static shared = ["savePendingImages"];
     resources = {
         user_commands: [
             {
                 id: "replaceImage",
-                description: _t("Replace media"),
-                icon: "fa-exchange",
+                title: _t("Replace media"),
                 run: this.replaceImage.bind(this),
-                isAvailable: isHtmlContentSupported,
             },
             {
                 id: "insertMedia",
@@ -50,39 +39,42 @@ export class MediaPlugin extends Plugin {
                 keywords: [_t("Image"), _t("Icon")],
                 icon: "fa-file-image-o",
                 run: this.openMediaDialog.bind(this),
-                isAvailable: isHtmlContentSupported,
             },
         ],
-        toolbar_groups: withSequence(31, { id: "replace_image", namespaces: ["image"] }),
+        toolbar_groups: withSequence(29, {
+            id: "replace_image",
+            namespace: "image",
+        }),
         toolbar_items: [
             {
                 id: "replace_image",
                 groupId: "replace_image",
                 commandId: "replaceImage",
+                text: "Replace",
             },
         ],
         powerbox_categories: withSequence(40, { id: "media", name: _t("Media") }),
         powerbox_items: [
-            ...(this.config.allowImage ? [{ categoryId: "media", commandId: "insertMedia" }] : []),
+            ...(this.config.disableImage
+                ? []
+                : [{ categoryId: "media", commandId: "insertMedia" }]),
         ],
         power_buttons: withSequence(1, { commandId: "insertMedia" }),
 
         /** Handlers */
+        clean_handlers: this.clean.bind(this),
         clean_for_save_handlers: ({ root }) => this.cleanForSave(root),
         normalize_handlers: this.normalizeMedia.bind(this),
-        selectionchange_handlers: this.selectAroundIcon.bind(this),
 
         unsplittable_node_predicates: isIconElement, // avoid merge
+        functional_empty_node_predicates: isMediaElement,
         is_node_editable_predicates: this.isEditableMediaElement.bind(this),
-        clipboard_content_processors: this.clean.bind(this),
-        clipboard_text_processors: (text) => text.replace(/\u200B/g, ""),
 
         selectors_for_feff_providers: () => ICON_SELECTOR,
-        before_save_handlers: this.savePendingImages.bind(this),
     };
 
-    getRecordInfo(editableEl = null) {
-        return this.config.getRecordInfo ? this.config.getRecordInfo(editableEl) : {};
+    get recordInfo() {
+        return this.config.getRecordInfo ? this.config.getRecordInfo() : {};
     }
 
     isEditableMediaElement(node) {
@@ -114,9 +106,7 @@ export class MediaPlugin extends Plugin {
                 "contenteditable",
                 el.hasAttribute("contenteditable") ? el.getAttribute("contenteditable") : "false"
             );
-            // Do not update the text if it's already OK to avoid recording a
-            // mutation on Firefox. (Chrome filters them out.)
-            if (isIconElement(el) && el.textContent !== "\u200B") {
+            if (isIconElement(el)) {
                 el.textContent = "\u200B";
             }
         }
@@ -139,12 +129,13 @@ export class MediaPlugin extends Plugin {
         }
     }
 
-    async onSaveMediaDialog(element, { node }) {
+    onSaveMediaDialog(element, { node }) {
         if (!element) {
             // @todo @phoenix to remove
             throw new Error("Element is required: onSaveMediaDialog");
             // return;
         }
+
         if (node) {
             const changedIcon = isIconElement(node) && isIconElement(element);
             if (changedIcon) {
@@ -153,38 +144,20 @@ export class MediaPlugin extends Plugin {
                 for (const attribute of element.attributes) {
                     node.setAttribute(attribute.nodeName, attribute.nodeValue);
                 }
-                element = node;
             } else {
                 node.replaceWith(element);
             }
-            this.dispatchTo("on_replaced_media_handlers", { newMediaEl: element });
         } else {
             this.dependencies.dom.insert(element);
-            this.dispatchTo("on_added_media_handlers", { newMediaEl: element });
         }
         // Collapse selection after the inserted/replaced element.
         const [anchorNode, anchorOffset] = rightPos(element);
         this.dependencies.selection.setSelection({ anchorNode, anchorOffset });
-        this.dispatchTo("after_save_media_dialog_handlers", element);
         this.dependencies.history.addStep();
     }
 
-    openMediaDialog(params = {}, editableEl = null) {
-        const oldSave =
-            params.save || ((element) => this.onSaveMediaDialog(element, { node: params.node }));
-        params.save = async (...args) => {
-            const selection = args[0];
-            const elements = selection
-                ? selection[Symbol.iterator]
-                    ? selection
-                    : [selection]
-                : [];
-            for (const onMediaDialogSaved of this.getResource("on_media_dialog_saved_handlers")) {
-                await onMediaDialogSaved(elements, { node: params.node });
-            }
-            return oldSave(...args);
-        };
-        const { resModel, resId, field, type } = this.getRecordInfo(editableEl);
+    openMediaDialog(params = {}) {
+        const { resModel, resId, field, type } = this.recordInfo;
         const mediaDialogClosedPromise = this.dependencies.dialog.addDialog(MediaDialog, {
             resModel,
             resId,
@@ -193,30 +166,46 @@ export class MediaPlugin extends Plugin {
                 ((resModel === "ir.ui.view" && field === "arch") || type === "html")
             ), // @todo @phoenix: should be removed and moved to config.mediaModalParams
             media: params.node,
+            save: (element) => {
+                this.onSaveMediaDialog(element, { node: params.node });
+            },
             onAttachmentChange: this.config.onAttachmentChange || (() => {}),
-            noVideos: !this.config.allowMediaDialogVideo,
-            noImages: !this.config.allowImage,
-            extraTabs: this.getResource("media_dialog_extra_tabs").filter(
-                (tab) => !(tab.id === "DOCUMENTS" && params.noDocuments)
-            ),
+            noVideos: !!this.config.disableVideo,
+            noImages: !!this.config.disableImage,
+            extraTabs: this.getResource("media_dialog_extra_tabs"),
             ...this.config.mediaModalParams,
             ...params,
         });
         return mediaDialogClosedPromise;
     }
 
-    async savePendingImages(editableEl = this.editable) {
-        const { resModel, resId } = this.getRecordInfo(editableEl);
+    async savePendingImages() {
+        const editableEl = this.editable;
+        const { resModel, resId } = this.recordInfo;
         // When saving a webp, o_b64_image_to_save is turned into
         // o_modified_image_to_save by saveB64Image to request the saving
         // of the pre-converted webp resizes and all the equivalent jpgs.
         const b64Proms = [...editableEl.querySelectorAll(".o_b64_image_to_save")].map(
             async (el) => {
+                const dirtyEditable = el.closest(".o_dirty");
+                if (dirtyEditable && dirtyEditable !== editableEl) {
+                    // Do nothing as there is an editable element closer to the
+                    // image that will perform the `saveB64Image()` call with
+                    // the correct "resModel" and "resId" parameters.
+                    return;
+                }
                 await this.saveB64Image(el, resModel, resId);
             }
         );
         const modifiedProms = [...editableEl.querySelectorAll(".o_modified_image_to_save")].map(
             async (el) => {
+                const dirtyEditable = el.closest(".o_dirty");
+                if (dirtyEditable && dirtyEditable !== editableEl) {
+                    // Do nothing as there is an editable element closer to the
+                    // image that will perform the `saveModifiedImage()` call
+                    // with the correct "resModel" and "resId" parameters.
+                    return;
+                }
                 await this.saveModifiedImage(el, resModel, resId);
             }
         );
@@ -308,7 +297,7 @@ export class MediaPlugin extends Plugin {
             // Generate alternate sizes and format for reports.
             altData = {};
             const image = document.createElement("img");
-            image.src = getImageSrc(el);
+            image.src = isBackground ? el.dataset.bgSrc : el.getAttribute("src");
             await new Promise((resolve) => image.addEventListener("load", resolve));
             const originalSize = Math.max(image.width, image.height);
             const smallerSizes = [1024, 512, 256, 128].filter((size) => size < originalSize);
@@ -346,7 +335,7 @@ export class MediaPlugin extends Plugin {
             {
                 res_model: resModel,
                 res_id: parseInt(resId),
-                data: getImageSrc(el).split(",")[1],
+                data: (isBackground ? el.dataset.bgSrc : el.getAttribute("src")).split(",")[1],
                 alt_data: altData,
                 mimetype: isBackground
                     ? el.dataset.mimetype
@@ -360,17 +349,9 @@ export class MediaPlugin extends Plugin {
             parts.url = `url('${newAttachmentSrc}')`;
             const combined = backgroundImagePartsToCss(parts);
             el.style["background-image"] = combined;
+            delete el.dataset.bgSrc;
         } else {
             el.setAttribute("src", newAttachmentSrc);
-        }
-    }
-
-    /**
-     * @param {import("@html_editor/core/selection_plugin").SelectionData} param0
-     */
-    selectAroundIcon({ editableSelection: { anchorNode, isCollapsed } }) {
-        if (isCollapsed && closestElement(anchorNode, isIconElement)) {
-            this.dependencies.selection.selectAroundNonEditable();
         }
     }
 }

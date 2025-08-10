@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test } from "@odoo/hoot";
+import { describe, expect, test } from "@odoo/hoot";
 
 import { getFirstListFunction, getNumberOfListFormulas } from "@spreadsheet/list/list_helpers";
 import { constants, tokenize, helpers } from "@odoo/o-spreadsheet";
@@ -12,18 +12,9 @@ const {
 } = helpers;
 const { DEFAULT_LOCALE } = constants;
 
-function stringArg(value, tokenIndex) {
-    return {
-        type: "STRING",
-        value: `${value}`,
-        tokenStartIndex: tokenIndex,
-        tokenEndIndex: tokenIndex,
-    };
+function stringArg(value) {
+    return { type: "STRING", value: `${value}` };
 }
-
-beforeEach(() => {
-    patchTranslations();
-});
 
 describe.current.tags("headless");
 
@@ -36,14 +27,14 @@ describe("pivot_helpers", () => {
         ({ functionName, args } = getFirstPivotFunction(tokens));
         expect(functionName).toBe("PIVOT.VALUE");
         expect(args.length).toBe(2);
-        expect(args[0]).toEqual(stringArg("1", 3));
-        expect(args[1]).toEqual(stringArg("test", 6));
+        expect(args[0]).toEqual(stringArg("1"));
+        expect(args[1]).toEqual(stringArg("test"));
         ({ functionName, args } = getFirstListFunction(tokens));
         expect(functionName).toBe("ODOO.LIST");
         expect(args.length).toBe(3);
-        expect(args[0]).toEqual(stringArg("2", 13));
-        expect(args[1]).toEqual(stringArg("hello", 16));
-        expect(args[2]).toEqual(stringArg("bla", 19));
+        expect(args[0]).toEqual(stringArg("2"));
+        expect(args[1]).toEqual(stringArg("hello"));
+        expect(args[2]).toEqual(stringArg("bla"));
     });
 
     test("Extraction with two PIVOT formulas", async function () {
@@ -52,8 +43,8 @@ describe("pivot_helpers", () => {
         const { functionName, args } = getFirstPivotFunction(tokens);
         expect(functionName).toBe("PIVOT.VALUE");
         expect(args.length).toBe(2);
-        expect(args[0]).toEqual(stringArg("1", 3));
-        expect(args[1]).toEqual(stringArg("test", 6));
+        expect(args[0]).toEqual(stringArg("1"));
+        expect(args[1]).toEqual(stringArg("test"));
         expect(getFirstListFunction(tokens)).toBe(undefined);
     });
 
@@ -236,6 +227,7 @@ describe("pivot time adapters formatted value", () => {
     });
 
     test("Week adapter", () => {
+        patchTranslations();
         const adapter = pivotTimeAdapter("week");
         expect(adapter.toValueAndFormat("5/2024", DEFAULT_LOCALE)).toEqual({ value: "W5 2024" });
         expect(adapter.toValueAndFormat("51/2020", DEFAULT_LOCALE)).toEqual({
@@ -244,6 +236,7 @@ describe("pivot time adapters formatted value", () => {
     });
 
     test("Month adapter", () => {
+        patchTranslations();
         const adapter = pivotTimeAdapter("month");
         expect(adapter.toValueAndFormat("12/2020", DEFAULT_LOCALE)).toEqual({
             value: 44166,
@@ -256,6 +249,7 @@ describe("pivot time adapters formatted value", () => {
     });
 
     test("Quarter adapter", () => {
+        patchTranslations();
         const adapter = pivotTimeAdapter("quarter");
         expect(adapter.toValueAndFormat("1/2022", DEFAULT_LOCALE)).toEqual({ value: "Q1 2022" });
         expect(adapter.toValueAndFormat("3/1998", DEFAULT_LOCALE)).toEqual({ value: "Q3 1998" });

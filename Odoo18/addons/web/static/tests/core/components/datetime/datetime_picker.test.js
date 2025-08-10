@@ -1,20 +1,11 @@
 import { beforeEach, expect, test } from "@odoo/hoot";
-import { click, queryAllTexts, resize } from "@odoo/hoot-dom";
+import { click, queryAllTexts, resize, select } from "@odoo/hoot-dom";
 import { animationFrame, mockDate } from "@odoo/hoot-mock";
 import { Component, useState, xml } from "@odoo/owl";
+import { defineParams, mountWithCleanup } from "@web/../tests/web_test_helpers";
 import { DateTimePicker } from "@web/core/datetime/datetime_picker";
 import { ensureArray } from "@web/core/utils/arrays";
-import {
-    defineParams,
-    mountWithCleanup,
-    makeMockEnv,
-    serverState,
-} from "@web/../tests/web_test_helpers";
-import {
-    assertDateTimePicker,
-    getPickerCell,
-    editTime,
-} from "../../datetime/datetime_test_helpers";
+import { assertDateTimePicker, getPickerCell } from "../../datetime/datetime_test_helpers";
 
 const { DateTime } = luxon;
 
@@ -38,9 +29,6 @@ const pad2 = (value) => String(value).padStart(2, "0");
  */
 const range = (length, mapping) => [...Array(length)].map((_, i) => mapping(i));
 
-const MINUTES = range(60, (i) => i).filter((i) => i % 15 === 0);
-const TIME_OPTIONS = range(24, String).flatMap((h) => MINUTES.map((m) => `${h}:${pad2(m)}`));
-
 defineParams({
     lang_parameters: {
         date_format: "%d/%m/%Y",
@@ -58,33 +46,30 @@ test("default params", async () => {
         date: [
             {
                 cells: [
-                    [26, 27, 28, 29, 30, 31, 1],
+                    [0, 0, 0, 0, 0, 0, 1],
                     [2, 3, 4, 5, 6, 7, 8],
                     [9, 10, 11, 12, 13, 14, 15],
                     [16, 17, 18, 19, 20, 21, 22],
                     [23, 24, "25", 26, 27, 28, 29],
-                    [30, 1, 2, 3, 4, 5, 6],
+                    [30, 0, 0, 0, 0, 0, 0],
                 ],
-                daysOfWeek: ["", "S", "M", "T", "W", "T", "F", "S"],
+                daysOfWeek: ["#", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
                 weekNumbers: [13, 14, 15, 16, 17, 18],
             },
         ],
-        time: ["13:00"],
+        time: [[13, 0]],
     });
 
-    await click(".o_time_picker_input");
-    await animationFrame();
-    expect(queryAllTexts(".o_time_picker_dropdown .o_time_picker_option")).toEqual(TIME_OPTIONS);
+    expect(queryAllTexts(".o_time_picker_select:eq(0) option")).toEqual(range(24, String));
+    expect(queryAllTexts(".o_time_picker_select:eq(1) option")).toEqual(
+        range(12, (i) => pad2(i * 5))
+    );
     expect(".o_datetime_picker").toHaveStyle({
         "--DateTimePicker__Day-template-columns": "8",
     });
 });
 
 test("minDate: correct days/month/year/decades are disabled", async () => {
-    serverState.lang = "en-US";
-    // necessary to configure the lang before minDate/maxDate are created
-    await makeMockEnv();
-
     await mountWithCleanup(DateTimePicker, {
         props: {
             minDate: DateTime.fromISO("2023-04-20T00:00:00.000"),
@@ -96,23 +81,24 @@ test("minDate: correct days/month/year/decades are disabled", async () => {
         date: [
             {
                 cells: [
-                    [-26, -27, -28, -29, -30, -31, -1],
+                    [0, 0, 0, 0, 0, 0, -1],
                     [-2, -3, -4, -5, -6, -7, -8],
                     [-9, -10, -11, -12, -13, -14, -15],
                     [-16, -17, -18, -19, 20, 21, 22],
                     [23, 24, "25", 26, 27, 28, 29],
-                    [30, 1, 2, 3, 4, 5, 6],
+                    [30, 0, 0, 0, 0, 0, 0],
                 ],
-                daysOfWeek: ["", "S", "M", "T", "W", "T", "F", "S"],
+                daysOfWeek: ["#", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
                 weekNumbers: [13, 14, 15, 16, 17, 18],
             },
         ],
-        time: ["13:00"],
+        time: [[13, 0]],
     });
 
-    await click(".o_time_picker_input");
-    await animationFrame();
-    expect(queryAllTexts(".o_time_picker_dropdown .o_time_picker_option")).toEqual(TIME_OPTIONS);
+    expect(queryAllTexts(".o_time_picker_select:eq(0) option")).toEqual(range(24, String));
+    expect(queryAllTexts(".o_time_picker_select:eq(1) option")).toEqual(
+        range(12, (i) => pad2(i * 5))
+    );
 
     await click(".o_zoom_out");
     await animationFrame();
@@ -179,18 +165,18 @@ test("minDate: correct days/month/year/decades are disabled", async () => {
         date: [
             {
                 cells: [
-                    [-26, -27, -28, -29, -30, -31, -1],
+                    [0, 0, 0, 0, 0, 0, -1],
                     [-2, -3, -4, -5, -6, -7, -8],
                     [-9, -10, -11, -12, -13, -14, -15],
                     [-16, -17, -18, -19, 20, 21, 22],
                     [23, 24, "25", 26, 27, 28, 29],
-                    [30, 1, 2, 3, 4, 5, 6],
+                    [30, 0, 0, 0, 0, 0, 0],
                 ],
-                daysOfWeek: ["", "S", "M", "T", "W", "T", "F", "S"],
+                daysOfWeek: ["#", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
                 weekNumbers: [13, 14, 15, 16, 17, 18],
             },
         ],
-        time: ["13:00"],
+        time: [[13, 0]],
     });
 });
 
@@ -206,23 +192,24 @@ test("maxDate: correct days/month/year/decades are disabled", async () => {
         date: [
             {
                 cells: [
-                    [26, 27, 28, 29, 30, 31, 1],
+                    [0, 0, 0, 0, 0, 0, 1],
                     [2, 3, 4, 5, 6, 7, 8],
                     [9, 10, 11, 12, 13, 14, 15],
                     [16, 17, 18, 19, 20, 21, 22],
                     [23, 24, "25", 26, 27, 28, -29],
-                    [-30, -1, -2, -3, -4, -5, -6],
+                    [-30, 0, 0, 0, 0, 0, 0],
                 ],
-                daysOfWeek: ["", "S", "M", "T", "W", "T", "F", "S"],
+                daysOfWeek: ["#", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
                 weekNumbers: [13, 14, 15, 16, 17, 18],
             },
         ],
-        time: ["13:00"],
+        time: [[13, 0]],
     });
 
-    await click(".o_time_picker_input");
-    await animationFrame();
-    expect(queryAllTexts(".o_time_picker_dropdown .o_time_picker_option")).toEqual(TIME_OPTIONS);
+    expect(queryAllTexts(".o_time_picker_select:eq(0) option")).toEqual(range(24, String));
+    expect(queryAllTexts(".o_time_picker_select:eq(1) option")).toEqual(
+        range(12, (i) => pad2(i * 5))
+    );
 
     await click(".o_zoom_out");
     await animationFrame();
@@ -302,26 +289,22 @@ test("maxDate: correct days/month/year/decades are disabled", async () => {
         date: [
             {
                 cells: [
-                    [26, 27, 28, 29, 30, 31, 1],
+                    [0, 0, 0, 0, 0, 0, 1],
                     [2, 3, 4, 5, 6, 7, 8],
                     [9, 10, 11, 12, 13, 14, 15],
                     [16, 17, 18, 19, 20, 21, 22],
                     [23, 24, "25", 26, 27, 28, -29],
-                    [-30, -1, -2, -3, -4, -5, -6],
+                    [-30, 0, 0, 0, 0, 0, 0],
                 ],
-                daysOfWeek: ["", "S", "M", "T", "W", "T", "F", "S"],
+                daysOfWeek: ["#", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
                 weekNumbers: [13, 14, 15, 16, 17, 18],
             },
         ],
-        time: ["13:00"],
+        time: [[13, 0]],
     });
 });
 
 test("min+max date: correct days/month/year/decades are disabled", async () => {
-    serverState.lang = "en-US";
-    // necessary to configure the lang before minDate/maxDate are created
-    await makeMockEnv();
-
     await mountWithCleanup(DateTimePicker, {
         props: {
             minDate: DateTime.fromISO("2023-04-20T00:00:00.000"),
@@ -334,23 +317,24 @@ test("min+max date: correct days/month/year/decades are disabled", async () => {
         date: [
             {
                 cells: [
-                    [-26, -27, -28, -29, -30, -31, -1],
+                    [0, 0, 0, 0, 0, 0, -1],
                     [-2, -3, -4, -5, -6, -7, -8],
                     [-9, -10, -11, -12, -13, -14, -15],
                     [-16, -17, -18, -19, 20, 21, 22],
                     [23, 24, "25", 26, 27, 28, -29],
-                    [-30, -1, -2, -3, -4, -5, -6],
+                    [-30, 0, 0, 0, 0, 0, 0],
                 ],
-                daysOfWeek: ["", "S", "M", "T", "W", "T", "F", "S"],
+                daysOfWeek: ["#", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
                 weekNumbers: [13, 14, 15, 16, 17, 18],
             },
         ],
-        time: ["13:00"],
+        time: [[13, 0]],
     });
 
-    await click(".o_time_picker_input");
-    await animationFrame();
-    expect(queryAllTexts(".o_time_picker_dropdown .o_time_picker_option")).toEqual(TIME_OPTIONS);
+    expect(queryAllTexts(".o_time_picker_select:eq(0) option")).toEqual(range(24, String));
+    expect(queryAllTexts(".o_time_picker_select:eq(1) option")).toEqual(
+        range(12, (i) => pad2(i * 5))
+    );
 
     await click(".o_zoom_out");
     await animationFrame();
@@ -424,18 +408,18 @@ test("min+max date: correct days/month/year/decades are disabled", async () => {
         date: [
             {
                 cells: [
-                    [-26, -27, -28, -29, -30, -31, -1],
+                    [0, 0, 0, 0, 0, 0, -1],
                     [-2, -3, -4, -5, -6, -7, -8],
                     [-9, -10, -11, -12, -13, -14, -15],
                     [-16, -17, -18, -19, 20, 21, 22],
                     [23, 24, "25", 26, 27, 28, -29],
-                    [-30, -1, -2, -3, -4, -5, -6],
+                    [-30, 0, 0, 0, 0, 0, 0],
                 ],
-                daysOfWeek: ["", "S", "M", "T", "W", "T", "F", "S"],
+                daysOfWeek: ["#", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
                 weekNumbers: [13, 14, 15, 16, 17, 18],
             },
         ],
-        time: ["13:00"],
+        time: [[13, 0]],
     });
 });
 
@@ -453,15 +437,15 @@ test("twelve-hour clock with non-null focus date index", async () => {
                 expect.step(formatForStep(value));
             },
             value: [
-                DateTime.fromObject({ day: 20, hour: 8, minute: 45 }),
-                DateTime.fromObject({ day: 23, hour: 11, minute: 15 }),
+                DateTime.fromObject({ day: 20, hour: 8, minute: 43 }),
+                DateTime.fromObject({ day: 23, hour: 11, minute: 16 }),
             ],
             focusedDateIndex: 1,
         },
     });
 
-    await editTime("07:15am");
-    expect.verifySteps(["2023-04-20T08:45:00,2023-04-23T07:15:00"]);
+    await select("7", { target: ".o_time_picker_select:eq(0)" });
+    expect.verifySteps(["2023-04-20T08:43:00,2023-04-23T07:16:00"]);
 });
 
 test("twelve-hour clock", async () => {
@@ -478,31 +462,28 @@ test("twelve-hour clock", async () => {
         date: [
             {
                 cells: [
-                    [26, 27, 28, 29, 30, 31, 1],
+                    [0, 0, 0, 0, 0, 0, 1],
                     [2, 3, 4, 5, 6, 7, 8],
                     [9, 10, 11, 12, 13, 14, 15],
                     [16, 17, 18, 19, 20, 21, 22],
                     [23, 24, "25", 26, 27, 28, 29],
-                    [30, 1, 2, 3, 4, 5, 6],
+                    [30, 0, 0, 0, 0, 0, 0],
                 ],
-                daysOfWeek: ["", "S", "M", "T", "W", "T", "F", "S"],
+                daysOfWeek: ["#", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
                 weekNumbers: [13, 14, 15, 16, 17, 18],
             },
         ],
-        time: ["1:00pm"],
+        time: [[1, 0, "PM"]],
     });
 
-    const times = [];
-    for (const meridiem of ["am", "pm"]) {
-        for (const h of [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]) {
-            for (const m of ["00", "15", "30", "45"]) {
-                times.push(`${h}:${m}${meridiem}`);
-            }
-        }
-    }
-    await click(".o_time_picker_input");
-    await animationFrame();
-    expect(queryAllTexts(".o_time_picker_dropdown .o_time_picker_option")).toEqual(times);
+    expect(queryAllTexts(".o_time_picker_select:eq(0) option")).toEqual([
+        "12",
+        ...range(12, String).slice(1),
+    ]);
+    expect(queryAllTexts(".o_time_picker_select:eq(1) option")).toEqual(
+        range(12, (i) => pad2(i * 5))
+    );
+    expect(queryAllTexts(".o_time_picker_select:eq(2) option")).toEqual(["AM", "PM"]);
 });
 
 test("hide time picker", async () => {
@@ -517,14 +498,14 @@ test("hide time picker", async () => {
         date: [
             {
                 cells: [
-                    [26, 27, 28, 29, 30, 31, 1],
+                    [0, 0, 0, 0, 0, 0, 1],
                     [2, 3, 4, 5, 6, 7, 8],
                     [9, 10, 11, 12, 13, 14, 15],
                     [16, 17, 18, 19, 20, 21, 22],
                     [23, 24, "25", 26, 27, 28, 29],
-                    [30, 1, 2, 3, 4, 5, 6],
+                    [30, 0, 0, 0, 0, 0, 0],
                 ],
-                daysOfWeek: ["", "S", "M", "T", "W", "T", "F", "S"],
+                daysOfWeek: ["#", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
                 weekNumbers: [13, 14, 15, 16, 17, 18],
             },
         ],
@@ -543,18 +524,17 @@ test("focus is adjusted to selected date", async () => {
         date: [
             {
                 cells: [
-                    [30, 1, 2, 3, 4, 5, 6],
+                    [0, 1, 2, 3, 4, 5, 6],
                     [7, 8, 9, 10, 11, 12, 13],
                     [14, 15, 16, 17, 18, 19, 20],
                     [21, 22, 23, 24, 25, 26, 27],
-                    [28, [29], 30, 31, 1, 2, 3],
-                    [4, 5, 6, 7, 8, 9, 10],
+                    [28, [29], 30, 31, 0, 0, 0],
                 ],
-                daysOfWeek: ["", "S", "M", "T", "W", "T", "F", "S"],
-                weekNumbers: [18, 19, 20, 21, 22, 23],
+                daysOfWeek: ["#", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+                weekNumbers: [18, 19, 20, 21, 22],
             },
         ],
-        time: ["23:55"],
+        time: [[23, 55]],
     });
 });
 
@@ -570,14 +550,14 @@ test("next month and previous month", async () => {
         date: [
             {
                 cells: [
-                    [26, 27, 28, 29, 30, 31, 1],
+                    [0, 0, 0, 0, 0, 0, 1],
                     [2, 3, 4, 5, 6, 7, 8],
                     [9, 10, 11, 12, 13, 14, 15],
                     [16, 17, 18, 19, 20, 21, 22],
                     [23, 24, "25", 26, 27, 28, 29],
-                    [30, 1, 2, 3, 4, 5, 6],
+                    [30, 0, 0, 0, 0, 0, 0],
                 ],
-                daysOfWeek: ["", "S", "M", "T", "W", "T", "F", "S"],
+                daysOfWeek: ["#", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
                 weekNumbers: [13, 14, 15, 16, 17, 18],
             },
         ],
@@ -591,15 +571,14 @@ test("next month and previous month", async () => {
         date: [
             {
                 cells: [
-                    [26, 27, 28, 1, 2, 3, 4],
+                    [0, 0, 0, 1, 2, 3, 4],
                     [5, 6, 7, 8, 9, 10, 11],
                     [12, 13, 14, 15, 16, 17, 18],
                     [19, 20, 21, 22, 23, 24, 25],
-                    [26, 27, 28, 29, 30, 31, 1],
-                    [2, 3, 4, 5, 6, 7, 8],
+                    [26, 27, 28, 29, 30, 31, 0],
                 ],
-                daysOfWeek: ["", "S", "M", "T", "W", "T", "F", "S"],
-                weekNumbers: [9, 10, 11, 12, 13, 14],
+                daysOfWeek: ["#", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+                weekNumbers: [9, 10, 11, 12, 13],
             },
         ],
     });
@@ -612,14 +591,14 @@ test("next month and previous month", async () => {
         date: [
             {
                 cells: [
-                    [26, 27, 28, 29, 30, 31, 1],
+                    [0, 0, 0, 0, 0, 0, 1],
                     [2, 3, 4, 5, 6, 7, 8],
                     [9, 10, 11, 12, 13, 14, 15],
                     [16, 17, 18, 19, 20, 21, 22],
                     [23, 24, "25", 26, 27, 28, 29],
-                    [30, 1, 2, 3, 4, 5, 6],
+                    [30, 0, 0, 0, 0, 0, 0],
                 ],
-                daysOfWeek: ["", "S", "M", "T", "W", "T", "F", "S"],
+                daysOfWeek: ["#", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
                 weekNumbers: [13, 14, 15, 16, 17, 18],
             },
         ],
@@ -633,17 +612,113 @@ test("next month and previous month", async () => {
         date: [
             {
                 cells: [
-                    [30, 1, 2, 3, 4, 5, 6],
+                    [0, 1, 2, 3, 4, 5, 6],
                     [7, 8, 9, 10, 11, 12, 13],
                     [14, 15, 16, 17, 18, 19, 20],
                     [21, 22, 23, 24, 25, 26, 27],
-                    [28, 29, 30, 31, 1, 2, 3],
-                    [4, 5, 6, 7, 8, 9, 10],
+                    [28, 29, 30, 31, 0, 0, 0],
                 ],
-                daysOfWeek: ["", "S", "M", "T", "W", "T", "F", "S"],
-                weekNumbers: [18, 19, 20, 21, 22, 23],
+                daysOfWeek: ["#", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+                weekNumbers: [18, 19, 20, 21, 22],
             },
         ],
+    });
+});
+
+test.tags("desktop");
+test("additional month, hide time picker", async () => {
+    await mountWithCleanup(DateTimePicker, {
+        props: {
+            value: [
+                DateTime.fromObject({ hour: 9, minute: 36 }),
+                DateTime.fromObject({ hour: 21, minute: 5 }),
+            ],
+            range: true,
+            type: "date",
+        },
+    });
+
+    assertDateTimePicker({
+        title: "April 2023\nMay 2023",
+        date: [
+            {
+                cells: [
+                    [0, 0, 0, 0, 0, 0, 1],
+                    [2, 3, 4, 5, 6, 7, 8],
+                    [9, 10, 11, 12, 13, 14, 15],
+                    [16, 17, 18, 19, 20, 21, 22],
+                    [23, 24, ["25"], 26, 27, 28, 29],
+                    [30, 0, 0, 0, 0, 0, 0],
+                ],
+                daysOfWeek: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+            },
+            {
+                cells: [
+                    [0, 1, 2, 3, 4, 5, 6],
+                    [7, 8, 9, 10, 11, 12, 13],
+                    [14, 15, 16, 17, 18, 19, 20],
+                    [21, 22, 23, 24, 25, 26, 27],
+                    [28, 29, 30, 31, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0],
+                ],
+                daysOfWeek: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+            },
+        ],
+    });
+});
+
+test.tags("desktop");
+test("additional month, empty range value", async () => {
+    await mountWithCleanup(DateTimePicker, {
+        props: {
+            value: [null, null],
+            range: true,
+        },
+    });
+
+    assertDateTimePicker({
+        title: "April 2023\nMay 2023",
+        date: [
+            {
+                cells: [
+                    [0, 0, 0, 0, 0, 0, 1],
+                    [2, 3, 4, 5, 6, 7, 8],
+                    [9, 10, 11, 12, 13, 14, 15],
+                    [16, 17, 18, 19, 20, 21, 22],
+                    [23, 24, "25", 26, 27, 28, 29],
+                    [30, 0, 0, 0, 0, 0, 0],
+                ],
+                daysOfWeek: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+            },
+            {
+                cells: [
+                    [0, 1, 2, 3, 4, 5, 6],
+                    [7, 8, 9, 10, 11, 12, 13],
+                    [14, 15, 16, 17, 18, 19, 20],
+                    [21, 22, 23, 24, 25, 26, 27],
+                    [28, 29, 30, 31, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0],
+                ],
+                daysOfWeek: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+            },
+        ],
+        time: [
+            [13, 0],
+            [14, 0],
+        ],
+    });
+
+    expect(queryAllTexts(".o_time_picker_select:eq(0) option")).toEqual(range(24, String));
+    expect(queryAllTexts(".o_time_picker_select:eq(1) option")).toEqual(
+        range(12, (i) => pad2(i * 5))
+    );
+
+    expect(queryAllTexts(".o_time_picker_select:eq(2) option")).toEqual(range(24, String));
+    expect(queryAllTexts(".o_time_picker_select:eq(3) option")).toEqual(
+        range(12, (i) => pad2(i * 5))
+    );
+    expect(".o_datetime_picker").toHaveStyle({
+        "--DateTimePicker__Day-template-columns": "7",
     });
 });
 
@@ -660,34 +735,49 @@ test("range value", async () => {
     });
 
     assertDateTimePicker({
-        title: "April 2023",
+        title: "April 2023\nMay 2023",
         date: [
             {
                 cells: [
-                    [26, 27, 28, 29, 30, 31, 1],
+                    [0, 0, 0, 0, 0, 0, 1],
                     [2, 3, 4, [5], [6], [7], [8]],
                     [[9], [10], [11], [12], [13], [14], [15]],
                     [[16], [17], [18], [19], [20], [21], [22]],
                     [[23], [24], ["25"], [26], [27], [28], [29]],
-                    [[30], [1], [2], [3], [4], [5], [6]],
+                    [[30], 0, 0, 0, 0, 0, 0],
                 ],
-                daysOfWeek: ["", "S", "M", "T", "W", "T", "F", "S"],
-                weekNumbers: [13, 14, 15, 16, 17, 18],
+                daysOfWeek: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+            },
+            {
+                cells: [
+                    [0, [1], [2], [3], [4], [5], [6]],
+                    [[7], [8], [9], [10], [11], [12], [13]],
+                    [[14], [15], [16], [17], [18], 19, 20],
+                    [21, 22, 23, 24, 25, 26, 27],
+                    [28, 29, 30, 31, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0],
+                ],
+                daysOfWeek: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
             },
         ],
-        time: ["17:18", "5:25"],
+        time: [
+            [17, 0],
+            [5, 25],
+        ],
     });
 
-    await click(".o_time_picker_input:eq(0)");
-    await animationFrame();
-    expect(queryAllTexts(".o_time_picker_option")).toEqual(TIME_OPTIONS);
+    expect(queryAllTexts(".o_time_picker_select:eq(0) option")).toEqual(range(24, String));
+    const expectedMinutes = range(12, (i) => pad2(i * 5));
+    expectedMinutes.unshift("");
+    expect(queryAllTexts(".o_time_picker_select:eq(1) option")).toEqual(expectedMinutes);
 
-    await click(".o_time_picker_input:eq(1)");
-    await animationFrame();
-    expect(queryAllTexts(".o_time_picker_option")).toEqual(TIME_OPTIONS);
+    expect(queryAllTexts(".o_time_picker_select:eq(2) option")).toEqual(range(24, String));
+    expect(queryAllTexts(".o_time_picker_select:eq(3) option")).toEqual(
+        range(12, (i) => pad2(i * 5))
+    );
 
     expect(".o_datetime_picker").toHaveStyle({
-        "--DateTimePicker__Day-template-columns": "8",
+        "--DateTimePicker__Day-template-columns": "7",
     });
 });
 
@@ -697,7 +787,7 @@ test("range value on small device", async () => {
     await mountWithCleanup(DateTimePicker, {
         props: {
             value: [
-                DateTime.fromObject({ hour: 9, minute: 30 }),
+                DateTime.fromObject({ hour: 9, minute: 36 }),
                 DateTime.fromObject({ hour: 21, minute: 5 }),
             ],
             range: true,
@@ -709,30 +799,34 @@ test("range value on small device", async () => {
         date: [
             {
                 cells: [
-                    [26, 27, 28, 29, 30, 31, 1],
+                    [0, 0, 0, 0, 0, 0, 1],
                     [2, 3, 4, 5, 6, 7, 8],
                     [9, 10, 11, 12, 13, 14, 15],
                     [16, 17, 18, 19, 20, 21, 22],
                     [23, 24, ["25"], 26, 27, 28, 29],
-                    [30, 1, 2, 3, 4, 5, 6],
+                    [30, 0, 0, 0, 0, 0, 0],
                 ],
-                daysOfWeek: ["", "S", "M", "T", "W", "T", "F", "S"],
-                weekNumbers: [13, 14, 15, 16, 17, 18],
+                daysOfWeek: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
             },
         ],
-        time: ["9:30", "21:05"],
+        time: [
+            [9, 0],
+            [21, 5],
+        ],
     });
 
-    await click(".o_time_picker_input:eq(0)");
-    await animationFrame();
-    expect(queryAllTexts(".o_time_picker_option")).toEqual(TIME_OPTIONS);
+    expect(queryAllTexts(".o_time_picker_select:eq(0) option")).toEqual(range(24, String));
+    const expectedMinutes = range(12, (i) => pad2(i * 5));
+    expectedMinutes.unshift("");
+    expect(queryAllTexts(".o_time_picker_select:eq(1) option")).toEqual(expectedMinutes);
 
-    await click(".o_time_picker_input:eq(1)");
-    await animationFrame();
-    expect(queryAllTexts(".o_time_picker_option")).toEqual(TIME_OPTIONS);
+    expect(queryAllTexts(".o_time_picker_select:eq(2) option")).toEqual(range(24, String));
+    expect(queryAllTexts(".o_time_picker_select:eq(3) option")).toEqual(
+        range(12, (i) => pad2(i * 5))
+    );
 
     expect(".o_datetime_picker").toHaveStyle({
-        "--DateTimePicker__Day-template-columns": "8",
+        "--DateTimePicker__Day-template-columns": "7",
     });
 });
 
@@ -746,44 +840,70 @@ test("range value, previous month", async () => {
     });
 
     assertDateTimePicker({
-        title: "April 2023",
+        title: "April 2023\nMay 2023",
         date: [
             {
                 cells: [
-                    [26, 27, 28, 29, 30, 31, 1],
+                    [0, 0, 0, 0, 0, 0, 1],
                     [2, 3, 4, 5, 6, 7, 8],
                     [9, 10, 11, 12, 13, 14, 15],
                     [16, 17, 18, 19, 20, 21, 22],
                     [23, 24, "25", 26, 27, 28, 29],
-                    [30, 1, 2, 3, 4, 5, 6],
+                    [30, 0, 0, 0, 0, 0, 0],
                 ],
-                daysOfWeek: ["", "S", "M", "T", "W", "T", "F", "S"],
-                weekNumbers: [13, 14, 15, 16, 17, 18],
+                daysOfWeek: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+            },
+            {
+                cells: [
+                    [0, 1, 2, 3, 4, 5, 6],
+                    [7, 8, 9, 10, 11, 12, 13],
+                    [14, 15, 16, 17, 18, 19, 20],
+                    [21, 22, 23, 24, 25, 26, 27],
+                    [28, 29, 30, 31, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0],
+                ],
+                daysOfWeek: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
             },
         ],
-        time: ["13:00", "14:00"],
+        time: [
+            [13, 0],
+            [14, 0],
+        ],
     });
 
     await click(".o_previous");
     await animationFrame();
 
     assertDateTimePicker({
-        title: "March 2023",
+        title: "March 2023\nApril 2023",
         date: [
             {
                 cells: [
-                    [26, 27, 28, 1, 2, 3, 4],
+                    [0, 0, 0, 1, 2, 3, 4],
                     [5, 6, 7, 8, 9, 10, 11],
                     [12, 13, 14, 15, 16, 17, 18],
                     [19, 20, 21, 22, 23, 24, 25],
-                    [26, 27, 28, 29, 30, 31, 1],
-                    [2, 3, 4, 5, 6, 7, 8],
+                    [26, 27, 28, 29, 30, 31, 0],
+                    [0, 0, 0, 0, 0, 0, 0],
                 ],
-                daysOfWeek: ["", "S", "M", "T", "W", "T", "F", "S"],
-                weekNumbers: [9, 10, 11, 12, 13, 14],
+                daysOfWeek: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+            },
+            {
+                cells: [
+                    [0, 0, 0, 0, 0, 0, 1],
+                    [2, 3, 4, 5, 6, 7, 8],
+                    [9, 10, 11, 12, 13, 14, 15],
+                    [16, 17, 18, 19, 20, 21, 22],
+                    [23, 24, "25", 26, 27, 28, 29],
+                    [30, 0, 0, 0, 0, 0, 0],
+                ],
+                daysOfWeek: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
             },
         ],
-        time: ["13:00", "14:00"],
+        time: [
+            [13, 0],
+            [14, 0],
+        ],
     });
 });
 
@@ -799,18 +919,18 @@ test("days of week narrow format", async () => {
         date: [
             {
                 cells: [
-                    [26, 27, 28, 29, 30, 31, 1],
+                    [0, 0, 0, 0, 0, 0, 1],
                     [2, 3, 4, 5, 6, 7, 8],
                     [9, 10, 11, 12, 13, 14, 15],
                     [16, 17, 18, 19, 20, 21, 22],
                     [23, 24, "25", 26, 27, 28, 29],
-                    [30, 1, 2, 3, 4, 5, 6],
+                    [30, 0, 0, 0, 0, 0, 0],
                 ],
-                daysOfWeek: ["", "S", "M", "T", "W", "T", "F", "S"],
+                daysOfWeek: ["#", "S", "M", "T", "W", "T", "F", "S"],
                 weekNumbers: [13, 14, 15, 16, 17, 18],
             },
         ],
-        time: ["13:00"],
+        time: [[13, 0]],
     });
 });
 
@@ -825,18 +945,22 @@ test("different rounding", async () => {
         },
     });
 
-    await editTime("10:16");
-    expect(".o_time_picker_input").toHaveValue("10:20");
+    expect(queryAllTexts(".o_time_picker_select:eq(0) option")).toEqual(range(24, String));
+    expect(queryAllTexts(".o_time_picker_select:eq(1) option")).toEqual(
+        range(6, (i) => pad2(i * 10))
+    );
 });
 
-test("rounding=0 enables seconds", async () => {
+test("rounding=0 enables seconds picker", async () => {
     await mountWithCleanup(DateTimePicker, {
         props: {
             rounding: 0,
         },
     });
 
-    expect(".o_time_picker_input").toHaveValue("13:00:00");
+    expect(queryAllTexts(".o_time_picker_select:eq(0) option")).toEqual(range(24, String));
+    expect(queryAllTexts(".o_time_picker_select:eq(1) option")).toEqual(range(60, (i) => pad2(i)));
+    expect(queryAllTexts(".o_time_picker_select:eq(1) option")).toEqual(range(60, (i) => pad2(i)));
 });
 
 test("no value, select date without handler", async () => {
@@ -870,10 +994,11 @@ test("no value, select time", async () => {
         },
     });
 
-    await editTime("18:05");
+    await select("18", { target: ".o_time_picker_select:eq(0)" });
+    await select("5", { target: ".o_time_picker_select:eq(1)" });
     await animationFrame();
 
-    expect.verifySteps(["2023-04-25T18:05:00"]);
+    expect.verifySteps(["2023-04-25T18:00:00", "2023-04-25T18:05:00"]);
 });
 
 test("minDate with time: selecting out-of-range and in-range times", async () => {
@@ -884,11 +1009,11 @@ test("minDate with time: selecting out-of-range and in-range times", async () =>
         },
     });
 
-    await editTime("15:00");
+    await select("15", { target: ".o_time_picker_select:eq(0)" });
     await animationFrame();
     expect.verifySteps([]);
 
-    await editTime("16:00");
+    await select("16", { target: ".o_time_picker_select:eq(0)" });
     await animationFrame();
     expect.verifySteps(["2023-04-25T16:00:00"]);
 });
@@ -901,11 +1026,11 @@ test("maxDate with time: selecting out-of-range and in-range times", async () =>
         },
     });
 
-    await editTime("17:00");
+    await select("17", { target: ".o_time_picker_select:eq(0)" });
     await animationFrame();
     expect.verifySteps([]);
 
-    await editTime("16:00");
+    await select("16", { target: ".o_time_picker_select:eq(0)" });
     await animationFrame();
     expect.verifySteps(["2023-04-25T16:00:00"]);
 });
@@ -919,12 +1044,12 @@ test("max and min date with time: selecting out-of-range and in-range times", as
         },
     });
 
-    await editTime("15:00");
-    await editTime("17:00");
+    await select("15", { target: ".o_time_picker_select:eq(0)" });
+    await select("17", { target: ".o_time_picker_select:eq(0)" });
     await animationFrame();
     expect.verifySteps([]);
 
-    await editTime("16:00");
+    await select("16", { target: ".o_time_picker_select:eq(0)" });
     await animationFrame();
     expect.verifySteps(["2023-04-25T16:00:00"]);
 });
@@ -938,11 +1063,12 @@ test("max and min date with time: selecting invalid minutes and making it valid 
         },
     });
 
-    await editTime("13:30");
+    await select("13", { target: ".o_time_picker_select:eq(0)" });
+    await select("30", { target: ".o_time_picker_select:eq(1)" });
     await animationFrame();
     expect.verifySteps([]);
 
-    await editTime("16:30");
+    await select("16", { target: ".o_time_picker_select:eq(0)" });
     await animationFrame();
     expect.verifySteps(["2023-04-25T16:30:00"]);
 });
@@ -956,7 +1082,8 @@ test("max and min date with time: valid time on invalid day becomes valid when s
         },
     });
 
-    await editTime("16:30");
+    await select("16", { target: ".o_time_picker_select:eq(0)" });
+    await select("30", { target: ".o_time_picker_select:eq(1)" });
     await animationFrame();
     expect.verifySteps([]);
 
@@ -979,12 +1106,12 @@ test("custom invalidity function", async () => {
         date: [
             {
                 cells: [
-                    [-26, 27, 28, 29, 30, 31, -1],
+                    [0, 0, 0, 0, 0, 0, -1],
                     [-2, 3, 4, 5, 6, 7, -8],
                     [-9, 10, 11, 12, 13, 14, -15],
                     [-16, 17, 18, 19, 20, 21, -22],
                     [-23, 24, "25", 26, 27, 28, -29],
-                    [-30, 1, 2, 3, 4, 5, -6],
+                    [-30, 0, 0, 0, 0, 0, 0],
                 ],
             },
         ],
@@ -1001,7 +1128,6 @@ test("custom date cell class function", async () => {
     });
 
     expect(queryAllTexts(".o_weekend")).toEqual([
-        "26",
         "1",
         "2",
         "8",
@@ -1012,7 +1138,6 @@ test("custom date cell class function", async () => {
         "23",
         "29",
         "30",
-        "6",
     ]);
 });
 
@@ -1037,9 +1162,10 @@ test("single value, select time", async () => {
         },
     });
 
-    await editTime("18:05");
+    await select("18", { target: ".o_time_picker_select:eq(0)" });
+    await select("5", { target: ".o_time_picker_select:eq(1)" });
     await animationFrame();
-    expect.verifySteps(["2023-04-30T18:05:00"]);
+    expect.verifySteps(["2023-04-30T18:43:00", "2023-04-30T18:05:00"]);
 });
 
 test("single value, select time in twelve-hour clock format", async () => {
@@ -1055,9 +1181,11 @@ test("single value, select time in twelve-hour clock format", async () => {
         },
     });
 
-    await editTime("7:05PM");
+    await select("7", { target: ".o_time_picker_select:eq(0)" });
+    await select("5", { target: ".o_time_picker_select:eq(1)" });
+    await select("PM", { target: ".o_time_picker_select:eq(2)" });
     await animationFrame();
-    expect.verifySteps(["2023-04-30T19:05:00"]);
+    expect.verifySteps(["2023-04-30T07:43:00", "2023-04-30T07:05:00", "2023-04-30T19:05:00"]);
 });
 
 test("range value, select date for first value", async () => {
@@ -1090,9 +1218,13 @@ test("range value, select time for first value", async () => {
         },
     });
 
-    await editTime("18:05");
+    await select("18", { target: ".o_time_picker_select:eq(0)" });
+    await select("5", { target: ".o_time_picker_select:eq(1)" });
     await animationFrame();
-    expect.verifySteps(["2023-04-20T18:05:00,2023-04-23T17:16:00"]);
+    expect.verifySteps([
+        "2023-04-20T18:43:00,2023-04-23T17:16:00",
+        "2023-04-20T18:05:00,2023-04-23T17:16:00",
+    ]);
 });
 
 test.tags("desktop");
@@ -1109,7 +1241,7 @@ test("range value, select date for second value", async () => {
         },
     });
 
-    await click(getPickerCell("21"));
+    await click(getPickerCell("21").at(0));
     await animationFrame();
     expect.verifySteps(["2023-04-20T08:43:00,2023-04-21T17:16:00"]);
 });
@@ -1127,9 +1259,13 @@ test("range value, select time for second value", async () => {
         },
     });
 
-    await editTime("18:05", 1);
+    await select("18", { target: ".o_time_picker_select:eq(2)" });
+    await select("5", { target: ".o_time_picker_select:eq(3)" });
     await animationFrame();
-    expect.verifySteps(["2023-04-20T08:43:00,2023-04-23T18:05:00"]);
+    expect.verifySteps([
+        "2023-04-20T08:43:00,2023-04-23T18:16:00",
+        "2023-04-20T08:43:00,2023-04-23T18:05:00",
+    ]);
 });
 
 test.tags("desktop");
@@ -1146,7 +1282,7 @@ test("range value, select date for second value before first value", async () =>
         },
     });
 
-    await click(getPickerCell("19"));
+    await click(getPickerCell("19").at(0));
     await animationFrame();
     expect.verifySteps(["2023-04-20T08:43:00,2023-04-19T17:16:00"]);
 });
@@ -1164,7 +1300,7 @@ test("range value, select date for first value after second value", async () => 
         },
     });
 
-    await click(getPickerCell("27", true));
+    await click(getPickerCell("27"));
     await animationFrame();
     expect.verifySteps(["2023-04-27T08:43:00,2023-04-23T17:16:00"]);
 });
@@ -1188,17 +1324,17 @@ test("focus proper month when changing props out of current month", async () => 
         date: [
             {
                 cells: [
-                    [26, 27, 28, 29, 30, 31, 1],
+                    [0, 0, 0, 0, 0, 0, 1],
                     [2, 3, 4, 5, 6, 7, 8],
                     [9, 10, 11, 12, 13, 14, 15],
                     [16, 17, 18, 19, 20, 21, 22],
                     [23, 24, ["25"], 26, 27, 28, 29],
-                    [30, 1, 2, 3, 4, 5, 6],
+                    [30, 0, 0, 0, 0, 0, 0],
                 ],
-                daysOfWeek: ["", "S", "M", "T", "W", "T", "F", "S"],
+                daysOfWeek: ["#", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
             },
         ],
-        time: ["13:45"],
+        time: [[13, 45]],
     });
 
     parent.state.current = DateTime.fromObject({ month: 5, day: 1, hour: 17, minute: 16 });
@@ -1209,17 +1345,16 @@ test("focus proper month when changing props out of current month", async () => 
         date: [
             {
                 cells: [
-                    [30, [1], 2, 3, 4, 5, 6],
+                    [0, [1], 2, 3, 4, 5, 6],
                     [7, 8, 9, 10, 11, 12, 13],
                     [14, 15, 16, 17, 18, 19, 20],
                     [21, 22, 23, 24, 25, 26, 27],
-                    [28, 29, 30, 31, 1, 2, 3],
-                    [4, 5, 6, 7, 8, 9, 10],
+                    [28, 29, 30, 31, 0, 0, 0],
                 ],
-                daysOfWeek: ["", "S", "M", "T", "W", "T", "F", "S"],
+                daysOfWeek: ["#", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
             },
         ],
-        time: ["17:16"],
+        time: [[17, 0]],
     });
 });
 
@@ -1233,18 +1368,18 @@ test("disable show week numbers", async () => {
         date: [
             {
                 cells: [
-                    [26, 27, 28, 29, 30, 31, 1],
+                    [0, 0, 0, 0, 0, 0, 1],
                     [2, 3, 4, 5, 6, 7, 8],
                     [9, 10, 11, 12, 13, 14, 15],
                     [16, 17, 18, 19, 20, 21, 22],
                     [23, 24, "25", 26, 27, 28, 29],
-                    [30, 1, 2, 3, 4, 5, 6],
+                    [30, 0, 0, 0, 0, 0, 0],
                 ],
-                daysOfWeek: ["S", "M", "T", "W", "T", "F", "S"],
+                daysOfWeek: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
                 weekNumbers: [],
             },
         ],
-        time: ["13:00"],
+        time: [[13, 0]],
     });
 
     expect(".o_datetime_picker").toHaveStyle({

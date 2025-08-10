@@ -8,12 +8,11 @@ from unittest.mock import patch
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_REPEATABLE_READ
 
-from odoo import api
+import odoo
 from odoo.modules.registry import Registry
-from odoo.sql_db import db_connect
+from odoo.sql_db import db_connect, TestCursor
 from odoo.tests import common
 from odoo.tests.common import BaseCase, HttpCase
-from odoo.tests.test_cursor import TestCursor
 from odoo.tools.misc import config
 
 ADMIN_USER_ID = common.ADMIN_USER_ID
@@ -128,11 +127,12 @@ class TestTestCursor(common.TransactionCase):
     def setUp(self):
         super().setUp()
         # make the registry in test mode
-        self.registry_enter_test_mode()
+        self.registry.enter_test_mode(self.cr)
+        self.addCleanup(self.registry.leave_test_mode)
         # now we make a test cursor for self.cr
         self.cr = self.registry.cursor()
         self.addCleanup(self.cr.close)
-        self.env = api.Environment(self.cr, api.SUPERUSER_ID, {})
+        self.env = odoo.api.Environment(self.cr, odoo.SUPERUSER_ID, {})
         self.record = self.env['res.partner'].create({'name': 'Foo'})
 
     def write(self, record, value):
@@ -218,10 +218,7 @@ class TestTestCursor(common.TransactionCase):
             RELEASE SAVEPOINT B -- "savepoint b does not exist"
         """
         a = self.registry.cursor()
-        b = self.registry.cursor()
-        # This forces the savepoint to be created
-        a._check_savepoint()
-        b._check_savepoint()
+        _b = self.registry.cursor()
         # `a` should warn that it found un-closed cursor `b` when trying to close itself
         with self.assertLogs('odoo.sql_db', level=logging.WARNING) as cm:
             a.close()
@@ -229,9 +226,7 @@ class TestTestCursor(common.TransactionCase):
         self.assertIn('WARNING:odoo.sql_db:Found different un-closed cursor', msg)
         # avoid a warning on teardown (when self.cr finds a still on the stack)
         # as well as ensure the stack matches our expectations
-        with self.assertRaises(psycopg2.errors.InvalidSavepointSpecification):
-            with self.assertLogs('odoo.sql_db', level=logging.WARNING) as cm:
-                b.close()
+        self.assertEqual(a._cursors_stack.pop(), a)
 
     def test_borrow_connection(self):
         """Tests the behavior of the postgresql connection pool recycling/borrowing"""
@@ -315,7 +310,8 @@ class TestCursorHooks(common.TransactionCase):
         self.assertEqual(self.log, ['preR', 'postR'])
 
     def test_hooks_on_testcursor(self):
-        self.registry_enter_test_mode()
+        self.registry.enter_test_mode(self.cr)
+        self.addCleanup(self.registry.leave_test_mode)
 
         cr = self.registry.cursor()
 

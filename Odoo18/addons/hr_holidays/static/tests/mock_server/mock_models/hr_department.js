@@ -1,10 +1,10 @@
-import { fields } from "@web/../tests/web_test_helpers";
-import { hrModels } from "@hr/../tests/hr_test_helpers";
+import { fields, models } from "@web/../tests/web_test_helpers";
 
-export class HrDepartment extends hrModels.HrDepartment {
+export class HrDepartment extends models.Model {
     _name = "hr.department";
 
     id = fields.Integer();
+    name = fields.Char();
 
     _records = [
         {

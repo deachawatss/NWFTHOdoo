@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# ruff: noqa: F821
-# (ruff don't see read variables from release.py)
 
-from setuptools import find_namespace_packages, setup
+from setuptools import find_packages, setup
 from os.path import join, dirname
 
 
@@ -21,7 +19,7 @@ setup(
     classifiers=[c for c in classifiers.split('\n') if c],
     license=license,
     scripts=['setup/odoo'],
-    packages=find_namespace_packages(),
+    packages=find_packages(),
     package_dir={'%s' % lib_name: 'odoo'},
     include_package_data=True,
     install_requires=[
@@ -67,7 +65,7 @@ setup(
         'xlwt',
         'zeep',
     ],
-    python_requires='>=' + ".".join(map(str, MIN_PY_VERSION)),
+    python_requires='>=3.10',
     extras_require={
         'ldap': ['python-ldap'],
     },

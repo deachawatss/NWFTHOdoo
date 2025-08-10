@@ -2,7 +2,7 @@
 import json
 
 from odoo import Command
-from odoo.addons.http_routing.tests.common import MockRequest
+from odoo.addons.website.tools import MockRequest
 from odoo.tests import tagged
 from odoo.addons.base.tests.common import HttpCaseWithUserDemo
 
@@ -91,7 +91,7 @@ class TestGetCurrentWebsite(HttpCaseWithUserDemo):
             'website_id': website.id,
             'login': 'sad@mail.com',
             'name': 'Hope Fully',
-            'group_ids': [
+            'groups_id': [
                 Command.link(self.env.ref('base.group_portal').id),
                 Command.unlink(self.env.ref('base.group_user').id),
             ],

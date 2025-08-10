@@ -1,10 +1,9 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from datetime import datetime
-
 from dateutil import relativedelta
 
-from odoo import SUPERUSER_ID, Command, _, api, fields, models
+from odoo import _, api, Command, fields, models, SUPERUSER_ID
 from odoo.tools import str2bool
 
 
@@ -97,7 +96,7 @@ class PaymentTransaction(models.Model):
                 # orders to create the invoice even if only a partial payment was made.
                 done_tx._invoice_sale_orders()
             super(PaymentTransaction, done_tx)._post_process()  # Post the invoices.
-            if auto_invoice:
+            if auto_invoice and not self.env.context.get('skip_sale_auto_invoice_send'):
                 if (
                     str2bool(self.env['ir.config_parameter'].sudo().get_param('sale.async_emails'))
                     and (send_invoice_cron := self.env.ref('sale.send_invoice_cron', raise_if_not_found=False))
@@ -152,10 +151,21 @@ class PaymentTransaction(models.Model):
                 lambda i: not i.is_move_sent and i.state == 'posted' and i._is_ready_to_be_sent()
             )
             invoice_to_send.is_move_sent = True # Mark invoice as sent
-            self.env['account.move.send']._generate_and_send_invoices(
+
+            send_context = {'allow_raising': False, 'allow_fallback_pdf': True}
+            default_template_param = (
+                self.env['ir.config_parameter']
+                .sudo()
+                .get_param('sale.default_invoice_email_template', False)
+            )
+            if default_template_param:
+                mail_template = self.env['mail.template'].sudo().browse(int(default_template_param))
+                if mail_template.exists():
+                    send_context['mail_template'] = mail_template
+
+            tx.env['account.move.send']._generate_and_send_invoices(
                 invoice_to_send,
-                allow_raising=False,
-                allow_fallback_pdf=True,
+                **send_context,
             )
 
     def _cron_send_invoice(self):
@@ -230,7 +240,6 @@ class PaymentTransaction(models.Model):
                 return separator.join(orders.mapped('name'))
         return super()._compute_reference_prefix(provider_code, separator, **values)
 
-    @api.readonly
     def action_view_sales_orders(self):
         action = {
             'name': _('Sales Order(s)'),

@@ -4,13 +4,9 @@ import { useAutofocus, useService } from "@web/core/utils/hooks";
 import { debounce } from "@web/core/utils/timing";
 
 import { Component, useState, useRef, onMounted, onWillStart } from "@odoo/owl";
-import { Switch } from "@html_editor/components/switch/switch";
 
 class VideoOption extends Component {
     static template = "html_editor.VideoOption";
-    static components = {
-        Switch,
-    };
     static props = {
         description: { type: String, optional: true },
         label: { type: String, optional: true },
@@ -41,7 +37,7 @@ export class VideoSelector extends Component {
         errorMessages: Function,
         vimeoPreviewIds: { type: Array, optional: true },
         isForBgVideo: { type: Boolean, optional: true },
-        media: { validate: (p) => p.nodeType === Node.ELEMENT_NODE, optional: true },
+        media: { type: Object, optional: true },
         "*": true,
     };
     static defaultProps = {
@@ -123,9 +119,6 @@ export class VideoSelector extends Component {
                     "";
                 if (src) {
                     this.state.urlInput = src;
-                    if (!src.includes("https:") && !src.includes("http:")) {
-                        this.state.urlInput = "https:" + this.state.urlInput;
-                    }
                     await this.updateVideo();
 
                     this.state.options = this.state.options.map((option) => {
@@ -136,7 +129,22 @@ export class VideoSelector extends Component {
             }
         });
 
-        onMounted(async () => this.prepareVimeoPreviews());
+        onMounted(async () => {
+            await Promise.all(
+                this.props.vimeoPreviewIds.map(async (videoId) => {
+                    const { thumbnail_url: thumbnailSrc } = await this.http.get(
+                        `https://vimeo.com/api/oembed.json?url=http%3A//vimeo.com/${encodeURIComponent(
+                            videoId
+                        )}`
+                    );
+                    this.state.vimeoPreviews.push({
+                        id: videoId,
+                        thumbnailSrc,
+                        src: `https://player.vimeo.com/video/${encodeURIComponent(videoId)}`,
+                    });
+                })
+            );
+        });
 
         useAutofocus();
 
@@ -266,25 +274,5 @@ export class VideoSelector extends Component {
             div.querySelector("iframe").src = video.src;
             return div;
         });
-    }
-
-    /**
-     * Based on the config vimeo ids, prepare the vimeo previews.
-     */
-    async prepareVimeoPreviews() {
-        await Promise.all(
-            this.props.vimeoPreviewIds.map(async (videoId) => {
-                const { thumbnail_url: thumbnailSrc } = await this.http.get(
-                    `https://vimeo.com/api/oembed.json?url=http%3A//vimeo.com/${encodeURIComponent(
-                        videoId
-                    )}`
-                );
-                this.state.vimeoPreviews.push({
-                    id: videoId,
-                    thumbnailSrc,
-                    src: `https://player.vimeo.com/video/${encodeURIComponent(videoId)}`,
-                });
-            })
-        );
     }
 }

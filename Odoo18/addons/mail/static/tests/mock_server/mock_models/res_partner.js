@@ -1,11 +1,6 @@
 import { mailDataHelpers } from "@mail/../tests/mock_server/mail_mock_server";
-import {
-    fields,
-    getKwArgs,
-    makeKwArgs,
-    serverState,
-    webModels,
-} from "@web/../tests/web_test_helpers";
+
+import { fields, getKwArgs, makeKwArgs, webModels } from "@web/../tests/web_test_helpers";
 
 /** @typedef {import("@web/../tests/web_test_helpers").ModelRecord} ModelRecord */
 
@@ -18,7 +13,6 @@ export class ResPartner extends webModels.ResPartner {
         relation: "ir.attachment",
         string: "Main attachment",
     });
-    is_in_call = fields.Boolean({ compute: "_compute_is_in_call" });
 
     _views = {
         form: /* xml */ `
@@ -29,16 +23,6 @@ export class ResPartner extends webModels.ResPartner {
                 <chatter/>
             </form>`,
     };
-
-    _compute_is_in_call() {
-        for (const partner of this) {
-            partner.is_in_call =
-                this.env["discuss.channel.member"].search([
-                    ["rtc_session_ids", "!=", []],
-                    ["partner_id", "=", partner.id],
-                ]).length > 0;
-        }
-    }
 
     /**
      * @param {string} [search]
@@ -98,17 +82,9 @@ export class ResPartner extends webModels.ResPartner {
             const partners = this._filter([["id", "not in", mainMatchingPartnerIds]]);
             extraMatchingPartnerIds = mentionSuggestionsFilter(partners, search, remainingLimit);
         }
-
-        const store = new mailDataHelpers.Store(
+        return new mailDataHelpers.Store(
             this.browse(mainMatchingPartnerIds.concat(extraMatchingPartnerIds))
-        );
-        const roleIds = this.env["res.role"].search(
-            [["name", "ilike", search || ""]],
-            makeKwArgs({ limit: limit || 8 })
-        );
-        store.add("res.role", this.env["res.role"]._read_format(roleIds, ["name"], false));
-
-        return store.get_result();
+        ).get_result();
     }
 
     /**
@@ -138,7 +114,7 @@ export class ResPartner extends webModels.ResPartner {
         const parent_channel = this.browse(channel.parent_channel_id);
         const allowed_group = parent_channel?.group_public_id ?? channel.group_public_id;
         if (allowed_group) {
-            extraDomain.push(["group_ids", "in", allowed_group]);
+            extraDomain.push(["groups_id", "in", allowed_group]);
         }
         const baseDomain = search
             ? ["|", ["name", "ilike", searchLower], ["email", "ilike", searchLower]]
@@ -164,49 +140,19 @@ export class ResPartner extends webModels.ResPartner {
             store.add(this.browse(member.partner_id));
             store.add(
                 DiscussChannelMember.browse(member.id),
-                makeKwArgs({ fields: ["channel", "persona"] })
+                makeKwArgs({ fields: { channel: [], persona: [] } })
             );
         }
         for (const partnerId of partners) {
             const data = {
                 name: users[partnerId]?.name,
-                group_ids: users[partnerId]?.group_ids.includes(allowed_group)
+                groups_id: users[partnerId]?.groups_id.includes(allowed_group)
                     ? allowed_group
                     : undefined,
             };
             store.add(this.browse(partnerId), data);
         }
-        const roleIds = this.env["res.role"].search(
-            [["name", "ilike", searchLower || ""]],
-            makeKwArgs({ limit: limit || 8 })
-        );
-        store.add("res.role", this.env["res.role"]._read_format(roleIds, ["name"], false));
         return store.get_result();
-    }
-
-    compute_im_status(partner) {
-        if (partner.im_status) {
-            return partner.im_status;
-        }
-        if (partner.id === serverState.odoobotId) {
-            return "bot";
-        }
-        if (!partner.user_ids.length) {
-            return "im_status";
-        }
-        return "offline";
-    }
-
-    /* override */
-    _compute_display_name() {
-        super._compute_display_name();
-        for (const record of this) {
-            if (record.parent_id && !record.name) {
-                const [parent] = this.env["res.partner"].browse(record.parent_id);
-                const type = this._fields.type.selection.find((item) => item[0] === record.type);
-                record.display_name = `${parent.name}, ${type[1]}`;
-            }
-        }
     }
 
     /**
@@ -240,89 +186,125 @@ export class ResPartner extends webModels.ResPartner {
     }
 
     /**
+     * @param {string} [name]
+     * @param {number} [limit = 20]
+     * @param {number[]} [excluded_ids]
+     */
+    im_search(name, limit = 20, excluded_ids) {
+        const kwargs = getKwArgs(arguments, "name", "limit", "excluded_ids");
+        name = kwargs.name || "";
+        limit = kwargs.limit || 20;
+        excluded_ids = kwargs.excluded_ids || [];
+
+        /** @type {import("mock_models").ResUsers} */
+        const ResUsers = this.env["res.users"];
+
+        name = name.toLowerCase(); // simulates ILIKE
+        // simulates domain with relational parts (not supported by mock server)
+        const matchingPartnersIds = ResUsers._filter([])
+            .filter((user) => {
+                const [partner] = this.browse(user.partner_id);
+                // user must have a partner
+                if (!partner) {
+                    return false;
+                }
+                // not excluded
+                if (excluded_ids.includes(partner.id)) {
+                    return false;
+                }
+                // not current partner
+                if (partner.id === this.env.user.partner_id) {
+                    return false;
+                }
+                // no name is considered as return all
+                if (!name) {
+                    return true;
+                }
+                if (partner.name && partner.name.toLowerCase().includes(name)) {
+                    return true;
+                }
+                return false;
+            })
+            .map((user) => user.partner_id)
+            .sort((a, b) => (a.name === b.name ? a.id - b.id : a.name > b.name ? 1 : -1));
+        matchingPartnersIds.length = Math.min(matchingPartnersIds.length, limit);
+        return new mailDataHelpers.Store(this.browse(matchingPartnersIds)).get_result();
+    }
+    compute_im_status(partner) {
+        return partner.im_status;
+    }
+    /**
      * @param {number[]} ids
      * @returns {Record<string, ModelRecord>}
      */
-    _to_store(store, fields, extra_fields) {
-        const kwargs = getKwArgs(arguments, "store", "fields", "extra_fields");
+    _to_store(ids, store, fields) {
+        const kwargs = getKwArgs(arguments, "id", "store", "fields");
         fields = kwargs.fields;
-        extra_fields = kwargs.extra_fields ?? [];
-        fields = fields.concat(extra_fields);
+        if (!fields) {
+            fields = ["avatar_128", "name", "email", "active", "im_status", "is_company", "user"];
+        }
 
         /** @type {import("mock_models").ResCountry} */
         const ResCountry = this.env["res.country"];
         /** @type {import("mock_models").ResUsers} */
         const ResUsers = this.env["res.users"];
 
-        this._compute_main_user_id(); // compute not automatically triggering when necessary
-        store._add_record_fields(
-            this,
-            fields.filter(
-                (field) =>
-                    ![
-                        "avatar_128",
-                        "country_id",
-                        "display_name",
-                        "is_admin",
-                        "notification_type",
-                        "user",
-                    ].includes(field)
-            )
-        );
-        for (const partner of this) {
-            const data = {};
+        for (const partner of this.browse(ids)) {
+            const [data] = this._read_format(
+                partner.id,
+                fields.filter(
+                    (field) =>
+                        ![
+                            "avatar_128",
+                            "country",
+                            "display_name",
+                            "isAdmin",
+                            "notification_type",
+                            "user",
+                        ].includes(field)
+                ),
+                false
+            );
             if (fields.includes("avatar_128")) {
                 data.avatar_128_access_token = partner.id;
                 data.write_date = partner.write_date;
             }
-            if (fields.includes("country_id")) {
-                const [country_id] = ResCountry.browse(partner.country_id);
-                data.country_id = country_id || false;
+            if (fields.includes("country")) {
+                const [country] = ResCountry.browse(partner.country_id);
+                data.country = country
+                    ? {
+                          code: country.code,
+                          id: country.id,
+                          name: country.name,
+                      }
+                    : false;
             }
             if (fields.includes("display_name")) {
                 data.displayName = partner.display_name || partner.name;
             }
             if (fields.includes("im_status")) {
                 data.im_status = this.compute_im_status(partner);
-                data.im_status_access_token = partner.id;
             }
             if (fields.includes("user")) {
-                data.main_user_id = partner.main_user_id;
-                if (partner.main_user_id) {
-                    store._add_record_fields(ResUsers.browse(partner.main_user_id), ["share"]);
+                const users = ResUsers.browse(partner.user_ids);
+                const internalUsers = users.filter((user) => !user.share);
+                let mainUser;
+                if (internalUsers.length > 0) {
+                    mainUser = internalUsers[0];
+                } else if (users.length > 0) {
+                    mainUser = users[0];
                 }
-                if (partner.main_user_id && fields.includes("is_admin")) {
-                    const users = ResUsers.search([["login", "=", "admin"]]);
-                    store._add_record_fields(ResUsers.browse(partner.main_user_id), {
-                        is_admin:
-                            this.env.cookie.get("authenticated_user_sid") ===
-                                (Number.isInteger(users?.[0]) ? users?.[0] : users?.[0]?.id) ??
-                            false,
-                    }); // mock server simplification
+                data.userId = mainUser ? mainUser.id : false;
+                data.isInternalUser = mainUser ? !mainUser.share : false;
+                if (fields.includes("isAdmin")) {
+                    data.isAdmin = true; // mock server simplification
                 }
-                if (partner.main_user_id && fields.includes("notification_type")) {
-                    store._add_record_fields(
-                        ResUsers.browse(partner.main_user_id),
-                        makeKwArgs({ fields: ["notification_type"] })
-                    );
+                if (fields.includes("notification_type")) {
+                    data.notification_preference = mainUser.notification_type;
                 }
             }
-            if (Object.keys(data).length) {
-                store._add_record_fields(this.browse(partner.id), data);
-            }
+            store.add(this.browse(partner.id), data);
         }
-    }
-
-    get _to_store_defaults() {
-        return [
-            "avatar_128",
-            "name",
-            "email",
-            "active",
-            "im_status",
-            "is_company",
-            mailDataHelpers.Store.one("main_user_id", ["share"]),
-        ];
     }
 
     /**
@@ -332,23 +314,6 @@ export class ResPartner extends webModels.ResPartner {
      */
     search_for_channel_invite(search_term, channel_id, limit = 30) {
         const kwargs = getKwArgs(arguments, "search_term", "channel_id", "limit");
-        const store = new mailDataHelpers.Store();
-        const count = this._search_for_channel_invite(
-            store,
-            kwargs.search_term,
-            kwargs.channel_id,
-            kwargs.limit
-        );
-        return { count: count, data: store.get_result() };
-    }
-
-    /**
-     * @param {string} [search_term]
-     * @param {number} [channel_id]
-     * @param {number} [limit]
-     */
-    _search_for_channel_invite(store, search_term, channel_id, limit = 30) {
-        const kwargs = getKwArgs(arguments, "store", "search_term", "channel_id", "limit");
         search_term = kwargs.search_term || "";
         channel_id = kwargs.channel_id;
         limit = kwargs.limit || 30;
@@ -359,14 +324,11 @@ export class ResPartner extends webModels.ResPartner {
         const ResUsers = this.env["res.users"];
 
         search_term = search_term.toLowerCase(); // simulates ILIKE
-        let memberPartnerIds;
-        if (channel_id) {
-            memberPartnerIds = new Set(
-                DiscussChannelMember._filter([["channel_id", "=", channel_id]]).map(
-                    (member) => member.partner_id
-                )
-            );
-        }
+        const memberPartnerIds = new Set(
+            DiscussChannelMember._filter([["channel_id", "=", channel_id]]).map(
+                (member) => member.partner_id
+            )
+        );
         // simulates domain with relational parts (not supported by mock server)
         const matchingPartnersIds = ResUsers._filter([])
             .filter((user) => {
@@ -375,12 +337,8 @@ export class ResPartner extends webModels.ResPartner {
                 if (!partner) {
                     return false;
                 }
-                // not current partner
-                if (!channel_id && partner.id === this.env.user.partner_id) {
-                    return false;
-                }
                 // user should not already be a member of the channel
-                if (channel_id && memberPartnerIds.has(partner.id)) {
+                if (memberPartnerIds.has(partner.id)) {
                     return false;
                 }
                 // no name is considered as return all
@@ -395,8 +353,9 @@ export class ResPartner extends webModels.ResPartner {
             .map((user) => user.partner_id);
         const count = matchingPartnersIds.length;
         matchingPartnersIds.length = Math.min(count, limit);
+        const store = new mailDataHelpers.Store();
         this._search_for_channel_invite_to_store(matchingPartnersIds, store, channel_id);
-        return count;
+        return { count, data: store.get_result() };
     }
 
     _search_for_channel_invite_to_store(ids, store, channel_id) {

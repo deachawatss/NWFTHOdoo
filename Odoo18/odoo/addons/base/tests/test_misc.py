@@ -1,15 +1,23 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import base64
 import datetime
+from dateutil.relativedelta import relativedelta
 import os.path
-
 import pytz
 
-from odoo.tests.common import BaseCase, TransactionCase
-from odoo.tools import config, misc
+from odoo.tools import (
+    config,
+    date_utils,
+    file_open,
+    file_path,
+    merge_sequences,
+    misc,
+    remove_accents,
+)
 from odoo.tools.mail import validate_url
-from odoo.tools.misc import file_open, file_path, merge_sequences, remove_accents
+from odoo.tests.common import TransactionCase, BaseCase
 
 
 class TestMergeSequences(BaseCase):
@@ -38,6 +46,149 @@ class TestMergeSequences(BaseCase):
             ['A', 'X', 'Y'],        # 'X' must follow 'A' and precede 'Y'
         )
         self.assertEqual(seq, ['A', 'B', 'X', 'Y', 'C', 'Z'])
+
+
+class TestDateRangeFunction(BaseCase):
+    """ Test on date_range generator. """
+
+    def test_date_range_with_naive_datetimes(self):
+        """ Check date_range with naive datetimes. """
+        start = datetime.datetime(1985, 1, 1)
+        end = datetime.datetime(1986, 1, 1)
+
+        expected = [
+            datetime.datetime(1985, 1, 1, 0, 0),
+            datetime.datetime(1985, 2, 1, 0, 0),
+            datetime.datetime(1985, 3, 1, 0, 0),
+            datetime.datetime(1985, 4, 1, 0, 0),
+            datetime.datetime(1985, 5, 1, 0, 0),
+            datetime.datetime(1985, 6, 1, 0, 0),
+            datetime.datetime(1985, 7, 1, 0, 0),
+            datetime.datetime(1985, 8, 1, 0, 0),
+            datetime.datetime(1985, 9, 1, 0, 0),
+            datetime.datetime(1985, 10, 1, 0, 0),
+            datetime.datetime(1985, 11, 1, 0, 0),
+            datetime.datetime(1985, 12, 1, 0, 0),
+            datetime.datetime(1986, 1, 1, 0, 0)
+        ]
+
+        dates = [date for date in date_utils.date_range(start, end)]
+
+        self.assertEqual(dates, expected)
+
+    def test_date_range_with_date(self):
+        """ Check date_range with naive datetimes. """
+        start = datetime.date(1985, 1, 1)
+        end = datetime.date(1986, 1, 1)
+
+        expected = [
+            datetime.date(1985, 1, 1),
+            datetime.date(1985, 2, 1),
+            datetime.date(1985, 3, 1),
+            datetime.date(1985, 4, 1),
+            datetime.date(1985, 5, 1),
+            datetime.date(1985, 6, 1),
+            datetime.date(1985, 7, 1),
+            datetime.date(1985, 8, 1),
+            datetime.date(1985, 9, 1),
+            datetime.date(1985, 10, 1),
+            datetime.date(1985, 11, 1),
+            datetime.date(1985, 12, 1),
+            datetime.date(1986, 1, 1),
+        ]
+
+        self.assertEqual(list(date_utils.date_range(start, end)), expected)
+
+    def test_date_range_with_timezone_aware_datetimes_other_than_utc(self):
+        """ Check date_range with timezone-aware datetimes other than UTC."""
+        timezone = pytz.timezone('Europe/Brussels')
+
+        start = datetime.datetime(1985, 1, 1)
+        end = datetime.datetime(1986, 1, 1)
+        start = timezone.localize(start)
+        end = timezone.localize(end)
+
+        expected = [datetime.datetime(1985, 1, 1, 0, 0),
+                    datetime.datetime(1985, 2, 1, 0, 0),
+                    datetime.datetime(1985, 3, 1, 0, 0),
+                    datetime.datetime(1985, 4, 1, 0, 0),
+                    datetime.datetime(1985, 5, 1, 0, 0),
+                    datetime.datetime(1985, 6, 1, 0, 0),
+                    datetime.datetime(1985, 7, 1, 0, 0),
+                    datetime.datetime(1985, 8, 1, 0, 0),
+                    datetime.datetime(1985, 9, 1, 0, 0),
+                    datetime.datetime(1985, 10, 1, 0, 0),
+                    datetime.datetime(1985, 11, 1, 0, 0),
+                    datetime.datetime(1985, 12, 1, 0, 0),
+                    datetime.datetime(1986, 1, 1, 0, 0)]
+
+        expected = [timezone.localize(e) for e in expected]
+
+        dates = [date for date in date_utils.date_range(start, end)]
+
+        self.assertEqual(expected, dates)
+
+    def test_date_range_with_mismatching_zones(self):
+        """ Check date_range with mismatching zone should raise an exception."""
+        start_timezone = pytz.timezone('Europe/Brussels')
+        end_timezone = pytz.timezone('America/Recife')
+
+        start = datetime.datetime(1985, 1, 1)
+        end = datetime.datetime(1986, 1, 1)
+        start = start_timezone.localize(start)
+        end = end_timezone.localize(end)
+
+        with self.assertRaises(ValueError):
+            dates = [date for date in date_utils.date_range(start, end)]
+
+    def test_date_range_with_inconsistent_datetimes(self):
+        """ Check date_range with a timezone-aware datetime and a naive one."""
+        context_timezone = pytz.timezone('Europe/Brussels')
+
+        start = datetime.datetime(1985, 1, 1)
+        end = datetime.datetime(1986, 1, 1)
+        end = context_timezone.localize(end)
+
+        with self.assertRaises(ValueError):
+            dates = [date for date in date_utils.date_range(start, end)]
+
+    def test_date_range_with_hour(self):
+        """ Test date range with hour and naive datetime."""
+        start = datetime.datetime(2018, 3, 25)
+        end = datetime.datetime(2018, 3, 26)
+        step = relativedelta(hours=1)
+
+        expected = [
+            datetime.datetime(2018, 3, 25, 0, 0),
+            datetime.datetime(2018, 3, 25, 1, 0),
+            datetime.datetime(2018, 3, 25, 2, 0),
+            datetime.datetime(2018, 3, 25, 3, 0),
+            datetime.datetime(2018, 3, 25, 4, 0),
+            datetime.datetime(2018, 3, 25, 5, 0),
+            datetime.datetime(2018, 3, 25, 6, 0),
+            datetime.datetime(2018, 3, 25, 7, 0),
+            datetime.datetime(2018, 3, 25, 8, 0),
+            datetime.datetime(2018, 3, 25, 9, 0),
+            datetime.datetime(2018, 3, 25, 10, 0),
+            datetime.datetime(2018, 3, 25, 11, 0),
+            datetime.datetime(2018, 3, 25, 12, 0),
+            datetime.datetime(2018, 3, 25, 13, 0),
+            datetime.datetime(2018, 3, 25, 14, 0),
+            datetime.datetime(2018, 3, 25, 15, 0),
+            datetime.datetime(2018, 3, 25, 16, 0),
+            datetime.datetime(2018, 3, 25, 17, 0),
+            datetime.datetime(2018, 3, 25, 18, 0),
+            datetime.datetime(2018, 3, 25, 19, 0),
+            datetime.datetime(2018, 3, 25, 20, 0),
+            datetime.datetime(2018, 3, 25, 21, 0),
+            datetime.datetime(2018, 3, 25, 22, 0),
+            datetime.datetime(2018, 3, 25, 23, 0),
+            datetime.datetime(2018, 3, 26, 0, 0)
+        ]
+
+        dates = [date for date in date_utils.date_range(start, end, step)]
+
+        self.assertEqual(dates, expected)
 
 
 class TestFormatLangDate(TransactionCase):
@@ -233,17 +384,17 @@ class TestRemoveAccents(BaseCase):
 
 class TestAddonsFileAccess(BaseCase):
 
-    def assertCannotAccess(self, path, ExceptionType=OSError, filter_ext=None, check_exists=True):
+    def assertCannotAccess(self, path, ExceptionType=FileNotFoundError, filter_ext=None):
         with self.assertRaises(ExceptionType):
-            file_path(path, filter_ext=filter_ext, check_exists=check_exists)
+            file_path(path, filter_ext=filter_ext)
 
     def assertCanRead(self, path, needle='', mode='r', filter_ext=None):
         with file_open(path, mode, filter_ext) as f:
             self.assertIn(needle, f.read())
 
-    def assertCannotRead(self, path, ExceptionType=OSError, filter_ext=None):
+    def assertCannotRead(self, path, ExceptionType=FileNotFoundError, filter_ext=None):
         with self.assertRaises(ExceptionType):
-            file_open(path, filter_ext=filter_ext).close()
+            file_open(path, filter_ext=filter_ext)
 
     def test_file_path(self):
         # absolute path
@@ -266,10 +417,6 @@ class TestAddonsFileAccess(BaseCase):
 
         # files in root_path are allowed
         self.assertTrue(file_path('tools/misc.py'))
-
-        # absolute or relative inexisting files are ok
-        self.assertTrue(file_path(config.root_path + '/__inexisting', check_exists=False))
-        self.assertTrue(file_path('base/__inexisting_file', check_exists=False))
 
         # errors when outside addons_paths
         self.assertCannotAccess('/doesnt/exist')
@@ -297,7 +444,7 @@ class TestAddonsFileAccess(BaseCase):
         self.assertCanRead(__file__, test_needle.encode(), mode='rb', filter_ext=('.py',))
 
         # directory target *is* an error
-        with self.assertRaises(IsADirectoryError):
+        with self.assertRaises(FileNotFoundError):
             file_open(os.path.join(__file__, '..'))
 
         # relative path
@@ -313,10 +460,6 @@ class TestAddonsFileAccess(BaseCase):
 
         # files in root_path are allowed
         self.assertCanRead('tools/misc.py')
-
-        # absolute or relative inexisting files are ok
-        self.assertCannotRead(config.root_path + '/__inexisting')
-        self.assertCannotRead('base/__inexisting_file')
 
         # errors when outside addons_paths
         self.assertCannotRead('/doesnt/exist')
@@ -370,7 +513,7 @@ class TestFormatLang(TransactionCase):
         self.env['res.lang']._activate_lang('fLT')
 
         self.assertEqual(misc.formatLang(self.env['res.lang'].with_context(lang='fLT').env, 1000000000, grouping=True), '10000?00?000!00')
-        self.assertEqual(misc.formatLang(self.env['res.lang'].with_context(lang='fLT').env, 1000000000, grouping=False), '1000000000!00')
+        self.assertEqual(misc.formatLang(self.env['res.lang'].with_context(lang='fLT').env, 1000000000, grouping=False), '1000000000.00')
 
     def test_decimal_precision(self):
         decimal_precision = self.env['decimal.precision'].create({
@@ -432,24 +575,6 @@ class TestFormatLang(TransactionCase):
         self.assertEqual(misc.formatLang(self.env, 1822050000, rounding_method='HALF-UP', rounding_unit='lakhs'), '18,221')
         self.assertEqual(misc.formatLang(self.env, 1822049900, rounding_method='HALF-UP', rounding_unit='lakhs'), '18,220')
 
-    def test_format_decimal_point_without_grouping(self):
-        lang = self.env['res.lang'].browse(misc.get_lang(self.env).id)
-        self.assertEqual(lang.format(f'%.{1}f', 1200.50, grouping=True), '1,200.5')
-        self.assertEqual(lang.format(f'%.{1}f', 1200.50, grouping=False), '1200.5')
-
-        comma_lang = self.env['res.lang'].create({
-            'name': 'Comma (CM)',
-            'code': 'co_MA',
-            'iso_code': 'co_MA',
-            'thousands_sep': ' ',
-            'decimal_point': ',',
-            'grouping': '[3,0]',
-            'active': True,
-        })
-
-        self.assertEqual(comma_lang.format(f'%.{1}f', 1200.50, grouping=True), '1 200,5')
-        self.assertEqual(comma_lang.format(f'%.{1}f', 1200.50, grouping=False), '1200,5')
-
 
 class TestUrlValidate(BaseCase):
     def test_url_validate(self):
@@ -505,79 +630,3 @@ class TestMiscToken(TransactionCase):
         new_timestamp = new_timestamp.to_bytes(8, byteorder='little')
         token = base64.urlsafe_b64encode(token[:1] + new_timestamp + token[9:]).decode()
         self.assertIsNone(misc.verify_hash_signed(self.env, 'test', token))
-
-
-class TestFormatAmountFunction(TransactionCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.currency_object_format_amount = cls.env["res.currency"].create({
-            "name": "format_amount Currency",
-            "symbol": "fA",
-            "rounding": 0.01,  # Makes 12.345 as 12.34
-            "position": "before",
-        })
-        # A language where decimal separator and thousands separator is same to check effectiveness of
-        # regular expression used in format_amount
-        cls.kiliki_language = cls.env["res.lang"].create({
-            "name": "Kili kili",
-            "code": "GFL",
-            "grouping": "[3,0]",
-            "decimal_point": "#",
-            "thousands_sep": "#",
-        })
-
-        cls.kiliki_language.install_lang()
-        cls.kiliki_language.active = True
-
-    def assert_format_amount(self, amount, expected, trailing_zeroes=True, lang_code=None):
-        result = misc.format_amount(
-            self.env,
-            amount,
-            self.currency_object_format_amount,
-            trailing_zeroes=trailing_zeroes,
-            lang_code=lang_code,
-        )
-        self.assertEqual(result, expected)
-
-    def test_trailing_true_on_number_having_no_trailing_zeroes(self):
-        # Has no effect on number not having trailing zeroes
-        self.assert_format_amount(1.234, "fA%s1.23" % "\N{NO-BREAK SPACE}")
-
-        # Has no effect on number not having trailing zeroes - currency position after
-        self.currency_object_format_amount.position = "after"
-        self.assert_format_amount(1.234, "1.23%sfA" % "\N{NO-BREAK SPACE}")
-
-    def test_trailing_false_on_number_having_no_trailing_zeroes(self):
-        # Has no effect on number not having trailing zeroes even if trailing zeroes set as False
-        self.assert_format_amount(1.234, "fA%s1.23" % "\N{NO-BREAK SPACE}")
-
-        # Has no effect on number not having trailing zeroes - currency position after
-        self.currency_object_format_amount.position = "after"
-        self.assert_format_amount(1.234, "1.23%sfA" % "\N{NO-BREAK SPACE}")
-
-    def test_trailing_zeroes_true_on_number_having_trailing_zeroes(self):
-        # Has no effect on number having trailing zeroes if trailing zeroes set as True (True by default)
-        self.assert_format_amount(1.0000, "fA%s1.00" % "\N{NO-BREAK SPACE}")
-
-        # Has no effect on number having trailing zeroes - currency position after
-        self.currency_object_format_amount.position = "after"
-        self.assert_format_amount(1.0000, "1.00%sfA" % "\N{NO-BREAK SPACE}")
-
-    def test_trailing_false_on_number_having_trailing_zeroes(self):
-        # Has effect (removes trailing zeroes) on number having trailing zeroes if trailing zeroes set as False
-        self.assert_format_amount(1.0000, "fA%s1" % "\N{NO-BREAK SPACE}", False)
-
-        # Has effect on number having trailing zeroes - currency position after
-        self.currency_object_format_amount.position = "after"
-        self.assert_format_amount(1.0000, "1%sfA" % "\N{NO-BREAK SPACE}", False)
-
-    def test_trailing_false_on_number_having_trailing_zeroes_with_kilikili_language(self):
-        # Here the amount is first will be given decimal separator and thousandth separator as
-        # follows 10#000#00 in which second # is decimal so, the RE targets the decimal separator
-        # at the last position.
-        self.assert_format_amount(10000, "fA%s10#000" % "\N{NO-BREAK SPACE}", False, "GFL")
-
-        # Has no effect on number having same decimal and thousandth seperator - currency position after
-        self.currency_object_format_amount.position = "after"
-        self.assert_format_amount(10000, "10#000%sfA" % "\N{NO-BREAK SPACE}", False, "GFL")

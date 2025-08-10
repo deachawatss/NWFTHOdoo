@@ -7,6 +7,7 @@
                     folded="true"
                     onFoldChange="() => {}"
                     onValidate.bind="addForecastColumn"
+                    exampleData="exampleData"
                     groupByField="props.list.groupByField"
                 />
             </t>

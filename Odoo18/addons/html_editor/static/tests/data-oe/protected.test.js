@@ -89,7 +89,7 @@ test("should not normalize protected elements children (true)", async () => {
                     <ul><li><p>abc</p><p><br></p></li></ul>
                 </div>
                 <div data-oe-protected="true" contenteditable="false">
-                    <p><i class="fa"></i></p>
+                    <p>\ufeff<i class="fa"></i>\ufeff</p>
                     <ul><li>abc<p><br></p></li></ul>
                 </div>
                 `),
@@ -124,7 +124,7 @@ test("should normalize unprotected elements children (false)", async () => {
                 `),
         contentAfterEdit: unformat(`
                 <div data-oe-protected="true" contenteditable="false">
-                    <p><i class="fa"></i></p>
+                    <p>\ufeff<i class="fa"></i>\ufeff</p>
                     <ul><li>abc<p><br></p></li></ul>
                     <div data-oe-protected="false" contenteditable="true">
                         <p>\ufeff<i class="fa" contenteditable="false">\u200B</i>\ufeff</p>
@@ -164,9 +164,9 @@ test("should handle table selection in unprotected elements", async () => {
                     <div data-oe-protected="false" contenteditable="true">
                         <p>a[bc</p>
                         <table class="o_selected_table"><tbody><tr>
-                            <td class="o_selected_td">ab</td>
+                            <td class="o_selected_td">a]b</td>
                             <td class="o_selected_td">cd</td>
-                            <td class="o_selected_td">ef]</td>
+                            <td class="o_selected_td">ef</td>
                         </tr></tbody></table>
                     </div>
                 </div>

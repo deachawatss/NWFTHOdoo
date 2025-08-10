@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import Command
@@ -5,19 +6,17 @@ from odoo.exceptions import AccessError, UserError
 from odoo.tests import tagged
 from odoo.tools import mute_logger
 
+from odoo.addons.base.tests.common import BaseUsersCommon
 from odoo.addons.mail.tests.common import MailCommon
 from odoo.addons.sale.tests.common import SaleCommon
 
 
 @tagged('post_install', '-at_install')
-class TestAccessRights(SaleCommon, MailCommon):
+class TestAccessRights(BaseUsersCommon, SaleCommon, MailCommon):
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-
-        cls.user_portal = cls._create_new_portal_user()
-        cls.user_internal = cls._create_new_internal_user()
 
         cls.sale_user2 = cls.env['res.users'].create({
             'name': 'salesman_2',
@@ -25,7 +24,7 @@ class TestAccessRights(SaleCommon, MailCommon):
             'email': 'default_user_salesman_2@example.com',
             'signature': '--\nMark',
             'notification_type': 'email',
-            'group_ids': [(6, 0, cls.group_sale_salesman.ids)],
+            'groups_id': [(6, 0, cls.group_sale_salesman.ids)],
         })
 
         # Create the SO with a specific salesperson

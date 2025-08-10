@@ -14,6 +14,5 @@
             'pos_restaurant_stripe/static/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

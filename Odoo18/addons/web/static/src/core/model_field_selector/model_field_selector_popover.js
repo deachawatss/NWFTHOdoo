@@ -1,27 +1,20 @@
 import { Component, onWillStart, useEffect, useRef, useState } from "@odoo/owl";
-import { _t } from "@web/core/l10n/translation";
-import { sortBy } from "@web/core/utils/arrays";
-import { KeepLast } from "@web/core/utils/concurrency";
-import { useService } from "@web/core/utils/hooks";
-import { fuzzyLookup } from "@web/core/utils/search";
 import { debounce } from "@web/core/utils/timing";
+import { _t } from "@web/core/l10n/translation";
+import { fuzzyLookup } from "@web/core/utils/search";
+import { KeepLast } from "@web/core/utils/concurrency";
+import { sortBy } from "@web/core/utils/arrays";
+import { useService } from "@web/core/utils/hooks";
 
 class Page {
     constructor(resModel, fieldDefs, options = {}) {
         this.resModel = resModel;
         this.fieldDefs = fieldDefs;
-        const {
-            previousPage = null,
-            selectedName = null,
-            isDebugMode,
-            readProperty = false,
-            sortFn = (fieldDefs) => sortBy(Object.keys(fieldDefs), (key) => fieldDefs[key].string),
-        } = options;
+        const { previousPage = null, selectedName = null, isDebugMode } = options;
         this.previousPage = previousPage;
         this.selectedName = selectedName;
         this.isDebugMode = isDebugMode;
-        this.readProperty = readProperty;
-        this.sortedFieldNames = sortFn(fieldDefs);
+        this.sortedFieldNames = sortBy(Object.keys(fieldDefs), (key) => fieldDefs[key].string);
         this.fieldNames = this.sortedFieldNames;
         this.query = "";
         this.focusedFieldName = null;
@@ -30,19 +23,12 @@ class Page {
 
     get path() {
         const previousPath = this.previousPage?.path || "";
-        const name = this.selectedName;
-
-        if (this.readProperty && this.selectedField && this.selectedField.is_property) {
-            if (this.selectedField.relation) {
-                return `${previousPath}.get('${name}', env['${this.selectedField.relation}'])`;
-            }
-            return `${previousPath}.get('${name}')`;
-        }
-        if (name) {
+        if (this.selectedName) {
             if (previousPath) {
-                return `${previousPath}.${name}`;
+                return `${previousPath}.${this.selectedName}`;
+            } else {
+                return this.selectedName;
             }
-            return name;
         }
         return previousPath;
     }
@@ -109,18 +95,16 @@ export class ModelFieldSelectorPopover extends Component {
     static props = {
         close: Function,
         filter: { type: Function, optional: true },
-        sort: { type: Function, optional: true },
         followRelations: { type: Boolean, optional: true },
         showDebugInput: { type: Boolean, optional: true },
         isDebugMode: { type: Boolean, optional: true },
         path: { optional: true },
-        readProperty: { type: Boolean, optional: true },
         resModel: String,
         showSearchInput: { type: Boolean, optional: true },
         update: Function,
     };
     static defaultProps = {
-        filter: (value) => value.searchable && value.type != "json",
+        filter: (value) => value.searchable && value.type != "json" && value.type !== "separator",
         isDebugMode: false,
         followRelations: true,
     };
@@ -158,46 +142,27 @@ export class ModelFieldSelectorPopover extends Component {
         );
     }
 
-    get fieldNames() {
-        return this.state.page.fieldNames;
-    }
-
     get showDebugInput() {
         return this.props.showDebugInput ?? this.props.isDebugMode;
     }
 
-    canFollowRelationFor(fieldDef) {
-        if (fieldDef.type === "properties") {
-            return true;
-        }
-        if (!this.props.followRelations) {
-            return false;
-        }
-        return fieldDef.relation;
-    }
-
-    filter(fieldDefs, path, resModel) {
+    filter(fieldDefs, path) {
         const filteredKeys = Object.keys(fieldDefs).filter((k) =>
-            this.props.filter(fieldDefs[k], path, resModel)
+            this.props.filter(fieldDefs[k], path)
         );
         return Object.fromEntries(filteredKeys.map((k) => [k, fieldDefs[k]]));
     }
 
     async followRelation(fieldDef) {
         const { modelsInfo } = await this.keepLast.add(
-            this.fieldService.loadPath(
-                fieldDef.relation || this.state.page.resModel,
-                `${fieldDef.name}.*`
-            )
+            this.fieldService.loadPath(this.state.page.resModel, `${fieldDef.name}.*`)
         );
         this.state.page.selectedName = fieldDef.name;
         const { resModel, fieldDefs } = modelsInfo.at(-1);
         this.openPage(
-            new Page(resModel, this.filter(fieldDefs, this.state.page.path, resModel), {
+            new Page(resModel, this.filter(fieldDefs, this.state.page.path), {
                 previousPage: this.state.page,
                 isDebugMode: this.props.isDebugMode,
-                readProperty: this.props.readProperty,
-                sortFn: this.props.sort,
             })
         );
     }
@@ -215,10 +180,8 @@ export class ModelFieldSelectorPopover extends Component {
     async loadPages(resModel, path) {
         if (typeof path !== "string" || !path.length) {
             const fieldDefs = await this.fieldService.loadFields(resModel);
-            return new Page(resModel, this.filter(fieldDefs, path, resModel), {
+            return new Page(resModel, this.filter(fieldDefs, path), {
                 isDebugMode: this.props.isDebugMode,
-                readProperty: this.props.readProperty,
-                sortFn: this.props.sort,
             });
         }
         const { isInvalid, modelsInfo, names } = await this.fieldService.loadPath(resModel, path);
@@ -227,11 +190,9 @@ export class ModelFieldSelectorPopover extends Component {
                 throw new Error(`Invalid model name: ${resModel}`);
             case "path": {
                 const { resModel, fieldDefs } = modelsInfo[0];
-                return new Page(resModel, this.filter(fieldDefs, path, resModel), {
+                return new Page(resModel, this.filter(fieldDefs, path), {
                     selectedName: path,
                     isDebugMode: this.props.isDebugMode,
-                    readProperty: this.props.readProperty,
-                    sortFn: this.props.sort,
                 });
             }
             default: {
@@ -239,12 +200,10 @@ export class ModelFieldSelectorPopover extends Component {
                 for (let index = 0; index < names.length; index++) {
                     const name = names[index];
                     const { resModel, fieldDefs } = modelsInfo[index];
-                    page = new Page(resModel, this.filter(fieldDefs, path, resModel), {
+                    page = new Page(resModel, this.filter(fieldDefs, path), {
                         previousPage: page,
                         selectedName: name,
                         isDebugMode: this.props.isDebugMode,
-                        readProperty: this.props.readProperty,
-                        sortFn: this.props.sort,
                     });
                 }
                 return page;
@@ -310,7 +269,7 @@ export class ModelFieldSelectorPopover extends Component {
                     const focusedFieldName = this.state.page.focusedFieldName;
                     if (focusedFieldName) {
                         const fieldDef = this.state.page.fieldDefs[focusedFieldName];
-                        if (this.canFollowRelationFor(fieldDef)) {
+                        if (fieldDef.relation || fieldDef.type === "properties") {
                             this.followRelation(fieldDef);
                         }
                     }

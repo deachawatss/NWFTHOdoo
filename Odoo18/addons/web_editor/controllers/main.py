@@ -3,22 +3,25 @@ import io
 import json
 import logging
 import re
-import time
-import requests
-import werkzeug.exceptions
-import werkzeug.urls
-from PIL import Image, ImageFont, ImageDraw
-from lxml import etree
 from base64 import b64decode, b64encode
 from math import floor
 from os.path import join as opj
-from hashlib import sha256
 
-from odoo.http import request, Response
-from odoo import http, tools, _
+import requests
+import werkzeug.exceptions
+import werkzeug.urls
+from lxml import etree
+from PIL import Image, ImageDraw, ImageFont
+
+from odoo import http, tools
+from odoo.http import STATIC_CACHE, Response, request
+from odoo.tools.image import binary_to_image, image_data_uri, get_webp_size
 from odoo.tools.misc import file_open
-from odoo.tools.image import image_data_uri, binary_to_image, get_webp_size
 
+try:
+    from werkzeug.utils import send_file
+except ImportError:
+    from .tools._vendor.send_file import send_file
 
 logger = logging.getLogger(__name__)
 DEFAULT_LIBRARY_ENDPOINT = 'https://media-api.odoo.com'
@@ -148,25 +151,27 @@ class Web_Editor(http.Controller):
         # output image
         output = io.BytesIO()
         outimage.save(output, format="PNG")
-        response = Response()
-        response.mimetype = 'image/png'
-        response.data = output.getvalue()
-        response.headers['Cache-Control'] = 'public, max-age=604800'
+        output.seek(0)
+        response = send_file(
+            output,
+            request.httprequest.environ,
+            mimetype='image/png',
+            conditional=False,
+            etag=False,
+            max_age=STATIC_CACHE,
+            response_class=Response,
+        )
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Allow-Methods'] = 'GET, POST'
-        response.headers['Connection'] = 'close'
-        response.headers['Date'] = time.strftime("%a, %d-%b-%Y %T GMT", time.gmtime())
-        response.headers['Expires'] = time.strftime("%a, %d-%b-%Y %T GMT", time.gmtime(time.time()+604800*60))
-
         return response
 
     #------------------------------------------------------
     # Update a checklist in the editor on check/uncheck
     #------------------------------------------------------
-    @http.route('/web_editor/checklist', type='jsonrpc', auth='user')
+    @http.route('/web_editor/checklist', type='json', auth='user')
     def update_checklist(self, res_model, res_id, filename, checklistId, checked, **kwargs):
         record = request.env[res_model].browse(res_id)
-        value = filename in record._fields and record[filename]
+        value = filename in record._fields and record.read([filename])[0][filename]
         htmlelem = etree.fromstring("<div>%s</div>" % value, etree.HTMLParser())
         checked = bool(checked)
 
@@ -193,10 +198,10 @@ class Web_Editor(http.Controller):
     #------------------------------------------------------
     # Update a stars rating in the editor on check/uncheck
     #------------------------------------------------------
-    @http.route('/web_editor/stars', type='jsonrpc', auth='user')
+    @http.route('/web_editor/stars', type='json', auth='user')
     def update_stars(self, res_model, res_id, filename, starsId, rating):
         record = request.env[res_model].browse(res_id)
-        value = filename in record._fields and record[filename]
+        value = filename in record._fields and record.read([filename])[0][filename]
         htmlelem = etree.fromstring("<div>%s</div>" % value, etree.HTMLParser())
 
         stars_widget = htmlelem.find(".//span[@id='checkId-%s']" % starsId)
@@ -227,7 +232,7 @@ class Web_Editor(http.Controller):
 
         return value
 
-    @http.route('/web_editor/attachment/remove', type='jsonrpc', auth='user', website=True)
+    @http.route('/web_editor/attachment/remove', type='json', auth='user', website=True)
     def remove(self, ids, **kwargs):
         """ Removes a web-based image attachment if it is used by no view (template)
 
@@ -259,13 +264,14 @@ class Web_Editor(http.Controller):
             attachments_to_remove.unlink()
         return removal_blocked_by
 
+
     def _clean_context(self):
         # avoid allowed_company_ids which may erroneously restrict based on website
-        context = dict(request.env.context)
+        context = dict(request.context)
         context.pop('allowed_company_ids', None)
         request.update_env(context=context)
 
-    @http.route("/web_editor/get_assets_editor_resources", type="jsonrpc", auth="user", website=True)
+    @http.route("/web_editor/get_assets_editor_resources", type="json", auth="user", website=True)
     def get_assets_editor_resources(self, key, get_views=True, get_scss=True, get_js=True, bundles=False, bundles_restriction=[], only_user_custom_files=True):
         """
         Transmit the resources the assets editor needs to work.
@@ -509,7 +515,7 @@ class Web_Editor(http.Controller):
             ('Cache-control', 'max-age=%s' % http.STATIC_CACHE_LONG),
         ])
 
-    @http.route(['/web_editor/media_library_search'], type='jsonrpc', auth="user", website=True)
+    @http.route(['/web_editor/media_library_search'], type='json', auth="user", website=True)
     def media_library_search(self, **params):
         ICP = request.env['ir.config_parameter'].sudo()
         endpoint = ICP.get_param('web_editor.media_library_endpoint', DEFAULT_LIBRARY_ENDPOINT)
@@ -524,14 +530,7 @@ class Web_Editor(http.Controller):
     def test_suite(self, mod=None, **kwargs):
         return request.render('web_editor.tests')
 
-    @http.route("/web_editor/field/translation/update", type="jsonrpc", auth="user", website=True)
+    @http.route("/web_editor/field/translation/update", type="json", auth="user", website=True)
     def update_field_translation(self, model, record_id, field_name, translations):
         record = request.env[model].browse(record_id)
-        field = record._fields[field_name]
-        source_lang = None
-        if callable(field.translate):
-            for translation in translations.values():
-                for key, value in translation.items():
-                    translation[key] = field.translate.term_converter(value)
-            source_lang = record._get_base_lang()
-        return record._update_field_translations(field_name, translations, lambda old_term: sha256(old_term.encode()).hexdigest(), source_lang=source_lang)
+        return record.web_update_field_translations(field_name, translations)

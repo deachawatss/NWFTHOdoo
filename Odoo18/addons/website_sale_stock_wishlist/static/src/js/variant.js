@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import VariantMixin from "@website_sale_stock/js/variant_mixin";
 import "@website_sale/js/website_sale";
 import { renderToElement } from "@web/core/utils/render";

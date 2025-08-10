@@ -4,7 +4,7 @@
 from odoo import fields, models
 
 
-class CrmLeadPlsUpdate(models.TransientModel):
+class CrmUpdateProbabilities(models.TransientModel):
     _name = 'crm.lead.pls.update'
     _description = "Update the probabilities"
 

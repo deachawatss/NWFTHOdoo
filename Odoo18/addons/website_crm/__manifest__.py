@@ -25,13 +25,12 @@ This module includes contact phone and mobile numbers validation.""",
     'installable': True,
     'auto_install': True,
     'assets': {
-        'website.website_builder_assets': [
+        'website.assets_wysiwyg': [
             'website_crm/static/src/js/website_crm_editor.js',
         ],
         'web.assets_tests': [
             'website_crm/static/tests/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

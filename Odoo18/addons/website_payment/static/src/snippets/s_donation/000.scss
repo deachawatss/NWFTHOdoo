@@ -2,7 +2,6 @@
     @include o-input-number-no-arrows();
 
     .s_donation_btn {
-        display: inline-flex; // Don't print whitespace between currency and text node
         transition: background 0.2s;
 
         &:focus {
@@ -52,6 +51,16 @@
                 border-width: 0 5px 5px;
                 margin-left: -5px;
             }
+        }
+    }
+
+    // TODO: Remove in Master. It is necessary to hide the prefilled button when
+    // previewing the donation button while dragging it onto the page from the
+    // snippet menu. In the case where "display options" is not True, they are
+    // removed in "start()" anyway.
+    &:not([data-display-options="true"]) {
+        .s_donation_prefilled_buttons {
+            display: none;
         }
     }
 }

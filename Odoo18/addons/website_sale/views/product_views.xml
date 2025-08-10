@@ -10,13 +10,6 @@
                 <separator/>
                 <filter string="Published" name="published" domain="[('is_published', '=', True)]"/>
             </filter>
-            <filter name="group_by_categ_id" position="after">
-                <filter
-                    string="eCommerce Category"
-                    name="groupby_public_category"
-                    context="{'group_by':'public_categ_ids'}"
-                />
-            </filter>
         </field>
     </record>
 
@@ -191,7 +184,7 @@
                     />
                 </group>
             </xpath>
-            <xpath expr="//page[@name='sales']//group[@name='description']" position="before">
+            <xpath expr="//page[@name='sales']//group[@name='description']" position="after">
                 <group string="Ecommerce Description" name="ecom_description">
                    <field
                         colspan="2"
@@ -243,7 +236,7 @@
                 <field name="website_ribbon_id" options="{'no_open': True}" readonly="True"/>
                 <field name="variant_ribbon_id" options="{'no_quick_create': True}"/>
             </group>
-            <group name="sales" position="after">
+            <group name="packaging" position="after">
                 <group colspan="2" name="product_variant_images" string="Extra Variant Media">
                     <field name="product_variant_image_ids" class="o_website_sale_image_list" context="{'default_name': name}" mode="kanban" add-label="Add Media" nolabel="1" widget="x2_many_media_viewer" options="{'convert_to_webp': True}"/>
                 </group>

@@ -47,7 +47,7 @@ export class Stripe {
     async startPayment(order) {
         try {
             const result = await rpc(`/kiosk/payment/${this.pos_config.id}/kiosk`, {
-                order: order.serializeForORM(),
+                order: order.serialize({ orm: true }),
                 access_token: this.access_token,
                 payment_method_id: this.stripePaymentMethod.id,
             });

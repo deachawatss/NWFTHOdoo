@@ -12,4 +12,3 @@ class ResCompany(models.Model):
         ('sales', "Registered in the sales tax"),
         ('special', "Registered in the special sales tax"),
     ], default='sales')
-    l10n_jo_edi_demo_mode = fields.Boolean(string="JoFotara Demo Mode")

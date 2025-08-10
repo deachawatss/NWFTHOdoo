@@ -22,9 +22,9 @@ class TestSaleStockMultiCompany(TestSaleCommon, ValuationReconciliationTestCommo
         })
         cls.warehouse_B = cls.company_data_2['default_warehouse']
 
-        cls.env.user.group_ids |= cls.env.ref('stock.group_stock_user')
-        cls.env.user.group_ids |= cls.env.ref('stock.group_stock_multi_locations')
-        cls.env.user.group_ids |= cls.env.ref('sales_team.group_sale_salesman')
+        cls.env.user.groups_id |= cls.env.ref('stock.group_stock_user')
+        cls.env.user.groups_id |= cls.env.ref('stock.group_stock_multi_locations')
+        cls.env.user.groups_id |= cls.env.ref('sales_team.group_sale_salesman')
 
         cls.env.user.with_company(cls.company_data['company']).property_warehouse_id = cls.warehouse_A.id
         cls.env.user.with_company(cls.company_data_2['company']).property_warehouse_id = cls.warehouse_B.id
@@ -44,6 +44,7 @@ class TestSaleStockMultiCompany(TestSaleCommon, ValuationReconciliationTestCommo
                 'name': product.name,
                 'product_id': product.id,
                 'product_uom_qty': 10,
+                'product_uom': product.uom_id.id,
                 'price_unit': product.list_price})],
         }
         sale_order = self.env['sale.order']
@@ -61,6 +62,7 @@ class TestSaleStockMultiCompany(TestSaleCommon, ValuationReconciliationTestCommo
                 'name': product.name,
                 'product_id': product.id,
                 'product_uom_qty': 10,
+                'product_uom': product.uom_id.id,
                 'price_unit': product.list_price})],
         }
         so_company_A = sale_order.with_company(self.env.company).create(sale_order_vals2)
@@ -75,6 +77,7 @@ class TestSaleStockMultiCompany(TestSaleCommon, ValuationReconciliationTestCommo
                 'name': product.name,
                 'product_id': product.id,
                 'product_uom_qty': 10,
+                'product_uom': product.uom_id.id,
                 'price_unit': product.list_price})],
         }
         so_company_B = sale_order.with_company(self.company_data_2['company']).create(sale_order_vals3)
@@ -115,7 +118,7 @@ class TestSaleStockMultiCompany(TestSaleCommon, ValuationReconciliationTestCommo
                 'name': self.product_a.name,
                 'product_id': self.product_a.id,
                 'product_uom_qty': 5.0,
-                'product_uom_id': self.product_a.uom_id.id,
+                'product_uom': self.product_a.uom_id.id,
                 'price_unit': self.product_a.list_price})],
         })
         so.action_confirm()
@@ -127,6 +130,7 @@ class TestSaleStockMultiCompany(TestSaleCommon, ValuationReconciliationTestCommo
             'picking_id': picking.id,
             'location_id': picking.location_id.id,
             'location_dest_id': picking.location_dest_id.id,
+            'name': self.product_b.name,
             'product_id': self.product_b.id,
             'product_uom_qty': 1,
             'product_uom': self.product_b.uom_id.id,

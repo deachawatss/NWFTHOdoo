@@ -1,11 +1,10 @@
 import { registry } from "@web/core/registry";
-import { constructFullProductName, constructAttributeString } from "@point_of_sale/utils";
+import { constructFullProductName, uuidv4 } from "@point_of_sale/utils";
 import { Base } from "./related_models";
 import { parseFloat } from "@web/views/fields/parsers";
-import { formatFloat } from "@web/core/utils/numbers";
-import { formatCurrency } from "./utils/currency";
+import { formatFloat, roundDecimals, roundPrecision, floatIsZero } from "@web/core/utils/numbers";
+import { roundCurrency, formatCurrency } from "./utils/currency";
 import { _t } from "@web/core/l10n/translation";
-import { localization as l10n } from "@web/core/l10n/localization";
 import { getTaxesAfterFiscalPosition } from "@point_of_sale/app/models/utils/tax_utils";
 import { accountTaxHelpers } from "@account/helpers/account_tax";
 
@@ -18,19 +17,18 @@ export class PosOrderline extends Base {
             this.delete();
             return;
         }
-        this.setFullProductName();
-    }
+        this.uuid = vals.uuid ? vals.uuid : uuidv4();
+        this.skip_change = vals.skip_change || false;
+        this.set_full_product_name();
 
-    initState() {
-        super.initState();
         // Data that are not saved in the backend
         this.uiState = {
             hasChange: true,
-            savedQuantity: 0,
         };
+        this.saved_quantity = 0;
     }
 
-    setFullProductName() {
+    set_full_product_name() {
         this.full_product_name = constructFullProductName(this);
     }
 
@@ -42,25 +40,22 @@ export class PosOrderline extends Base {
         if (options.code) {
             const code = options.code;
             const blockMerge = ["weight", "quantity", "discount"];
-            const product_packaging_by_barcode = this.models["product.uom"].getAllBy("barcode");
-            const uom_by_id = this.models["uom.uom"].getAllBy("id");
+            const product_packaging_by_barcode =
+                this.models["product.packaging"].getAllBy("barcode");
 
             if (blockMerge.includes(code.type)) {
-                this.setQuantity(code.value);
+                this.set_quantity(code.value);
             } else if (code.type === "price") {
-                this.setUnitPrice(code.value);
+                this.set_unit_price(code.value);
                 this.price_type = "manual";
             }
 
             if (product_packaging_by_barcode[code.code]) {
-                this.setQuantity(
-                    uom_by_id[product_packaging_by_barcode[code.code].uom_id.id].factor /
-                        this.product_id.product_tmpl_id.uom_id.factor
-                );
+                this.set_quantity(product_packaging_by_barcode[code.code].qty);
             }
         }
 
-        this.setUnitPrice(this.price_unit);
+        this.set_unit_price(this.price_unit);
     }
 
     get preparationKey() {
@@ -68,37 +63,25 @@ export class PosOrderline extends Base {
     }
 
     get quantityStr() {
-        let unitPart = "";
-        let decimalPart = "";
+        let qtyStr = "";
         const unit = this.product_id.uom_id;
-        const decimalPoint = l10n.decimalPoint;
 
         if (unit) {
             if (unit.rounding) {
-                const ProductUnit = this.models["decimal.precision"].find(
-                    (dp) => dp.name === "Product Unit"
-                );
-
-                if (this.qty % 1 === 0) {
-                    unitPart = this.qty.toFixed(0);
-                } else {
-                    const formatted = formatFloat(this.qty, { digits: [69, ProductUnit.digits] });
-                    const parts = formatted.split(decimalPoint);
-                    unitPart = parts[0];
-                    decimalPart = parts[1] || "";
-                }
+                const decimals = this.models["decimal.precision"].find(
+                    (dp) => dp.name === "Product Unit of Measure"
+                ).digits;
+                qtyStr = formatFloat(this.qty, {
+                    digits: [69, decimals],
+                });
             } else {
-                unitPart = this.qty.toFixed(0);
+                qtyStr = this.qty.toFixed(0);
             }
         } else {
-            unitPart = "" + this.qty;
+            qtyStr = "" + this.qty;
         }
-        return {
-            qtyStr: unitPart + (decimalPart ? decimalPoint + decimalPart : ""),
-            unitPart: unitPart,
-            decimalPoint: decimalPoint,
-            decimalPart: decimalPart,
-        };
+
+        return qtyStr;
     }
 
     get company() {
@@ -153,7 +136,7 @@ export class PosOrderline extends Base {
             return;
         }
         this.setPackLotLines(editedPackLotLines);
-        this.order_id.selectOrderline(this);
+        this.order_id.select_orderline(this);
     }
 
     setPackLotLines({ modifiedPackLotLines, newPackLotLines, setQuantity = true }) {
@@ -170,7 +153,7 @@ export class PosOrderline extends Base {
 
         // Remove those that needed to be removed.
         for (const lotLine of lotLinesToRemove) {
-            lotLine.delete();
+            this.pack_lot_ids = this.pack_lot_ids.filter((pll) => pll.id !== lotLine.id);
         }
 
         for (const newLotLine of newPackLotLines) {
@@ -182,11 +165,19 @@ export class PosOrderline extends Base {
 
         // Set the qty of the line based on number of pack lots.
         if (!this.product_id.to_weight && setQuantity) {
-            this.setQuantityByLot();
+            this.set_quantity_by_lot();
         }
+        this.setDirty();
     }
 
-    setDiscount(discount) {
+    // FIXME related models update stuff
+    set_product_lot(product) {
+        this.has_product_lot = product.tracking !== "none";
+        this.pack_lot_ids = this.has_product_lot && [];
+        this.setDirty();
+    }
+
+    set_discount(discount) {
         const parsed_discount =
             typeof discount === "number"
                 ? discount
@@ -197,10 +188,11 @@ export class PosOrderline extends Base {
         const disc = Math.min(Math.max(parsed_discount || 0, 0), 100);
         this.discount = disc;
         this.order_id.recomputeOrderData();
+        this.setDirty();
     }
 
     setLinePrice() {
-        const prices = this.getAllPrices();
+        const prices = this.get_all_prices();
         if (this.price_subtotal !== prices.priceWithoutTax) {
             this.price_subtotal = prices.priceWithoutTax;
         }
@@ -212,12 +204,8 @@ export class PosOrderline extends Base {
     // sets the qty of the product. The qty will be rounded according to the
     // product's unity of measure properties. Quantities greater than zero will not get
     // rounded to zero
-    setQuantity(quantity, keep_price) {
-        if (this.order_id.preset_id?.is_return) {
-            quantity = -Math.abs(quantity);
-        }
-
-        this.order_id.assertEditable();
+    set_quantity(quantity, keep_price) {
+        this.order_id.assert_editable();
         const quant =
             typeof quantity === "number" ? quantity : parseFloat("" + (quantity ? quantity : 0));
 
@@ -228,7 +216,7 @@ export class PosOrderline extends Base {
 
         if (this.refunded_orderline_id?.uuid in allLineToRefundUuids) {
             const refundDetails = allLineToRefundUuids[this.refunded_orderline_id.uuid];
-            const maxQtyToRefund = refundDetails.line.qty - refundDetails.line.refundedQty;
+            const maxQtyToRefund = refundDetails.line.qty - refundDetails.line.refunded_qty;
             if (quant > 0) {
                 return {
                     title: _t("Positive quantity not allowed"),
@@ -249,75 +237,101 @@ export class PosOrderline extends Base {
                 };
             }
         }
-
-        const rounder =
-            this.product_id.uom_id ||
-            this.models["decimal.precision"].find((dp) => dp.name === "Product Unit");
-
-        this.qty = rounder.round(quant);
+        const unit = this.product_id.uom_id;
+        if (unit) {
+            if (unit.rounding) {
+                const decimals = this.models["decimal.precision"].find(
+                    (dp) => dp.name === "Product Unit of Measure"
+                ).digits;
+                const rounding = Math.max(unit.rounding, Math.pow(10, -decimals));
+                this.qty = roundPrecision(quant, rounding);
+            } else {
+                this.qty = roundPrecision(quant, 1);
+            }
+        } else {
+            this.qty = quant;
+        }
 
         // just like in sale.order changing the qty will recompute the unit price
         if (!keep_price && this.price_type === "original") {
-            const productTemplate = this.product_id.product_tmpl_id;
-            this.setUnitPrice(
-                productTemplate.getPrice(
+            this.set_unit_price(
+                this.product_id.get_price(
                     this.order_id.pricelist_id,
-                    this.getQuantity(),
-                    this.getPriceExtra(),
-                    false,
-                    this.product_id
+                    this.get_quantity(),
+                    this.get_price_extra()
                 )
             );
         }
+
+        this.setDirty();
         return true;
     }
 
-    setQuantityByLot() {
-        var valid_lots_quantity = this.getValidLots().length;
+    get_quantity_str_with_unit() {
+        const unit = this.product_id.uom_id;
+        if (this.is_pos_groupable()) {
+            return this.quantityStr + " " + unit.name;
+        } else {
+            return this.quantityStr;
+        }
+    }
+
+    get_required_number_of_lots() {
+        var lots_required = 1;
+
+        if (this.product_id.tracking == "serial") {
+            lots_required = Math.abs(this.qty);
+        }
+
+        return lots_required;
+    }
+
+    set_quantity_by_lot() {
+        var valid_lots_quantity = this.get_valid_lots().length;
         if (this.qty < 0) {
             valid_lots_quantity = -valid_lots_quantity;
         }
-        this.setQuantity(valid_lots_quantity);
+        this.set_quantity(valid_lots_quantity);
     }
 
-    hasValidProductLot() {
+    has_valid_product_lot() {
         if (this.pack_lot_ids.length > 0) {
             return true;
         }
 
-        const valid_product_lot = this.getValidLots();
-        const lotsRequired = this.product_id.tracking == "serial" ? Math.abs(this.qty) : 1;
-        return lotsRequired === valid_product_lot.length;
+        const valid_product_lot = this.get_valid_lots();
+        return this.get_required_number_of_lots() === valid_product_lot.length;
     }
 
-    canBeMergedWith(orderline) {
-        const ProductPrice = this.models["decimal.precision"].find(
+    can_be_merged_with(orderline) {
+        const productPriceUnit = this.models["decimal.precision"].find(
             (dp) => dp.name === "Product Price"
+        ).digits;
+        const price = window.parseFloat(
+            roundDecimals(this.price_unit || 0, productPriceUnit).toFixed(productPriceUnit)
         );
-        const price = ProductPrice.round(this.price_unit || 0);
-        const product = orderline.getProduct();
-        let order_line_price = product.getPrice(
-            orderline.order_id.pricelist_id,
-            this.getQuantity(),
-            0,
-            false,
-            product
-        );
-        order_line_price = this.currency.round(order_line_price);
+        let order_line_price = orderline
+            .get_product()
+            .get_price(orderline.order_id.pricelist_id, this.get_quantity());
+        order_line_price = roundDecimals(order_line_price, this.currency.decimal_places);
 
         const isSameCustomerNote =
-            (Boolean(orderline.getCustomerNote()) === false &&
-                Boolean(this.getCustomerNote()) === false) ||
-            orderline.getCustomerNote() === this.getCustomerNote();
+            (Boolean(orderline.get_customer_note()) === false &&
+                Boolean(this.get_customer_note()) === false) ||
+            orderline.get_customer_note() === this.get_customer_note();
 
         // only orderlines of the same product can be merged
         return (
+            !this.skip_change &&
             orderline.getNote() === this.getNote() &&
-            this.getProduct().id === orderline.getProduct().id &&
-            this.isPosGroupable() &&
+            this.get_product().id === orderline.get_product().id &&
+            this.is_pos_groupable() &&
             // don't merge discounted orderlines
-            this.getDiscount() === 0 &&
-            this.currency.isZero(price - order_line_price - orderline.getPriceExtra()) &&
+            this.get_discount() === 0 &&
+            floatIsZero(
+                price - order_line_price - orderline.get_price_extra(),
+                this.currency.decimal_places
+            ) &&
             !this.isLotTracked() &&
             this.full_product_name === orderline.full_product_name &&
             isSameCustomerNote &&
@@ -333,7 +347,7 @@ export class PosOrderline extends Base {
         );
     }
 
-    isPosGroupable() {
+    is_pos_groupable() {
         const unit_groupable = this.product_id.uom_id
             ? this.product_id.uom_id.is_pos_groupable
             : false;
@@ -341,8 +355,8 @@ export class PosOrderline extends Base {
     }
 
     merge(orderline) {
-        this.order_id.assertEditable();
-        this.setQuantity(this.getQuantity() + orderline.getQuantity());
+        this.order_id.assert_editable();
+        this.set_quantity(this.get_quantity() + orderline.get_quantity());
         this.update({
             pack_lot_ids: [["link", ...orderline.pack_lot_ids]],
         });
@@ -352,9 +366,9 @@ export class PosOrderline extends Base {
         const order = this.order_id;
         const currency = order.config.currency_id;
         const extraValues = { currency_id: currency };
-        const product = this.getProduct();
-        const priceUnit = this.getUnitPrice();
-        const discount = this.getDiscount();
+        const product = this.get_product();
+        const priceUnit = this.get_unit_price();
+        const discount = this.get_discount();
 
         const values = {
             ...extraValues,
@@ -362,7 +376,10 @@ export class PosOrderline extends Base {
             price_unit: priceUnit,
             discount: discount,
             tax_ids: this.tax_ids,
-            product_id: product,
+            product_id: accountTaxHelpers.eval_taxes_computation_prepare_product_values(
+                this.config._product_default_values,
+                product
+            ),
             ...customValues,
         };
         if (order.fiscal_position_id) {
@@ -375,70 +392,66 @@ export class PosOrderline extends Base {
         return values;
     }
 
-    setUnitPrice(price) {
-        const ProductPrice = this.models["decimal.precision"].find(
-            (dp) => dp.name === "Product Price"
-        );
+    set_unit_price(price) {
         const parsed_price = !isNaN(price)
             ? price
             : isNaN(parseFloat(price))
             ? 0
             : parseFloat("" + price);
-        this.price_unit = ProductPrice.round(parsed_price || 0);
-    }
-
-    getUnitPrice() {
-        const ProductPrice = this.models["decimal.precision"].find(
-            (dp) => dp.name === "Product Price"
+        this.price_unit = roundDecimals(
+            parsed_price || 0,
+            this.models["decimal.precision"].find((dp) => dp.name === "Product Price").digits
         );
-        return ProductPrice.round(this.price_unit || 0);
+        this.setDirty();
     }
 
-    get unitDisplayPrice() {
-        const prices =
-            this.combo_line_ids.length > 0
-                ? this.combo_line_ids.reduce(
-                      (acc, cl) => ({
-                          priceWithTax: acc.priceWithTax + cl.allUnitPrices.priceWithTax,
-                          priceWithoutTax: acc.priceWithoutTax + cl.allUnitPrices.priceWithoutTax,
-                      }),
-                      { priceWithTax: 0, priceWithoutTax: 0 }
-                  )
-                : this.allUnitPrices;
+    get_unit_price() {
+        const digits = this.models["decimal.precision"].find(
+            (dp) => dp.name === "Product Price"
+        ).digits;
+        // round and truncate to mimic _symbol_set behavior
+        return window.parseFloat(roundDecimals(this.price_unit || 0, digits).toFixed(digits));
+    }
 
-        return this.config.iface_tax_included === "total"
-            ? prices.priceWithTax
-            : prices.priceWithoutTax;
+    get_unit_display_price() {
+        if (this.config.iface_tax_included === "total") {
+            return this.get_all_prices(1).priceWithTax;
+        } else {
+            return this.get_all_prices(1).priceWithoutTax;
+        }
     }
 
     getUnitDisplayPriceBeforeDiscount() {
         if (this.config.iface_tax_included === "total") {
-            return this.allUnitPrices.priceWithTaxBeforeDiscount;
+            return this.get_all_prices(1).priceWithTaxBeforeDiscount;
         } else {
-            return this.allUnitPrices.priceWithoutTaxBeforeDiscount;
+            return this.get_all_prices(1).priceWithoutTaxBeforeDiscount;
         }
     }
-    getBasePrice() {
-        return this.currency.round(
-            this.getUnitPrice() * this.getQuantity() * (1 - this.getDiscount() / 100)
+    get_base_price() {
+        const rounding = this.currency.rounding;
+
+        return roundPrecision(
+            this.get_unit_price() * this.get_quantity() * (1 - this.get_discount() / 100),
+            rounding
         );
     }
 
-    getDisplayPrice() {
+    get_display_price() {
         if (this.config.iface_tax_included === "total") {
-            return this.getPriceWithTax();
+            return this.get_price_with_tax();
         } else {
-            return this.getPriceWithoutTax();
+            return this.get_price_without_tax();
         }
     }
 
-    getTaxedlstUnitPrice() {
+    get_taxed_lst_unit_price() {
         const company = this.company;
-        const product = this.getProduct();
+        const product = this.get_product();
         const baseLine = accountTaxHelpers.prepare_base_line_for_taxes_computation(
             this,
             this.prepareBaseLineForTaxesComputationExtraValues({
-                price_unit: this.getlstPrice(),
+                price_unit: this.get_lst_price(),
                 quantity: 1,
                 tax_ids: product.taxes_id,
             })
@@ -454,25 +467,29 @@ export class PosOrderline extends Base {
         }
     }
 
-    getPriceWithoutTax() {
-        return this.allPrices.priceWithoutTax;
+    get_price_without_tax() {
+        return this.get_all_prices().priceWithoutTax;
     }
 
-    getPriceWithTax() {
-        return this.allPrices.priceWithTax;
+    get_price_with_tax() {
+        return this.get_all_prices().priceWithTax;
     }
 
-    getTax() {
-        return this.allPrices.tax;
+    get_price_with_tax_before_discount() {
+        return this.get_all_prices().priceWithTaxBeforeDiscount;
     }
 
-    getTaxDetails() {
-        return this.allPrices.taxDetails;
+    get_tax() {
+        return this.get_all_prices().tax;
     }
 
-    getTotalTaxesIncludedInPrice() {
+    get_tax_details() {
+        return this.get_all_prices().taxDetails;
+    }
+
+    get_total_taxes_included_in_price() {
         const productTaxes = this._getProductTaxesAfterFiscalPosition();
-        const taxDetails = this.getTaxDetails();
+        const taxDetails = this.get_tax_details();
         return productTaxes
             .filter((tax) => tax.price_include)
             .reduce((sum, tax) => sum + taxDetails[tax.id].amount, 0);
@@ -488,9 +505,9 @@ export class PosOrderline extends Base {
         return baseLineValues.tax_ids;
     }
 
-    getAllPrices(qty = this.getQuantity()) {
+    get_all_prices(qty = this.get_quantity()) {
         const company = this.company;
-        const product = this.getProduct();
+        const product = this.get_product();
         const taxes = this.tax_ids || product.taxes_id;
         const baseLine = accountTaxHelpers.prepare_base_line_for_taxes_computation(
             this,
@@ -535,61 +552,42 @@ export class PosOrderline extends Base {
         };
     }
 
-    computePriceWithTaxBeforeDiscount() {
-        return this.combo_line_ids.length > 0
-            ? // total of all combo lines if it is combo parent
-              formatCurrency(
-                  this.combo_line_ids.reduce(
-                      (total, cl) => total + cl.allPrices.priceWithTaxBeforeDiscount,
-                      0
-                  ),
-                  this.currency
-              )
-            : formatCurrency(this.allPrices.priceWithTaxBeforeDiscount, this.currency);
-    }
-
-    get allPrices() {
-        return this.getAllPrices();
-    }
-
-    get allUnitPrices() {
-        return this.getAllPrices(1);
-    }
-
-    displayDiscountPolicy() {
+    display_discount_policy() {
         // Sales dropped `discount_policy`, and we only show discount if applied pricelist rule
-        // is a percentage discount. However we don't have that information in pos
-        // so this is heuristic used to imitate the same behavior.
-        if (
-            this.order_id.pricelist_id &&
-            this.order_id.pricelist_id.item_ids
-                .map((rule) => rule.compute_price)
-                .includes("percentage")
-        ) {
+        // is a percentage discount.
+        const pricelistRule = this.product_id.getPricelistRule(
+            this.order_id.pricelist_id,
+            this.get_quantity()
+        );
+        if (pricelistRule && pricelistRule.compute_price === "percentage") {
             return "without_discount";
         }
         return "with_discount";
     }
 
-    getlstPrice() {
-        return this.product_id.getPrice(
-            this.config.pricelist_id,
-            1,
-            this.price_extra,
-            false,
-            this.product_id
-        );
+    get_lst_price() {
+        return this.product_id.get_price(this.config.pricelist_id, 1, this.price_extra);
     }
 
-    setCustomerNote(note) {
+    is_last_line() {
+        const order = this.order_id;
+        const orderlines = order.lines;
+        const last_id = orderlines[orderlines.length - 1].uuid;
+        const selectedLine = order ? order.get_selected_orderline() : null;
+
+        return !selectedLine ? false : last_id === selectedLine.uuid;
+    }
+
+    set_customer_note(note) {
         this.customer_note = note || "";
+        this.setDirty();
     }
 
-    getCustomerNote() {
-        return this.customer_note || "";
+    get_customer_note() {
+        return this.customer_note;
     }
 
-    getTotalCost() {
+    get_total_cost() {
         return this.product_id.standard_price * this.qty;
     }
 
@@ -623,117 +621,121 @@ export class PosOrderline extends Base {
 
     getComboTotalPrice() {
         const allLines = this.getAllLinesInCombo();
-        return allLines.reduce((total, line) => total + line.allUnitPrices.priceWithTax, 0);
+        return allLines.reduce((total, line) => total + line.get_all_prices(1).priceWithTax, 0);
     }
     getComboTotalPriceWithoutTax() {
         const allLines = this.getAllLinesInCombo();
-        return allLines.reduce((total, line) => total + line.getBasePrice() / line.qty, 0);
+        return allLines.reduce((total, line) => total + line.get_base_price() / line.qty, 0);
     }
 
-    getPriceString() {
-        return this.getDiscountStr() === "100"
-            ? // free if the discount is 100
-              _t("Free")
-            : this.combo_line_ids.length > 0
-            ? // total of all combo lines if it is combo parent
-              formatCurrency(
-                  this.combo_line_ids.reduce((total, cl) => total + cl.getDisplayPrice(), 0),
-                  this.currency
-              )
-            : this.combo_parent_id
-            ? // empty string if it has combo parent
-              ""
-            : formatCurrency(this.getDisplayPrice(), this.currency);
-    }
-
-    get packLotLines() {
-        return this.pack_lot_ids.map(
-            (l) =>
-                `${l.pos_order_line_id.product_id.tracking == "lot" ? "Lot Number" : "SN"} ${
-                    l.lot_name
-                }`
+    get_old_unit_display_price() {
+        return (
+            this.display_discount_policy() === "without_discount" &&
+            roundCurrency(this.get_unit_display_price(), this.currency) <
+                roundCurrency(this.get_taxed_lst_unit_price(), this.currency) &&
+            this.get_taxed_lst_unit_price()
         );
     }
 
-    get taxGroupLabels() {
-        return [
-            ...new Set(
-                getTaxesAfterFiscalPosition(
-                    this.product_id.taxes_id,
-                    this.order_id.fiscal_position_id,
-                    this.models
-                )
-                    ?.map((tax) => tax.tax_group_id.pos_receipt_label)
-                    .filter((label) => label)
-            ),
-        ].join(" ");
+    getPriceString() {
+        return this.get_discount_str() === "100"
+            ? // free if the discount is 100
+              _t("Free")
+            : this.combo_line_ids.length > 0
+            ? // empty string if it is a combo parent line
+              ""
+            : formatCurrency(this.get_display_price(), this.currency);
     }
 
-    getDiscount() {
+    getDisplayData() {
+        return {
+            productName: this.get_full_product_name(),
+            price: this.getPriceString(),
+            qty: this.get_quantity_str(),
+            unit: this.product_id.uom_id ? this.product_id.uom_id.name : "",
+            unitPrice: formatCurrency(this.get_unit_display_price(), this.currency),
+            oldUnitPrice: this.get_old_unit_display_price()
+                ? formatCurrency(this.get_old_unit_display_price(), this.currency)
+                : "",
+            discount: this.get_discount_str(),
+            customerNote: this.get_customer_note() || "",
+            internalNote: this.getNote(),
+            comboParent: this.combo_parent_id?.get_full_product_name?.() || "",
+            packLotLines: this.pack_lot_ids.map(
+                (l) =>
+                    `${l.pos_order_line_id.product_id.tracking == "lot" ? "Lot Number" : "SN"} ${
+                        l.lot_name
+                    }`
+            ),
+            price_without_discount: formatCurrency(
+                this.getUnitDisplayPriceBeforeDiscount(),
+                this.currency
+            ),
+            taxGroupLabels: [
+                ...new Set(
+                    getTaxesAfterFiscalPosition(
+                        this.product_id.taxes_id,
+                        this.order_id.fiscal_position_id,
+                        this.models
+                    )
+                        ?.map((tax) => tax.tax_group_id.pos_receipt_label)
+                        .filter((label) => label)
+                ),
+            ].join(" "),
+        };
+    }
+
+    get_discount() {
         return this.discount || 0;
     }
 
     // FIXME all below should be removed
-    getValidLots() {
-        return this.pack_lot_ids.filter((item) => item.lot_name);
+    get_valid_lots() {
+        return this.pack_lot_ids.filter((item) => {
+            return item.lot_name;
+        });
     }
     // FIXME what is the use of this ?
     updateSavedQuantity() {
-        this.uiState.savedQuantity = this.qty;
+        this.saved_quantity = this.qty;
     }
-    getPriceExtra() {
+    get_price_extra() {
         return this.price_extra;
     }
-    setPriceExtra(price_extra) {
+    set_price_extra(price_extra) {
         this.price_extra = parseFloat(price_extra) || 0.0;
     }
     getNote() {
-        return this.note || "[]";
+        return this.note || "";
     }
     setNote(note) {
-        this.note = note || "[]";
+        this.setDirty();
+        this.note = note;
     }
     setHasChange(isChange) {
         this.uiState.hasChange = isChange;
     }
-    getDiscountStr() {
+    get_discount_str() {
         return this.discount ? this.discount.toString() : "";
     }
-    getQuantity() {
+    get_quantity() {
         return this.qty;
     }
-    getQuantityStr() {
+    get_quantity_str() {
         return this.quantityStr;
     }
-    getUnit() {
+    get_unit() {
         return this.product_id.uom_id;
     }
     // return the product of this orderline
-    getProduct() {
+    get_product() {
         return this.product_id;
     }
-    getFullProductName() {
+    get_full_product_name() {
         return this.full_product_name || this.product_id.display_name;
-    }
-    get orderDisplayProductName() {
-        return {
-            name: this.product_id?.name,
-            attributeString: constructAttributeString(this),
-        };
     }
     isSelected() {
         return this.order_id?.uiState?.selected_orderline_uuid === this.uuid;
-    }
-    get canBeRemoved() {
-        return this.product_id.uom_id.isZero(this.qty);
-    }
-    get refundedQty() {
-        return (
-            this.refund_orderline_ids?.reduce(
-                (acc, line) => (line.order_id.state !== "cancel" ? acc - line.qty : acc),
-                0
-            ) || 0
-        );
     }
 }
 

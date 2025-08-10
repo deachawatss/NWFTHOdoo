@@ -17,7 +17,7 @@ from .._vendor.webauthn.helpers.structs import AuthenticatorSelectionCriteria, R
 _logger = logging.getLogger(__name__)
 
 
-class AuthPasskeyKey(models.Model):
+class PassKey(models.Model):
     _name = 'auth.passkey.key'
     _description = 'Passkey'
     _order = 'id desc'
@@ -26,12 +26,10 @@ class AuthPasskeyKey(models.Model):
     credential_identifier = fields.Char(required=True, groups='base.group_system')
     public_key = fields.Char(required=True, groups='base.group_system', compute='_compute_public_key', inverse='_inverse_public_key')
     sign_count = fields.Integer(default=0, groups='base.group_system')
-    create_uid = fields.Many2one('res.users', index=True)
 
-    _unique_identifier = models.Constraint(
-        'UNIQUE(credential_identifier)',
-        'The credential identifier should be unique.',
-    )
+    _sql_constraints = [
+        ('unique_identifier', 'UNIQUE(credential_identifier)', 'The credential identifier should be unique.'),
+    ]
 
     def init(self):
         super().init()
@@ -62,7 +60,7 @@ class AuthPasskeyKey(models.Model):
     def _get_session_challenge(self):
         challenge = request.session.pop('webauthn_challenge', None)
         if not challenge:
-            raise AccessDenied('Cannot find a challenge for this session')  # pylint: disable=missing-gettext
+            raise AccessDenied('Cannot find a challenge for this session')
         return challenge
 
     @api.model
@@ -154,7 +152,7 @@ class AuthPasskeyKey(models.Model):
         }
 
 
-class AuthPasskeyKeyCreate(models.TransientModel):
+class PassKeyCreate(models.TransientModel):
     _name = 'auth.passkey.key.create'
     _description = 'Create a Passkey'
 

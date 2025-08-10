@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { queryFirst, queryOne } from "@odoo/hoot-dom";
 import { registry } from "@web/core/registry";
 

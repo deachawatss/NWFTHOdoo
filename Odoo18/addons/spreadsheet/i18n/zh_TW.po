@@ -3,15 +3,18 @@
 # 	* spreadsheet
 # 
 # Translators:
+# 敬雲 林 <chingyun@yuanchih-consult.com>, 2024
+# Tiffany Chang, 2024
+# Martin Trigaux, 2024
 # Wil Odoo, 2025
 # Tony Ng, 2025
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~18.3\n"
+"Project-Id-Version: Odoo Server 18.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-05-23 18:36+0000\n"
-"PO-Revision-Date: 2025-05-06 12:04+0000\n"
+"POT-Creation-Date: 2025-05-14 20:48+0000\n"
+"PO-Revision-Date: 2024-09-25 09:41+0000\n"
 "Last-Translator: Tony Ng, 2025\n"
 "Language-Team: Chinese (Taiwan) (https://app.transifex.com/odoo/teams/41243/zh_TW/)\n"
 "MIME-Version: 1.0\n"
@@ -340,12 +343,6 @@ msgstr "2 列"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "=PIVOT(${"
-msgstr "=PIVOT(${"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid ""
 "A boolean indicating whether to use A1 style notation (TRUE) or R1C1 style "
 "notation (FALSE)."
@@ -605,7 +602,7 @@ msgstr "到期應付的證券利息。"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/global_filters/plugins/global_filters_core_view_plugin.js:0
+#: code:addons/spreadsheet/static/src/global_filters/plugins/global_filters_ui_plugin.js:0
 msgid "Active Filters"
 msgstr "生效的篩選"
 
@@ -656,12 +653,6 @@ msgstr "加入新欄，避免覆寫儲存格"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "Add range"
 msgstr "加入範圍"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Additional cases to try if the previous ones don't match expression."
-msgstr "若之前的條件不符合表達式，會嘗試的其他條件。"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -800,14 +791,6 @@ msgstr "要計算平均值的額外數值。"
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid ""
-"Additional values to be returned if their corresponding cases match "
-"expression."
-msgstr "若相應條件符合表達式，會傳回的額外值。"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid ""
 "Additional values to be returned if their corresponding conditions are TRUE."
 msgstr "若相應條件為 TRUE（真），則傳回附加值。"
 
@@ -816,12 +799,6 @@ msgstr "若相應條件為 TRUE（真），則傳回附加值。"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Additional weights."
 msgstr "其他加權數的權重。"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/helpers/geo_json_service.js:0
-msgid "Africa"
-msgstr "非洲"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -888,12 +865,6 @@ msgid ""
 "An array or range containing zero or more criteria to filter the database "
 "values by before operating."
 msgstr "在進行操作之前，包含零個或多個用於按照條件過濾數據庫值的數組或範圍。"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "An error occurred while uploading the image. %s"
-msgstr "上載圖片時，發生錯誤。%s"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -970,14 +941,6 @@ msgstr "指定單位矩陣維度大小的整數。必須是正數。"
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid ""
-"An optional default value to be returned if none of the cases match "
-"expression."
-msgstr "若無任何條件符合表達式，會傳回的預設值（可選填）。"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid ""
 "An range containing the income or payments associated with the investment."
 msgstr "包含與投資相關的收入或付款的範圍。"
 
@@ -1009,16 +972,6 @@ msgstr "日期範圍與 cashflow_amounts 中的現金流量相對應。"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "An unexpected error occurred during the image transfer"
 msgstr "圖像傳輸時發生意外錯誤"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid ""
-"An unexpected error occurred while pasting content.\n"
-"          Additional information can be found in the browser console."
-msgstr ""
-"貼上內容時，發生未預期的錯誤。\n"
-"          瀏覽器控制台會有更多資訊。"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -1239,7 +1192,6 @@ msgstr "箭頭"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "Ascending"
 msgstr "升序"
@@ -1249,12 +1201,6 @@ msgstr "升序"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Ascending (A ⟶ Z)"
 msgstr "由小至大（A⟶ Z）。"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/helpers/geo_json_service.js:0
-msgid "Asia"
-msgstr "亞洲"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -1352,6 +1298,12 @@ msgstr "背景顏色"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
+msgid "Bad zone format"
+msgstr "錯誤區域格式"
+
+#. module: spreadsheet
+#. odoo-javascript
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Banded columns"
 msgstr "直欄底色相間"
 
@@ -1413,12 +1365,6 @@ msgstr "黑色"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Blues"
-msgstr "藍色"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "Bold"
 msgstr "粗線"
@@ -1464,18 +1410,6 @@ msgstr "底部"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Bottom left"
-msgstr "左下方"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Bottom right"
-msgstr "右下方"
-
-#. module: spreadsheet
-#. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "COUNT"
 msgstr "COUNT"
@@ -1485,12 +1419,6 @@ msgstr "COUNT"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Calculated measure %s"
 msgstr "經計算的量度值：%s"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Calculated measure 1"
-msgstr "經計算的量度值 1"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -1681,12 +1609,6 @@ msgstr "未能刪除重複項，原因未明"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Cannot sort a zone with array formulas."
-msgstr "不可使用陣列算式為區域進行排序。"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid ""
 "Cannot sort. To sort, select only cells or only merges that have the same "
 "size."
@@ -1713,30 +1635,13 @@ msgstr "類別 / 標籤"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Category"
-msgstr "類別"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Category color"
-msgstr "類別顏色"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Caused by"
-msgstr "引起原因："
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "Cell values"
 msgstr "儲存格值"
 
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "Center"
 msgstr "居中"
 
@@ -1762,9 +1667,9 @@ msgstr "圖表"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/index.js:0
-msgid "Chart - %(chart_model)s"
-msgstr "圖表 - %(chart_model)s"
+#: code:addons/spreadsheet/static/src/chart/plugins/odoo_chart_ui_plugin.js:0
+msgid "Chart - %s"
+msgstr "圖表 - %s"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -1795,12 +1700,6 @@ msgstr "選擇一個值⋯"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Circular reference"
 msgstr "循環引用"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Cividis"
-msgstr "Cividis（藍黃色彩組合）"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -1853,12 +1752,6 @@ msgstr "清除列 %s - %s"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Click to select the cell"
-msgstr "按一下以選取儲存格"
-
-#. module: spreadsheet
-#. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Clip"
 msgstr "剪短"
@@ -1908,32 +1801,8 @@ msgstr "顏色向下"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Color Scale"
-msgstr "色階"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "Color Up"
 msgstr "顏色向上"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Color of maximum values"
-msgstr "最大值顏色"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Color of middle values"
-msgstr "中間值顏色"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Color of minimum values"
-msgstr "最小值顏色"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -2027,7 +1896,6 @@ msgstr "組合來自多個字串和/或數組的文本。"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/chart/odoo_chart/odoo_combo_chart.js:0
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Combo"
 msgstr "組合"
@@ -2248,12 +2116,6 @@ msgstr "複製"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Copy as image"
-msgstr "複製為圖片"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Copy of %s"
 msgstr "%s 副本"
 
@@ -2300,12 +2162,6 @@ msgstr "計數數字"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Count values depending on multiple criteria."
 msgstr "根據多個條件計算值。"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Countries without value"
-msgstr "未設定值的國家/地區"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -2492,12 +2348,6 @@ msgstr "數據"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Data Series"
-msgstr "數據序列"
-
-#. module: spreadsheet
-#. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Data Validation"
 msgstr "數據驗證"
@@ -2536,6 +2386,7 @@ msgstr "數據範圍"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "Data series"
 msgstr "數據序列"
 
@@ -2892,7 +2743,6 @@ msgstr "採用年數總和法進行折舊。"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "Descending"
 msgstr "降序"
@@ -2962,15 +2812,6 @@ msgstr "捨棄所有變更"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Discount rate of a security based on price."
 msgstr "基於價格的證券貼現率。"
-
-#. module: spreadsheet
-#: model:ir.model.fields,field_description:spreadsheet.field_ir_http__display_name
-#: model:ir.model.fields,field_description:spreadsheet.field_res_currency__display_name
-#: model:ir.model.fields,field_description:spreadsheet.field_res_currency_rate__display_name
-#: model:ir.model.fields,field_description:spreadsheet.field_res_lang__display_name
-#: model:ir.model.fields,field_description:spreadsheet.field_spreadsheet_mixin__display_name
-msgid "Display Name"
-msgstr "顯示名稱"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -3168,7 +3009,6 @@ msgstr "環形"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 #: code:addons/spreadsheet/static/src/public_readonly_app/public_readonly.js:0
 #: model_terms:ir.ui.view,arch_db:spreadsheet.public_spreadsheet_layout
 msgid "Download"
@@ -3197,6 +3037,12 @@ msgstr "時長"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Edit"
 msgstr "編輯"
+
+#. module: spreadsheet
+#. odoo-javascript
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
+msgid "Edit Pivot"
+msgstr "編輯樞紐"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -3268,7 +3114,6 @@ msgstr "美國國債等價收益率。"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "Error"
 msgstr "錯誤"
 
@@ -3277,12 +3122,6 @@ msgstr "錯誤"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Euler's number, e (~2.718) raised to a power."
 msgstr "歐拉數 e（約為 2.718）升為冪。"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/helpers/geo_json_service.js:0
-msgid "Europe"
-msgstr "歐洲"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -3399,27 +3238,15 @@ msgstr "填充顏色"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Fill color"
-msgstr "填充顏色"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Filled Radar"
-msgstr "填色雷達圖"
-
-#. module: spreadsheet
-#. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Filter"
 msgstr "篩選"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/global_filters/plugins/global_filters_core_view_plugin.js:0
-msgid "Filter \"%(filter_name)s\" not found"
-msgstr "找不到篩選器「%(filter_name)s」"
+#: code:addons/spreadsheet/static/src/global_filters/plugins/global_filters_ui_plugin.js:0
+msgid "Filter \"%s\" not found"
+msgstr "找不到篩選器 \"%s\""
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -3654,6 +3481,30 @@ msgstr "函數"
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid ""
+"Function ${name} has an argument that has been declared with more than one "
+"type whose type 'META'. The 'META' type can only be declared alone."
+msgstr "函數 ${name} 有一個已宣告的引數有多個類型，其類型為 META。但 META 類型只能單獨宣告。"
+
+#. module: spreadsheet
+#. odoo-javascript
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
+msgid ""
+"Function ${name} has at mandatory arguments declared after optional ones. "
+"All optional arguments must be after all mandatory arguments."
+msgstr "函數 ${name} 在可選引數之後宣告強制引數。所有可選引數必須在所有必需引數之後。"
+
+#. module: spreadsheet
+#. odoo-javascript
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
+msgid ""
+"Function ${name} has no-repeatable arguments declared after repeatable ones."
+" All repeatable arguments must be declared last."
+msgstr "函數 ${name} 的不可重複引數在可重複引數之後宣告。所有可重複的引數必須留在最後宣告。"
+
+#. module: spreadsheet
+#. odoo-javascript
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
+msgid ""
 "Function %s expects the parameter '%s' to be reference to a cell or range."
 msgstr "函數 %s 要求參數 %s 是對一個儲存格或區域的引用。"
 
@@ -3727,24 +3578,6 @@ msgstr "函數 [[FUNCTION_NAME]] 參數 2 的值超出了範圍。"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Funnel"
-msgstr "漏斗"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Funnel colors"
-msgstr "漏斗顏色"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Funnel options"
-msgstr "漏斗選項"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Future value of an annuity investment."
 msgstr "年金投資的未來價值。"
 
@@ -3777,18 +3610,6 @@ msgstr "一般"
 #: code:addons/spreadsheet/static/src/components/share_button/share_button.xml:0
 msgid "Generating sharing link"
 msgstr "正產生分享連結"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Geo Chart"
-msgstr "地理圖"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Geo chart options"
-msgstr "地理圖選項"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -3895,18 +3716,6 @@ msgstr "大於或等於。"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Greens"
-msgstr "綠色"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Greys"
-msgstr "灰色"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Gridlines"
 msgstr "網格線"
 
@@ -3950,18 +3759,6 @@ msgstr "http路由"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Header row(s)"
 msgstr "標題列"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Headers"
-msgstr "標題"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Headers and labels"
-msgstr "頁首及標籤"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -4020,24 +3817,12 @@ msgstr "隱藏試算表"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Hierarchical"
-msgstr "層級結構"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Hierarchy"
-msgstr "層級"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Horizontal align"
 msgstr "水平對齊"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "Horizontal alignment"
 msgstr "水平對齊"
 
@@ -4106,15 +3891,6 @@ msgstr "任何實數的雙曲正弦值。"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Hyperbolic tangent of any real number."
 msgstr "任何實數的雙曲正切。"
-
-#. module: spreadsheet
-#: model:ir.model.fields,field_description:spreadsheet.field_ir_http__id
-#: model:ir.model.fields,field_description:spreadsheet.field_res_currency__id
-#: model:ir.model.fields,field_description:spreadsheet.field_res_currency_rate__id
-#: model:ir.model.fields,field_description:spreadsheet.field_res_lang__id
-#: model:ir.model.fields,field_description:spreadsheet.field_spreadsheet_mixin__id
-msgid "ID"
-msgstr "識別碼"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -4392,7 +4168,7 @@ msgstr "指定定期現金流的內部收益率。"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Invalid"
 msgstr "無效的"
 
@@ -4444,32 +4220,25 @@ msgstr "無效的下拐點公式"
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid ""
-"Invalid number of arguments for the %(functionName)s function. Expected "
-"%(maxArgPossible)s maximum, but got %(nbrArgSupplied)s instead."
-msgstr ""
-"%(functionName)s 函數的引數數目不正確。預期最多有 %(maxArgPossible)s 個，但收到了 "
-"%(nbrArgSupplied)s 個。"
+"Invalid number of arguments for the %s function. Expected %s maximum, but "
+"got %s instead."
+msgstr "%s 函數的引數數無效。要求 %s 最大，但得到的是 %s。"
 
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid ""
-"Invalid number of arguments for the %(functionName)s function. Expected "
-"%(minArgRequired)s minimum, but got %(nbrArgSupplied)s instead."
-msgstr ""
-"%(functionName)s 函數的引數數目不正確。預期最少有 %(minArgRequired)s 個，但收到了 "
-"%(nbrArgSupplied)s 個。"
+"Invalid number of arguments for the %s function. Expected %s minimum, but "
+"got %s instead."
+msgstr "%s 函數的引數數無效。要求 %s 最小，但得到 %s。"
 
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid ""
-"Invalid number of arguments for the %(functionName)s function. Repeatable "
-"arguments should be supplied in groups of %(nbrArgRepeating)s, with up to "
-"%(nbrArgOptional)s optional. Got %(nbrValueRemaining)s too many."
-msgstr ""
-"%(functionName)s 函數的引數數目不正確。重複使用的引數，應以 %(nbrArgRepeating)s 個為一組去提供，最多可以有 "
-"%(nbrArgOptional)s 個可選引數。現時多出了 %(nbrValueRemaining)s 個。"
+"Invalid number of arguments for the %s function. Expected all arguments "
+"after position %s to be supplied by groups of %s arguments"
+msgstr "%s 函數的引數數量無效。要求 %s 位置之後的所有引數將由 %s 引數組提供。"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -4552,13 +4321,6 @@ msgstr "值的反正切值，以弧度（rad）為單位。"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Irregularity map"
-msgstr "分歧縮圖"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Is between"
 msgstr "介乎"
 
@@ -4630,18 +4392,6 @@ msgstr "不等於"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/global_filters/components/boolean_multi_selector/boolean_multi_selector.js:0
-msgid "Is not set"
-msgstr "未設定"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/global_filters/components/boolean_multi_selector/boolean_multi_selector.js:0
-msgid "Is set"
-msgstr "已設定"
-
-#. module: spreadsheet
-#. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Is valid date"
 msgstr "是有效日期"
@@ -4679,12 +4429,6 @@ msgstr "六月"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "Key value"
 msgstr "鍵值"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Labels"
-msgstr "標籤"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -4810,7 +4554,7 @@ msgstr "少於。"
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Light"
-msgstr "Light"
+msgstr "淺色"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -4876,9 +4620,9 @@ msgstr "連結試算表"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/index.js:0
-msgid "List #%(list_id)s"
-msgstr "列表 #%(list_id)s"
+#: code:addons/spreadsheet/static/src/list/plugins/list_core_plugin.js:0
+msgid "List #%s"
+msgstr "列表 #%s"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -5010,12 +4754,6 @@ msgstr "最大"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Max value or formula"
-msgstr "最大值或算式"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "MaxPoint"
 msgstr "最大點"
 
@@ -5050,12 +4788,6 @@ msgstr "數據集中的最大數值。"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "May"
 msgstr "五月"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Measure"
-msgstr "測量"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -5142,12 +4874,6 @@ msgstr "最小值"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Min value or formula"
-msgstr "最小值或算式"
-
-#. module: spreadsheet
-#. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 #: code:addons/spreadsheet/static/src/pivot/pivot_helpers.js:0
 msgid "Minimum"
@@ -5176,6 +4902,12 @@ msgstr "數據集中的最小數值。"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Minimum of values from a table-like range."
 msgstr "類表格範圍內的最小值。"
+
+#. module: spreadsheet
+#. odoo-javascript
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
+msgid "Minimum range limit must be smaller than maximum range limit"
+msgstr "最小範圍限制必須小於最大範圍限制"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -5450,12 +5182,6 @@ msgstr "選取的儲存格沒有空格被刪剪。"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "No sorting"
-msgstr "不排序"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "No unique values found"
 msgstr "找不到唯一值"
 
@@ -5466,12 +5192,6 @@ msgstr "找不到唯一值"
 #: code:addons/spreadsheet/static/src/pivot/pivot_time_adapters.js:0
 msgid "None"
 msgstr "無"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/helpers/geo_json_service.js:0
-msgid "North America"
-msgstr "北美"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -5617,12 +5337,6 @@ msgstr "Odoo 圓形圖"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/chart/plugins/odoo_chart_core_plugin.js:0
-msgid "Odoo Radar Chart"
-msgstr "Odoo 雷達圖"
-
-#. module: spreadsheet
-#. odoo-javascript
 #: code:addons/spreadsheet/static/src/hooks.js:0
 msgid "Odoo Spreadsheet"
 msgstr "Odoo 試算表"
@@ -5651,20 +5365,6 @@ msgstr "一個數字除以另一個。"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid ""
-"One or more of the provided criteria values are invalid. Please review and "
-"correct them."
-msgstr "所提供的條件值中，有一個或多個值無效。請檢查及更正。"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "One or more of the provided criteria values are missing."
-msgstr "所提供的條件值中，有一個或多個值缺漏。"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Only a selection from a single column can be split"
 msgstr "只能分拆單欄中的所選範圍"
 
@@ -5684,12 +5384,6 @@ msgstr "選項"
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Orange"
-msgstr "橘色"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Oranges"
 msgstr "橙色"
 
 #. module: spreadsheet
@@ -5799,13 +5493,8 @@ msgstr "樞紐分析 #%(formulaId)s"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/index.js:0
-msgid "Pivot #%(pivot_id)s"
-msgstr "樞紐分析 #%(pivot_id)s"
-
-#. module: spreadsheet
-#. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
+#: code:addons/spreadsheet/static/src/pivot/plugins/pivot_core_global_filter_plugin.js:0
 msgid "Pivot #%s"
 msgstr "樞紐分析表 #%s"
 
@@ -5831,9 +5520,9 @@ msgstr "樞紐分析表"
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid ""
-"Pivot updates only work with dynamic pivot tables. Use the formula '%s' or "
-"re-insert the static pivot from the Data menu."
-msgstr "資料樞紐分析表的更新，只適用於動態資料樞紐分析表。請使用算式「%s」，或使用「數據」選單，重新插入靜態資料樞紐分析表。"
+"Pivot updates only work with dynamic pivot tables. Use %s or re-insert the "
+"static pivot from the Data menu."
+msgstr "資料樞紐分析表的更新，只適用於動態資料樞紐分析表。請使用 %s 或從「數據」選單，重新插入靜態樞紐表。"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -5989,18 +5678,6 @@ msgstr "紫色"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Purples"
-msgstr "紫色"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/chart/odoo_chart/odoo_pyramid_chart.js:0
-msgid "Pyramid"
-msgstr "金字塔"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Q%(quarter)s"
 msgstr "第 %(quarter)s 季"
 
@@ -6051,19 +5728,6 @@ msgstr "特定日期所在的季度"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "R1C1 notation is not supported."
 msgstr "不支援 R1C1 參照表示法。"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/chart/odoo_chart/odoo_radar_chart.js:0
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Radar"
-msgstr "雷達圖"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Rainbow"
-msgstr "彩虹"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -6128,12 +5792,6 @@ msgstr "取消復原"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Reds"
-msgstr "紅色"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Reference should be defined."
 msgstr "應定義參考範圍。"
 
@@ -6142,12 +5800,6 @@ msgstr "應定義參考範圍。"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Reference to the cell that will be checked for emptiness."
 msgstr "對將檢查是否為空的儲存格的參考。"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Region"
-msgstr "地區"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -6207,14 +5859,9 @@ msgstr "刪除空格字符。"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "Rename"
 msgstr "重新命名"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Reorder range"
-msgstr "將範圍重新排序"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -6335,12 +5982,6 @@ msgstr "傳回受限於特定寬度和高度的結果數組。"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Returns a sequence of numbers."
 msgstr "會傳回數字序列。"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Returns a value by comparing cases to an expression."
-msgstr "將不同條件與表達式進行比較，然後傳回一個值。"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -6537,7 +6178,6 @@ msgstr "儲存"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/chart/odoo_chart/odoo_scatter_chart.js:0
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Scatter"
 msgstr "散佈"
@@ -6591,12 +6231,6 @@ msgstr "第二個"
 #: code:addons/spreadsheet/static/src/currency/formulas.js:0
 msgid "Second currency code."
 msgstr "第二貨幣代碼。"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "See pivot properties"
-msgstr "查看樞紐表屬性"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -6772,18 +6406,6 @@ msgstr "顯示算式幫助"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Show headers"
-msgstr "顯示頁首"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Show labels"
-msgstr "顯示標籤"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "Show measure as:"
 msgstr "顯示量度為："
 
@@ -6870,26 +6492,8 @@ msgstr "由大至小排序（Z ⟶ A）"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Sort pivot"
-msgstr "將樞紐排序"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Sort range"
 msgstr "排序範圍"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Sorted on column (%(ascOrDesc)s):"
-msgstr "已按直欄排序（%(ascOrDesc)s）："
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Sorting"
-msgstr "排序"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -6898,12 +6502,6 @@ msgid ""
 "Sorts the rows of a given array or range by the values in one or more "
 "columns."
 msgstr "按一欄或多欄的值，對指定陣列或範圍的列排序。"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/helpers/geo_json_service.js:0
-msgid "South America"
-msgstr "南美洲"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -7182,18 +6780,6 @@ msgstr "根據多個條件計算一個範圍的總和。"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Sunburst"
-msgstr "放射圖"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Sunburst options"
-msgstr "放射圖選項"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Sunday"
 msgstr "星期日"
 
@@ -7231,12 +6817,6 @@ msgstr "溫度"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Territories"
-msgstr "區域"
-
-#. module: spreadsheet
-#. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Tests whether two strings are identical."
 msgstr "測試兩個字串是否相同。"
@@ -7253,12 +6833,6 @@ msgstr "文字"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "Text Color"
-msgstr "文字顏色"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Text color"
 msgstr "文字顏色"
 
 #. module: spreadsheet
@@ -7362,6 +6936,12 @@ msgstr "到期時應收到的金額。"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "The amount to increment each value in the sequence"
 msgstr "序列中每個值的遞增量"
+
+#. module: spreadsheet
+#. odoo-javascript
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
+msgid "The anchor must be part of the provided zone"
+msgstr "錨必須是所提供區域的一部份"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -7662,12 +7242,6 @@ msgstr "圖表定義無效，原因不明"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "The chart was copied to your clipboard"
-msgstr "圖表已複製至剪貼簿"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid ""
 "The column index of the value to be returned, where the first column in "
 "range is numbered 1."
@@ -7721,12 +7295,6 @@ msgid ""
 "1 is to ignore blanks, 2 is to ignore errors, and 3 is to ignore blanks and "
 "errors."
 msgstr "忽略空白和錯誤的控制選項。預設值為 0，表示保留所有值；1 表示忽略空白，2 表示忽略錯誤，3 表示忽略空白和錯誤。"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "The corresponding value to be returned if case1 matches expression."
-msgstr "若條件 case1 符合表達式，會傳回的對應值。"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -8135,26 +7703,8 @@ msgstr "該欄位必須是一個數字或一個字串"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid ""
-"The file you are trying to copy is too large (>%sMB).\n"
-"It will not be added to your OS clipboard.\n"
-"You can download it directly instead."
-msgstr ""
-"你正在嘗試複製的檔案太大（>%sMB），\n"
-"不會加入至你的作業系統剪貼簿了。\n"
-"你可改為直接下載它。"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "The first addend."
 msgstr "第一個補充。"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "The first case to be checked against expression."
-msgstr "第一個檢查是否符合表達式的條件。"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -8338,12 +7888,6 @@ msgstr "格式單位應為 k、m 或 b。"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "The formatting unit. Use 'k', 'm', or 'b' to force the unit"
 msgstr "格式化單位。請使用 k、m 或 b 強制該單位"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "The formula must be valid"
-msgstr "算式必須有效"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -8682,7 +8226,7 @@ msgstr "最大點必須是一個數字"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/chart/odoo_chart/odoo_chart_helpers.js:0
+#: code:addons/spreadsheet/static/src/chart/odoo_menu/figure_component.js:0
 msgid ""
 "The menu linked to this chart doesn't have an corresponding action. Please "
 "link the chart to another menu."
@@ -9330,6 +8874,12 @@ msgstr "使用分數小數慣例提供的報價。"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
+msgid "The provided anchor is invalid. The cell must be part of the zone."
+msgstr "提供的定位點無效。儲存格必須是區域的一部份。"
+
+#. module: spreadsheet
+#. odoo-javascript
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "The purchase_date (%s) must be before the first_period_end (%s)."
 msgstr "purchase_date（%s）須在 first_period_end（%s）之前。"
 
@@ -9376,12 +8926,6 @@ msgstr ""
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "The range is invalid"
 msgstr "範圍無效"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "The range is invalid."
-msgstr "範圍無效。"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -9673,12 +9217,6 @@ msgstr "要傳回的列的列索引。"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "The rule is invalid for an unknown reason"
 msgstr "該規則因不明原因無效"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "The rule is invalid for an unknown reason."
-msgstr "該規則無效，原因未知。"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -10727,6 +10265,12 @@ msgstr "沒有樞紐分析表的識別碼為 %s"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
+msgid "There is not enough visible sheets"
+msgstr "可見試算表數目不足"
+
+#. module: spreadsheet
+#. odoo-javascript
+#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid ""
 "There must be both positive and negative values in [payment_amount, "
 "present_value, future_value]."
@@ -10808,25 +10352,6 @@ msgstr "此設定將影響所有使用者。"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid ""
-"This tool analyzes formulas for patterns and highlights inconsistencies. Irregularities\n"
-"            may indicate potential errors in formula structures, references or arguments."
-msgstr ""
-"此工具可分析算式的重複模式，標示不一致之處。\n"
-"            若出現分歧，可能表示算式結構、參照資料或引數有潛在錯誤。"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid ""
-"This tool analyzes spreadsheet formulas for patterns and highlights "
-"inconsistencies. Irregularities may indicate potential errors in formula "
-"structures, references, or arguments. (Click to turn off)"
-msgstr "此工具可分析試算表算式的重複模式，標示不一致之處。若出現分歧，可能表示算式結構、參照資料，或引數有潛在錯誤。（按一下以關閉）"
-
-#. module: spreadsheet
-#. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "This will overwrite data in the subsequent columns. Split anyway?"
 msgstr "這將覆蓋後續欄中的數據。仍然要進行分拆嗎？"
@@ -10869,18 +10394,6 @@ msgstr "上方"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Top left"
-msgstr "左上方"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Top right"
-msgstr "右上方"
-
-#. module: spreadsheet
-#. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 #: code:addons/spreadsheet/static/src/pivot/odoo_pivot.js:0
 msgid "Total"
@@ -10891,12 +10404,6 @@ msgstr "總計"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Total row"
 msgstr "總計列"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Trailing moving average"
-msgstr "過往移動平均"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -10921,18 +10428,6 @@ msgstr "對範圍的列和欄進行轉置。"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Treat labels as text"
 msgstr "將標籤視為文本"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Tree Map"
-msgstr ""
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Tree map colors"
-msgstr ""
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -10975,12 +10470,6 @@ msgstr "截斷一個數字。"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Tuesday"
 msgstr "星期二"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Turn off"
-msgstr "關閉"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -11093,12 +10582,6 @@ msgstr "所提供來源範圍內的唯一列。"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/helpers/geo_json_service.js:0
-msgid "United States"
-msgstr "美國"
-
-#. module: spreadsheet
-#. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Unknown function"
 msgstr "未知函數"
@@ -11153,22 +10636,10 @@ msgstr "使用列 %s 作為標題"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Use value-based gradient"
-msgstr "使用按數值變化的漸變顏色"
-
-#. module: spreadsheet
-#. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "Value"
 msgstr "值"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Value %s"
-msgstr "值 %s"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -11308,7 +10779,6 @@ msgstr "值是其中一項：%s"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "Value or formula"
 msgstr "數值或算式"
 
@@ -11387,12 +10857,6 @@ msgstr "垂直對齊"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Vertical alignment"
-msgstr "垂直對齊"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "Vertical axis"
 msgstr "垂直軸"
@@ -11418,12 +10882,6 @@ msgstr "檢視"
 #. module: spreadsheet
 #. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "Viridis"
-msgstr "Viridis（藍綠黃色彩組合）"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Volume"
 msgstr "貨量"
 
@@ -11435,7 +10893,6 @@ msgstr "第 %(week)s 週 %(year)s 年"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/chart/odoo_chart/odoo_waterfall_chart.js:0
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Waterfall"
 msgstr "瀑布圖"
@@ -11483,14 +10940,6 @@ msgstr "週及年"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Week number of the year."
 msgstr "該年星期數。"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/pivot/pivot_time_adapters.js:0
-msgid ""
-"Week value must be a string in the format %(example)s, but received "
-"%(received_value)s instead."
-msgstr ""
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -11669,18 +11118,6 @@ msgstr "寬度值是 %(_width)s。該值應該大於或等於 1。"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
-msgid "Window"
-msgstr "視窗"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/helpers/geo_json_service.js:0
-msgid "World"
-msgstr "世界"
-
-#. module: spreadsheet
-#. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "Wrap"
 msgstr "自動換行"
@@ -11844,12 +11281,6 @@ msgstr "及"
 
 #. module: spreadsheet
 #. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "ascending"
-msgstr "由小至大"
-
-#. module: spreadsheet
-#. odoo-javascript
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "below"
 msgstr "下方"
@@ -11871,12 +11302,6 @@ msgstr "代碼"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.xml:0
 msgid "default:"
 msgstr "預設："
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "descending"
-msgstr "由大至小"
 
 #. module: spreadsheet
 #. odoo-javascript
@@ -12009,12 +11434,6 @@ msgstr "return_range 應該與 lookup_range 具有相同維度。"
 #: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
 msgid "search_mode should be a value in [-1, 1, -2, 2]."
 msgstr "search_mode 應該是 [-1, 1, -2, 2] 其中一個值。"
-
-#. module: spreadsheet
-#. odoo-javascript
-#: code:addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js:0
-msgid "sort_column${"
-msgstr "sort_column${"
 
 #. module: spreadsheet
 #. odoo-javascript

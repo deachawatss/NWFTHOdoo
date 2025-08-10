@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
 import * as tourUtils from "@website_sale/js/tours/tour_utils";
 
@@ -28,9 +30,9 @@ registry.category("web_tour.tours").add('tour_shop_dynamic_variants', {
         trigger: '#add_to_cart',
         run: "click",
     },
-    tourUtils.goToCart(),
-    ...tourUtils.assertCartContains({
-        productName: 'Dynamic Product',
-        combinationName: 'Dynamic Value 2',
-    }),
+        tourUtils.goToCart(),
+    {
+        content: "check the variant is in the cart",
+        trigger: 'div>a>h6:contains(Dynamic Product (Dynamic Value 2))',
+    },
 ]});

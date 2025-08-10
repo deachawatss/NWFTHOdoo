@@ -192,8 +192,8 @@ export class Multirange {
             this.rightInput.addEventListener("focus", this.selectAllFocus.bind(this));
         }
         this.update();
-        // Single change from original lib: removed jQ from next line:
-        this.rangeDiv.classList.add('visible');
+        $(this.rangeDiv).addClass('visible');
+
     }
 
     update() {

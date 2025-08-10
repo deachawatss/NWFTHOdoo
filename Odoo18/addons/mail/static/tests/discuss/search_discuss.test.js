@@ -51,7 +51,6 @@ test("Search a message", async () => {
     });
     await start();
     await openDiscuss(channelId);
-    await contains(".o-mail-Message");
     await click("button[title='Search Messages']");
     await insertText(".o_searchview_input", "message");
     triggerHotkey("Enter");
@@ -71,7 +70,6 @@ test("Search should be hightlighted", async () => {
     });
     await start();
     await openDiscuss(channelId);
-    await contains(".o-mail-Message");
     await click("[title='Search Messages']");
     await insertText(".o_searchview_input", "message");
     triggerHotkey("Enter");
@@ -92,7 +90,6 @@ test("Search a starred message", async () => {
     });
     await start();
     await openDiscuss("mail.box_starred");
-    await contains(".o-mail-Message");
     await click("[title='Search Messages']");
     await insertText(".o_searchview_input", "message");
     triggerHotkey("Enter");
@@ -113,7 +110,6 @@ test("Search a message in inbox", async () => {
     });
     await start();
     await openDiscuss("mail.box_inbox");
-    await contains(".o-mail-Message");
     await click("[title='Search Messages']");
     await insertText(".o_searchview_input", "message");
     triggerHotkey("Enter");
@@ -172,7 +168,6 @@ test("Search a message in 60 messages should return 30 message first", async () 
     }
     await start();
     await openDiscuss(channelId);
-    await contains(".o-mail-Message", { count: 30 });
     await click("[title='Search Messages']");
     await insertText(".o_searchview_input", "message");
     triggerHotkey("Enter");
@@ -197,7 +192,6 @@ test("Scrolling to the bottom should load more searched message", async () => {
     }
     await start();
     await openDiscuss(channelId);
-    await contains(".o-mail-Message", { count: 30 });
     await click("[title='Search Messages']");
     await insertText(".o_searchview_input", "message");
     triggerHotkey("Enter");
@@ -250,7 +244,6 @@ test("Search a message containing round brackets", async () => {
     });
     await start();
     await openDiscuss(channelId);
-    await contains(".o-mail-Message");
     await click("button[title='Search Messages']");
     await insertText(".o_searchview_input", "(message");
     triggerHotkey("Enter");
@@ -263,7 +256,7 @@ test("Search a message containing single quotes", async () => {
     await start();
     await openDiscuss(channelId);
     await insertText(".o-mail-Composer-input", "I can't do it");
-    await click(".o-sendMessageActive:enabled");
+    await click(".o-mail-Composer-send:enabled");
     await contains(".o-mail-Message");
     await click("button[title='Search Messages']");
     await insertText(".o_searchview_input", "can't");

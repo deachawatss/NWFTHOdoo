@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { ListController } from "@web/views/list/list_controller";
 
 export class PortalWizardUserListController extends ListController {

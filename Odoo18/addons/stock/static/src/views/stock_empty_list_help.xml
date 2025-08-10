@@ -2,11 +2,11 @@
 <templates id="template" xml:space="preserve">
 
     <t t-name="stock.StockListRenderer" t-inherit="web.ListRenderer" t-inherit-mode="primary">
-        <ActionHelper position="replace">
+        <t t-call="web.ActionHelper" position="replace">
             <t t-if="showNoContentHelper">
                 <StockActionHelper noContentHelp="props.noContentHelp"/>
             </t>
-        </ActionHelper>
+        </t>
     </t>
 
     <t t-name="stock.StockActionHelper">

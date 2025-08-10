@@ -3,15 +3,15 @@
 # 	* mail_bot
 # 
 # Translators:
-# Wil Odoo, 2025
+# Wil Odoo, 2024
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~18.3\n"
+"Project-Id-Version: Odoo Server 18.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-05-09 20:36+0000\n"
-"PO-Revision-Date: 2025-05-06 12:03+0000\n"
-"Last-Translator: Wil Odoo, 2025\n"
+"POT-Creation-Date: 2024-12-16 13:40+0000\n"
+"PO-Revision-Date: 2024-09-25 09:41+0000\n"
+"Last-Translator: Wil Odoo, 2024\n"
 "Language-Team: Chinese (Taiwan) (https://app.transifex.com/odoo/teams/41243/zh_TW/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -36,13 +36,6 @@ msgstr "停用"
 #: model:ir.model,name:mail_bot.model_discuss_channel
 msgid "Discussion Channel"
 msgstr "討論群組"
-
-#. module: mail_bot
-#: model:ir.model.fields,field_description:mail_bot.field_discuss_channel__display_name
-#: model:ir.model.fields,field_description:mail_bot.field_mail_bot__display_name
-#: model:ir.model.fields,field_description:mail_bot.field_res_users__display_name
-msgid "Display Name"
-msgstr "顯示名稱"
 
 #. module: mail_bot
 #. odoo-python
@@ -95,13 +88,6 @@ msgid ""
 msgstr ""
 "我不夠聰明，無法回答你的問題。%(new_line)s要跟隨我的導覽，請輸入 %(command_start)sstart the "
 "tour%(command_end)s（開始導覽）。"
-
-#. module: mail_bot
-#: model:ir.model.fields,field_description:mail_bot.field_discuss_channel__id
-#: model:ir.model.fields,field_description:mail_bot.field_mail_bot__id
-#: model:ir.model.fields,field_description:mail_bot.field_res_users__id
-msgid "ID"
-msgstr "識別碼"
 
 #. module: mail_bot
 #: model:ir.model.fields.selection,name:mail_bot.selection__res_users__odoobot_state__idle
@@ -277,10 +263,10 @@ msgstr "使用者"
 #. odoo-python
 #: code:addons/mail_bot/models/mail_bot.py:0
 msgid ""
-"Wonderful! 😇%(new_line)sTry typing %(command_start)s::%(command_end)s to use"
-" canned responses. I've created a temporary one for you."
+"Wonderful! 😇%(new_line)sTry typing %(command_start)s:%(command_end)s to use "
+"canned responses. I've created a temporary one for you."
 msgstr ""
-"真好！ 😇%(new_line)s試試輸入 %(command_start)s::%(command_end)s "
+"真好！ 😇%(new_line)s試試輸入 %(command_start)s:%(command_end)s "
 "以使用預設回覆。我已為你建立一個預設回覆，作臨時使用。"
 
 #. module: mail_bot

@@ -13,17 +13,16 @@ export class NavigableList extends Component {
     static template = "mail.NavigableList";
     static props = {
         anchorRef: { optional: true },
+        autoSelectFirst: { type: Boolean, optional: true },
         class: { type: String, optional: true },
+        hint: { type: String, optional: true },
         onSelect: { type: Function },
         options: { type: Array },
         optionTemplate: { type: String, optional: true },
         position: { type: String, optional: true },
         isLoading: { type: Boolean, optional: true },
     };
-    static defaultProps = {
-        position: "bottom",
-        isLoading: false,
-    };
+    static defaultProps = { position: "bottom", isLoading: false, autoSelectFirst: true };
 
     setup() {
         super.setup();
@@ -40,7 +39,10 @@ export class NavigableList extends Component {
         onExternalClick("root", async (ev) => {
             // Let event be handled by bubbling handlers first.
             await new Promise(setTimeout);
-            if (isEventHandled(ev, "composer.onClickTextarea")) {
+            if (
+                isEventHandled(ev, "composer.onClickTextarea") ||
+                isEventHandled(ev, "channelSelector.onClickInput")
+            ) {
                 return;
             }
             this.close();
@@ -77,7 +79,9 @@ export class NavigableList extends Component {
     open() {
         this.state.open = true;
         this.state.activeIndex = null;
-        this.navigate("first");
+        if (this.props.autoSelectFirst) {
+            this.navigate("first");
+        }
     }
 
     close() {

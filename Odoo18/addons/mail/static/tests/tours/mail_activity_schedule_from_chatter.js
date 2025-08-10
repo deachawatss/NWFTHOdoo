@@ -3,18 +3,29 @@ import { registry } from "@web/core/registry";
 registry.category("web_tour.tours").add("mail_activity_schedule_from_chatter", {
     steps: () => [
         {
-            trigger: "button:contains('Activity')",
+            trigger: "button:contains('Activities')",
             run: "click",
         },
         {
-            trigger: ".o_selection_badge span:contains('Call')",
+            trigger: "input[id*='activity_type_id']",
             run: "click",
         },
         {
-            trigger: ".o_selection_badge.active span:contains('Call')",
+            trigger: ".dropdown-item:contains('Call')",
+            run: "click",
         },
         {
-            trigger: ".o_selection_badge span:contains('To-Do')",
+            trigger: "input[id*='activity_type_id']:value('Call')",
+        },
+        {
+            trigger: "button:contains('Schedule')",
+        },
+        {
+            trigger: "input[id*='activity_type_id']",
+            run: "click",
+        },
+        {
+            trigger: ".dropdown-item:contains('To-Do')",
             run: "click",
         },
         {
@@ -22,7 +33,7 @@ registry.category("web_tour.tours").add("mail_activity_schedule_from_chatter", {
             run: "edit Play Mario Party",
         },
         {
-            trigger: "button:contains('Save')",
+            trigger: "button:contains('Schedule')",
             run: "click",
         },
         {
@@ -30,7 +41,7 @@ registry.category("web_tour.tours").add("mail_activity_schedule_from_chatter", {
             run: "click",
         },
         {
-            trigger: "button:contains('Activity')",
+            trigger: "button:contains('Activities')",
             run: "click",
         },
         {
@@ -38,7 +49,7 @@ registry.category("web_tour.tours").add("mail_activity_schedule_from_chatter", {
             run: "edit Play Mario Kart",
         },
         {
-            trigger: "button.btn.btn-secondary:contains('Mark Done')",
+            trigger: "button:contains('Mark as Done')",
             run: "click",
         },
         {

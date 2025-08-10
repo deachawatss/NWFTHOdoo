@@ -1,6 +1,6 @@
 import { tourState } from "./tour_state";
 import * as hoot from "@odoo/hoot-dom";
-import { serializeChanges, serializeMutation } from "../tour_utils";
+import { callWithUnloadCheck, serializeChanges, serializeMutation } from "./tour_utils";
 import { TourHelpers } from "./tour_helpers";
 import { TourStep } from "./tour_step";
 import { getTag } from "@web/core/utils/xml";
@@ -84,21 +84,21 @@ export class TourStepAutomatic extends TourStep {
      */
     async doAction() {
         if (this.skipped) {
-            return false;
+            return;
         }
-        const actionHelper = new TourHelpers(this.element);
-        if (typeof this.run === "function") {
-            return await this.run.call({ anchor: this.element }, actionHelper);
-        } else if (typeof this.run === "string") {
-            let lastResult = null;
-            for (const todo of this.run.split("&&")) {
-                const m = String(todo)
-                    .trim()
-                    .match(/^(?<action>\w*) *\(? *(?<arguments>.*?)\)?$/);
-                lastResult = await actionHelper[m.groups?.action](m.groups?.arguments);
+        return await callWithUnloadCheck(async () => {
+            const actionHelper = new TourHelpers(this.element);
+            if (typeof this.run === "function") {
+                await this.run.call({ anchor: this.element }, actionHelper);
+            } else if (typeof this.run === "string") {
+                for (const todo of this.run.split("&&")) {
+                    const m = String(todo)
+                        .trim()
+                        .match(/^(?<action>\w*) *\(? *(?<arguments>.*?)\)?$/);
+                    await actionHelper[m.groups?.action](m.groups?.arguments);
+                }
             }
-            return lastResult;
-        }
+        });
     }
 
     /**
@@ -126,6 +126,7 @@ export class TourStepAutomatic extends TourStep {
 
     get isUIBlocked() {
         return (
+            document.body.classList.contains("o_lazy_js_waiting") ||
             document.body.classList.contains("o_ui_blocked") ||
             document.querySelector(".o_blockUI") ||
             document.querySelector(".o_is_blocked")
@@ -137,8 +138,8 @@ export class TourStepAutomatic extends TourStep {
             return true;
         }
         const parentFrame = hoot.getParentFrame(this.element);
-        return parentFrame && parentFrame.contentDocument.body.hasAttribute("is-ready")
-            ? parentFrame.contentDocument.body.getAttribute("is-ready") === "true"
+        return parentFrame && parentFrame.hasAttribute("is-ready")
+            ? parentFrame.getAttribute("is-ready") === "true"
             : true;
     }
 

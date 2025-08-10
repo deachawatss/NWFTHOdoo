@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo noupdate="1">
 
-    <!-- MAIL.TEST.ACCESS -->
     <record id="ir_rule_mail_test_access_public" model="ir.rule">
         <field name="name">Public: public only</field>
         <field name="model_id" ref="test_mail.model_mail_test_access"/>
@@ -56,13 +55,21 @@
         <field name="groups" eval="[(4, ref('base.group_system'))]"/>
     </record>
 
-    <!-- MAIL.TEST.MULTI.COMPANY(.*) -->
+
+    <record id="mail_test_multi_company_rule" model="ir.rule">
+        <field name="name">Mail Test Multi Company</field>
+        <field name="model_id" ref="test_mail.model_mail_test_multi_company"/>
+        <field eval="True" name="global"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+
     <record id="mail_test_multi_company_rule" model="ir.rule">
         <field name="name">Mail Test Multi Company</field>
         <field name="model_id" ref="test_mail.model_mail_test_multi_company"/>
         <field eval="True" name="global"/>
         <field name="domain_force">[('company_id', 'in', company_ids + [False])]</field>
     </record>
+
     <record id="mail_test_multi_company_read_rule" model="ir.rule">
         <field name="name">MC Readonly Rule</field>
         <field name="model_id" ref="test_mail.model_mail_test_multi_company_read"/>
@@ -70,6 +77,7 @@
         <field name="domain_force">[('company_id', 'in', company_ids + [False])]</field>
         <field name="global" eval="True"/>
     </record>
+
     <record id="mail_test_multi_company_with_activity_rule" model="ir.rule">
         <field name="name">Mail Test Multi Company With Activity</field>
         <field name="model_id" ref="test_mail.model_mail_test_multi_company_with_activity"/>
@@ -77,13 +85,15 @@
         <field name="domain_force">[('company_id', 'in', company_ids + [False])]</field>
     </record>
 
-    <!-- MAIL.TEST.TICKET(.*) (TICKET-LIKE) -->
+    <!-- TICKET-LIKE -->
     <record id="mail_test_ticket_rule_portal" model="ir.rule">
         <field name="name">Portal Mail Test Ticket</field>
         <field name="model_id" ref="test_mail.model_mail_test_ticket"/>
         <field name="domain_force">[('message_partner_ids', 'in', [user.partner_id.id])]</field>
         <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
     </record>
+
+    <!-- MULTI COMPANY TICKET LIKE -->
     <record id="mail_test_ticket_mc_rule" model="ir.rule">
         <field name="name">Mail Test Ticket Multi Company</field>
         <field name="model_id" ref="test_mail.model_mail_test_ticket_mc"/>
@@ -96,26 +106,16 @@
         <field name="domain_force">[('message_partner_ids', 'in', [user.partner_id.id])]</field>
         <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
     </record>
-    <record id="mail_test_ticket_partner_rule" model="ir.rule">
-        <field name="name">Mail Test Ticket Multi Company Partner</field>
-        <field name="model_id" ref="test_mail.model_mail_test_ticket_partner"/>
-        <field name="global" eval="True"/>
-        <field name="domain_force">[('company_id', 'in', company_ids + [False])]</field>
-    </record>
-    <record id="mail_test_ticket_partner_rule_portal" model="ir.rule">
-        <field name="name">Portal Mail Test Ticket Multi Company Partner</field>
-        <field name="model_id" ref="test_mail.model_mail_test_ticket_partner"/>
-        <field name="domain_force">[('message_partner_ids', 'in', [user.partner_id.id])]</field>
-        <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
-    </record>
 
-    <!-- MAIL.TEST.CONTAINER(.*) (PROJECT-LIKE) -->
+    <!-- PROJECT-LIKE -->
     <record id="mail_test_container_rule_portal" model="ir.rule">
         <field name="name">Portal Mail Test Container</field>
         <field name="model_id" ref="test_mail.model_mail_test_container"/>
         <field name="domain_force">[('message_partner_ids', 'in', [user.partner_id.id])]</field>
         <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
     </record>
+
+    <!-- MULTI COMPANY PROJECT LIKE -->
     <record id="mail_test_container_mc_rule" model="ir.rule">
         <field name="name">Mail Test Container Multi Company</field>
         <field name="model_id" ref="test_mail.model_mail_test_container_mc"/>

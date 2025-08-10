@@ -50,6 +50,8 @@
         <field name="is_published" eval="True"/>
         <field name="subtitle">Honestly we are good</field>
         <field name="exhibitor_type">exhibitor</field>
+        <field name="room_name">gemini-furniture</field>
+        <field name="room_max_capacity">12</field>
     </record>
     <record id="event_7_sponsor_3" model="event.sponsor">
         <field name="event_id" ref="event.event_7"/>
@@ -59,6 +61,8 @@
         <field name="is_published" eval="True"/>
         <field name="subtitle">Catchy sentence!</field>
         <field name="exhibitor_type">exhibitor</field>
+        <field name="room_name">ready-mat</field>
+        <field name="room_max_capacity">12</field>
     </record>
     <record id="event_7_sponsor_4" model="event.sponsor">
         <field name="event_id" ref="event.event_7"/>
@@ -68,6 +72,8 @@
         <field name="is_published" eval="True"/>
         <field name="subtitle">You won't believe this sponsor</field>
         <field name="exhibitor_type">online</field>
+        <field name="room_name">the-jackson-group</field>
+        <field name="room_max_capacity">12</field>
     </record>
     <record id="event_7_sponsor_5" model="event.sponsor">
         <field name="event_id" ref="event.event_7"/>
@@ -77,6 +83,8 @@
         <field name="is_published" eval="True"/>
         <field name="subtitle">Honestly we are good</field>
         <field name="exhibitor_type">online</field>
+        <field name="room_name">azure-interior</field>
+        <field name="room_max_capacity">12</field>
     </record>
     <record id="event_7_sponsor_6" model="event.sponsor">
         <field name="event_id" ref="event.event_7"/>
@@ -85,6 +93,8 @@
         <field name="is_published" eval="True"/>
         <field name="subtitle">You won't believe this sponsor</field>
         <field name="exhibitor_type">online</field>
+        <field name="room_name">bloem-flower</field>
+        <field name="room_max_capacity">12</field>
     </record>
     <record id="event_7_sponsor_7" model="event.sponsor">
         <field name="event_id" ref="event.event_7"/>
@@ -93,6 +103,8 @@
         <field name="is_published" eval="True"/>
         <field name="subtitle">Honestly we are good</field>
         <field name="exhibitor_type">online</field>
+        <field name="room_name">open-wood</field>
+        <field name="room_max_capacity">12</field>
     </record>
     <record id="event_7_sponsor_8" model="event.sponsor">
         <field name="event_id" ref="event.event_7"/>
@@ -101,6 +113,8 @@
         <field name="is_published" eval="True"/>
         <field name="subtitle">You won't believe this sponsor</field>
         <field name="exhibitor_type">online</field>
+        <field name="room_name">tree-dealers</field>
+        <field name="room_max_capacity">12</field>
     </record>
     <record id="event_7_sponsor_9" model="event.sponsor">
         <field name="event_id" ref="event.event_7"/>
@@ -109,6 +123,8 @@
         <field name="is_published" eval="True"/>
         <field name="subtitle">Honestly we are good</field>
         <field name="exhibitor_type">online</field>
+        <field name="room_name">pterocarpus</field>
+        <field name="room_max_capacity">12</field>
     </record>
 
 </odoo>

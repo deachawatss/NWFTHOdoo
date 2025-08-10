@@ -72,25 +72,30 @@ def _mock_call_peppol_proxy(func, self, *args, **kwargs):
 
     endpoint = args[0].split('/')[-1]
     return {
-        # participant routes
+        'ack': lambda _user, _args, _kwargs: {},
+        'activate_participant': lambda _user, _args, _kwargs: {},
         'register_sender': lambda _user, _args, _kwargs: {},
         'register_receiver': lambda _user, _args, _kwargs: {},
         'register_sender_as_receiver': lambda _user, _args, _kwargs: {},
-        'update_user': lambda _user, _args, _kwargs: {},
-        'cancel_peppol_registration': lambda _user, _args, _kwargs: {},
-        'migrate_peppol_registration': lambda _user, _args, _kwargs: {'migration_key': 'demo_migration_key'},
-        'participant_status': lambda _user, _args, _kwargs: {'peppol_state': 'receiver'},
-        'set_webhook': lambda _user, _args, _kwargs: {},
-        # document routes
         'get_all_documents': _mock_get_all_documents,
         'get_document': _mock_get_document,
+        'participant_status': lambda _user, _args, _kwargs: {'peppol_state': 'receiver'},
         'send_document': _mock_send_document,
-        'ack': lambda _user, _args, _kwargs: {},
-        # service routes are not available in demo mode, mocked by safety
         'add_services': lambda _user, _args, _kwargs: {},
-        'get_services': lambda _user, _args, _kwargs:  {'services': self.env['res.company']._peppol_supported_document_types()},
         'remove_services': lambda _user, _args, _kwargs: {},
     }[endpoint](self, args, kwargs)
+
+
+def _mock_button_verify_partner_endpoint(func, self, *args, **kwargs):
+    self.ensure_one()
+    old_value = self.peppol_verification_state
+    company = kwargs.get('company') or self.env.company
+    endpoint, eas, edi_format = self.peppol_endpoint, self.peppol_eas, self._get_peppol_edi_format()
+    state = _mock_get_peppol_verification_state(func, self, endpoint, eas, edi_format)
+    self.with_company(company).peppol_verification_state = state
+    self._log_verification_state_update(company, old_value, state)
+    if state == 'valid':
+        self.with_company(company).invoice_sending_method = 'peppol'
 
 
 def _mock_get_peppol_verification_state(func, self, *args, **kwargs):
@@ -103,39 +108,100 @@ def _mock_get_peppol_verification_state(func, self, *args, **kwargs):
         return 'not_valid_format'
     return 'valid'
 
-def _mock_check_peppol_participant_exists(func, self, *args, **kwargs):
-    # in demo, no participant already exists
-    return False
 
-
-def _mock_register_proxy_user(func, self, *args, **kwargs):
-    edi_user = func(self, *args, **kwargs)
-    if edi_user.proxy_type != 'peppol':
-        return edi_user
-
+def _mock_user_creation(func, self, *args, **kwargs):
+    func(self, *args, **kwargs)
+    self.account_peppol_proxy_state = 'receiver' if self.smp_registration else 'sender'
     content = b64encode(file_open(DEMO_PRIVATE_KEY, 'rb').read())
 
     attachments = self.env['ir.attachment'].search([
         ('res_model', '=', 'certificate.key'),
         ('res_field', '=', 'content'),
-        ('company_id', '=', edi_user.company_id.id)
+        ('company_id', '=', self.edi_user_id.company_id.id)
     ])
     content_to_key_id = {attachment.datas: attachment.res_id for attachment in attachments}
     pkey_id = content_to_key_id.get(content)
     if not pkey_id:
         pkey_id = self.env['certificate.key'].create({
             'content': content,
-            'company_id': edi_user.company_id.id,
+            'company_id': self.edi_user_id.company_id.id,
         })
-    edi_user.private_key_id = pkey_id
-    return edi_user
+    self.edi_user_id.private_key_id = pkey_id
+    return self._action_send_notification(
+        *_get_notification_message(self.account_peppol_proxy_state)
+    )
+
+
+def _mock_receiver_registration(func, self, *args, **kwargs):
+    self.account_peppol_proxy_state = 'receiver'
+    return self.env['peppol.registration']._action_send_notification(
+        *_get_notification_message(self.account_peppol_proxy_state)
+    )
+
+
+def _mock_check_verification_code(func, self, *args, **kwargs):
+    self.button_peppol_sender_registration()
+    self.verification_code = False
+    return self.env['peppol.registration']._action_send_notification(
+        *_get_notification_message(self.account_peppol_proxy_state)
+    )
+
+
+def _mock_deregister_participant(func, self, *args, **kwargs):
+    # Set documents sent in demo to a state where they can be re-sent
+    demo_moves = self.env['account.move'].search([
+        ('company_id', '=', self.company_id.id),
+        ('peppol_message_uuid', '=like', 'demo_%'),
+    ])
+    demo_moves.write({
+        'peppol_message_uuid': None,
+        'peppol_move_state': None,
+    })
+    demo_moves.message_main_attachment_id.unlink()
+    demo_moves.ubl_cii_xml_id.unlink()
+    log_message = _('The peppol status of the documents has been reset when switching from Demo to Live.')
+    demo_moves._message_log_batch(bodies=dict((move.id, log_message) for move in demo_moves))
+
+    # also unlink the demo vendor bill
+    self.env['account.move'].search([
+        ('company_id', '=', self.company_id.id),
+        ('peppol_message_uuid', '=', f'{self.company_id.id}_demo_vendor_bill'),
+    ]).unlink()
+
+    mode_constraint = self.env['ir.config_parameter'].get_param('account_peppol.mode_constraint')
+    if 'account_peppol_edi_user' in self._fields:
+        self.account_peppol_edi_user.unlink()
+    else:
+        self.edi_user_id.unlink()
+    self.account_peppol_proxy_state = 'not_registered'
+    if 'account_peppol_edi_mode' in self._fields:
+        self.account_peppol_edi_mode = mode_constraint
+
+
+def _mock_update_user_data(func, self, *args, **kwargs):
+    pass
+
+
+def _mock_migrate_participant(func, self, *args, **kwargs):
+    self.company_id.account_peppol_migration_key = 'demo_migration_key'
+
+
+def _mock_check_company_on_peppol(func, self, *args, **kwargs):
+    pass
 
 
 _demo_behaviour = {
-    '_call_peppol_proxy': _mock_call_peppol_proxy,  # account_edi_proxy_client.user
-    '_get_peppol_verification_state': _mock_get_peppol_verification_state,  # res.partner
-    '_check_peppol_participant_exists': _mock_check_peppol_participant_exists,  # res.partner
-    '_register_proxy_user': _mock_register_proxy_user,  # account_edi_proxy_client.user
+    '_call_peppol_proxy': _mock_call_peppol_proxy,
+    'button_account_peppol_check_partner_endpoint': _mock_button_verify_partner_endpoint,
+    '_get_peppol_verification_state': _mock_get_peppol_verification_state,
+    '_peppol_migrate_registration': _mock_migrate_participant,
+    'button_peppol_sender_registration': _mock_user_creation,
+    'button_deregister_peppol_participant': _mock_deregister_participant,
+    'button_update_peppol_user_data': _mock_update_user_data,
+    'button_peppol_smp_registration': _mock_receiver_registration,
+    'button_check_peppol_verification_code': _mock_check_verification_code,
+    'button_register_peppol_participant': _mock_user_creation,
+    '_check_company_on_peppol': _mock_check_company_on_peppol,
 }
 
 # -------------------------------------------------------------------------

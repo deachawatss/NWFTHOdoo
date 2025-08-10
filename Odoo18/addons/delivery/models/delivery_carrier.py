@@ -1,10 +1,9 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+import psycopg2
 import re
 
-import psycopg2
-
-from odoo import SUPERUSER_ID, Command, _, api, fields, models
+from odoo import _, api, fields, models, Command, SUPERUSER_ID
 from odoo.exceptions import UserError
 from odoo.modules.registry import Registry
 from odoo.tools.safe_eval import safe_eval
@@ -44,10 +43,6 @@ class DeliveryCarrier(models.Model):
         string='Provider',
         default='fixed',
         required=True,
-    )
-    allow_cash_on_delivery = fields.Boolean(
-        string="Cash on Delivery",
-        help="Allow customers to choose Cash on Delivery as their payment method.",
     )
     integration_level = fields.Selection([('rate', 'Get Rate'), ('rate_and_ship', 'Get Rate and Create Shipment')], string="Integration Level", default='rate_and_ship', help="Action while validating Delivery Orders")
     prod_environment = fields.Boolean("Environment", help="Set to True if your credentials are certified for production.")
@@ -109,14 +104,10 @@ class DeliveryCarrier(models.Model):
         'delivery.price.rule', 'carrier_id', 'Pricing Rules', copy=True
     )
 
-    _margin_not_under_100_percent = models.Constraint(
-        'CHECK (margin >= -1)',
-        'Margin cannot be lower than -100%',
-    )
-    _shipping_insurance_is_percentage = models.Constraint(
-        'CHECK(shipping_insurance >= 0 AND shipping_insurance <= 100)',
-        'The shipping insurance must be a percentage between 0 and 100.',
-    )
+    _sql_constraints = [
+        ('margin_not_under_100_percent', 'CHECK (margin >= -1)', 'Margin cannot be lower than -100%'),
+        ('shipping_insurance_is_percentage', 'CHECK(shipping_insurance >= 0 AND shipping_insurance <= 100)', "The shipping insurance must be a percentage between 0 and 100."),
+    ]
 
     @api.constrains('must_have_tag_ids', 'excluded_tag_ids')
     def _check_tags(self):
@@ -172,18 +163,12 @@ class DeliveryCarrier(models.Model):
 
         return True
 
-    def available_carriers(self, partner, source):
-        return self.filtered(lambda c: c._match(partner, source))
+    def available_carriers(self, partner, order):
+        return self.filtered(lambda c: c._match(partner, order))
 
-    def _match(self, partner, source):
+    def _match(self, partner, order):
         self.ensure_one()
-        return (
-            self._match_address(partner)
-            and self._match_must_have_tags(source)
-            and self._match_excluded_tags(source)
-            and self._match_weight(source)
-            and self._match_volume(source)
-        )
+        return self._match_address(partner) and self._match_must_have_tags(order) and self._match_excluded_tags(order) and self._match_weight(order) and self._match_volume(order)
 
     def _match_address(self, partner):
         self.ensure_one()
@@ -197,60 +182,24 @@ class DeliveryCarrier(models.Model):
                 return False
         return True
 
-    def _match_must_have_tags(self, source):
+    def _match_must_have_tags(self, order):
         self.ensure_one()
-        if source._name == 'sale.order':
-            products = source.order_line.product_id
-        elif source._name == 'stock.picking':
-            products = source.move_ids.product_id
-        else:
-            raise UserError(_("Invalid source document type"))
         return not self.must_have_tag_ids or any(
-            tag in products.all_product_tag_ids
+            tag in order.order_line.product_id.all_product_tag_ids
             for tag in self.must_have_tag_ids
         )
 
-    def _match_excluded_tags(self, source):
+    def _match_excluded_tags(self, order):
         self.ensure_one()
-        if source._name == 'sale.order':
-            products = source.order_line.product_id
-        elif source._name == 'stock.picking':
-            products = source.move_ids.product_id
-        else:
-            raise UserError(_("Invalid source document type"))
-        return not any(tag in products.all_product_tag_ids for tag in self.excluded_tag_ids)
+        return not any(tag in order.order_line.product_id.all_product_tag_ids for tag in self.excluded_tag_ids)
 
-    def _match_weight(self, source):
+    def _match_weight(self, order):
         self.ensure_one()
-        if source._name == 'sale.order':
-            total_weight = sum(
-                line.product_id.weight * line.product_qty
-                for line in source.order_line
-            )
-        elif source._name == 'stock.picking':
-            total_weight = sum(
-                move.product_id.weight * move.product_uom_qty
-                for move in source.move_ids
-            )
-        else:
-            raise UserError(_("Invalid source document type"))
-        return not self.max_weight or total_weight <= self.max_weight
+        return not self.max_weight or sum(order_line.product_id.weight * order_line.product_qty for order_line in order.order_line) <= self.max_weight
 
-    def _match_volume(self, source):
+    def _match_volume(self, order):
         self.ensure_one()
-        if source._name == 'sale.order':
-            total_volume = sum(
-                line.product_id.volume * line.product_qty
-                for line in source.order_line
-            )
-        elif source._name == 'stock.picking':
-            total_volume = sum(
-                move.product_id.volume * move.product_uom_qty
-                for move in source.move_ids
-            )
-        else:
-            raise UserError(_("Invalid source document type"))
-        return not self.max_volume or total_volume <= self.max_volume
+        return not self.max_volume or sum(order_line.product_id.volume * order_line.product_qty for order_line in order.order_line) <= self.max_volume
 
     @api.onchange('integration_level')
     def _onchange_integration_level(self):
@@ -288,10 +237,11 @@ class DeliveryCarrier(models.Model):
         self.ensure_one()
         return self.delivery_type
 
-    def _apply_margins(self, price, order=False):
+    def _apply_margins(self, price):
         self.ensure_one()
         if self.delivery_type == 'fixed':
             return float(price)
+        order = self.env.context.get('order', self.env['sale.order'])
         fixed_margin_in_sale_currency = self._compute_currency(order, self.fixed_margin, 'company_to_pricelist') if order else self.fixed_margin
         return float(price) * (1.0 + self.margin) + fixed_margin_in_sale_currency
 
@@ -303,16 +253,12 @@ class DeliveryCarrier(models.Model):
         ''' Compute the price of the order shipment
 
         :param order: record of sale.order
-        :returns: a dict with structure
-          ::
-
-            {'success': boolean,
-             'price': a float,
-             'error_message': a string containing an error message,
-             'warning_message': a string containing a warning message}
-        :rtype: dict
+        :return dict: {'success': boolean,
+                       'price': a float,
+                       'error_message': a string containing an error message,
+                       'warning_message': a string containing a warning message}
+                       # TODO maybe the currency code?
         '''
-        # TODO maybe the currency code?
         self.ensure_one()
         if hasattr(self, '%s_rate_shipment' % self.delivery_type):
             res = getattr(self, '%s_rate_shipment' % self.delivery_type)(order)
@@ -328,7 +274,7 @@ class DeliveryCarrier(models.Model):
                 product_currency=company.currency_id
             )
             # apply margin on computed price
-            res['price'] = self._apply_margins(res['price'], order)
+            res['price'] = self.with_context(order=order)._apply_margins(res['price'])
             # save the real price in case a free_over rule overide it to 0
             res['carrier_price'] = res['price']
             # free when order is large enough
@@ -355,7 +301,7 @@ class DeliveryCarrier(models.Model):
 
         if self.debug_logging:
             self.env.flush_all()
-            db_name = self.env.cr.dbname
+            db_name = self._cr.dbname
 
             # Use a new cursor to avoid rollback that could be caused by an upper method
             try:
@@ -459,7 +405,7 @@ class DeliveryCarrier(models.Model):
                 continue
             if line.product_id.type == "service":
                 continue
-            qty = line.product_uom_id._compute_quantity(line.product_uom_qty, line.product_id.uom_id)
+            qty = line.product_uom._compute_quantity(line.product_uom_qty, line.product_id.uom_id)
             weight += (line.product_id.weight or 0.0) * qty
             volume += (line.product_id.volume or 0.0) * qty
             wv += (line.product_id.weight or 0.0) * (line.product_id.volume or 0.0) * qty

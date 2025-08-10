@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import {
     insertSnippet,
     registerWebsitePreviewTour,
@@ -18,7 +20,7 @@ function websiteCreateEventTourSteps() {
             tooltipPosition: "bottom",
             run: "click",
         }, {
-            trigger: '.modal-dialog .o_field_widget[name="name"] .o_input',
+            trigger: ".modal-dialog div[name='name'] input",
             content: "Create a name for your new event and click Continue. e.g: Technical Training",
             run: "edit Technical Training",
             tooltipPosition: "left",
@@ -34,12 +36,6 @@ function websiteCreateEventTourSteps() {
                 el2.dispatchEvent(new Event("change", {bubbles: true, cancelable: true}));
                 el1.click();
             }
-        },
-        {
-            trigger: '.modal-dialog div[name="event_ticket_ids"] .o_field_x2many_list_row_add a:contains("Add a line")',
-            content: "Click here to add a ticket",
-            tooltipPosition: "bottom",
-            run: "click",
         },
         {
             trigger: ".modal-dialog input[type=text]:not(:value(''))",

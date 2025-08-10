@@ -1,8 +1,13 @@
 import { Plugin } from "@html_editor/plugin";
 import { isEmptyBlock, isProtected } from "@html_editor/utils/dom_info";
 import { removeClass } from "@html_editor/utils/dom";
-import { selectElements } from "@html_editor/utils/dom_traversal";
+import { childNodes, selectElements } from "@html_editor/utils/dom_traversal";
 import { closestBlock } from "../utils/blocks";
+import { baseContainerGlobalSelector } from "@html_editor/utils/base_container";
+
+function isMutationRecordSavable(record) {
+    return !(record.type === "attributes" && record.attributeName === "placeholder");
+}
 
 export class HintPlugin extends Plugin {
     static id = "hint";
@@ -14,26 +19,35 @@ export class HintPlugin extends Plugin {
             this.clearHints();
             this.updateHints();
         },
-        normalize_handlers: this.normalize.bind(this),
+        clean_handlers: this.clearHints.bind(this),
         clean_for_save_handlers: ({ root }) => this.clearHints(root),
         content_updated_handlers: this.updateHints.bind(this),
 
-        hint_targets_providers: (selectionData, editable) => {
-            if (!selectionData.currentSelectionIsInEditable) {
-                return [];
-            }
-            const blockEl = closestBlock(selectionData.editableSelection.anchorNode);
-            if (this.dependencies.selection.isNodeEditable(blockEl)) {
-                return [blockEl];
-            } else {
-                return [];
-            }
-        },
+        savable_mutation_record_predicates: isMutationRecordSavable,
         system_classes: ["o-we-hint"],
-        system_attributes: ["o-we-hint-text"],
+        ...(this.config.placeholder && {
+            hints: [
+                {
+                    text: this.config.placeholder,
+                    target: (selectionData, editable) => {
+                        if (
+                            selectionData.documentSelectionIsInEditable ||
+                            childNodes(editable).length !== 1
+                        ) {
+                            return;
+                        }
+                        const el = editable.firstChild;
+                        if (isEmptyBlock(el) && el.matches(baseContainerGlobalSelector)) {
+                            return el;
+                        }
+                    },
+                },
+            ],
+        }),
     };
 
     setup() {
+        this.hint = null;
         this.updateHints(this.editable);
     }
 
@@ -42,25 +56,32 @@ export class HintPlugin extends Plugin {
         this.clearHints();
     }
 
-    normalize() {
-        this.clearHints();
-        this.updateHints();
-    }
-
     /**
      * @param {HTMLElement} [root]
      */
     updateHints() {
         const selectionData = this.dependencies.selection.getSelectionData();
         const editableSelection = selectionData.editableSelection;
-        this.clearHints();
+        if (this.hint) {
+            const blockEl = closestBlock(editableSelection.anchorNode);
+            this.removeHint(this.hint);
+            this.removeHint(blockEl);
+        }
         if (editableSelection.isCollapsed) {
-            const hints = this.getResource("hints");
-            for (const provideTargets of this.getResource("hint_targets_providers")) {
-                for (const target of provideTargets(selectionData, this.editable)) {
-                    const nodeHint = hints.find((h) => target.matches(h.selector))?.text;
-                    if (target && nodeHint && isEmptyBlock(target) && !isProtected(target)) {
-                        this.makeHint(target, nodeHint);
+            for (const hint of this.getResource("hints")) {
+                if (hint.selector) {
+                    const el = closestBlock(editableSelection.anchorNode);
+                    if (el && el.matches(hint.selector) && !isProtected(el) && isEmptyBlock(el)) {
+                        this.makeHint(el, hint.text);
+                        this.hint = el;
+                    }
+                } else {
+                    const target = hint.target(selectionData, this.editable);
+                    // Do not replace an existing empty block hint by a temp hint.
+                    if (target && !target.classList.contains("o-we-hint")) {
+                        this.makeHint(target, hint.text);
+                        this.hint = target;
+                        return;
                     }
                 }
             }
@@ -68,15 +89,16 @@ export class HintPlugin extends Plugin {
     }
 
     makeHint(el, text) {
-        this.dispatchTo("make_hint_handlers", el);
-        el.setAttribute("o-we-hint-text", text);
+        el.setAttribute("placeholder", text);
         el.classList.add("o-we-hint");
     }
 
     removeHint(el) {
-        el.removeAttribute("o-we-hint-text");
+        el.removeAttribute("placeholder");
         removeClass(el, "o-we-hint");
-        this.getResource("system_style_properties").forEach((n) => el.style.removeProperty(n));
+        if (this.hint === el) {
+            this.hint = null;
+        }
     }
 
     clearHints(root = this.editable) {

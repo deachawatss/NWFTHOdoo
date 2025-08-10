@@ -19,14 +19,13 @@
                     <ul class="list-unstyled">
                         <li><t t-out="o.company_id.partner_id" t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": true}'/></li>
                         <li>
-                            <t t-set="default_vat_label">Tax ID</t>
                             <t t-if="not o.fiscal_position_id.foreign_vat and o.company_id.partner_id.l10n_hu_group_vat">Group Tax ID</t>
-                            <t t-else="else" t-out="o.company_id.account_fiscal_country_id.vat_label or default_vat_label"/>:
+                            <t t-else="else" t-out="o.company_id.account_fiscal_country_id.vat_label or 'Tax ID'"/>:
                             <span t-if="o.fiscal_position_id.foreign_vat" t-out="o.fiscal_position_id.foreign_vat"/>
                             <span t-else="else" t-out="o.company_id.vat"/>
                         </li>
                         <li t-if="not o.fiscal_position_id.foreign_vat and o.company_id.partner_id.l10n_hu_group_vat">Group Member Tax ID: <span t-field="o.company_id.partner_id.l10n_hu_group_vat"/></li>
-                        <li t-if="o.partner_id.commercial_partner_id.country_id and o.partner_id.commercial_partner_id.country_id.code!='HU' and o.company_id.vat">
+                        <li t-if="o.partner_id.commercial_partner_id.country_id and o.partner_id.commercial_partner_id.country_id.code!='HU'">
                             EU Tax ID: <span t-out="'HU%s' % o.company_id.vat[:8]"/>
                         </li>
                         <li t-if="o.move_type in ['out_invoice', 'out_receipt'] and o.partner_bank_id">Bank Account: <span t-field="o.partner_bank_id.acc_number"/></li>
@@ -49,7 +48,7 @@
             <div t-if="o.partner_id.l10n_hu_group_vat">Group Member Tax ID: <span t-field="o.partner_id.l10n_hu_group_vat"/></div>
             <div groups="account.group_delivery_invoice_address" name="shipping_address_block">
                 <div/>
-                <strong class="d-block mt-3">Shipping Address</strong>
+                <strong class="d-block mt-3">Shipping Address:</strong>
                 <div t-field="o.partner_shipping_id" t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}'/>
             </div>
         </xpath>

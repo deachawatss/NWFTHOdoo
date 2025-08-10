@@ -1,7 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from unittest.mock import patch
-import unittest
 
 import odoo.tests
 
@@ -35,48 +34,6 @@ class TestConfiguratorCommon(odoo.tests.HttpCase):
                         {"id": 4, "label": "abortion clinic"},
                         {"id": 5, "label": "abrasives supplier"},
                         {"id": 6, "label": "abundant life church"}]}
-            elif 'api/olg/1/chat' in endpoint:
-                return {
-                    'status': 'success',
-                    'content': '''
-                    {
-                    "categories": [
-                        {
-                        "name": "New Arrivals",
-                        "description": "Fresh styles just dropped—grab them before they’re gone!"
-                        },
-                        {
-                        "name": "Best Sellers",
-                        "description": "Shop the crowd favorites everyone’s raving about."
-                        },
-                        {
-                        "name": "Limited Editions",
-                        "description": "Exclusive finds you won’t see again. Act fast!"
-                        },
-                        {
-                        "name": "Eco-Friendly Picks",
-                        "description": "Sustainable choices that look good and feel better."
-                        },
-                        {
-                        "name": "Gifts & Bundles",
-                        "description": "Perfectly curated sets for every occasion."
-                        },
-                        {
-                        "name": "Under $50",
-                        "description": "Amazing deals that won’t break the bank."
-                        },
-                        {
-                        "name": "Seasonal Favorites",
-                        "description": "Style your season with trending must-haves."
-                        },
-                        {
-                        "name": "Final Sale",
-                        "description": "Last chance to score these unbeatable deals!"
-                        }
-                    ]
-                    }
-                '''
-                }
             elif '/api/website/2/configurator/recommended_themes' in endpoint:
                 return []
             elif '/api/website/2/configurator/custom_resources/' in endpoint:
@@ -90,19 +47,9 @@ class TestConfiguratorCommon(odoo.tests.HttpCase):
         patcher = patch('odoo.addons.website.models.ir_module_module.IrModuleModule._theme_upgrade_upstream', wraps=self._theme_upgrade_upstream)
         self.startPatcher(patcher)
 
-
-@odoo.tests.common.tagged('post_install', '-at_install')
-class TestConfigurator(TestConfiguratorCommon):
-
-    def test_configurator_params_step(self):
-        self.start_tour('/website/configurator/3', 'configurator_params_step', login='admin')
-
-
 @odoo.tests.common.tagged('post_install', '-at_install')
 class TestConfiguratorTranslation(TestConfiguratorCommon):
 
-    # TODO master-mysterious-egg fix error
-    @unittest.skip("prepare mysterious-egg for merging")
     def test_01_configurator_translation(self):
         parseltongue = self.env['res.lang'].create({
             'name': 'Parseltongue',

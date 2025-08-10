@@ -67,3 +67,4 @@ class TestRoutes(TransactionCase):
 
         wh.reception_steps = 'two_steps'
         self.assertEqual(wh.reception_steps, 'two_steps')
+

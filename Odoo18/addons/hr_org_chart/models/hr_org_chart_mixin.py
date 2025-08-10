@@ -5,8 +5,8 @@ from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
 
-class HrEmployee(models.Model):
-    _inherit = "hr.employee"
+class HrEmployeeBase(models.AbstractModel):
+    _inherit = "hr.employee.base"
 
     child_all_count = fields.Integer(
         'Indirect Subordinates Count',
@@ -51,13 +51,17 @@ class HrEmployee(models.Model):
             self.is_subordinate = False
         else:
             for employee in self:
-                employee.is_subordinate = employee in subordinates
+                employee.is_subordinate = employee.id in subordinates.ids
 
     def _search_is_subordinate(self, operator, value):
-        if operator != 'in':
-            return NotImplemented
-        subordinates = self.env.user.employee_id.subordinate_ids
-        return [('id', 'in', subordinates.ids)]
+        if operator not in ('=', '!=') or not isinstance(value, bool):
+            raise UserError(_('Operation not supported'))
+        # Double negation
+        if not value:
+            operator = '!=' if operator == '=' else '='
+        if not self.env.user.employee_id.subordinate_ids:
+            return [('id', operator, self.env.user.employee_id.id)]
+        return (['!'] if operator == '!=' else []) + [('id', 'in', self.env.user.employee_id.subordinate_ids.ids)]
 
     def _compute_child_count(self):
         employee_read_group = self._read_group(
@@ -68,20 +72,3 @@ class HrEmployee(models.Model):
         child_count_per_parent_id = dict(employee_read_group)
         for employee in self:
             employee.child_count = child_count_per_parent_id.get(employee._origin, 0)
-
-
-class HrEmployeePublic(models.Model):
-    _inherit = "hr.employee.public"
-
-    child_all_count = fields.Integer(compute='_compute_child_all_count')
-    department_color = fields.Integer(compute='_compute_department_color')
-    child_count = fields.Integer(compute='_compute_child_count')
-
-    def _compute_child_all_count(self):
-        self._compute_from_employee('child_all_count')
-
-    def _compute_department_color(self):
-        self._compute_from_employee('department_color')
-
-    def _compute_child_count(self):
-        self._compute_from_employee('child_count')

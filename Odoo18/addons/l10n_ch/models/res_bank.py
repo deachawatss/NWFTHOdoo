@@ -6,7 +6,7 @@ from stdnum.util import clean
 
 from odoo import api, fields, models, _
 from odoo.addons.base.models.res_bank import sanitize_account_number
-from odoo.addons.base_iban.models.res_partner_bank import normalize_iban, pretty_iban, validate_iban, get_iban_part
+from odoo.addons.base_iban.models.res_partner_bank import normalize_iban, pretty_iban, validate_iban
 from odoo.exceptions import ValidationError
 from odoo.tools import LazyTranslate
 from odoo.tools.misc import mod10r
@@ -33,7 +33,9 @@ def validate_qr_iban(qr_iban):
 def check_qr_iban_range(iban):
     if not iban or len(iban) < 9:
         return False
-    iid = get_iban_part(iban, 'bank')
+    iid_start_index = 4
+    iid_end_index = 8
+    iid = iban[iid_start_index : iid_end_index+1]
     return re.match(r'\d+', iid) and 30000 <= int(iid) <= 31999 # Those values for iid are reserved for QR-IBANs only
 
 
@@ -158,7 +160,7 @@ class ResPartnerBank(models.Model):
                 'barcode_type': 'QR',
                 'width': 256,
                 'height': 256,
-                'quiet': 0,
+                'quiet': 1,
                 'mask': 'ch_cross',
                 'value': '\n'.join(self._get_qr_vals(qr_method, amount, currency, debtor_partner, free_communication, structured_communication)),
                 # Swiss QR code requires Error Correction Level = 'M' by specification

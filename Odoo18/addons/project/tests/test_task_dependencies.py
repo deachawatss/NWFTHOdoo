@@ -80,14 +80,14 @@ class TestTaskDependencies(TestProjectCommon):
         self.assertEqual(len(self.task_2.depend_on_ids), 1, "The task 2 should have one dependency.")
 
         # 4) Add task1 as dependency in task3 and check a validation error is raised
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationError), self.cr.savepoint():
             self.task_3.write({
                 'depend_on_ids': [Command.link(self.task_1.id)],
             })
         self.assertEqual(len(self.task_3.depend_on_ids), 0, "The dependency should not be added in the task 3 because of a cyclic dependency.")
 
         # 5) Add task1 as dependency in task2 and check a validation error is raised
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationError), self.cr.savepoint():
             self.task_2.write({
                 'depend_on_ids': [Command.link(self.task_1.id)],
             })
@@ -137,6 +137,7 @@ class TestTaskDependencies(TestProjectCommon):
 
         self.assertEqual(task1_copy.depend_on_ids.ids, [task2_copy.id],
                          "Copy should only create a relation between both copy if they are both part of the project")
+        self.assertEqual(task1_copy.date_deadline, self.task_1.date_deadline, "date_deadline should be copied")
 
         task1_copy.depend_on_ids = self.task_1
 

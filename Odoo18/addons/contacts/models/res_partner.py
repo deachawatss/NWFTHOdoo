@@ -3,7 +3,7 @@
 from odoo import models
 
 
-class ResPartner(models.Model):
+class Partner(models.Model):
     _inherit = "res.partner"
 
     def _get_backend_root_menu_ids(self):

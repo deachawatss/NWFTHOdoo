@@ -15,7 +15,12 @@ class AccountMoveLine(models.Model):
         :param fallback:    Fallback on an approximated mapping if the mapping failed.
         :return:            query as SQL object
         """
-        query = self.env['account.move.line']._search(domain)
+        self.env['account.move.line'].check_access('read')
+
+        query = self.env['account.move.line']._where_calc(domain)
+
+        # Wrap the query with 'company_id IN (...)' to avoid bypassing company access rights.
+        self.env['account.move.line']._apply_ir_rules(query)
 
         return self._get_query_tax_details(query.from_clause, query.where_clause, fallback=fallback)
 
@@ -144,7 +149,7 @@ class AccountMoveLine(models.Model):
                         OR (tax.tax_exigibility = 'on_payment' AND tax.cash_basis_transition_account_id IS NOT NULL)
                     )
                     AND (
-                        (tax.analytic IS NOT TRUE)
+                        (tax.analytic IS NOT TRUE AND tax_rep.use_in_tax_closing IS TRUE)
                         OR (base_line.analytic_distribution IS NULL AND account_move_line.analytic_distribution IS NULL)
                         OR base_line.analytic_distribution = account_move_line.analytic_distribution
                     )
@@ -394,7 +399,6 @@ class AccountMoveLine(models.Model):
                     tax_line.tax_line_id AS tax_id,
                     tax_line.group_tax_id,
                     tax_line.tax_repartition_line_id,
-                    tax_line.analytic_distribution,
 
                     tax_line.company_id,
                     tax_line.display_type AS display_type,
@@ -465,7 +469,6 @@ class AccountMoveLine(models.Model):
                 sub.tax_line_id,
                 sub.display_type,
                 sub.src_line_id,
-                sub.analytic_distribution,
 
                 sub.tax_id,
                 sub.group_tax_id,

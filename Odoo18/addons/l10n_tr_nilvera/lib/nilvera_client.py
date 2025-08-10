@@ -2,7 +2,6 @@ import logging
 import requests
 from datetime import datetime
 from json import JSONDecodeError
-from pprint import pformat
 
 from odoo.exceptions import UserError
 
@@ -10,15 +9,15 @@ _logger = logging.getLogger(__name__)
 
 def _get_nilvera_client(company, timeout_limit=None):
     return NilveraClient(
-        test_environment=company.l10n_tr_nilvera_use_test_env,
+        environment=company.l10n_tr_nilvera_environment,
         api_key=company.l10n_tr_nilvera_api_key,
         timeout_limit=timeout_limit,
     )
 
 
 class NilveraClient:
-    def __init__(self, test_environment=False, api_key=None, timeout_limit=None):
-        self.is_production = not test_environment
+    def __init__(self, environment=None, api_key=None, timeout_limit=None):
+        self.is_production = environment and environment == 'production'
         self.base_url = 'https://api.nilvera.com' if self.is_production else 'https://apitest.nilvera.com'
         self.timeout_limit = min(timeout_limit or 10, 30)
 
@@ -59,15 +58,12 @@ class NilveraClient:
 
     def _log_request(self, method, start, end, url, params, json, response):
         _logger.info(
-            "%(method)s\nstart=%(start)s\nend=%(end)s\nurl=%(url)s\nparams=%(params)s\njson=%(json)s\nresponse=%(response)s",
+            '"%(method)s %(url)s" %(status)s %(duration).3f',
             {
-                "method": method,
-                "start": start,
-                "end": end,
-                "url": pformat(url),
-                "params": pformat(params),
-                "json": pformat(json),
-                "response": pformat(response),
+                'method': method,
+                'url': url,
+                'status': response.status_code,
+                'duration': (end - start).total_seconds(),
             },
         )
 

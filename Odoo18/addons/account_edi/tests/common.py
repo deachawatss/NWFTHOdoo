@@ -86,14 +86,17 @@ class AccountEdiTestCommon(AccountTestInvoicingCommon):
                  _check_move_configuration_method=_mocked_check_move_configuration_success,
                  ):
 
-        with patch('odoo.addons.account_edi.models.account_edi_format.AccountEdiFormat._needs_web_services',
-                   new=_needs_web_services_method), \
-             patch('odoo.addons.account_edi.models.account_edi_format.AccountEdiFormat._check_move_configuration',
-                   new=_check_move_configuration_method), \
-             patch('odoo.addons.account_edi.models.account_edi_format.AccountEdiFormat._get_move_applicability',
-                   new=_get_move_applicability_method):
+        try:
+            with patch('odoo.addons.account_edi.models.account_edi_format.AccountEdiFormat._needs_web_services',
+                       new=_needs_web_services_method), \
+                 patch('odoo.addons.account_edi.models.account_edi_format.AccountEdiFormat._check_move_configuration',
+                       new=_check_move_configuration_method), \
+                 patch('odoo.addons.account_edi.models.account_edi_format.AccountEdiFormat._get_move_applicability',
+                       new=_get_move_applicability_method):
 
-            yield
+                yield
+        finally:
+            pass
 
     def edi_cron(self):
         self.env['account.edi.document'].sudo().search([('state', 'in', ('to_send', 'to_cancel'))])._process_documents_web_services(with_commit=False)

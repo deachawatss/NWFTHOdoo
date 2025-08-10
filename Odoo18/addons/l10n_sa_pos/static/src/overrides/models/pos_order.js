@@ -2,25 +2,27 @@ import { PosOrder } from "@point_of_sale/app/models/pos_order";
 import { patch } from "@web/core/utils/patch";
 
 patch(PosOrder.prototype, {
-    generateQrcode() {
+    export_for_printing(baseUrl, headerData) {
+        const result = super.export_for_printing(...arguments);
         if (this.company.country_id?.code === "SA") {
-            if (!this.is_settlement()) {
+            result.is_settlement = this.is_settlement();
+            if (!result.is_settlement) {
                 const company = this.company;
                 const codeWriter = new window.ZXing.BrowserQRCodeSvgWriter();
                 const qr_values = this.compute_sa_qr_code(
                     company.name,
                     company.vat,
                     this.date_order,
-                    this.getTotalWithTax(),
-                    this.getTotalTax()
+                    this.get_total_with_tax(),
+                    this.get_total_tax()
                 );
                 const qr_code_svg = new XMLSerializer().serializeToString(
                     codeWriter.write(qr_values, 200, 200)
                 );
-                return "data:image/svg+xml;base64," + window.btoa(qr_code_svg);
+                result.qr_code = "data:image/svg+xml;base64," + window.btoa(qr_code_svg);
             }
         }
-        return false;
+        return result;
     },
     /**
      * If the order is empty (there are no products)
@@ -32,7 +34,7 @@ patch(PosOrder.prototype, {
      */
     is_settlement() {
         return (
-            this.isEmpty() &&
+            this.is_empty() &&
             !!this.payment_ids.filter(
                 (paymentline) =>
                     paymentline.payment_method_id.type === "pay_later" && paymentline.amount < 0

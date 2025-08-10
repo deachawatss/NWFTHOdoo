@@ -7,8 +7,8 @@ import uuid
 from lxml import etree, html
 
 from odoo import api, models, _
-from odoo.exceptions import ValidationError, MissingError
-from odoo.fields import Domain
+from odoo.osv import expression
+from odoo.exceptions import ValidationError
 from odoo.addons.base.models.ir_ui_view import MOVABLE_BRANDING
 
 _logger = logging.getLogger(__name__)
@@ -127,7 +127,11 @@ class IrUiView(models.Model):
         if not lang_value:
             return
 
-        tree = html.fromstring(lang_value)
+        try:
+            tree = html.fromstring(lang_value)
+        except etree.ParserError as e:
+            raise ValidationError(str(e))
+
         for custom_snippet_el in tree.xpath('//*[hasclass("s_custom_snippet")]'):
             custom_snippet_name = custom_snippet_el.get('data-name')
             custom_snippet_view = self.search([('name', '=', custom_snippet_name)], limit=1)
@@ -148,10 +152,10 @@ class IrUiView(models.Model):
         The method takes care of read and write access of both records/fields.
         """
         record_to.check_access('write')
+        record_to.check_field_access_rights('write', [name_field_to])
+
         field_from = records_from._fields[name_field_from]
         field_to = record_to._fields[name_field_to]
-        record_to._check_field_access(field_to, 'write')
-
         error_callable_msg = "'translate' property of field %r is not callable"
         if not callable(field_from.translate):
             raise ValueError(error_callable_msg % field_from)
@@ -318,10 +322,20 @@ class IrUiView(models.Model):
 
     @api.model
     def _view_get_inherited_children(self, view):
-        if self.env.context.get('no_primary_children', False):
-            original_hierarchy = self.env.context.get('__views_get_original_hierarchy', [])
+        if self._context.get('no_primary_children', False):
+            original_hierarchy = self._context.get('__views_get_original_hierarchy', [])
             return view.inherit_children_ids.filtered(lambda extension: extension.mode != 'primary' or extension.id in original_hierarchy)
         return view.inherit_children_ids
+
+    @api.model
+    def _view_obj(self, view_id):
+        if isinstance(view_id, str):
+            return self.search([('key', '=', view_id)], limit=1) or self.env.ref(view_id)
+        elif isinstance(view_id, int):
+            return self.browse(view_id)
+        # It can already be a view object when called by '_views_get()' that is calling '_view_obj'
+        # for it's inherit_children_ids, passing them directly as object record.
+        return view_id
 
     # Returns all views (called and inherited) related to a view
     # Used by translation mechanism, SEO and optional templates
@@ -333,21 +347,17 @@ class IrUiView(models.Model):
                 * all views inheriting from it, enabled or not
                   - but not the optional children of a non-enabled child
                 * all views called from it (via t-call)
-
-            :returns: recordset of ir.ui.view
+            :returns recordset of ir.ui.view
         """
         try:
-            if isinstance(view_id, models.BaseModel):
-                view = view_id
-            else:
-                view = self._get_template_view(view_id)
-        except MissingError:
+            view = self._view_obj(view_id)
+        except ValueError:
             _logger.warning("Could not find view object with view_id '%s'", view_id)
             return self.env['ir.ui.view']
 
         if visited is None:
             visited = []
-        original_hierarchy = self.env.context.get('__views_get_original_hierarchy', [])
+        original_hierarchy = self._context.get('__views_get_original_hierarchy', [])
         while root and view.inherit_id:
             original_hierarchy.append(view.id)
             view = view.inherit_id
@@ -360,8 +370,8 @@ class IrUiView(models.Model):
             xpath += "| //t[@t-call-assets]"
         for child in node.xpath(xpath):
             try:
-                called_view = self._get_template_view(child.get('t-call', child.get('t-call-assets')))
-            except MissingError:
+                called_view = self._view_obj(child.get('t-call', child.get('t-call-assets')))
+            except ValueError:
                 continue
             if called_view and called_view not in views_to_return and called_view.id not in visited:
                 views_to_return += self._views_get(called_view, get_children=get_children, bundles=bundles, visited=visited + views_to_return.ids)
@@ -386,15 +396,15 @@ class IrUiView(models.Model):
             returns templates info (which can be active or not)
             ``bundles=True`` returns also the asset bundles
         """
-        user_groups = set(self.env.user.group_ids)
+        user_groups = set(self.env.user.groups_id)
         new_context = {
-            **self.env.context,
+            **self._context,
             'active_test': False,
         }
         new_context.pop('lang', None)
         View = self.with_context(new_context)
         views = View._views_get(key, bundles=bundles)
-        return views.filtered(lambda v: not v.group_ids or len(user_groups.intersection(v.group_ids)))
+        return views.filtered(lambda v: not v.groups_id or len(user_groups.intersection(v.groups_id)))
 
     # --------------------------------------------------------------------------
     # Snippet saving
@@ -436,9 +446,11 @@ class IrUiView(models.Model):
         full_snippet_key = '%s.%s' % (app_name, snippet_key)
 
         # find available name
-        current_website = self.env['website'].browse(self.env.context.get('website_id'))
-        website_domain = Domain(current_website.website_domain())
-        used_names = self.search(Domain('name', '=like', '%s%%' % name) & website_domain).mapped('name')
+        current_website = self.env['website'].browse(self._context.get('website_id'))
+        website_domain = current_website.website_domain()
+        used_names = self.search(expression.AND([
+            [('name', '=like', '%s%%' % name)], website_domain
+        ])).mapped('name')
         name = self._find_available_name(name, used_names)
 
         # html to xml to add '/' at the end of self closing tags like br, ...
@@ -458,8 +470,8 @@ class IrUiView(models.Model):
         }
         new_snippet_view_values.update(self._snippet_save_view_values_hook())
         custom_snippet_view = self.create(new_snippet_view_values)
-        model = self.env.context.get('model')
-        field = self.env.context.get('field')
+        model = self._context.get('model')
+        field = self._context.get('field')
         if field == 'arch':
             # Special case for `arch` which is a kind of related (through a
             # compute) to `arch_db` but which is hosting XML/HTML content while
@@ -467,7 +479,7 @@ class IrUiView(models.Model):
             # `get_translation_dictionary` call, returning XML instead of
             # strings
             field = 'arch_db'
-        res_id = self.env.context.get('resId')
+        res_id = self._context.get('resId')
         if model and field and res_id:
             self._copy_field_terms_translations(
                 self.env[model].browse(int(res_id)),
@@ -492,7 +504,6 @@ class IrUiView(models.Model):
         }
         snippet_addition_view_values.update(self._snippet_save_view_values_hook())
         self.create(snippet_addition_view_values)
-        return name
 
     @api.model
     def rename_snippet(self, name, view_id, template_key):

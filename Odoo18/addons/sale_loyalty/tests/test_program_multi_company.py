@@ -1,9 +1,10 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo.fields import Command
-from odoo.tests import tagged
-
 from odoo.addons.sale_loyalty.tests.common import TestSaleCouponCommon
+from odoo.exceptions import UserError
+from odoo.tests import tagged
+from odoo import Command
 
 
 @tagged('post_install', '-at_install')
@@ -44,11 +45,13 @@ class TestSaleCouponMultiCompany(TestSaleCouponCommon):
             (0, False, {
                 'product_id': self.product_A.id,
                 'name': '1 Product A',
+                'product_uom': self.uom_unit.id,
                 'product_uom_qty': 1.0,
             }),
             (0, False, {
                 'product_id': self.product_B.id,
                 'name': '2 Product B',
+                'product_uom': self.uom_unit.id,
                 'product_uom_qty': 1.0,
             })
         ]})
@@ -65,11 +68,13 @@ class TestSaleCouponMultiCompany(TestSaleCouponCommon):
             (0, False, {
                 'product_id': self.product_A.id,
                 'name': '1 Product A',
+                'product_uom': self.uom_unit.id,
                 'product_uom_qty': 1.0,
             }),
             (0, False, {
                 'product_id': self.product_B.id,
                 'name': '2 Product B',
+                'product_uom': self.uom_unit.id,
                 'product_uom_qty': 1.0,
             })
         ]})
@@ -90,11 +95,13 @@ class TestSaleCouponMultiCompany(TestSaleCouponCommon):
                 Command.create({
                     'product_id': self.product_A.id,
                     'name': '1 Product A',
+                    'product_uom': self.uom_unit.id,
                     'product_uom_qty': 1.0,
                 }),
                 Command.create({
                     'product_id': self.product_B.id,
                     'name': '2 Product B',
+                    'product_uom': self.uom_unit.id,
                     'product_uom_qty': 1.0,
                 })
             ],

@@ -1,10 +1,9 @@
 /** @ts-check */
 
+export const globalFiltersFieldMatchers = {};
+
 import { CommandResult } from "@spreadsheet/o_spreadsheet/cancelled_reason";
-import {
-    checkFilterDefaultValueIsValid,
-    globalFieldMatchingRegistry,
-} from "@spreadsheet/global_filters/helpers";
+import { checkFilterValueIsValid } from "@spreadsheet/global_filters/helpers";
 import { _t } from "@web/core/l10n/translation";
 import { escapeRegExp } from "@web/core/utils/strings";
 import { OdooCorePlugin } from "@spreadsheet/plugins";
@@ -39,12 +38,10 @@ export class GlobalFiltersCorePlugin extends OdooCorePlugin {
             case "EDIT_GLOBAL_FILTER":
                 if (!this.getGlobalFilter(cmd.filter.id)) {
                     return CommandResult.FilterNotFound;
-                } else if (!cmd.filter.label) {
-                    return CommandResult.InvalidFilterLabel;
                 } else if (this._isDuplicatedLabel(cmd.filter.id, cmd.filter.label)) {
                     return CommandResult.DuplicatedFilterLabel;
                 }
-                if (!checkFilterDefaultValueIsValid(cmd.filter, cmd.filter.defaultValue)) {
+                if (!checkFilterValueIsValid(cmd.filter, cmd.filter.defaultValue)) {
                     return CommandResult.InvalidValueTypeCombination;
                 }
                 break;
@@ -54,12 +51,10 @@ export class GlobalFiltersCorePlugin extends OdooCorePlugin {
                 }
                 break;
             case "ADD_GLOBAL_FILTER":
-                if (!cmd.filter.label) {
-                    return CommandResult.InvalidFilterLabel;
-                } else if (this._isDuplicatedLabel(cmd.filter.id, cmd.filter.label)) {
+                if (this._isDuplicatedLabel(cmd.filter.id, cmd.filter.label)) {
                     return CommandResult.DuplicatedFilterLabel;
                 }
-                if (!checkFilterDefaultValueIsValid(cmd.filter, cmd.filter.defaultValue)) {
+                if (!checkFilterValueIsValid(cmd.filter, cmd.filter.defaultValue)) {
                     return CommandResult.InvalidValueTypeCombination;
                 }
                 break;
@@ -87,9 +82,9 @@ export class GlobalFiltersCorePlugin extends OdooCorePlugin {
         switch (cmd.type) {
             case "ADD_GLOBAL_FILTER": {
                 const filter = { ...cmd.filter };
-                if (filter.type === "text" && filter.rangesOfAllowedValues?.length) {
-                    filter.rangesOfAllowedValues = filter.rangesOfAllowedValues.map((rangeData) =>
-                        this.getters.getRangeFromRangeData(rangeData)
+                if (filter.type === "text" && filter.rangeOfAllowedValues) {
+                    filter.rangeOfAllowedValues = this.getters.getRangeFromRangeData(
+                        filter.rangeOfAllowedValues
                     );
                 }
                 this.history.update("globalFilters", [...this.globalFilters, filter]);
@@ -113,25 +108,29 @@ export class GlobalFiltersCorePlugin extends OdooCorePlugin {
     adaptRanges(applyChange) {
         for (const filterIndex in this.globalFilters) {
             const filter = this.globalFilters[filterIndex];
-            if (filter.type === "text" && filter.rangesOfAllowedValues) {
-                const ranges = filter.rangesOfAllowedValues
-                    .map((range) => {
-                        const change = applyChange(range);
-                        switch (change.changeType) {
-                            case "RESIZE":
-                            case "MOVE":
-                            case "CHANGE": {
-                                return change.range;
-                            }
-                        }
-                    })
-                    .filter(Boolean);
-                this.history.update(
-                    "globalFilters",
-                    filterIndex,
-                    "rangesOfAllowedValues",
-                    ranges.length ? ranges : undefined
-                );
+            if (filter.type === "text" && filter.rangeOfAllowedValues) {
+                const change = applyChange(filter.rangeOfAllowedValues);
+                switch (change.changeType) {
+                    case "REMOVE": {
+                        this.history.update(
+                            "globalFilters",
+                            filterIndex,
+                            "rangeOfAllowedValues",
+                            undefined
+                        );
+                        break;
+                    }
+                    case "RESIZE":
+                    case "MOVE":
+                    case "CHANGE": {
+                        this.history.update(
+                            "globalFilters",
+                            filterIndex,
+                            "rangeOfAllowedValues",
+                            change.range
+                        );
+                    }
+                }
             }
         }
     }
@@ -193,17 +192,13 @@ export class GlobalFiltersCorePlugin extends OdooCorePlugin {
             return {};
         }
 
-        for (const matcher of globalFieldMatchingRegistry.getAll()) {
-            for (const dataSourceId of matcher.getIds(this.getters)) {
-                const model = matcher.getModel(this.getters, dataSourceId);
+        for (const matcher of Object.values(globalFiltersFieldMatchers)) {
+            for (const dataSourceId of matcher.getIds()) {
+                const model = matcher.getModel(dataSourceId);
                 if (model === newModel) {
                     const fieldMatching = {};
                     for (const filter of globalFilters) {
-                        const matchedField = matcher.getFieldMatching(
-                            this.getters,
-                            dataSourceId,
-                            filter.id
-                        );
+                        const matchedField = matcher.getFieldMatching(dataSourceId, filter.id);
                         if (matchedField) {
                             fieldMatching[filter.id] = {
                                 chain: matchedField.chain,
@@ -228,15 +223,13 @@ export class GlobalFiltersCorePlugin extends OdooCorePlugin {
      * @param {CmdGlobalFilter} cmdFilter
      */
     _editGlobalFilter(cmdFilter) {
-        const rangesOfAllowedValues =
-            cmdFilter.type === "text" && cmdFilter.rangesOfAllowedValues?.length
-                ? cmdFilter.rangesOfAllowedValues.map((rangeData) =>
-                      this.getters.getRangeFromRangeData(rangeData)
-                  )
+        const rangeOfAllowedValues =
+            cmdFilter.type === "text" && cmdFilter.rangeOfAllowedValues
+                ? this.getters.getRangeFromRangeData(cmdFilter.rangeOfAllowedValues)
                 : undefined;
         /** @type {GlobalFilter} */
         const newFilter =
-            cmdFilter.type === "text" ? { ...cmdFilter, rangesOfAllowedValues } : { ...cmdFilter };
+            cmdFilter.type === "text" ? { ...cmdFilter, rangeOfAllowedValues } : { ...cmdFilter };
         const id = newFilter.id;
         const currentLabel = this.getGlobalFilter(id).label;
         const index = this.globalFilters.findIndex((filter) => filter.id === id);
@@ -261,16 +254,14 @@ export class GlobalFiltersCorePlugin extends OdooCorePlugin {
      */
     import(data) {
         for (const globalFilter of data.globalFilters || []) {
-            if (globalFilter.type === "text" && globalFilter.rangesOfAllowedValues?.length) {
-                globalFilter.rangesOfAllowedValues = globalFilter.rangesOfAllowedValues.map((xc) =>
-                    this.getters.getRangeFromSheetXC(
-                        // The default sheet id doesn't matter here, the exported range string
-                        // is fully qualified and contains the sheet name.
-                        // The getter expects a valid sheet id though, let's give it the
-                        // first sheet id.
-                        data.sheets[0].id,
-                        xc
-                    )
+            if (globalFilter.type === "text" && globalFilter.rangeOfAllowedValues) {
+                globalFilter.rangeOfAllowedValues = this.getters.getRangeFromSheetXC(
+                    // The default sheet id doesn't matter here, the exported range string
+                    // is fully qualified and contains the sheet name.
+                    // The getter expects a valid sheet id though, let's give it the
+                    // first sheet id.
+                    data.sheets[0].id,
+                    globalFilter.rangeOfAllowedValues
                 );
             }
             this.globalFilters.push(globalFilter);
@@ -285,12 +276,10 @@ export class GlobalFiltersCorePlugin extends OdooCorePlugin {
         data.globalFilters = this.globalFilters.map((filter) => {
             /** @type {Object} */
             const filterData = { ...filter };
-            if (filter.type === "text" && filter.rangesOfAllowedValues?.length) {
-                filterData.rangesOfAllowedValues = filter.rangesOfAllowedValues.map((range) =>
-                    this.getters.getRangeString(
-                        range,
-                        "" // force the range string to be fully qualified (with the sheet name)
-                    )
+            if (filter.type === "text" && filter.rangeOfAllowedValues) {
+                filterData.rangeOfAllowedValues = this.getters.getRangeString(
+                    filter.rangeOfAllowedValues,
+                    "" // force the range string to be fully qualified (with the sheet name)
                 );
             }
             return filterData;

@@ -1,6 +1,8 @@
-import { Product } from '@sale/js/product/product';
+/** @odoo-module **/
+
 import { formatCurrency } from '@web/core/currency';
 import { patch } from '@web/core/utils/patch';
+import { Product } from '@sale/js/product/product';
 
 patch(Product, {
     props: {

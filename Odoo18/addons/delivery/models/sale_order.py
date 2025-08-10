@@ -17,13 +17,6 @@ class SaleOrder(models.Model):
     is_all_service = fields.Boolean("Service Product", compute="_compute_is_service_products")
     shipping_weight = fields.Float("Shipping Weight", compute="_compute_shipping_weight", store=True, readonly=False)
 
-    def _compute_partner_shipping_id(self):
-        """ Override to reset the delivery address when a pickup location was selected. """
-        super()._compute_partner_shipping_id()
-        for order in self:
-            if order.partner_shipping_id.is_pickup_location:
-                order.partner_shipping_id = order.partner_id
-
     @api.depends('order_line')
     def _compute_is_service_products(self):
         for so in self:
@@ -128,8 +121,13 @@ class SaleOrder(models.Model):
         view_id = self.env.ref('delivery.choose_delivery_carrier_view_form').id
         if self.env.context.get('carrier_recompute'):
             name = _('Update shipping cost')
+            carrier = self.carrier_id
         else:
             name = _('Add a shipping method')
+            carrier = (
+                self.with_company(self.company_id).partner_shipping_id.property_delivery_carrier_id
+                or self.with_company(self.company_id).partner_shipping_id.commercial_partner_id.property_delivery_carrier_id
+            )
         return {
             'name': name,
             'type': 'ir.actions.act_window',
@@ -140,7 +138,7 @@ class SaleOrder(models.Model):
             'target': 'new',
             'context': {
                 'default_order_id': self.id,
-                'default_carrier_id': self.carrier_id,
+                'default_carrier_id': carrier.id,
                 'default_total_weight': self._get_estimated_weight()
             }
         }
@@ -188,7 +186,6 @@ class SaleOrder(models.Model):
                 'country_id': country,
                 'email': email,
                 'phone': phone,
-                'is_pickup_location': True,
             })
             order.with_context(update_delivery_shipping_partner=True).write({'partner_shipping_id': shipping_partner})
         return super()._action_confirm()
@@ -218,8 +215,9 @@ class SaleOrder(models.Model):
             'name': so_description,
             'price_unit': price_unit,
             'product_uom_qty': 1,
+            'product_uom': carrier.product_id.uom_id.id,
             'product_id': carrier.product_id.id,
-            'tax_ids': [(6, 0, taxes_ids)],
+            'tax_id': [(6, 0, taxes_ids)],
             'is_delivery': True,
         }
         if carrier.free_over and self.currency_id.is_zero(price_unit) :
@@ -233,7 +231,7 @@ class SaleOrder(models.Model):
         values = self._prepare_delivery_line_vals(carrier, price_unit)
         return self.env['sale.order.line'].sudo().create(values)
 
-    @api.depends('order_line.product_uom_qty', 'order_line.product_uom_id')
+    @api.depends('order_line.product_uom_qty', 'order_line.product_uom')
     def _compute_shipping_weight(self):
         for order in self:
             order.shipping_weight = order._get_estimated_weight()

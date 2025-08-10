@@ -1,8 +1,9 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, fields, models, _
 from odoo.exceptions import RedirectWarning, UserError
-from odoo.fields import Domain
+from odoo.osv import expression
 
 
 class AccountAnalyticLine(models.Model):
@@ -10,9 +11,7 @@ class AccountAnalyticLine(models.Model):
 
     holiday_id = fields.Many2one("hr.leave", string='Time Off Request', copy=False, index='btree_not_null', export_string_translation=False)
     global_leave_id = fields.Many2one("resource.calendar.leaves", string="Global Time Off", index='btree_not_null', ondelete='cascade', export_string_translation=False)
-    task_id = fields.Many2one(domain="[('allow_timesheets', '=', True), ('project_id', '=?', project_id), ('has_template_ancestor', '=', False), ('is_timeoff_task', '=', False)]")
-
-    _timeoff_timesheet_idx = models.Index('(task_id) WHERE (global_leave_id IS NOT NULL OR holiday_id IS NOT NULL) AND project_id IS NOT NULL')
+    task_id = fields.Many2one(domain="[('allow_timesheets', '=', True), ('project_id', '=?', project_id), ('is_timeoff_task', '=', False)]")
 
     def _get_redirect_action(self):
         leave_form_view_id = self.env.ref('hr_holidays.hr_leave_view_form').id
@@ -50,8 +49,7 @@ class AccountAnalyticLine(models.Model):
         return  super()._check_can_create()
 
     def _get_favorite_project_id_domain(self, employee_id=False):
-        return Domain.AND([
+        return expression.AND([
             super()._get_favorite_project_id_domain(employee_id),
-            Domain('holiday_id', '=', False),
-            Domain('global_leave_id', '=', False),
+            [('holiday_id', '=', False), ('global_leave_id', '=', False)],
         ])

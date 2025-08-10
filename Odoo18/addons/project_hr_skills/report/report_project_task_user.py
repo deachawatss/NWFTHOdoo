@@ -2,7 +2,6 @@
 
 from odoo import fields, models
 
-
 class ReportProjectTaskUser(models.Model):
     _inherit = 'report.project.task.user'
 

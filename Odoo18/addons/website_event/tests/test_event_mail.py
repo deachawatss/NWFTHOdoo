@@ -3,11 +3,11 @@
 
 from datetime import datetime, timedelta
 
-from odoo.addons.mail.tests.common import MailCase
+from odoo.addons.mail.tests.common import  MailCommon
 from odoo.tests import tagged
 
 @tagged('post_install', '-at_install')
-class TestMail(MailCase):
+class TestMail(MailCommon):
 
     def test_website_publish_notification(self):
         """ Test that the published/unpublished notifications are sent when publishing/unpublishing an event"""
@@ -20,7 +20,7 @@ class TestMail(MailCase):
         })
         self.flush_tracking()
 
-        follower = self.env.ref('base.user_admin').partner_id
+        follower = self.user_employee.partner_id
         event.message_subscribe(partner_ids=follower.ids, subtype_ids=[published_subtype.id, unpublished_subtype.id])
 
         event.website_published = True

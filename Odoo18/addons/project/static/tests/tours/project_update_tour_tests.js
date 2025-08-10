@@ -1,5 +1,7 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
-import { stepUtils } from "@web_tour/tour_utils";
+import { stepUtils } from "@web_tour/tour_service/tour_utils";
 
 registry.category("web_tour.tours").add('project_update_tour', {
     url: '/odoo',
@@ -83,7 +85,7 @@ registry.category("web_tour.tours").add('project_update_tour', {
     trigger: ".o_kanban_group:nth-child(2) .o_kanban_header",
     run: "hover && click .o_kanban_group:nth-child(2) .o_kanban_header .dropdown-toggle",
 }, {
-    trigger: ".dropdown-item.o_group_edit",
+    trigger: ".dropdown-item.o_column_edit",
     run: "click",
 }, {
     trigger: ".modal .o_field_widget[name=fold] input",
@@ -106,9 +108,6 @@ registry.category("web_tour.tours").add('project_update_tour', {
     content: 'Open embedded actions',
     run: "click",
 }, {
-    trigger: "span.o-dropdown-item:contains('Top Menu')",
-    run: "click",
-}, {
     trigger: ".o_embedded_actions button i.fa-sliders",
     content: "Open embedded actions dropdown",
     run: "click",
@@ -125,30 +124,20 @@ registry.category("web_tour.tours").add('project_update_tour', {
     content: "Add a first milestone",
     run: "click",
 }, {
-    trigger: ".o_list_button_add",
-    content: "Create new milestone",
-    run: "click",
-}, {
     trigger: "div.o_field_widget[name=name] input",
     run: "edit New milestone",
 }, {
     trigger: "input[data-field=deadline]",
     run: "edit 12/12/2099",
 }, {
-    trigger: ".o_list_button_save",
+    trigger: ".modal-footer .o_form_button_save",
     run: "click",
-}, {
-    trigger: ".o_list_button_add",
-    content: "Make sure the milestone is saved before continuing",
-}, {
-    trigger: "td[data-tooltip='New milestone'] + td",
-    run: "click",
-}, {
-    trigger: "input[data-field=deadline]",
-    run: "edit 12/12/2100 && click body"
-},  {
-    trigger: ".o_list_button_add",
-    content: "Create new milestone",
+},
+{
+    trigger: "body:not(:has(.modal))",
+},
+{
+    trigger: ".o_add_milestone a",
     run: "click",
 }, {
     trigger: "div.o_field_widget[name=name] input",
@@ -157,7 +146,20 @@ registry.category("web_tour.tours").add('project_update_tour', {
     trigger: "input[data-field=deadline]",
     run: "edit 12/12/2022 && click body",
 }, {
-    trigger: ".breadcrumb-item.o_back_button",
+    trigger: ".modal-footer .o_form_button_save",
+    run: "click",
+},
+{
+    trigger: "body:not(:has(.modal))",
+},
+{
+    trigger: ".o_rightpanel_milestone:eq(1) .o_milestone_detail",
+    run: "click",
+}, {
+    trigger: "input[data-field=deadline]",
+    run: "edit 12/12/2100 && click body",
+}, {
+    trigger: ".modal-footer .o_form_button_save",
     run: "click",
 }, {
     trigger: ".o-kanban-button-new",

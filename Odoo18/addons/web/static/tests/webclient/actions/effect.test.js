@@ -74,6 +74,7 @@ defineActions([
         name: "Partner",
         res_id: 2,
         res_model: "partner",
+        target: "inline",
         views: [[false, "form"]],
     },
 ]);

@@ -25,7 +25,7 @@ export class MentionList extends Component {
             isFetching: false,
         });
         this.orm = useService("orm");
-        this.store = useService("mail.store");
+        this.store = useState(useService("mail.store"));
         this.suggestionService = useService("mail.suggestion");
         this.sequential = useSequential();
         this.ref = useAutofocus({ mobile: true });
@@ -46,10 +46,13 @@ export class MentionList extends Component {
                     } finally {
                         this.state.isFetching = false;
                     }
-                    const { suggestions } = this.suggestionService.searchSuggestions({
-                        delimiter: this.props.type === "partner" ? "@" : "#",
-                        term: this.state.searchTerm,
-                    });
+                    const { suggestions } = this.suggestionService.searchSuggestions(
+                        {
+                            delimiter: this.props.type === "partner" ? "@" : "#",
+                            term: this.state.searchTerm,
+                        },
+                        { sort: true }
+                    );
                     this.state.options = suggestions;
                 });
             },

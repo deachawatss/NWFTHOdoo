@@ -9,7 +9,7 @@ from odoo import api, fields, models, tools
 
 class MailMail(models.Model):
     """Add the mass mailing campaign data to mail"""
-    _inherit = 'mail.mail'
+    _inherit = ['mail.mail']
 
     mailing_id = fields.Many2one('mailing.mailing', string='Mass Mailing')
     mailing_trace_ids = fields.One2many('mailing.trace', 'mail_mail_id', string='Statistics')
@@ -53,11 +53,12 @@ class MailMail(models.Model):
             )
         return body
 
-    def _prepare_outgoing_list(self, mail_server=False, doc_to_followers=None):
+    def _prepare_outgoing_list(self, mail_server=False, recipients_follower_status=None):
         """ Update mailing specific links to replace generic unsubscribe and
         view links by email-specific links. Also add headers to allow
         unsubscribe from email managers. """
-        email_list = super()._prepare_outgoing_list(mail_server=mail_server, doc_to_followers=doc_to_followers)
+        email_list = super()._prepare_outgoing_list(mail_server=mail_server,
+                                                    recipients_follower_status=recipients_follower_status)
         if not self.res_id or not self.mailing_id:
             return email_list
 

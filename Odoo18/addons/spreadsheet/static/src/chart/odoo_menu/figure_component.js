@@ -1,7 +1,9 @@
+/** @odoo-module **/
+
 import { patch } from "@web/core/utils/patch";
 import * as spreadsheet from "@odoo/o-spreadsheet";
 import { useService } from "@web/core/utils/hooks";
-import { navigateToOdooMenu } from "../odoo_chart/odoo_chart_helpers";
+import { _t } from "@web/core/l10n/translation";
 
 patch(spreadsheet.components.FigureComponent.prototype, {
     setup() {
@@ -10,25 +12,28 @@ patch(spreadsheet.components.FigureComponent.prototype, {
         this.actionService = useService("action");
         this.notificationService = useService("notification");
     },
-    async navigateToOdooMenu(newWindow) {
-        const menu = this.env.model.getters.getChartOdooMenu(this.props.figureUI.id);
-        await navigateToOdooMenu(menu, this.actionService, this.notificationService, newWindow);
+    async navigateToOdooMenu() {
+        const menu = this.env.model.getters.getChartOdooMenu(this.props.figure.id);
+        if (!menu) {
+            throw new Error(`Cannot find any menu associated with the chart`);
+        }
+        if (!menu.actionID) {
+            this.notificationService.add(
+                _t(
+                    "The menu linked to this chart doesn't have an corresponding action. Please link the chart to another menu."
+                ),
+                { type: "danger" }
+            );
+            return;
+        }
+        await this.actionService.doAction(menu.actionID);
     },
     get hasOdooMenu() {
-        return this.env.model.getters.getChartOdooMenu(this.props.figureUI.id) !== undefined;
+        return this.env.model.getters.getChartOdooMenu(this.props.figure.id) !== undefined;
     },
     async onClick() {
-        try {
-            const definition = this.env.model.getters.getChartDefinition(this.props.figureUI.id);
-            if (
-                this.env.isDashboard() &&
-                this.hasOdooMenu &&
-                (definition.type === "scorecard" || definition.type === "gauge")
-            ) {
-                await this.navigateToOdooMenu();
-            }
-        } catch {
-            // Throws if the figure isn't a chart
+        if (this.env.isDashboard() && this.hasOdooMenu) {
+            this.navigateToOdooMenu();
         }
     },
 });

@@ -1,7 +1,9 @@
-import { markup } from "@odoo/owl";
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
-import { stepUtils } from "@web_tour/tour_utils";
+import { stepUtils } from "@web_tour/tour_service/tour_utils";
+import { markup } from "@odoo/owl";
 
 registry.category("web_tour.tours").add("sale_tour", {
     url: "/odoo",
@@ -86,7 +88,7 @@ registry.category("web_tour.tours").add("sale_tour", {
             trigger: ".o_statusbar_buttons button[name='action_quotation_send']",
         },
         ...stepUtils.statusbarButtonsSteps(
-            "Send",
+            "Send by Email",
             markup(_t("<b>Send the quote</b> to yourself and check what the customer will receive.")),
         ),
         {

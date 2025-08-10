@@ -6,8 +6,8 @@ from odoo.tools import SQL
 from odoo.exceptions import UserError
 
 
-class PurchaseBillLineMatch(models.Model):
-    _name = 'purchase.bill.line.match'
+class PurchaseBillMatch(models.Model):
+    _name = "purchase.bill.line.match"
     _description = "Purchase Line and Vendor Bill line matching view"
     _auto = False
     _order = 'product_id, aml_id, pol_id'
@@ -20,7 +20,6 @@ class PurchaseBillLineMatch(models.Model):
     line_qty = fields.Float(readonly=True)
     line_uom_id = fields.Many2one(comodel_name='uom.uom', readonly=True)
     qty_invoiced = fields.Float(readonly=True)
-    qty_to_invoice = fields.Float('Qty to invoice', readonly=True)
     purchase_order_id = fields.Many2one(comodel_name='purchase.order', readonly=True)
     account_move_id = fields.Many2one(comodel_name='account.move', readonly=True)
     line_amount_untaxed = fields.Monetary(readonly=True)
@@ -86,18 +85,17 @@ class PurchaseBillLineMatch(models.Model):
                    pol.partner_id as partner_id,
                    pol.product_id as product_id,
                    pol.product_qty as line_qty,
-                   pol.product_uom_id as line_uom_id,
+                   pol.product_uom as line_uom_id,
                    pol.qty_invoiced as qty_invoiced,
-                   pol.qty_to_invoice as qty_to_invoice,
                    po.id as purchase_order_id,
                    NULL as account_move_id,
                    pol.price_subtotal as line_amount_untaxed,
-                   po.currency_id as currency_id,
+                   pol.currency_id as currency_id,
                    po.state as state
               FROM purchase_order_line pol
          LEFT JOIN purchase_order po ON pol.order_id = po.id
-             WHERE po.state = 'purchase'
-               AND (pol.product_qty > pol.qty_invoiced OR pol.qty_to_invoice != 0)
+             WHERE pol.state in ('purchase', 'done')
+               AND pol.product_qty > pol.qty_invoiced
                 OR ((pol.display_type = '' OR pol.display_type IS NULL) AND pol.is_downpayment AND pol.qty_invoiced > 0)
         """)
 
@@ -108,12 +106,11 @@ class PurchaseBillLineMatch(models.Model):
                    NULL as pol_id,
                    aml.id as aml_id,
                    aml.company_id as company_id,
-                   am.partner_id as partner_id,
+                   aml.partner_id as partner_id,
                    aml.product_id as product_id,
                    aml.quantity as line_qty,
                    aml.product_uom_id as line_uom_id,
                    NULL as qty_invoiced,
-                   NULL as qty_to_invoice,
                    NULL as purchase_order_id,
                    am.id as account_move_id,
                    aml.amount_currency as line_amount_untaxed,

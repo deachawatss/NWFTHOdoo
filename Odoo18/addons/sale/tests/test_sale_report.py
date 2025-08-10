@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import fields
@@ -144,10 +145,11 @@ class TestSaleReportCurrencyRate(SaleCommon):
         order.invoice_ids.action_post()
         order.order_line.flush_recordset()
 
-        amount_line = self.env['sale.report'].formatted_read_group(
+        amount_line = self.env['sale.report'].read_group(
             [('order_reference', '=', f'sale.order,{order.id}')],
-            aggregates=['untaxed_amount_to_invoice:sum', 'untaxed_amount_invoiced:sum'],
+            ['untaxed_amount_to_invoice:sum', 'untaxed_amount_invoiced:sum'],
+            []
         )[0]
 
-        self.assertEqual(float_compare(amount_line['untaxed_amount_invoiced:sum'], 200, precision_rounding=order.currency_id.rounding), 0)
-        self.assertEqual(float_compare(amount_line['untaxed_amount_to_invoice:sum'], self.product.lst_price - 200, precision_rounding=order.currency_id.rounding), 0)
+        self.assertEqual(float_compare(amount_line['untaxed_amount_invoiced'], 200, precision_rounding=order.currency_id.rounding), 0)
+        self.assertEqual(float_compare(amount_line['untaxed_amount_to_invoice'], self.product.lst_price - 200, precision_rounding=order.currency_id.rounding), 0)

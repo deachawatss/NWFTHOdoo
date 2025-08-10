@@ -4,7 +4,7 @@
 from odoo import models
 
 
-class StockForecasted_Product_Product(models.AbstractModel):
+class StockForecasted(models.AbstractModel):
     _inherit = 'stock.forecasted_product_product'
 
     def _prepare_report_line(self, quantity, move_out=None, move_in=None, replenishment_filled=True, product=False, reserved_move=False, in_transit=False, read=True):
@@ -24,7 +24,7 @@ class StockForecasted_Product_Product(models.AbstractModel):
                         'id': picking.sale_id.id,
                         'amount_untaxed': picking.sale_id.amount_untaxed,
                         'currency_id': picking.sale_id.currency_id.read(fields=['id', 'name'])[0],
-                        'partner_id': picking.sale_id.partner_id.read(fields=['id', 'display_name'])[0],
+                        'partner_id': picking.sale_id.partner_id.read(fields=['id', 'name'])[0],
                     }
                 }
             })
@@ -37,7 +37,7 @@ class StockForecasted_Product_Product(models.AbstractModel):
         out_sum = 0
         if so_lines:
             product_uom = so_lines[0].product_id.uom_id
-            quantities = so_lines.mapped(lambda line: line.product_uom_id._compute_quantity(line.product_uom_qty, product_uom))
+            quantities = so_lines.mapped(lambda line: line.product_uom._compute_quantity(line.product_uom_qty, product_uom))
             out_sum = sum(quantities)
         res['draft_sale_qty'] = out_sum
         res['draft_sale_orders'] = so_lines.mapped("order_id").sorted(key=lambda so: so.name).read(fields=['id', 'name'])
@@ -51,7 +51,7 @@ class StockForecasted_Product_Product(models.AbstractModel):
             domain += [('product_template_id', 'in', product_template_ids)]
         elif product_ids:
             domain += [('product_id', 'in', product_ids)]
-        warehouse_id = self.env.context.get('warehouse_id', False)
+        warehouse_id = self.env['stock.warehouse']._get_warehouse_id_from_context()
         if warehouse_id:
             domain += [('warehouse_id', '=', warehouse_id)]
         return domain

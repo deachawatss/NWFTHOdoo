@@ -4,8 +4,8 @@
 from odoo import fields, models, _
 
 
-class CrmLostReason(models.Model):
-    _name = 'crm.lost.reason'
+class LostReason(models.Model):
+    _name = "crm.lost.reason"
     _description = 'Opp. Lost Reason'
 
     name = fields.Char('Description', required=True, translate=True)

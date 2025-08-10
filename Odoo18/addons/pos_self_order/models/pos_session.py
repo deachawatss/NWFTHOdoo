@@ -1,29 +1,47 @@
 # -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import models, api
+from odoo import models, api, _, fields
 
 
 class PosSession(models.Model):
     _inherit = 'pos.session'
-    
-    @api.model
-    def _load_pos_data_models(self, config_id):
-        data = super()._load_pos_data_models(config_id)
-        data += ['mail.template']
-        return data
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        sessions = super(PosSession, self).create(vals_list)
+        sessions = self._create_pos_self_sessions_sequence(sessions)
+        return sessions
 
     @api.model
-    def _load_pos_self_data_domain(self, data, config):
-        return [('config_id', '=', config.id), ('state', '=', 'opened')]
+    def _create_pos_self_sessions_sequence(self, sessions):
+        company_id = self.env.company.id
 
-    def _load_pos_data_read(self, records, config):
-        read_records = super()._load_pos_data_read(records, config)
-        if not read_records:
-            return read_records
+        for session in sessions:
+            session.env['ir.sequence'].sudo().create({
+                'name': _("PoS Order by Session"),
+                'padding': 4,
+                'code': f'pos.order_{session.id}',
+                'number_next': 1,
+                'number_increment': 1,
+                'company_id': company_id,
+            })
 
-        record = read_records[0]
-        record['_self_ordering'] = (
+        return sessions
+
+    @api.model
+    def _load_pos_self_data_domain(self, data):
+        return [('config_id', '=', data['pos.config']['data'][0]['id']), ('state', '=', 'opened')]
+
+    def _load_pos_self_data(self, data):
+        result = super()._load_pos_self_data(data)
+        if result['data']:
+            result['data'][0]['_base_url'] = self.get_base_url()
+        return result
+
+    def _load_pos_data(self, data):
+        sessions = super()._load_pos_data(data)
+        sessions['data'][0]['_self_ordering'] = (
             self.env["pos.config"]
             .sudo()
             .search_count(
@@ -36,4 +54,4 @@ class PosSession(models.Model):
             )
             > 0
         )
-        return read_records
+        return sessions

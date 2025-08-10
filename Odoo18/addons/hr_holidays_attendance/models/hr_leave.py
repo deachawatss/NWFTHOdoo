@@ -9,7 +9,7 @@ from odoo.exceptions import ValidationError
 from odoo.tools import float_round
 
 
-class HrLeave(models.Model):
+class HRLeave(models.Model):
     _inherit = 'hr.leave'
 
     overtime_id = fields.Many2one('hr.attendance.overtime', string='Extra Hours')
@@ -19,7 +19,7 @@ class HrLeave(models.Model):
     @api.depends('holiday_status_id')
     def _compute_overtime_deductible(self):
         for leave in self:
-            leave.overtime_deductible = leave.holiday_status_id.overtime_deductible and not leave.holiday_status_id.requires_allocation
+            leave.overtime_deductible = leave.holiday_status_id.overtime_deductible and leave.holiday_status_id.requires_allocation == 'no'
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -52,7 +52,7 @@ class HrLeave(models.Model):
         # If the type of leave is overtime deductible, we have to check that the employee has enough extra hours
         for leave in leaves:
             if not leave.overtime_deductible:
-                leave.overtime_id.sudo().unlink()
+                leave.sudo().overtime_id.unlink()
                 continue
             employee = leave.employee_id.sudo()
             duration = leave.number_of_hours
@@ -68,6 +68,12 @@ class HrLeave(models.Model):
                     'duration': -1 * duration,
                 })
 
+    def action_reset_confirm(self):
+        overtime_leaves = self.filtered('overtime_deductible')
+        res = super().action_reset_confirm()
+        overtime_leaves.overtime_id.sudo().unlink()
+        return res
+    
     def action_confirm(self):
         res = super().action_confirm()
         self._check_overtime_deductible(self)
@@ -92,8 +98,7 @@ class HrLeave(models.Model):
         for leave in self:
             if leave.employee_id:
                 for d in range((leave.date_to - leave.date_from).days + 1):
-                    # Sudo employee to get info from version.
-                    employee_dates[leave.employee_id].add(self.env['hr.attendance']._get_day_start_and_day(leave.employee_id.sudo(), leave.date_from + timedelta(days=d)))
+                    employee_dates[leave.employee_id].add(self.env['hr.attendance']._get_day_start_and_day(leave.employee_id, leave.date_from + timedelta(days=d)))
         if employee_dates:
             self.env['hr.attendance'].sudo()._update_overtime(employee_dates)
 

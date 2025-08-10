@@ -279,8 +279,7 @@ class StockWarehouse(models.Model):
                 warehouse.manufacture_pull_id.write({'name': warehouse.manufacture_pull_id.name.replace(warehouse.name, name, 1)})
         return res
 
-
-class StockWarehouseOrderpoint(models.Model):
+class Orderpoint(models.Model):
     _inherit = "stock.warehouse.orderpoint"
 
     @api.constrains('product_id')

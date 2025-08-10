@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import logging
@@ -7,14 +8,14 @@ from datetime import datetime
 
 from odoo import api, fields, models, tools, _
 from odoo.exceptions import UserError, ValidationError, AccessError
-from odoo.fields import Domain
+from odoo.osv import expression
 from odoo.tools import sql, SQL
 from odoo.tools.json import scriptsafe as json_safe
 
 _logger = logging.getLogger(__name__)
 
 
-class ForumPost(models.Model):
+class Post(models.Model):
     _name = 'forum.post'
     _description = 'Forum Post'
     _inherit = [
@@ -24,10 +25,8 @@ class ForumPost(models.Model):
     ]
     _order = "is_correct DESC, vote_count DESC, last_activity_date DESC"
 
-    _CUSTOMER_HEADERS_LIMIT_COUNT = 0  # never use X-Msg-To headers
-
     name = fields.Char('Title')
-    forum_id = fields.Many2one('forum.forum', string='Forum', required=True, index=True)
+    forum_id = fields.Many2one('forum.forum', string='Forum', required=True)
     content = fields.Html('Content', strip_style=True)
     plain_content = fields.Text(
         'Plain Content',
@@ -190,7 +189,7 @@ class ForumPost(models.Model):
 
     @api.depends_context('uid')
     def _compute_user_vote(self):
-        votes = self.env['forum.post.vote'].sudo().search_read([('post_id', 'in', self._ids), ('user_id', '=', self.env.uid)], ['vote', 'post_id'])
+        votes = self.env['forum.post.vote'].search_read([('post_id', 'in', self._ids), ('user_id', '=', self._uid)], ['vote', 'post_id'])
         mapped_vote = dict([(v['post_id'][0], v['vote']) for v in votes])
         for vote in self:
             vote.user_vote = mapped_vote.get(vote.id, 0)
@@ -207,7 +206,7 @@ class ForumPost(models.Model):
     @api.depends_context('uid')
     def _compute_user_favourite(self):
         for post in self:
-            post.user_favourite = post.env.uid in post.favourite_ids.ids
+            post.user_favourite = post._uid in post.favourite_ids.ids
 
     @api.depends('favourite_ids')
     def _compute_favorite_count(self):
@@ -227,7 +226,7 @@ class ForumPost(models.Model):
     @api.depends_context('uid')
     def _compute_uid_has_answered(self):
         for post in self:
-            post.uid_has_answered = post.env.uid in post.child_ids.create_uid.ids
+            post.uid_has_answered = post._uid in post.child_ids.create_uid.ids
 
     @api.depends('child_ids.is_correct')
     def _compute_has_validated_answer(self):
@@ -269,8 +268,11 @@ class ForumPost(models.Model):
             post.can_use_full_editor = is_admin or user.karma >= post.forum_id.karma_editor
 
     def _search_can_view(self, operator, value):
-        if operator != 'in':
-            return NotImplemented
+        if operator not in ('=', '!=', '<>'):
+            raise ValueError('Invalid operator: %s' % (operator,))
+
+        if not value:
+            operator = '!=' if operator == '=' else '='
 
         user = self.env.user
         # Won't impact sitemap, search() in converter is forced as public user
@@ -290,12 +292,13 @@ class ForumPost(models.Model):
                     and (p.active or p.create_uid = %(user_id)s)
                 )
         )""", user_id=user.id, karma=user.karma)
-        return [('id', 'in', sql)]
+        op = 'in' if operator == '=' else "not in"
+        return [('id', op, sql)]
 
     # EXTENDS WEBSITE.SEO.METADATA
 
     def _default_website_meta(self):
-        res = super()._default_website_meta()
+        res = super(Post, self)._default_website_meta()
         res['default_opengraph']['og:title'] = res['default_twitter']['twitter:title'] = self.name
         res['default_opengraph']['og:description'] = res['default_twitter']['twitter:description'] = self.plain_content
         res['default_opengraph']['og:image'] = res['default_twitter']['twitter:image'] = self.env['website'].image_url(self.create_uid, 'image_1024')
@@ -316,7 +319,7 @@ class ForumPost(models.Model):
                 forum_id = vals.get('forum_id', defaults_to_check.get('forum_id'))
                 vals['content'] = self._update_content(content, forum_id)
 
-        posts = super(ForumPost, self.with_context(mail_create_nolog=True)).create(vals_list)
+        posts = super(Post, self.with_context(mail_create_nolog=True)).create(vals_list)
 
         for post in posts:
             # deleted or closed questions
@@ -342,7 +345,7 @@ class ForumPost(models.Model):
             if post.is_correct:
                 post.create_uid.sudo()._add_karma(post.forum_id.karma_gen_answer_accepted * -1, post, _('The accepted answer is deleted'))
                 self.env.user.sudo()._add_karma(post.forum_id.karma_gen_answer_accepted * -1, post, _('Delete the accepted answer'))
-        return super().unlink()
+        return super(Post, self).unlink()
 
     def write(self, vals):
         trusted_keys = ['active', 'is_correct', 'tag_ids']  # fields where security is checked manually
@@ -374,7 +377,7 @@ class ForumPost(models.Model):
                     raise AccessError(_('%d karma required to accept or refuse an answer.', post.karma_accept))
                 # update karma except for self-acceptance
                 mult = 1 if vals['is_correct'] else -1
-                if vals['is_correct'] != post.is_correct and post.create_uid.id != self.env.uid:
+                if vals['is_correct'] != post.is_correct and post.create_uid.id != self._uid:
                     post.create_uid.sudo()._add_karma(post.forum_id.karma_gen_answer_accepted * mult, post,
                                                       _('User answer accepted') if mult > 0 else _('Accepted answer removed'))
                     self.env.user.sudo()._add_karma(post.forum_id.karma_gen_answer_accept * mult, post,
@@ -385,7 +388,7 @@ class ForumPost(models.Model):
             if any(key not in trusted_keys for key in vals) and not post.can_edit:
                 raise AccessError(_('%d karma required to edit a post.', post.karma_edit))
 
-        res = super().write(vals)
+        res = super(Post, self).write(vals)
 
         # if post content modify, notify followers
         if 'content' in vals or 'name' in vals:
@@ -407,7 +410,7 @@ class ForumPost(models.Model):
         """ Instead of the classic form view, redirect to the post on the website directly """
         self.ensure_one()
         if not force_website and not self.state == 'active':
-            return super()._get_access_action(access_uid=access_uid, force_website=force_website)
+            return super(Post, self)._get_access_action(access_uid=access_uid, force_website=force_website)
         return {
             'type': 'ir.actions.act_url',
             'url': '/forum/%s/%s' % (self.forum_id.id, self.id),
@@ -520,7 +523,7 @@ class ForumPost(models.Model):
 
         self.write({
             'state': 'close',
-            'closed_uid': self.env.uid,
+            'closed_uid': self._uid,
             'closed_date': datetime.today().strftime(tools.DEFAULT_SERVER_DATETIME_FORMAT),
             'closed_reason_id': reason_id,
         })
@@ -607,7 +610,7 @@ class ForumPost(models.Model):
     def vote(self, upvote=True):
         self.ensure_one()
         Vote = self.env['forum.post.vote']
-        existing_vote = Vote.search([('post_id', '=', self.id), ('user_id', '=', self.env.uid)])
+        existing_vote = Vote.search([('post_id', '=', self.id), ('user_id', '=', self._uid)])
         new_vote_value = '1' if upvote else '-1'
         if existing_vote:
             if upvote:
@@ -643,7 +646,7 @@ class ForumPost(models.Model):
             'date': self.create_date,
         }
         # done with the author user to have create_uid correctly set
-        new_message = question.with_user(self_sudo.create_uid.id).with_context(mail_post_autofollow_author_skip=True).sudo().message_post(**values).sudo(False)
+        new_message = question.with_user(self_sudo.create_uid.id).with_context(mail_create_nosubscribe=True).sudo().message_post(**values).sudo(False)
 
         # unlink the original answer, using SUPERUSER_ID to avoid karma issues
         self.sudo().unlink()
@@ -736,9 +739,10 @@ class ForumPost(models.Model):
             for post in self.browse(res_ids):
                 if not post.can_edit:
                     raise AccessError(_('%d karma required to edit a post.', post.karma_edit))
-        return super()._get_mail_message_access(res_ids, operation, model_name=model_name)
+        return super(Post, self)._get_mail_message_access(res_ids, operation, model_name=model_name)
 
-    def _notify_get_recipients_groups(self, message, model_description, msg_vals=False):
+    def _notify_get_recipients_groups(self, message, model_description, msg_vals=None):
+        """ Add access button to everyone if the document is active. """
         groups = super()._notify_get_recipients_groups(
             message, model_description, msg_vals=msg_vals
         )
@@ -752,6 +756,7 @@ class ForumPost(models.Model):
 
         return groups
 
+    @api.returns('mail.message', lambda value: value.id)
     def message_post(self, *, message_type='notification', **kwargs):
         if self.ids and message_type == 'comment':  # user comments have a restriction on karma
             # add followers of comments on the parent post
@@ -769,18 +774,19 @@ class ForumPost(models.Model):
             self.ensure_one()
             if not self.can_comment:
                 raise AccessError(_('%d karma required to comment.', self.karma_comment))
-            if not kwargs.get('force_record_name') and self.parent_id.name:
-                kwargs['force_record_name'] = self.parent_id.name
-        return super().message_post(message_type=message_type, **kwargs)
+            if not kwargs.get('record_name') and self.parent_id:
+                kwargs['record_name'] = self.parent_id.name
+        return super(Post, self).message_post(message_type=message_type, **kwargs)
 
     def _notify_thread_by_inbox(self, message, recipients_data, msg_vals=False, **kwargs):
-        # Override to avoid keeping all notified recipients of a comment.
-        # We avoid tracking needaction on post comments. Only emails should be
-        # ufficient.
-        msg_vals = msg_vals or {}
+        """ Override to avoid keeping all notified recipients of a comment.
+        We avoid tracking needaction on post comments. Only emails should be
+        sufficient. """
+        if msg_vals is None:
+            msg_vals = {}
         if msg_vals.get('message_type', message.message_type) == 'comment':
             return
-        return super()._notify_thread_by_inbox(message, recipients_data, msg_vals=msg_vals, **kwargs)
+        return super(Post, self)._notify_thread_by_inbox(message, recipients_data, msg_vals=msg_vals, **kwargs)
 
     # ----------------------------------------------------------------------
     # WEBSITE
@@ -864,36 +870,36 @@ class ForumPost(models.Model):
         }
 
         domain = website.website_domain()
-        domain &= Domain('state', '=', 'active') & Domain('can_view', '=', True)
+        domain = expression.AND([domain, [('state', '=', 'active'), ('can_view', '=', True)]])
         include_answers = options.get('include_answers', False)
         if not include_answers:
-            domain &= Domain('parent_id', '=', False)
+            domain = expression.AND([domain, [('parent_id', '=', False)]])
         forum = options.get('forum')
         if forum:
-            domain &= Domain('forum_id', '=', self.env['ir.http']._unslug(forum)[1])
+            domain = expression.AND([domain, [('forum_id', '=', self.env['ir.http']._unslug(forum)[1])]])
         tags = options.get('tag')
         if tags:
-            domain &= Domain('tag_ids', 'in', [self.env['ir.http']._unslug(tag)[1] for tag in tags.split(',')])
+            domain = expression.AND([domain, [('tag_ids', 'in', [self.env['ir.http']._unslug(tag)[1] for tag in tags.split(',')])]])
         filters = options.get('filters')
         if filters == 'unanswered':
-            domain &= Domain('child_ids', '=', False)
+            domain = expression.AND([domain, [('child_ids', '=', False)]])
         elif filters == 'solved':
-            domain &= Domain('has_validated_answer', '=', True)
+            domain = expression.AND([domain, [('has_validated_answer', '=', True)]])
         elif filters == 'unsolved':
-            domain &= Domain('has_validated_answer', '=', False)
+            domain = expression.AND([domain, [('has_validated_answer', '=', False)]])
         user = self.env.user
         my = options.get('my')
         create_uid = user.id if my == 'mine' else options.get('create_uid')
         if create_uid:
-            domain &= Domain('create_uid', '=', create_uid)
+            domain = expression.AND([domain, [('create_uid', '=', create_uid)]])
         if my == 'followed':
-            domain &= Domain('message_partner_ids', '=', user.partner_id.id)
+            domain = expression.AND([domain, [('message_partner_ids', '=', user.partner_id.id)]])
         elif my == 'tagged':
-            domain &= Domain('tag_ids.message_partner_ids', '=', user.partner_id.id)
+            domain = expression.AND([domain, [('tag_ids.message_partner_ids', '=', user.partner_id.id)]])
         elif my == 'favourites':
-            domain &= Domain('favourite_ids', '=', user.id)
+            domain = expression.AND([domain, [('favourite_ids', '=', user.id)]])
         elif my == 'upvoted':
-            domain &= Domain('vote_ids.user_id', '=', user.id)
+            domain = expression.AND([domain, [('vote_ids.user_id', '=', user.id)]])
 
         # 'sorting' from the form's "Order by" overrides order during auto-completion
         order = options.get('sorting', order)

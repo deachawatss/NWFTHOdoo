@@ -1,12 +1,15 @@
 import {
+    assertSteps,
     click,
     contains,
     openFormView,
     start,
-    startServer
+    startServer,
+    step,
 } from "@mail/../tests/mail_test_helpers";
-import { describe, test } from "@odoo/hoot";
+import { describe, expect, test } from "@odoo/hoot";
 import { defineSMSModels } from "@sms/../tests/sms_test_helpers";
+import { mockService } from "@web/../tests/web_test_helpers";
 
 describe.current.tags("desktop");
 defineSMSModels();
@@ -35,13 +38,22 @@ test("Notification Sent", async () => {
 });
 
 test("Notification Error", async () => {
-    const { partnerId } = await _prepareSmsNotification("exception");
+    const { partnerId, messageId } = await _prepareSmsNotification("exception");
+    mockService("action", {
+        doAction(action, options) {
+            if (action?.res_model === "res.partner") {
+                return super.doAction(...arguments);
+            }
+            expect(action).toBe("sms.sms_resend_action");
+            expect(options.additionalContext.default_mail_message_id).toBe(messageId);
+            step("do_action");
+        },
+    });
     await start();
     await openFormView("res.partner", partnerId);
     await _assertContainsSmsNotification();
     await click(".o-mail-Message-notification");
-    await contains(".o-mail-MessageNotificationPopover");
-    await contains(".o-mail-MessageNotificationPopover [title='Error']");
+    await assertSteps(["do_action"]);
 });
 
 const _prepareSmsNotification = async (notification_status) => {

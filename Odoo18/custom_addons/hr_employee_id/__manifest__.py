@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "HR Employee ID",
-    "version": "17.0.1.0.0",
+    "version": "18.0.1.0.0",
     "summary": "Add Employee ID field to hr.employee",
     "description": """
         This module adds Employee ID field to employee form.

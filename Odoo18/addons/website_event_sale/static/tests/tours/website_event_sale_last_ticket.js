@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
 import * as wsTourUtils from "@website_sale/js/tours/tour_utils";
 
@@ -56,10 +58,14 @@ registry.category("web_tour.tours").add('event_buy_last_ticket', {
         run: "click",
         expectUnloadPage: true,
     },
-        ...wsTourUtils.payWithTransfer({
-            redirect: true,
-            expectUnloadPage: true,
-            waitFinalizeYourPayment: true,
-        }),
+    ...wsTourUtils.fillAdressForm({
+        name: "test1",
+        phone: "111 111",
+        email: "test@example.com",
+        street: "street test 1",
+        city: "testCity",
+        zip: "123",
+    }),
+    ...wsTourUtils.payWithTransfer(true),
     ],
 });

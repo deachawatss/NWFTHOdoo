@@ -4,26 +4,9 @@ import { rpc } from "@web/core/network/rpc";
 import { Cache } from "@web/core/utils/cache";
 import { session } from "@web/session";
 import { ensureArray } from "./utils/arrays";
-import { cookie } from "@web/core/browser/cookie";
-import { EventBus } from "@odoo/owl";
 
 // This file exports an object containing user-related information and functions
 // allowing to obtain/alter user-related information from the server.
-
-export const userBus = new EventBus();
-
-function getCookieCompanyIds() {
-    if (cookie.get("cids")) {
-        const cids = cookie.get("cids");
-        if (typeof cids === "string") {
-            return cids.split("-").map(Number);
-        }
-        if (typeof cids === "number") {
-            return [cids];
-        }
-    }
-    return [];
-}
 
 /**
  * This function exists for testing purposes. We don't want tests to share the
@@ -40,7 +23,6 @@ export function _makeUser(session) {
         is_admin: isAdmin,
         is_internal_user: isInternalUser,
         is_system: isSystem,
-        is_public: isPublic,
         name,
         partner_id: partnerId,
         show_effect: showEffect,
@@ -49,47 +31,8 @@ export function _makeUser(session) {
         user_context: context,
         user_settings,
         partner_write_date: writeDate,
-        user_companies: userCompanies,
-        groups = {},
     } = session;
     const settings = user_settings || {};
-
-    function updateActiveCompanies(cids, allowedCompanies, defaultCompanyId) {
-        activeCompanies = [];
-        cids.forEach((cid) => {
-            activeCompanies.push(allowedCompanies.find((c) => c.id === cid));
-        });
-        if (
-            activeCompanies.length === 0 ||
-            activeCompanies.length !== activeCompanies.filter(Boolean).length
-        ) {
-            activeCompanies = [defaultCompanyId];
-        }
-
-        // update browser data
-        cookie.set("cids", activeCompanies.map((c) => c.id).join("-"));
-        Object.assign(context, { allowed_company_ids: activeCompanies.map((c) => c.id) });
-
-        userBus.trigger("ACTIVE_COMPANIES_CHANGED");
-    }
-
-    // Companies information
-    let allowedCompanies = [];
-    const allowedCompaniesWithAncestors = [];
-    let activeCompanies = [];
-    let defaultCompany;
-
-    if (userCompanies) {
-        allowedCompanies = Object.values(userCompanies.allowed_companies);
-        allowedCompaniesWithAncestors.push(...Object.values(userCompanies.allowed_companies));
-        if (userCompanies.disallowed_ancestor_companies) {
-            allowedCompaniesWithAncestors.push(
-                ...Object.values(userCompanies.disallowed_ancestor_companies)
-            );
-        }
-        defaultCompany = allowedCompanies.find((c) => c.id === userCompanies.current_company); // TODO: change the name in the session current_company to default_company
-        updateActiveCompanies(getCookieCompanyIds(), allowedCompanies, defaultCompany);
-    }
 
     // Delete user-related information from the session, s.t. there's a single source of truth
     delete session.home_action_id;
@@ -104,8 +47,6 @@ export function _makeUser(session) {
     delete session.user_context;
     delete session.user_settings;
     delete session.partner_write_date;
-    delete session.user_companies;
-    delete session.groups;
 
     // Generate caches for has_group and has_access calls
     const getGroupCacheValue = (group, context) => {
@@ -127,15 +68,6 @@ export function _makeUser(session) {
     if (isSystem !== undefined) {
         groupCache.cache["base.group_system"] = Promise.resolve(isSystem);
     }
-    if (isAdmin !== undefined) {
-        groupCache.cache["base.group_erp_manager"] = Promise.resolve(isAdmin);
-    }
-    if (isPublic !== undefined) {
-        groupCache.cache["base.group_public"] = Promise.resolve(isPublic);
-    }
-    for (const group in groups) {
-        groupCache.cache[group] = Promise.resolve(!!groups[group]);
-    }
     const getAccessRightCacheValue = (model, operation, ids, context) => {
         const url = `/web/dataset/call_kw/${model}/has_access`;
         return rpc(url, {
@@ -150,7 +82,7 @@ export function _makeUser(session) {
     const accessRightCache = new Cache(getAccessRightCacheValue, getAccessRightCacheKey);
     const lang = pyToJsLocale(context?.lang);
 
-    return {
+    const user = {
         name,
         login,
         isAdmin,
@@ -198,47 +130,9 @@ export function _makeUser(session) {
             });
             Object.assign(settings, changedSettings);
         },
-        defaultCompany, // default company of the user, used if no cookie set
-        allowedCompanies, // list of authorized companies for the user
-        allowedCompaniesWithAncestors,
-        // list of companies the user is currently logged into
-        get activeCompanies() {
-            return activeCompanies;
-        },
-        // main company the user is currently logged into (default company for created records)
-        get activeCompany() {
-            return activeCompanies?.[0];
-        },
-        async activateCompanies(
-            companyIds,
-            options = { includeChildCompanies: true, reload: true }
-        ) {
-            const newCompanyIds = companyIds.length ? companyIds : [activeCompanies[0].id];
-
-            function addCompanies(companyIds) {
-                for (const companyId of companyIds) {
-                    if (!newCompanyIds.includes(companyId)) {
-                        newCompanyIds.push(companyId);
-                        addCompanies(allowedCompanies.find((c) => c.id === companyId).child_ids);
-                    }
-                }
-            }
-
-            if (options.includeChildCompanies) {
-                addCompanies(
-                    companyIds.flatMap(
-                        (companyId) => allowedCompanies.find((c) => c.id === companyId).child_ids
-                    )
-                );
-            }
-
-            updateActiveCompanies(newCompanyIds, allowedCompanies, defaultCompany);
-
-            if (options.reload) {
-                browser.location.reload();
-            }
-        },
     };
+
+    return user;
 }
 
 export const user = _makeUser(session);
@@ -254,7 +148,9 @@ export const setLastConnectedUsers = (users) => {
     browser.localStorage.setItem(LAST_CONNECTED_USER_KEY, JSON.stringify(users.slice(0, 5)));
 };
 
-if (user.login && user.login !== "__system__") {
+if (!session.quick_login) {
+    browser.localStorage.removeItem(LAST_CONNECTED_USER_KEY);
+} else if (user.login && user.login !== "__system__") {
     const users = getLastConnectedUsers();
     const lastConnectedUsers = [
         {
@@ -268,3 +164,4 @@ if (user.login && user.login !== "__system__") {
     ];
     setLastConnectedUsers(lastConnectedUsers);
 }
+delete session.quick_login;

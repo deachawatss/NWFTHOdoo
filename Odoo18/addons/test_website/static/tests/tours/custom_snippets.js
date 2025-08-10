@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { insertSnippet, registerWebsitePreviewTour } from "@website/js/tours/tour_utils";
 
 /**
@@ -35,46 +37,41 @@ registerWebsitePreviewTour('test_custom_snippet', {
     },
     {
         content: "Save custom snippet",
-        trigger: "div[data-container-title='Banner'] .oe_snippet_save",
+        trigger: ".snippet-option-SnippetSave we-button",
         run: "click",
     },
     {
         content: "Confirm reload",
-        trigger: ".modal-dialog button:contains('Save')",
-        run: "click",
-    },
-    {
-        content: "Click on the block tab",
-        trigger: ".o-snippets-tabs button[data-name='blocks']",
+        trigger: ".modal-dialog button:contains('Save and Reload')",
         run: "click",
     },
     {
         content: "Click on the Custom category block",
-        trigger: ".o_block_tab:not(.o_we_ongoing_insertion) #snippet_groups .o_snippet[name='Custom'].o_draggable .o_snippet_thumbnail .o_snippet_thumbnail_area",
+        trigger: "#oe_snippets .oe_snippet[name='Custom'].o_we_draggable .oe_snippet_thumbnail",
         run: "click",
     },
     {
         content: "Ensure custom snippet preview appeared in the dialog",
-        trigger: ":iframe .o_snippet_preview_wrap[data-snippet-id^='s_banner_'] section[data-name='Custom Banner']",
+        trigger: ":iframe .o_snippet_preview_wrap[data-snippet-id='s_banner'] section[data-name='Custom Banner']",
     },
     {
         content: "Rename custom snippet",
-        trigger: ":iframe .o_custom_snippet_edit > button",
+        trigger: ":iframe .o_custom_snippet_wrap > .o_custom_snippet_edit > button",
         run: "click",
     },
     {
         content: "Set name",
-        trigger: ".modal-dialog:not(.o_inactive_modal body) input[id='inputConfirmation']",
+        trigger: ".o_rename_custom_snippet_dialog input[id='customSnippetName']",
         run: "edit Bruce Banner",
     },
     {
         content: "Confirm rename",
-        trigger: ".modal-dialog:not(.o_inactive_modal body) footer .btn-primary",
+        trigger: ".o_rename_custom_snippet_dialog footer .btn-primary",
         run: "click",
     },
     {
         content: "Click on the 'Bruce Banner' snippet",
-        trigger: ":iframe .o_snippet_preview_wrap[data-snippet-id^='s_banner_']:has(section[data-name='Bruce Banner'])",
+        trigger: ":iframe .o_snippet_preview_wrap[data-snippet-id='s_banner']:has(section[data-name='Bruce Banner'])",
         run: "click",
     },
     {
@@ -87,12 +84,12 @@ registerWebsitePreviewTour('test_custom_snippet', {
     },
     {
         content: "Click on the Custom category block",
-        trigger: ".o_block_tab:not(.o_we_ongoing_insertion) #snippet_groups .o_snippet[name='Custom'].o_draggable .o_snippet_thumbnail .o_snippet_thumbnail_area",
+        trigger: "#oe_snippets .oe_snippet[name='Custom'].o_we_draggable .oe_snippet_thumbnail",
         run: "click",
     },
     {
         content: "Delete custom snippet",
-        trigger: ":iframe .o_custom_snippet_edit > button + button",
+        trigger: ":iframe .o_custom_snippet_wrap > .o_custom_snippet_edit > button + button",
         run: "click",
     },
     {

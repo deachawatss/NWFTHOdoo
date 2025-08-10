@@ -1,3 +1,5 @@
+/* @odoo-module */
+
 import { threadActionsRegistry } from "@mail/core/common/thread_actions";
 import { _t } from "@web/core/l10n/translation";
 import { useComponent } from "@odoo/owl";
@@ -12,7 +14,6 @@ threadActionsRegistry.add("open-hr-profile", {
         );
     },
     icon: "fa fa-fw fa-id-card",
-    iconLarge: "fa fa-lg fa-fw fa-id-card",
     name: _t("Open Profile"),
     async open(component) {
         component.actionService.doAction({

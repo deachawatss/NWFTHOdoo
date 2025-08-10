@@ -38,13 +38,13 @@ class TestSaleStockMargin(TestStockValuationCommon):
             'price_unit': price_unit,
             'product_id': product.id,
             'product_uom_qty': quantity,
+            'product_uom': self.env.ref('uom.product_uom_unit').id,
         })
 
     def _create_product(self):
         product_template = self.env['product.template'].create({
             'name': 'Super product',
             'is_storable': True,
-            'categ_id': self.env.ref('product.product_category_goods').id,
         })
         product_template.categ_id.property_cost_method = 'fifo'
         return product_template.product_variant_ids
@@ -267,6 +267,7 @@ class TestSaleStockMargin(TestStockValuationCommon):
             'location_dest_id': incoming_picking_type.default_location_dest_id.id,
         })
         self.env['stock.move'].create({
+            'name': 'Incoming Product',
             'product_id': product.id,
             'location_id': production_location.id,
             'location_dest_id': incoming_picking_type.default_location_dest_id.id,
@@ -361,6 +362,7 @@ class TestSaleStockMargin(TestStockValuationCommon):
             'name': 'product2',
             'type': 'consu',
             'is_storable': True,
+            'categ_id': self.env.ref('product.product_category_all').id,
             'standard_price': 10,
             'list_price': 20,
             'invoice_policy': 'order',

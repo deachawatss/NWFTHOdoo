@@ -6,7 +6,7 @@
     'description': """
     Module linking the attendance module to the timesheet app.
     """,
-    'category': 'Human Resources/Attendances',
+    'category': 'Hidden',
     'version': '1.1',
 
     'depends': ['hr_timesheet', 'hr_attendance'],
@@ -16,6 +16,5 @@
         'report/hr_timesheet_attendance_report_view.xml',
     ],
     'auto_install': True,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

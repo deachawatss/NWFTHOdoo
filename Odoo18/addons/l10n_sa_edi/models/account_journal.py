@@ -80,21 +80,10 @@ class AccountJournal(models.Model):
                                                 readonly=True, copy=False)
 
     l10n_sa_serial_number = fields.Char("Serial Number", copy=False,
-                                        help="The serial number of the Taxpayer solution unit. Provided by ZATCA")
+                                        help="Unique Serial Number automatically filled when the journal is onboarded")
 
     l10n_sa_latest_submission_hash = fields.Char("Latest Submission Hash", copy=False,
                                                  help="Hash of the latest submitted invoice to be used as the Previous Invoice Hash (KSA-13)")
-
-    def _l10n_sa_reset_chain_head_error(self):
-        """
-            Reset the chain head error from the journal's stuck invoices
-        """
-        stuck_invoices = self.env['account.move'].search([
-            ('l10n_sa_edi_chain_head_id', '!=', False),
-            ('journal_id', 'in', self.ids),
-        ])
-        # We only need to remove blocking errors, so webservices do not need to be triggered
-        stuck_invoices._retry_edi_documents_error()
 
     # ====== Utility Functions =======
 
@@ -122,6 +111,16 @@ class AccountJournal(models.Model):
         stuck_moves = [move for move in move_ids if not move._l10n_sa_is_in_chain()]
         if stuck_moves:
             raise UserError(_("Oops! The journal is stuck. Please submit the pending invoices to ZATCA and try again."))
+
+    def _l10n_sa_edi_set_csr_fields(self):
+        '''
+            Sets default values for CSR generation fields in Odoo, if their values do not exist
+        '''
+        self.ensure_one()
+        # Avoid unnecessary write calls
+        if self.l10n_sa_serial_number != str(self.id):
+            self.l10n_sa_serial_number = self.id
+
     # ====== CSR Generation =======
 
     def _l10n_sa_csr_required_fields(self):
@@ -170,6 +169,7 @@ class AccountJournal(models.Model):
         # we want to perform sanity checks to ensure that the journal is ready to be onboarded
         # If the check fails, we do not want to revoke the existing PCSID because the user might still need it to post hanging invoices
         self._l10n_sa_api_onboard_sanity_checks()
+        self._l10n_sa_edi_set_csr_fields()
 
         try:
             # If the company does not have a private key, we generate it.
@@ -530,7 +530,7 @@ class AccountJournal(models.Model):
                                                 headers={
                                                     **self._l10n_sa_api_headers(),
                                                     **request_data.get('header')
-                                                }, timeout=(30, 30))
+                                                }, timeout=30)
             request_response.raise_for_status()
         except (ValueError, HTTPError) as ex:
             # The 400 case means that it is rejected by ZATCA, but we need to update the hash as done for accepted.

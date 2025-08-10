@@ -1,4 +1,4 @@
-import { normalize } from "@web/core/l10n/utils";
+import { unaccent } from "./strings";
 
 /**
  * @param {string} pattern
@@ -37,8 +37,8 @@ function _match(pattern, str) {
     const len = str.length;
     let patternIndex = 0;
 
-    pattern = normalize(pattern);
-    str = normalize(str);
+    pattern = unaccent(pattern, false);
+    str = unaccent(str, false);
 
     for (let i = 0; i < len; i++) {
         if (str[i] === pattern[patternIndex]) {

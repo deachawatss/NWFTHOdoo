@@ -8,7 +8,7 @@
     'website': 'https://www.odoo.com/app/ecommerce',
     'version': '1.1',
     'depends': [
-        'website', 'sale', 'website_payment', 'website_mail', 'portal_rating', 'digest', 'delivery', 'html_builder',
+        'website', 'sale', 'website_payment', 'website_mail', 'portal_rating', 'digest', 'delivery'
     ],
     'data': [
         # Security
@@ -29,17 +29,16 @@
 
         # QWeb templates
         'views/delivery_form_templates.xml',
-        'views/gmc_templates.xml',
         'views/templates.xml',
 
         # Model views.
         'views/account_move_views.xml',
+        'views/crm_team_views.xml',
         'views/delivery_carrier_views.xml',
         'views/digest_views.xml',
         'views/product_attribute_views.xml',
         'views/product_document_views.xml',
         'views/product_image_views.xml',
-        'views/product_pricelist_item_views.xml',
         'views/product_pricelist_views.xml',
         'views/product_product_add.xml',
         'views/product_public_category_views.xml',
@@ -60,6 +59,7 @@
         'views/snippets/s_add_to_cart.xml',
         'views/snippets/s_dynamic_snippet_products.xml',
         'views/snippets/s_dynamic_snippet_products_preview_data.xml',
+        'views/snippets/s_popup.xml',
         'views/snippets/s_mega_menu/big_icons_subtitles.xml',
         'views/snippets/s_mega_menu/cards.xml',
         'views/snippets/s_mega_menu/image_menu.xml',
@@ -79,9 +79,6 @@
     'uninstall_hook': 'uninstall_hook',
     'assets': {
         'web.assets_frontend': [
-            'website_sale/static/src/interactions/**/*',
-            'website_sale/static/src/snippets/**/*.js',
-            ('remove', 'website_sale/static/src/snippets/**/options.js'),
             'website_sale/static/src/js/tours/tour_utils.js',
             'website_sale/static/src/scss/website_sale.scss',
             'website_sale/static/src/scss/website_sale_frontend.scss',
@@ -91,17 +88,24 @@
 
             'website_sale/static/src/scss/product_configurator.scss',
 
-            'website_sale/static/src/js/cart_service.js',
+            'website_sale/static/src/js/address.js',
+            'website_sale/static/src/js/cart.js',
             'website_sale/static/src/js/checkout.js',
             'website_sale/static/src/js/payment_button.js',
             'website_sale/static/src/js/payment_form.js',
             'website_sale/static/src/js/sale_variant_mixin.js',
+            'website_sale/static/src/js/terms_and_conditions_checkbox.js',
             'website_sale/static/src/js/website_sale.js',
             'website_sale/static/src/xml/website_sale.xml',
+            'website_sale/static/src/js/website_sale_offcanvas.js',
+            'website_sale/static/src/js/website_sale_price_range_option.js',
+            'website_sale/static/src/js/website_sale_configurators.js',
             'website_sale/static/src/js/website_sale_utils.js',
             'website_sale/static/src/xml/website_sale_utils.xml',
+            'website_sale/static/src/js/website_sale_recently_viewed.js',
+            'website_sale/static/src/js/website_sale_tracking.js',
             'website/static/lib/multirange/multirange_custom.js',
-            'website/static/src/interactions/multirange_input.js',
+            'website/static/lib/multirange/multirange_instance.js',
             'website_sale/static/src/xml/website_sale_image_viewer.xml',
             'website_sale/static/src/js/components/website_sale_image_viewer.js',
             'website_sale/static/src/xml/website_sale_reorder_modal.xml',
@@ -139,17 +143,12 @@
             'website_sale/static/src/scss/primary_variables.scss',
         ],
         'web.assets_backend': [
-            'website_sale/static/src/js/client_actions/**/*',
             'website_sale/static/src/js/tours/tour_utils.js',
             'website_sale/static/src/js/website_sale_video_field_preview.js',
             'website_sale/static/src/scss/website_sale_backend.scss',
             'website_sale/static/src/js/tours/website_sale_shop.js',
             'website_sale/static/src/xml/website_sale.xml',
             'website_sale/static/src/scss/kanban_record.scss',
-        ],
-        'website.website_builder_assets': [
-            'website_sale/static/src/js/website_sale_form_editor.js',
-            'website_sale/static/src/website_builder/**/*',
         ],
         'website.assets_wysiwyg': [
             'website_sale/static/src/scss/website_sale.editor.scss',
@@ -162,29 +161,14 @@
         'website.assets_editor': [
             'website_sale/static/src/js/systray_items/*.js',
             'website_sale/static/src/xml/website_sale_utils.xml',
-            'website_sale/static/src/xml/website_sale_editor_previews.xml',
         ],
         'website.backend_assets_all_wysiwyg': [
             'website_sale/static/src/js/components/wysiwyg_adapter/wysiwyg_adapter.js',
         ],
         'web.assets_tests': [
-            'website_sale/static/tests/tours/**/*',
+            'website_sale/static/tests/**/*',
             'website_sale/static/src/js/tours/product_configurator_tour_utils.js',
         ],
-        'web.assets_unit_tests': [
-            'website_sale/static/tests/interactions/**/*',
-        ],
-        'web.assets_unit_tests_setup': [
-            'website_sale/static/src/interactions/**/*',
-            'website_sale/static/src/snippets/s_dynamic_snippet_products/dynamic_snippet_products.js',
-            'website_sale/static/src/js/website_sale_utils.js',
-            # TODO Find out why these do not work:
-            #'website_sale/static/src/snippets/**/*.js',
-            # ('remove', 'website_sale/static/src/snippets/**/options.js'),
-            # TODO Re-activate when testing edit mode
-            #('remove', 'website_sale/static/src/snippets/**/*.edit.js'),
-        ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

@@ -12,6 +12,5 @@
     ],
     'auto_install': True,
     'post_init_hook': 'post_init_hook',
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

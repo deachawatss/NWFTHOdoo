@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { useService } from '@web/core/utils/hooks';
 import { formatMonetary } from "@web/views/fields/formatters";
 import { Component, onWillStart, useState } from "@odoo/owl";
@@ -29,8 +31,7 @@ export class ExpenseDashboard extends Component {
         const { actionId } = this.env.config;
         const action = actionId ? await this.actionService.loadAction(actionId) : {};
 
-        action['context'] = { [`search_default_${filterName}`]: 1, [`search_default_my_open_expenses`]: 1 };
-        action['tag'] = 'menu'; //disables breadcrumb change on filter change
-        return this.actionService.doAction(action);
+        action['context'] = { [`search_default_${filterName}`]: 1 };
+        return this.actionService.doAction(action, {clearBreadcrumbs: true});
     }
 }

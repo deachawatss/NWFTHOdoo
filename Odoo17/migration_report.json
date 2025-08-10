@@ -1,0 +1,53 @@
+{
+  "migration_summary": {
+    "timestamp": "2025-08-10T08:12:27.449145",
+    "company_settings_migrated": 0,
+    "employees_found": 0,
+    "departments_found": 0,
+    "time_off_types_migrated": 0,
+    "helpdesk_categories_found": 0,
+    "screenshots_taken": 2
+  },
+  "detailed_data": {
+    "company_settings": {},
+    "employees": [],
+    "departments": [],
+    "job_positions": [],
+    "time_off_types": [],
+    "helpdesk_categories": [],
+    "screenshots": [
+      "migration_screenshots/odoo17_status_check_20250810_080903.png",
+      "migration_screenshots/odoo18_status_check_20250810_081154.png"
+    ],
+    "migration_log": [
+      "[2025-08-10 08:08:10] [INFO] Starting Odoo 17 to Odoo 18 migration process...",
+      "[2025-08-10 08:08:11] [INFO] === PHASE 1: ANALYZING ODOO 17 ===",
+      "[2025-08-10 08:08:11] [INFO] Logging into Odoo 17...",
+      "[2025-08-10 08:08:45] [WARN] Warning: Standard Odoo selectors not found, continuing...",
+      "[2025-08-10 08:08:50] [INFO] No database selection needed or already selected",
+      "[2025-08-10 08:09:03] [INFO] Login form not found, checking if already logged in",
+      "[2025-08-10 08:09:03] [INFO] Screenshot saved: migration_screenshots/odoo17_status_check_20250810_080903.png",
+      "[2025-08-10 08:09:03] [INFO] Analyzing company settings...",
+      "[2025-08-10 08:09:36] [ERROR] Error analyzing company settings: Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"a[data-menu-xmlid=\\\"base.menu_administration\\\"]\")\n",
+      "[2025-08-10 08:09:36] [INFO] Analyzing employees and HR structure...",
+      "[2025-08-10 08:10:09] [ERROR] Error accessing HR module: Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"a[data-menu-xmlid=\\\"hr.menu_hr_root\\\"]\")\n",
+      "[2025-08-10 08:10:09] [INFO] Analyzing Time Off types...",
+      "[2025-08-10 08:10:42] [ERROR] Error analyzing time off types: Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"a[data-menu-xmlid=\\\"hr_holidays.menu_hr_holidays_root\\\"]\")\n",
+      "[2025-08-10 08:10:42] [INFO] Analyzing Helpdesk categories...",
+      "[2025-08-10 08:11:02] [WARN] Helpdesk module not found or not accessible",
+      "[2025-08-10 08:11:02] [INFO] === PHASE 2: APPLYING TO ODOO 18 ===",
+      "[2025-08-10 08:11:02] [INFO] Logging into Odoo 18...",
+      "[2025-08-10 08:11:36] [WARN] Warning: Standard Odoo selectors not found, continuing...",
+      "[2025-08-10 08:11:41] [INFO] No database selection needed or already selected",
+      "[2025-08-10 08:11:54] [INFO] Login form not found, checking if already logged in",
+      "[2025-08-10 08:11:54] [INFO] Screenshot saved: migration_screenshots/odoo18_status_check_20250810_081154.png",
+      "[2025-08-10 08:11:54] [INFO] Installing required modules in Odoo 18...",
+      "[2025-08-10 08:12:27] [ERROR] Error accessing Apps menu: Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"a[data-menu-xmlid=\\\"base.menu_management\\\"]\")\n",
+      "[2025-08-10 08:12:27] [INFO] Applying company settings to Odoo 18...",
+      "[2025-08-10 08:12:27] [WARN] No company settings data to apply",
+      "[2025-08-10 08:12:27] [INFO] Applying Time Off types to Odoo 18...",
+      "[2025-08-10 08:12:27] [WARN] No time off types to apply",
+      "[2025-08-10 08:12:27] [INFO] Generating migration report..."
+    ]
+  }
+}

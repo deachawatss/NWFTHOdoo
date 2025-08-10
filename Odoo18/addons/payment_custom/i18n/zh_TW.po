@@ -8,10 +8,10 @@
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~18.3\n"
+"Project-Id-Version: Odoo Server 18.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-05-09 20:37+0000\n"
-"PO-Revision-Date: 2025-05-06 12:03+0000\n"
+"POT-Creation-Date: 2025-03-19 20:37+0000\n"
+"PO-Revision-Date: 2024-09-25 09:41+0000\n"
 "Last-Translator: Wil Odoo, 2025\n"
 "Language-Team: Chinese (Taiwan) (https://app.transifex.com/odoo/teams/41243/zh_TW/)\n"
 "MIME-Version: 1.0\n"
@@ -60,12 +60,6 @@ msgid "Custom Mode"
 msgstr "自訂模式"
 
 #. module: payment_custom
-#: model:ir.model.fields,field_description:payment_custom.field_payment_provider__display_name
-#: model:ir.model.fields,field_description:payment_custom.field_payment_transaction__display_name
-msgid "Display Name"
-msgstr "顯示名稱"
-
-#. module: payment_custom
 #: model:ir.model.fields,field_description:payment_custom.field_payment_provider__qr_code
 msgid "Enable QR Codes"
 msgstr "啟用QR Codes"
@@ -79,12 +73,6 @@ msgstr "通過電匯付款時啟用QR Codes"
 #: model_terms:ir.ui.view,arch_db:payment_custom.custom_state_header
 msgid "Finalize your payment"
 msgstr "最後檢查你的付款"
-
-#. module: payment_custom
-#: model:ir.model.fields,field_description:payment_custom.field_payment_provider__id
-#: model:ir.model.fields,field_description:payment_custom.field_payment_transaction__id
-msgid "ID"
-msgstr "識別碼"
 
 #. module: payment_custom
 #. odoo-python

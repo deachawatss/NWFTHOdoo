@@ -177,7 +177,6 @@ class TestIrMailServerSMTPD(TransactionCaseWithUserDemo):
         :param auth_required: whether the server enforces password
             authentication or not.
         """
-        encryption = encryption.removesuffix('_strict')
         assert encryption in ('none', 'ssl', 'starttls')
         assert encryption == 'none' or ssl_context
 
@@ -250,7 +249,7 @@ class TestIrMailServerSMTPD(TransactionCaseWithUserDemo):
             ('certificate', "valid client", client_cert, client_key, None),
         ]
 
-        for encryption in ('starttls', 'starttls_strict', 'ssl', 'ssl_strict'):
+        for encryption in ('starttls', 'ssl'):
             mail_server.smtp_encryption = encryption
             with self.start_smtpd(encryption, ssl_context, auth_required=False):
                 for authentication, name, certificate, private_key, error_pattern in matrix:
@@ -303,7 +302,7 @@ class TestIrMailServerSMTPD(TransactionCaseWithUserDemo):
             (True, PASSWORD, None),
         ]
 
-        for encryption in ('none', 'starttls', 'starttls_strict', 'ssl', 'ssl_strict'):
+        for encryption in ('none', 'starttls', 'ssl'):
             mail_server.smtp_encryption = encryption
             for auth_required, password, error_pattern in matrix:
                 mail_server.smtp_user = password and self.user_demo.email
@@ -374,7 +373,6 @@ class TestIrMailServerSMTPD(TransactionCaseWithUserDemo):
                         mail_server.test_smtp_connection()
                     self.assertRegex(capture.exception.args[0], error_pattern)
 
-    @mute_logger('mail.log')
     def test_man_in_the_middle_matrix(self):
         """
         Simulate that a pirate was successful at intercepting the live
@@ -398,33 +396,22 @@ class TestIrMailServerSMTPD(TransactionCaseWithUserDemo):
         host_good = 'localhost'
         host_bad = 'notlocalhost'
 
+        # for now it doesn't raise any error for bad cert/host
         matrix = [
-            # strict?, authentication, certificate, hostname, error_pattern
-            (False, 'login', cert_bad, host_good, None),
-            (False, 'login', cert_good, host_bad, None),
-            (False, 'certificate', cert_bad, host_good, None),
-            (False, 'certificate', cert_good, host_bad, None),
-            (True, 'login', cert_bad, host_good,
-                r"^An SSL exception occurred\. Check connection security type\.\n "
-                r".*certificate verify failed"),
-            (True, 'login', cert_good, host_bad,
-                r"^An SSL exception occurred\. Check connection security type\.\n "
-                r".*Hostname mismatch, certificate is not valid for 'notlocalhost'"),
-            (True, 'certificate', cert_bad, host_good,
-                r"^An SSL exception occurred\. Check connection security type\.\n "
-                r".*certificate verify failed"),
-            (True, 'certificate', cert_good, host_bad,
-                r"^An SSL exception occurred\. Check connection security type\.\n "
-                r".*CertificateError: hostname 'notlocalhost' doesn't match 'localhost'"),
+            # authentication, certificate, hostname, error_pattern
+            ('login', cert_bad, host_good, None),
+            ('login', cert_good, host_bad, None),
+            ('certificate', cert_bad, host_good, None),
+            ('certificate', cert_good, host_bad, None),
         ]
 
         for encryption in ('starttls', 'ssl'):
-            for strict, authentication, certificate, hostname, error_pattern in matrix:
+            for authentication, certificate, hostname, error_pattern in matrix:
                 mail_server.smtp_host = hostname
                 mail_server.smtp_authentication = authentication
-                mail_server.smtp_encryption = encryption + ('_strict' if strict else '')
+                mail_server.smtp_encryption = encryption
                 with self.subTest(
-                    encryption=encryption + ('_strict' if strict else ''),
+                    encryption=encryption,
                     authentication=authentication,
                     cert_good=certificate == cert_good,
                     host_good=hostname == host_good,

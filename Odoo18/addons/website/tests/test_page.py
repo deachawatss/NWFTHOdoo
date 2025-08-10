@@ -4,7 +4,7 @@ from lxml import html
 from unittest.mock import patch
 
 from odoo.addons.website.controllers.main import Website
-from odoo.addons.http_routing.tests.common import MockRequest
+from odoo.addons.website.tools import MockRequest
 from odoo.fields import Command
 from odoo.http import root
 from odoo.tests import common, HttpCase, tagged
@@ -559,7 +559,7 @@ class WithContext(HttpCase):
             'arch': self.page.arch.replace('I am a generic page', 'I am a specific page not available for visitors'),
             'is_published': True,
             'visibility': 'restricted_group',
-            'group_ids': [Command.link(self.ref('website.group_website_designer'))],
+            'groups_id': [Command.link(self.ref('website.group_website_designer'))],
         })
         # Access page as anonymous visitor.
         self.authenticate(None, None)

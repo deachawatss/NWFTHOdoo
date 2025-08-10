@@ -3,15 +3,15 @@
 # 	* hr_recruitment
 # 
 # Translators:
-# Wil Odoo, 2025
+# Wil Odoo, 2024
 # Tony Ng, 2025
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~18.3\n"
+"Project-Id-Version: Odoo Server 18.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-05-09 20:36+0000\n"
-"PO-Revision-Date: 2025-05-06 12:03+0000\n"
+"POT-Creation-Date: 2025-05-07 20:36+0000\n"
+"PO-Revision-Date: 2024-09-25 09:41+0000\n"
 "Last-Translator: Tony Ng, 2025\n"
 "Language-Team: Chinese (Taiwan) (https://app.transifex.com/odoo/teams/41243/zh_TW/)\n"
 "MIME-Version: 1.0\n"
@@ -21,19 +21,24 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 #. module: hr_recruitment
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__no_of_talents
-msgid "# Talents"
-msgstr "人才數目"
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__accepted_applications_count
+msgid "# Accepted Offers"
+msgstr "已接納聘用邀約數目"
+
+#. module: hr_recruitment
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__applications_count
+msgid "# Offers"
+msgstr "聘用邀約數目"
+
+#. module: hr_recruitment
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__refused_applications_count
+msgid "# Refused Offers"
+msgstr "已拒絕聘用邀約數目"
 
 #. module: hr_recruitment
 #. odoo-python
 #: code:addons/hr_recruitment/models/hr_applicant.py:0
-msgid "%s (copy)"
-msgstr "%s (副本)"
-
-#. module: hr_recruitment
-#. odoo-python
-#: code:addons/hr_recruitment/models/hr_applicant.py:0
+#: code:addons/hr_recruitment/models/hr_candidate.py:0
 msgid "1 Meeting"
 msgstr "1 個面試"
 
@@ -56,422 +61,6 @@ msgid "<b>Drag this card</b>, to qualify him for a first interview."
 msgstr "<b>拖曳這張卡片</b>，讓他有資格參加第一次面試。"
 
 #. module: hr_recruitment
-#: model:mail.template,body_html:hr_recruitment.email_template_data_applicant_congratulations
-msgid ""
-"<div style=\"font-size: 13px; margin: 0px; padding: 0px;\">\n"
-"    Hello,\n"
-"    <br/><br/>\n"
-"    We confirm we successfully received your application for the job\n"
-"    \"<a t-att-href=\"hasattr(object.job_id, 'website_url') and object.job_id.website_url or ''\" style=\"color:#9A6C8E;\"><strong t-out=\"object.job_id.name or ''\">Experienced Developer</strong></a>\" at <strong t-out=\"object.company_id.name or ''\">YourCompany</strong>.\n"
-"    <br/><br/>\n"
-"    We will come back to you shortly.\n"
-"\n"
-"    <div t-if=\"'website_url' in object.job_id and object.job_id.website_url\" style=\"padding: 16px 8px 16px 8px;\">\n"
-"        <a t-att-href=\"object.job_id.website_url\" t-attf-style=\"background-color: {{object.company_id.email_secondary_color or '#875A7B'}}; text-decoration: none; color: {{object.company_id.email_primary_color or '#FFFFFF'}}; padding: 8px 16px 8px 16px; border-radius: 5px;\">Job Description</a>\n"
-"    </div>\n"
-"\n"
-"    <hr width=\"97%\" style=\"background-color: rgb(204,204,204); border: medium none; clear: both; display: block; font-size: 0px; min-height: 1px; line-height: 0; margin: 16px 0px 16px 0px;\"/>\n"
-"    <t t-if=\"object.user_id\">\n"
-"        <h3 style=\"color:#9A6C8E;\"><strong>Your Contact:</strong></h3>\n"
-"        <p>\n"
-"            <strong t-out=\"object.user_id.name or ''\">Mitchell Admin</strong><br/>\n"
-"            <span>Email: <t t-out=\"object.user_id.email or ''\">admin@yourcompany.example.com</t></span><br/>\n"
-"            <span>Phone: <t t-out=\"object.user_id.phone or ''\">+1 650-123-4567</t></span>\n"
-"        </p>\n"
-"        <hr width=\"97%\" style=\"background-color: rgb(204,204,204); border: medium none; clear: both; display: block; font-size: 0px; min-height: 1px; line-height: 0; margin: 16px 0px 16px 0px;\"/>\n"
-"    </t>\n"
-"\n"
-"    <h3 style=\"color:#9A6C8E;\"><strong>What is the next step?</strong></h3>\n"
-"    We usually <strong>answer applications within a few days.</strong><br/><br/>\n"
-"    Feel free to <strong>contact us if you want a faster\n"
-"    feedback</strong> or if you don't get news from us\n"
-"    quickly enough (just reply to this email).\n"
-"\n"
-"    <hr width=\"97%\" style=\"background-color: rgb(204,204,204); border: medium none; clear: both; display: block; font-size: 0px; min-height: 1px; line-height: 0; margin: 17px 0px 16px 0px;\"/>\n"
-"    <t t-set=\"location\" t-value=\"''\"/>\n"
-"    <t t-if=\"object.job_id.address_id.name\">\n"
-"        <strong t-out=\"object.job_id.address_id.name or ''\">Teksa SpA</strong><br/>\n"
-"    </t>\n"
-"    <t t-if=\"object.job_id.address_id.street\">\n"
-"        <t t-out=\"object.job_id.address_id.street or ''\">Puerto Madero 9710</t><br/>\n"
-"        <t t-set=\"location\" t-value=\"object.job_id.address_id.street\"/>\n"
-"    </t>\n"
-"    <t t-if=\"object.job_id.address_id.street2\">\n"
-"        <t t-out=\"object.job_id.address_id.street2 or ''\">Of A15, Santiago (RM)</t><br/>\n"
-"        <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.street2)\"/>\n"
-"    </t>\n"
-"    <t t-if=\"object.job_id.address_id.city\">\n"
-"        <t t-out=\"object.job_id.address_id.city or ''\">Pudahuel</t>,\n"
-"        <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.city)\"/>\n"
-"    </t>\n"
-"    <t t-if=\"object.job_id.address_id.state_id.name\">\n"
-"        <t t-out=\"object.job_id.address_id.state_id.name or ''\">C1</t>,\n"
-"        <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.state_id.name)\"/>\n"
-"    </t>\n"
-"    <t t-if=\"object.job_id.address_id.zip\">\n"
-"        <t t-out=\"object.job_id.address_id.zip or ''\">98450</t>\n"
-"        <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.zip)\"/>\n"
-"    </t>\n"
-"    <br/>\n"
-"    <t t-if=\"object.job_id.address_id.country_id.name\">\n"
-"        <t t-out=\"object.job_id.address_id.country_id.name or ''\">Argentina</t><br/>\n"
-"        <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.country_id.name)\"/>\n"
-"    </t>\n"
-"    <br/>\n"
-"</div>\n"
-"        "
-msgstr ""
-"<div style=\"font-size: 13px; margin: 0px; padding: 0px;\">\n"
-"    你好，\n"
-"    <br/><br/>\n"
-"    我們確認已收到你對 <strong t-out=\"object.company_id.name or ''\">YourCompany</strong> 公司\n"
-"    「<a t-att-href=\"hasattr(object.job_id, 'website_url') and object.job_id.website_url or ''\" style=\"color:#9A6C8E;\"><strong t-out=\"object.job_id.name or ''\">有經驗開發人員</strong></a>」職位的申請。\n"
-"    <br/><br/>\n"
-"    我們很快會回覆。\n"
-"\n"
-"    <div t-if=\"'website_url' in object.job_id and object.job_id.website_url\" style=\"padding: 16px 8px 16px 8px;\">\n"
-"        <a t-att-href=\"object.job_id.website_url\" t-attf-style=\"background-color: {{object.company_id.email_secondary_color or '#875A7B'}}; text-decoration: none; color: {{object.company_id.email_primary_color or '#FFFFFF'}}; padding: 8px 16px 8px 16px; border-radius: 5px;\">職位描述</a>\n"
-"    </div>\n"
-"\n"
-"    <hr width=\"97%\" style=\"background-color: rgb(204,204,204); border: medium none; clear: both; display: block; font-size: 0px; min-height: 1px; line-height: 0; margin: 16px 0px 16px 0px;\"/>\n"
-"    <t t-if=\"object.user_id\">\n"
-"        <h3 style=\"color:#9A6C8E;\"><strong>你的聯絡方法：</strong></h3>\n"
-"        <p>\n"
-"            <strong t-out=\"object.user_id.name or ''\">Mitchell Admin</strong><br/>\n"
-"            <span>電郵： <t t-out=\"object.user_id.email or ''\">admin@yourcompany.example.com</t></span><br/>\n"
-"            <span>電話： <t t-out=\"object.user_id.phone or ''\">+1 650-123-4567</t></span>\n"
-"        </p>\n"
-"        <hr width=\"97%\" style=\"background-color: rgb(204,204,204); border: medium none; clear: both; display: block; font-size: 0px; min-height: 1px; line-height: 0; margin: 16px 0px 16px 0px;\"/>\n"
-"    </t>\n"
-"\n"
-"    <h3 style=\"color:#9A6C8E;\"><strong>下一步怎麼做？</strong></h3>\n"
-"    通常我們會在<strong>幾天內回應求職申請</strong>。<br/><br/>\n"
-"    若你需要<strong>更快的回應</strong>，\n"
-"    或未有足夠快地從我們獲得消息，\n"
-"    歡迎聯絡我們。（只需回覆此電郵）\n"
-"\n"
-"    <hr width=\"97%\" style=\"background-color: rgb(204,204,204); border: medium none; clear: both; display: block; font-size: 0px; min-height: 1px; line-height: 0; margin: 17px 0px 16px 0px;\"/>\n"
-"    <t t-set=\"location\" t-value=\"''\"/>\n"
-"    <t t-if=\"object.job_id.address_id.name\">\n"
-"        <strong t-out=\"object.job_id.address_id.name or ''\">Teksa SpA</strong><br/>\n"
-"    </t>\n"
-"    <t t-if=\"object.job_id.address_id.street\">\n"
-"        <t t-out=\"object.job_id.address_id.street or ''\">Puerto Madero 9710</t><br/>\n"
-"        <t t-set=\"location\" t-value=\"object.job_id.address_id.street\"/>\n"
-"    </t>\n"
-"    <t t-if=\"object.job_id.address_id.street2\">\n"
-"        <t t-out=\"object.job_id.address_id.street2 or ''\">Of A15, Santiago (RM)</t><br/>\n"
-"        <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.street2)\"/>\n"
-"    </t>\n"
-"    <t t-if=\"object.job_id.address_id.city\">\n"
-"        <t t-out=\"object.job_id.address_id.city or ''\">Pudahuel</t>,\n"
-"        <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.city)\"/>\n"
-"    </t>\n"
-"    <t t-if=\"object.job_id.address_id.state_id.name\">\n"
-"        <t t-out=\"object.job_id.address_id.state_id.name or ''\">C1</t>,\n"
-"        <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.state_id.name)\"/>\n"
-"    </t>\n"
-"    <t t-if=\"object.job_id.address_id.zip\">\n"
-"        <t t-out=\"object.job_id.address_id.zip or ''\">98450</t>\n"
-"        <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.zip)\"/>\n"
-"    </t>\n"
-"    <br/>\n"
-"    <t t-if=\"object.job_id.address_id.country_id.name\">\n"
-"        <t t-out=\"object.job_id.address_id.country_id.name or ''\">阿根廷</t><br/>\n"
-"        <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.country_id.name)\"/>\n"
-"    </t>\n"
-"    <br/>\n"
-"</div>\n"
-"        "
-
-#. module: hr_recruitment
-#: model:mail.template,body_html:hr_recruitment.email_template_data_applicant_refuse
-msgid ""
-"<div style=\"font-size: 13px; margin: 0px; padding: 0px;\">\n"
-"    Hello,<br/><br/>\n"
-"    Thank you for your interest in joining the\n"
-"    <b><t t-out=\"object.company_id.name or ''\">YourCompany</t></b> team.  We\n"
-"    wanted to let you know that, although your resume is\n"
-"    competitive, our hiring team reviewed your application\n"
-"    and <b>did not select it for further consideration</b>.\n"
-"    <br/><br/>\n"
-"    Please note that recruiting is hard, and we can make\n"
-"    mistakes. Do not hesitate to reply to this email if you\n"
-"    think we made a mistake, or if you want more information\n"
-"    about our decision.\n"
-"    <br/><br/>\n"
-"    We will, however, keep your resume on record and get in\n"
-"    touch with you about future opportunities that may be a\n"
-"    better fit for your skills and experience.\n"
-"    <br/><br/>\n"
-"    We wish you all the best in your job search and hope we\n"
-"    will have the chance to consider you for another role\n"
-"    in the future.\n"
-"    <br/><br/>\n"
-"    Thank you,\n"
-"    <div style=\"font-size: 11px; color: grey;\">\n"
-"        <t t-if=\"object.user_id\">\n"
-"            -- <br/>\n"
-"            <strong t-out=\"object.user_id.name or ''\">Mitchell Admin</strong><br/>\n"
-"            Email: <t t-out=\"object.user_id.email or ''\">admin@yourcompany.example.com</t><br/>\n"
-"            Phone: <t t-out=\"object.user_id.phone or ''\">+1 650-123-4567</t>\n"
-"        </t>\n"
-"        <t t-else=\"\">\n"
-"            -- <br/>\n"
-"            <t t-out=\"object.company_id.name or ''\">YourCompany</t><br/>\n"
-"            The HR Team\n"
-"        </t>\n"
-"    </div>\n"
-"</div>\n"
-"        "
-msgstr ""
-"<div style=\"font-size: 13px; margin: 0px; padding: 0px;\">\n"
-"    你好！<br/><br/>\n"
-"    首先感謝你對加入 \n"
-"    <b><t t-out=\"object.company_id.name or ''\">YourCompany</t></b> 團隊有興趣。\n"
-"    我們想讓你知道，雖然你的履歷具競爭力，\n"
-"    但我們的招聘團隊審閱了你的申請後，\n"
-"    決定<b>不挑選作進一步考慮</b>。\n"
-"    <br/><br/>\n"
-"    請留意，招聘很困難，而我們可能會犯錯誤。\n"
-"    如果你認為我們犯了錯誤，\n"
-"    或者想了解更多關於今次決定的資訊，\n"
-"    請隨時回覆此電郵。\n"
-"    <br/><br/>\n"
-"    但是，我們會保存你的履歷，\n"
-"    當未來有工作機會可能較適合你的技能和經驗時，\n"
-"    或會與你聯絡。\n"
-"    <br/><br/>\n"
-"    祝願你求職過程一切順利。\n"
-"    希望將來有機會考慮聘用你\n"
-"    擔任其他職位。謝謝！\n"
-"    <br/><br/>\n"
-"    順祝  安康\n"
-"    <div style=\"font-size: 11px; color: grey;\">\n"
-"        <t t-if=\"object.user_id\">\n"
-"            -- <br/>\n"
-"            <strong t-out=\"object.user_id.name or ''\">Mitchell Admin</strong><br/>\n"
-"            電郵： <t t-out=\"object.user_id.email or ''\">admin@yourcompany.example.com</t><br/>\n"
-"            電話： <t t-out=\"object.user_id.phone or ''\">+1 650-123-4567</t>\n"
-"        </t>\n"
-"        <t t-else=\"\">\n"
-"            -- <br/>\n"
-"            <t t-out=\"object.company_id.name or ''\">YourCompany</t><br/>\n"
-"            人力資源團隊\n"
-"        </t>\n"
-"    </div>\n"
-"</div>\n"
-"        "
-
-#. module: hr_recruitment
-#: model:mail.template,body_html:hr_recruitment.email_template_data_applicant_not_interested
-msgid ""
-"<div style=\"margin: 0px; padding: 0px;\">\n"
-"    <div style=\"font-size: 13px; margin: 0px; padding: 0px;\">\n"
-"        Dear,<br/><br/>\n"
-"        We would like to thank you for your interest and your time.<br/>\n"
-"        We wish you all the best in your future endeavors.\n"
-"        <br/><br/>\n"
-"        Best<br/>\n"
-"        <div style=\"font-size: 11px; color: grey;\">\n"
-"            <t t-if=\"object.user_id\">\n"
-"                -- <br/>\n"
-"                <strong t-out=\"object.user_id.name or ''\">Marc Demo</strong><br/>\n"
-"                Email: <t t-out=\"object.user_id.email or ''\">mark.brown23@example.com</t><br/>\n"
-"                Phone: <t t-out=\"object.user_id.phone or ''\">+1 650-123-4567</t>\n"
-"            </t>\n"
-"            <t t-else=\"\">\n"
-"                -- <br/>\n"
-"                <t t-out=\"object.company_id.name or ''\">YourCompany</t><br/>\n"
-"                The HR Team<br/>\n"
-"            </t>\n"
-"        </div>\n"
-"    </div>\n"
-"</div>\n"
-"        "
-msgstr ""
-"<div style=\"margin: 0px; padding: 0px;\">\n"
-"    <div style=\"font-size: 13px; margin: 0px; padding: 0px;\">\n"
-"        你好！<br/><br/>\n"
-"        感謝你對我們的職位有興趣，以及抽空申請。<br/>\n"
-"        祝願你前程似錦、一切順利！\n"
-"        <br/><br/>\n"
-"        順祝  安康<br/>\n"
-"        <div style=\"font-size: 11px; color: grey;\">\n"
-"            <t t-if=\"object.user_id\">\n"
-"                -- <br/>\n"
-"                <strong t-out=\"object.user_id.name or ''\">Marc Demo</strong><br/>\n"
-"                電郵： <t t-out=\"object.user_id.email or ''\">mark.brown23@example.com</t><br/>\n"
-"                電話： <t t-out=\"object.user_id.phone or ''\">+1 650-123-4567</t>\n"
-"            </t>\n"
-"            <t t-else=\"\">\n"
-"                -- <br/>\n"
-"                <t t-out=\"object.company_id.name or ''\">YourCompany</t><br/>\n"
-"                人力資源團隊<br/>\n"
-"            </t>\n"
-"        </div>\n"
-"    </div>\n"
-"</div>\n"
-"        "
-
-#. module: hr_recruitment
-#: model:mail.template,body_html:hr_recruitment.email_template_data_applicant_interest
-msgid ""
-"<div style=\"margin: 0px; padding: 0px;\">\n"
-"    <div style=\"text-align: center\">\n"
-"        <h2>Congratulations!</h2>\n"
-"        <div style=\"color:grey;\">Your resume has been positively reviewed.</div>\n"
-"    </div>\n"
-"    <div style=\"font-size: 13px; margin: 0px; padding: 0px;\">\n"
-"        We just reviewed your resume, and it caught our\n"
-"        attention. As we think you might be great for the\n"
-"        position, your application has been short listed for a\n"
-"        call or an interview.\n"
-"        <br/><br/>\n"
-"        <div t-if=\"'website_url' in object.job_id and object.job_id.website_url\" style=\"padding: 16px 8px 16px 8px;\">\n"
-"            <a t-att-href=\"object.job_id.website_url\" t-attf-style=\"background-color: {{object.company_id.email_secondary_color or '#875A7B'}}; text-decoration: none; color: {{object.company_id.email_primary_color or '#FFFFFF'}}; padding: 8px 16px 8px 16px; border-radius: 5px;\">Job Description</a>\n"
-"        </div>\n"
-"\n"
-"        <t t-if=\"object.user_id\">\n"
-"            You will soon be contacted by:<br/>\n"
-"            <strong t-out=\"object.user_id.name or ''\">Mitchell Admin</strong><br/>\n"
-"            <span>Email: <t t-out=\"object.user_id.email or ''\">admin@yourcompany.example.com</t></span><br/>\n"
-"            <span>Phone: <t t-out=\"object.user_id.phone or ''\">+1 650-123-4567</t></span>\n"
-"            <br/><br/>\n"
-"        </t>\n"
-"        See you soon,\n"
-"        <div style=\"font-size: 11px; color: grey;\">\n"
-"            -- <br/>\n"
-"            The HR Team\n"
-"            <t t-if=\"'website_url' in object.job_id and hasattr(object.job_id, 'website_url') and object.job_id.website_url\">\n"
-"                Discover <a href=\"/jobs\" style=\"text-decoration:none;color:#717188;\">all our jobs</a>.<br/>\n"
-"            </t>\n"
-"        </div>\n"
-"\n"
-"        <hr width=\"97%\" style=\"background-color: rgb(204,204,204); border: medium none; clear: both; display: block; font-size: 0px; min-height: 1px; line-height: 0; margin: 16px 0px 16px 0px;\"/>\n"
-"        <h3 style=\"color:#9A6C8E;\"><strong>What is the next step?</strong></h3>\n"
-"        We usually <strong>answer applications within a few days</strong>.\n"
-"        <br/><br/>\n"
-"        The next step is either a call or a meeting in our offices.\n"
-"        <br/>\n"
-"        Feel free to <strong>contact us if you want a faster\n"
-"        feedback</strong> or if you don't get news from us\n"
-"        quickly enough (just reply to this email).\n"
-"        <br/>\n"
-"\n"
-"        <hr width=\"97%\" style=\"background-color: rgb(204,204,204); border: medium none; clear: both; display: block; font-size: 0px; min-height: 1px; line-height: 0; margin: 17px 0px 16px 0px;\"/>\n"
-"        <t t-set=\"location\" t-value=\"''\"/>\n"
-"        <t t-if=\"object.job_id.address_id.name\">\n"
-"            <strong t-out=\"object.job_id.address_id.name or ''\">Teksa SpA</strong><br/>\n"
-"        </t>\n"
-"        <t t-if=\"object.job_id.address_id.street\">\n"
-"            <t t-out=\"object.job_id.address_id.street or ''\">Puerto Madero 9710</t><br/>\n"
-"            <t t-set=\"location\" t-value=\"object.job_id.address_id.street\"/>\n"
-"        </t>\n"
-"        <t t-if=\"object.job_id.address_id.street2\">\n"
-"            <t t-out=\"object.job_id.address_id.street2 or ''\">Of A15, Santiago (RM)</t><br/>\n"
-"            <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.street2)\"/>\n"
-"        </t>\n"
-"        <t t-if=\"object.job_id.address_id.city\">\n"
-"            <t t-out=\"object.job_id.address_id.city or ''\">Pudahuel</t>,\n"
-"            <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.city)\"/>\n"
-"        </t>\n"
-"        <t t-if=\"object.job_id.address_id.state_id.name\">\n"
-"            <t t-out=\"object.job_id.address_id.state_id.name or ''\">C1</t>,\n"
-"            <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.state_id.name)\"/>\n"
-"        </t>\n"
-"        <t t-if=\"object.job_id.address_id.zip\">\n"
-"            <t t-out=\"object.job_id.address_id.zip or ''\">98450</t>\n"
-"            <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.zip)\"/>\n"
-"        </t>\n"
-"        <br/>\n"
-"        <t t-if=\"object.job_id.address_id.country_id.name\">\n"
-"            <t t-out=\"object.job_id.address_id.country_id.name or ''\">Argentina</t><br/>\n"
-"            <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.country_id.name)\"/>\n"
-"        </t>\n"
-"        <br/>\n"
-"    </div>\n"
-"</div>\n"
-"        "
-msgstr ""
-"<div style=\"margin: 0px; padding: 0px;\">\n"
-"    <div style=\"text-align: center\">\n"
-"        <h2>恭喜！</h2>\n"
-"        <div style=\"color:grey;\">你的履歷獲得正面評價。</div>\n"
-"    </div>\n"
-"    <div style=\"font-size: 13px; margin: 0px; padding: 0px;\">\n"
-"        我們審閱了你的履歷，它吸引了我們\n"
-"        注意。由於我們認為你可能適合該\n"
-"        職位，你的申請已被列入\n"
-"        電話通話或面試的候選名單。\n"
-"        <br/><br/>\n"
-"        <div t-if=\"'website_url' in object.job_id and object.job_id.website_url\" style=\"padding: 16px 8px 16px 8px;\">\n"
-"            <a t-att-href=\"object.job_id.website_url\" t-attf-style=\"background-color: {{object.company_id.email_secondary_color or '#875A7B'}}; text-decoration: none; color: {{object.company_id.email_primary_color or '#FFFFFF'}}; padding: 8px 16px 8px 16px; border-radius: 5px;\">職位描述</a>\n"
-"        </div>\n"
-"\n"
-"        <t t-if=\"object.user_id\">\n"
-"            下列聯絡人將會很快接觸你：<br/>\n"
-"            <strong t-out=\"object.user_id.name or ''\">Mitchell Admin</strong><br/>\n"
-"            <span>電郵： <t t-out=\"object.user_id.email or ''\">admin@yourcompany.example.com</t></span><br/>\n"
-"            <span>電話： <t t-out=\"object.user_id.phone or ''\">+1 650-123-4567</t></span>\n"
-"            <br/><br/>\n"
-"        </t>\n"
-"        期待很快見你！\n"
-"        <div style=\"font-size: 11px; color: grey;\">\n"
-"            -- <br/>\n"
-"            人力資源團隊\n"
-"            <t t-if=\"'website_url' in object.job_id and hasattr(object.job_id, 'website_url') and object.job_id.website_url\">\n"
-"                瀏覽<a href=\"/jobs\" style=\"text-decoration:none;color:#717188;\">所有職位空缺</a>。<br/>\n"
-"            </t>\n"
-"        </div>\n"
-"\n"
-"        <hr width=\"97%\" style=\"background-color: rgb(204,204,204); border: medium none; clear: both; display: block; font-size: 0px; min-height: 1px; line-height: 0; margin: 16px 0px 16px 0px;\"/>\n"
-"        <h3 style=\"color:#9A6C8E;\"><strong>下一步怎麼做？</strong></h3>\n"
-"        通常我們會在<strong>幾天內回應求職申請</strong>。\n"
-"        <br/><br/>\n"
-"        下一步會是在我們的辦公室見面，或電話通話。\n"
-"        <br/>\n"
-"        若你需要<strong>更快的回應</strong>，\n"
-"        或未有足夠快地從我們獲得消息，\n"
-"        歡迎聯絡我們。（只需回覆此電郵）\n"
-"        <br/>\n"
-"\n"
-"        <hr width=\"97%\" style=\"background-color: rgb(204,204,204); border: medium none; clear: both; display: block; font-size: 0px; min-height: 1px; line-height: 0; margin: 17px 0px 16px 0px;\"/>\n"
-"        <t t-set=\"location\" t-value=\"''\"/>\n"
-"        <t t-if=\"object.job_id.address_id.name\">\n"
-"            <strong t-out=\"object.job_id.address_id.name or ''\">Teksa SpA</strong><br/>\n"
-"        </t>\n"
-"        <t t-if=\"object.job_id.address_id.street\">\n"
-"            <t t-out=\"object.job_id.address_id.street or ''\">Puerto Madero 9710</t><br/>\n"
-"            <t t-set=\"location\" t-value=\"object.job_id.address_id.street\"/>\n"
-"        </t>\n"
-"        <t t-if=\"object.job_id.address_id.street2\">\n"
-"            <t t-out=\"object.job_id.address_id.street2 or ''\">Of A15, Santiago (RM)</t><br/>\n"
-"            <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.street2)\"/>\n"
-"        </t>\n"
-"        <t t-if=\"object.job_id.address_id.city\">\n"
-"            <t t-out=\"object.job_id.address_id.city or ''\">Pudahuel</t>,\n"
-"            <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.city)\"/>\n"
-"        </t>\n"
-"        <t t-if=\"object.job_id.address_id.state_id.name\">\n"
-"            <t t-out=\"object.job_id.address_id.state_id.name or ''\">C1</t>,\n"
-"            <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.state_id.name)\"/>\n"
-"        </t>\n"
-"        <t t-if=\"object.job_id.address_id.zip\">\n"
-"            <t t-out=\"object.job_id.address_id.zip or ''\">98450</t>\n"
-"            <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.zip)\"/>\n"
-"        </t>\n"
-"        <br/>\n"
-"        <t t-if=\"object.job_id.address_id.country_id.name\">\n"
-"            <t t-out=\"object.job_id.address_id.country_id.name or ''\">阿根廷</t><br/>\n"
-"            <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.country_id.name)\"/>\n"
-"        </t>\n"
-"        <br/>\n"
-"    </div>\n"
-"</div>\n"
-"        "
-
-#. module: hr_recruitment
 #. odoo-javascript
 #: code:addons/hr_recruitment/static/src/js/tours/hr_recruitment.js:0
 msgid ""
@@ -491,6 +80,7 @@ msgid "<i class=\"fa fa-envelope-o\" role=\"img\" aria-label=\"Alias\" title=\"A
 msgstr "<i class=\"fa fa-envelope-o\" role=\"img\" aria-label=\"別名\" title=\"別名\"/>"
 
 #. module: hr_recruitment
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_kanban
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_kanban_view_applicant
 msgid "<i class=\"fa fa-paperclip\" role=\"img\" aria-label=\"Documents\"/>"
 msgstr "<i class=\"fa fa-paperclip\" role=\"img\" aria-label=\"Documents\"/>"
@@ -506,6 +96,7 @@ msgstr ""
 
 #. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_form
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_form
 msgid "<span class=\"o_stat_text\">Employee</span>"
 msgstr "<span class=\"o_stat_text\">員工</span>"
 
@@ -513,15 +104,6 @@ msgstr "<span class=\"o_stat_text\">員工</span>"
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_job_survey
 msgid "<span class=\"o_stat_text\">Trackers</span>"
 msgstr "<span class=\"o_stat_text\">追蹤器</span>"
-
-#. module: hr_recruitment
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_job_survey
-msgid ""
-"<span class=\"o_stat_value text-muted\">New</span>\n"
-"                            <span class=\"o_stat_text text-muted\">Job Board</span>"
-msgstr ""
-"<span class=\"o_stat_value text-muted\">新增</span>\n"
-"                            <span class=\"o_stat_text text-muted\">招聘平台</span>"
 
 #. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_job_survey
@@ -568,14 +150,245 @@ msgid "<span>Reporting</span>"
 msgstr "<span>報表</span>"
 
 #. module: hr_recruitment
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_talent_pool_view_kanban
-msgid "<span>Talents</span>"
-msgstr "<span>人才</span>"
-
-#. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.view_hr_job_kanban
 msgid "<span>View</span>"
 msgstr "<span>檢視</span>"
+
+#. module: hr_recruitment
+#: model:mail.template,body_html:hr_recruitment.email_template_data_applicant_congratulations
+msgid ""
+"<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"590\" style=\"background-color: white; border-collapse: collapse; margin-left: 20px;\">\n"
+"    <tr>\n"
+"        <td valign=\"top\" style=\"padding: 0px 10px;\">\n"
+"            <div style=\"font-size: 13px; margin: 0px; padding: 0px;\">\n"
+"                Hello,\n"
+"                <br/><br/>\n"
+"                We confirm we successfully received your application for the job\n"
+"                \"<a t-att-href=\"hasattr(object.job_id, 'website_url') and object.job_id.website_url or ''\" style=\"color:#9A6C8E;\"><strong t-out=\"object.job_id.name or ''\">Experienced Developer</strong></a>\" at <strong t-out=\"object.company_id.name or ''\">YourCompany</strong>.\n"
+"                <br/><br/>\n"
+"                We will come back to you shortly.\n"
+"\n"
+"                <div t-if=\"'website_url' in object.job_id and object.job_id.website_url\" style=\"padding: 16px 8px 16px 8px;\">\n"
+"                    <a t-att-href=\"object.job_id.website_url\" style=\"background-color: #875a7b; text-decoration: none; color: #fff; padding: 8px 16px 8px 16px; border-radius: 5px;\">Job Description</a>\n"
+"                </div>\n"
+"\n"
+"                <hr width=\"97%\" style=\"background-color: rgb(204,204,204); border: medium none; clear: both; display: block; font-size: 0px; min-height: 1px; line-height: 0; margin: 16px 0px 16px 0px;\"/>\n"
+"                <t t-if=\"object.user_id\">\n"
+"                    <h3 style=\"color:#9A6C8E;\"><strong>Your Contact:</strong></h3>\n"
+"                    <p>\n"
+"                        <strong t-out=\"object.user_id.name or ''\">Mitchell Admin</strong><br/>\n"
+"                        <span>Email: <t t-out=\"object.user_id.email or ''\">admin@yourcompany.example.com</t></span><br/>\n"
+"                        <span>Phone: <t t-out=\"object.user_id.phone or ''\">+1 650-123-4567</t></span>\n"
+"                    </p>\n"
+"                    <hr width=\"97%\" style=\"background-color: rgb(204,204,204); border: medium none; clear: both; display: block; font-size: 0px; min-height: 1px; line-height: 0; margin: 16px 0px 16px 0px;\"/>\n"
+"                </t>\n"
+"\n"
+"                <h3 style=\"color:#9A6C8E;\"><strong>What is the next step?</strong></h3>\n"
+"                We usually <strong>answer applications within a few days.</strong><br/><br/>\n"
+"                Feel free to <strong>contact us if you want a faster\n"
+"                feedback</strong> or if you don't get news from us\n"
+"                quickly enough (just reply to this email).\n"
+"\n"
+"                <hr width=\"97%\" style=\"background-color: rgb(204,204,204); border: medium none; clear: both; display: block; font-size: 0px; min-height: 1px; line-height: 0; margin: 17px 0px 16px 0px;\"/>\n"
+"                <t t-set=\"location\" t-value=\"''\"/>\n"
+"                <t t-if=\"object.job_id.address_id.name\">\n"
+"                    <strong t-out=\"object.job_id.address_id.name or ''\">Teksa SpA</strong><br/>\n"
+"                </t>\n"
+"                <t t-if=\"object.job_id.address_id.street\">\n"
+"                    <t t-out=\"object.job_id.address_id.street or ''\">Puerto Madero 9710</t><br/>\n"
+"                    <t t-set=\"location\" t-value=\"object.job_id.address_id.street\"/>\n"
+"                </t>\n"
+"                <t t-if=\"object.job_id.address_id.street2\">\n"
+"                    <t t-out=\"object.job_id.address_id.street2 or ''\">Of A15, Santiago (RM)</t><br/>\n"
+"                    <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.street2)\"/>\n"
+"                </t>\n"
+"                <t t-if=\"object.job_id.address_id.city\">\n"
+"                    <t t-out=\"object.job_id.address_id.city or ''\">Pudahuel</t>,\n"
+"                    <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.city)\"/>\n"
+"                </t>\n"
+"                <t t-if=\"object.job_id.address_id.state_id.name\">\n"
+"                    <t t-out=\"object.job_id.address_id.state_id.name or ''\">C1</t>,\n"
+"                    <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.state_id.name)\"/>\n"
+"                </t>\n"
+"                <t t-if=\"object.job_id.address_id.zip\">\n"
+"                    <t t-out=\"object.job_id.address_id.zip or ''\">98450</t>\n"
+"                    <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.zip)\"/>\n"
+"                </t>\n"
+"                <br/>\n"
+"                <t t-if=\"object.job_id.address_id.country_id.name\">\n"
+"                    <t t-out=\"object.job_id.address_id.country_id.name or ''\">Argentina</t><br/>\n"
+"                    <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.country_id.name)\"/>\n"
+"                </t>\n"
+"                <br/>\n"
+"            </div>\n"
+"        </td>\n"
+"    </tr>\n"
+"</table>"
+msgstr ""
+
+#. module: hr_recruitment
+#: model:mail.template,body_html:hr_recruitment.email_template_data_applicant_interest
+msgid ""
+"<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"590\" style=\"background-color: white; border-collapse: collapse; margin-left: 20px;\">\n"
+"    <tr>\n"
+"        <td valign=\"top\" style=\"padding: 0px 10px;\">\n"
+"            <div style=\"text-align: center\">\n"
+"                <h2>Congratulations!</h2>\n"
+"                <div style=\"color:grey;\">Your resume has been positively reviewed.</div>\n"
+"            </div>\n"
+"            <div style=\"font-size: 13px; margin: 0px; padding: 0px;\">\n"
+"                We just reviewed your resume, and it caught our\n"
+"                attention. As we think you might be great for the\n"
+"                position, your application has been short listed for a\n"
+"                call or an interview.\n"
+"                <br/><br/>\n"
+"                <div t-if=\"'website_url' in object.job_id and object.job_id.website_url\" style=\"padding: 16px 8px 16px 8px;\">\n"
+"                    <a t-att-href=\"object.job_id.website_url\" style=\"background-color: #875a7b; text-decoration: none; color: #fff; padding: 8px 16px 8px 16px; border-radius: 5px;\">Job Description</a>\n"
+"                </div>\n"
+"\n"
+"                <t t-if=\"object.user_id\">\n"
+"                    You will soon be contacted by:<br/>\n"
+"                    <strong t-out=\"object.user_id.name or ''\">Mitchell Admin</strong><br/>\n"
+"                    <span>Email: <t t-out=\"object.user_id.email or ''\">admin@yourcompany.example.com</t></span><br/>\n"
+"                    <span>Phone: <t t-out=\"object.user_id.phone or ''\">+1 650-123-4567</t></span>\n"
+"                    <br/><br/>\n"
+"                </t>\n"
+"                See you soon,\n"
+"                <div style=\"font-size: 11px; color: grey;\">\n"
+"                    -- <br/>\n"
+"                    The HR Team\n"
+"                    <t t-if=\"'website_url' in object.job_id and hasattr(object.job_id, 'website_url') and object.job_id.website_url\">\n"
+"                        Discover <a href=\"/jobs\" style=\"text-decoration:none;color:#717188;\">all our jobs</a>.<br/>\n"
+"                    </t>\n"
+"                </div>\n"
+"\n"
+"                <hr width=\"97%\" style=\"background-color: rgb(204,204,204); border: medium none; clear: both; display: block; font-size: 0px; min-height: 1px; line-height: 0; margin: 16px 0px 16px 0px;\"/>\n"
+"                <h3 style=\"color:#9A6C8E;\"><strong>What is the next step?</strong></h3>\n"
+"                We usually <strong>answer applications within a few days</strong>.\n"
+"                <br/><br/>\n"
+"                The next step is either a call or a meeting in our offices.\n"
+"                <br/>\n"
+"                Feel free to <strong>contact us if you want a faster\n"
+"                feedback</strong> or if you don't get news from us\n"
+"                quickly enough (just reply to this email).\n"
+"                <br/>\n"
+"\n"
+"                <hr width=\"97%\" style=\"background-color: rgb(204,204,204); border: medium none; clear: both; display: block; font-size: 0px; min-height: 1px; line-height: 0; margin: 17px 0px 16px 0px;\"/>\n"
+"                <t t-set=\"location\" t-value=\"''\"/>\n"
+"                <t t-if=\"object.job_id.address_id.name\">\n"
+"                    <strong t-out=\"object.job_id.address_id.name or ''\">Teksa SpA</strong><br/>\n"
+"                </t>\n"
+"                <t t-if=\"object.job_id.address_id.street\">\n"
+"                    <t t-out=\"object.job_id.address_id.street or ''\">Puerto Madero 9710</t><br/>\n"
+"                    <t t-set=\"location\" t-value=\"object.job_id.address_id.street\"/>\n"
+"                </t>\n"
+"                <t t-if=\"object.job_id.address_id.street2\">\n"
+"                    <t t-out=\"object.job_id.address_id.street2 or ''\">Of A15, Santiago (RM)</t><br/>\n"
+"                    <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.street2)\"/>\n"
+"                </t>\n"
+"                <t t-if=\"object.job_id.address_id.city\">\n"
+"                    <t t-out=\"object.job_id.address_id.city or ''\">Pudahuel</t>,\n"
+"                    <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.city)\"/>\n"
+"                </t>\n"
+"                <t t-if=\"object.job_id.address_id.state_id.name\">\n"
+"                    <t t-out=\"object.job_id.address_id.state_id.name or ''\">C1</t>,\n"
+"                    <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.state_id.name)\"/>\n"
+"                </t>\n"
+"                <t t-if=\"object.job_id.address_id.zip\">\n"
+"                    <t t-out=\"object.job_id.address_id.zip or ''\">98450</t>\n"
+"                    <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.zip)\"/>\n"
+"                </t>\n"
+"                <br/>\n"
+"                <t t-if=\"object.job_id.address_id.country_id.name\">\n"
+"                    <t t-out=\"object.job_id.address_id.country_id.name or ''\">Argentina</t><br/>\n"
+"                    <t t-set=\"location\" t-value=\"'%s, %s' % (location, object.job_id.address_id.country_id.name)\"/>\n"
+"                </t>\n"
+"                <br/>\n"
+"            </div>\n"
+"        </td>\n"
+"    </tr>\n"
+"</table>"
+msgstr ""
+
+#. module: hr_recruitment
+#: model:mail.template,body_html:hr_recruitment.email_template_data_applicant_not_interested
+msgid ""
+"<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"590\" style=\"min-width: 590px; background-color: white; padding: 0px 8px 0px 8px; border-collapse:separate;\">\n"
+"    <tr>\n"
+"        <td valign=\"top\">\n"
+"            <div style=\"font-size: 13px; margin: 0px; padding: 0px;\">\n"
+"                Dear,<br/><br/>\n"
+"                We would like to thank you for your interest and your time.<br/>\n"
+"                We wish you all the best in your future endeavors.\n"
+"                <br/><br/>\n"
+"                Best<br/>\n"
+"                <div style=\"font-size: 11px; color: grey;\">\n"
+"                    <t t-if=\"object.user_id\">\n"
+"                        -- <br/>\n"
+"                        <strong t-out=\"object.user_id.name or ''\">Marc Demo</strong><br/>\n"
+"                        Email: <t t-out=\"object.user_id.email or ''\">mark.brown23@example.com</t><br/>\n"
+"                        Phone: <t t-out=\"object.user_id.phone or ''\">+1 650-123-4567</t>\n"
+"                    </t>\n"
+"                    <t t-else=\"\">\n"
+"                        -- <br/>\n"
+"                        <t t-out=\"object.company_id.name or ''\">YourCompany</t><br/>\n"
+"                        The HR Team<br/>\n"
+"                    </t>\n"
+"                </div>\n"
+"            </div>\n"
+"        </td>\n"
+"    </tr>\n"
+"</table>\n"
+"        "
+msgstr ""
+
+#. module: hr_recruitment
+#: model:mail.template,body_html:hr_recruitment.email_template_data_applicant_refuse
+msgid ""
+"<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"590\" style=\"min-width: 590px; background-color: white; padding: 0px 8px 0px 8px; border-collapse:separate;\">\n"
+"    <tr>\n"
+"        <td valign=\"top\">\n"
+"            <div style=\"font-size: 13px; margin: 0px; padding: 0px;\">\n"
+"                Hello,<br/><br/>\n"
+"                Thank you for your interest in joining the\n"
+"                <b><t t-out=\"object.company_id.name or ''\">YourCompany</t></b> team.  We\n"
+"                wanted to let you know that, although your resume is\n"
+"                competitive, our hiring team reviewed your application\n"
+"                and <b>did not select it for further consideration</b>.\n"
+"                <br/><br/>\n"
+"                Please note that recruiting is hard, and we can make\n"
+"                mistakes. Do not hesitate to reply to this email if you\n"
+"                think we made a mistake, or if you want more information\n"
+"                about our decision.\n"
+"                <br/><br/>\n"
+"                We will, however, keep your resume on record and get in\n"
+"                touch with you about future opportunities that may be a\n"
+"                better fit for your skills and experience.\n"
+"                <br/><br/>\n"
+"                We wish you all the best in your job search and hope we\n"
+"                will have the chance to consider you for another role\n"
+"                in the future.\n"
+"                <br/><br/>\n"
+"                Thank you,\n"
+"                <div style=\"font-size: 11px; color: grey;\">\n"
+"                    <t t-if=\"object.user_id\">\n"
+"                        -- <br/>\n"
+"                        <strong t-out=\"object.user_id.name or ''\">Mitchell Admin</strong><br/>\n"
+"                        Email: <t t-out=\"object.user_id.email or ''\">admin@yourcompany.example.com</t><br/>\n"
+"                        Phone: <t t-out=\"object.user_id.phone or ''\">+1 650-123-4567</t>\n"
+"                    </t>\n"
+"                    <t t-else=\"\">\n"
+"                        -- <br/>\n"
+"                        <t t-out=\"object.company_id.name or ''\">YourCompany</t><br/>\n"
+"                        The HR Team\n"
+"                    </t>\n"
+"                </div>\n"
+"            </div>\n"
+"        </td>\n"
+"    </tr>\n"
+"</table>\n"
+"        "
+msgstr ""
 
 #. module: hr_recruitment
 #: model:ir.model.fields,help:hr_recruitment.field_hr_job__alias_defaults
@@ -586,20 +399,20 @@ msgstr "當建立別名的新記錄時，一個Python字典被提供作為預設
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__message_needaction
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__message_needaction
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__message_needaction
 msgid "Action Needed"
 msgstr "需要採取行動"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__active
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant_refuse_reason__active
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__active
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__active
 msgid "Active"
 msgstr "啟用"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__activity_ids
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_job__activity_ids
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__activity_ids
 #: model:ir.ui.menu,name:hr_recruitment.menu_hr_recruitment_config_activities
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.view_hr_job_kanban
 msgid "Activities"
@@ -617,13 +430,8 @@ msgid "Activities Today"
 msgstr "今天活動"
 
 #. module: hr_recruitment
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search_bis
-msgid "Activities of"
-msgstr "活動："
-
-#. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__activity_exception_decoration
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_job__activity_exception_decoration
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__activity_exception_decoration
 msgid "Activity Exception Decoration"
 msgstr "活動異常圖示"
 
@@ -639,13 +447,13 @@ msgstr "活動計劃"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__activity_state
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_job__activity_state
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__activity_state
 msgid "Activity State"
 msgstr "活動狀態"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__activity_type_icon
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_job__activity_type_icon
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__activity_type_icon
 msgid "Activity Type Icon"
 msgstr "活動類型圖示"
 
@@ -670,27 +478,6 @@ msgid "Activity schedule plan Wizard"
 msgstr "活動日程計劃精靈"
 
 #. module: hr_recruitment
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search_bis
-msgid "Activity type"
-msgstr "活動類型"
-
-#. module: hr_recruitment
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.crm_case_tree_view_job
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_kanban_view_applicant
-msgid "Add Applicants"
-msgstr "加入申請人"
-
-#. module: hr_recruitment
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.job_add_applicants_view_form
-msgid "Add Applicants to Pool"
-msgstr "將申請人加入人才庫"
-
-#. module: hr_recruitment
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.talent_pool_add_applicants_view_form
-msgid "Add Applicants to the Pool"
-msgstr "將申請人加入人才庫"
-
-#. module: hr_recruitment
 #: model_terms:ir.actions.act_window,help:hr_recruitment.hr_job_stage_act
 #: model_terms:ir.actions.act_window,help:hr_recruitment.hr_recruitment_stage_act
 msgid "Add a new stage in the recruitment process"
@@ -700,29 +487,6 @@ msgstr "在招募流程中增加一個新階段"
 #: model_terms:ir.actions.act_window,help:hr_recruitment.hr_applicant_category_action
 msgid "Add a new tag"
 msgstr "添加新標籤"
-
-#. module: hr_recruitment
-#. odoo-python
-#: code:addons/hr_recruitment/models/hr_applicant.py:0
-msgid "Add applicant(s) to the pool"
-msgstr "將申請人加入人才庫"
-
-#. module: hr_recruitment
-#: model:ir.model,name:hr_recruitment.model_job_add_applicants
-msgid "Add applicants to a job"
-msgstr "將申請人加入至工作職位"
-
-#. module: hr_recruitment
-#: model:ir.model,name:hr_recruitment.model_talent_pool_add_applicants
-msgid "Add applicants to talent pool"
-msgstr "將申請人加入人才庫"
-
-#. module: hr_recruitment
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_form
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_kanban_view_applicant
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.talent_pool_add_applicants_view_form
-msgid "Add to Pool"
-msgstr "加入至人才庫"
 
 #. module: hr_recruitment
 #: model:res.groups,name:hr_recruitment.group_hr_recruitment_manager
@@ -799,7 +563,7 @@ msgstr "分析"
 #: model:ir.model,name:hr_recruitment.model_hr_applicant
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_get_refuse_reason__applicant_ids
 #: model:ir.model.fields,field_description:hr_recruitment.field_calendar_event__applicant_id
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_employee__applicant_ids
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__applicant_ids
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_form
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search_bis
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.ir_attachment_hr_recruitment_list_view
@@ -843,19 +607,11 @@ msgid "Applicant created"
 msgstr "申請已建立"
 
 #. module: hr_recruitment
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__partner_name
-msgid "Applicant's Name"
-msgstr "申請人姓名"
-
-#. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_get_refuse_reason__applicant_without_email
 msgid "Applicant(s) not having email"
 msgstr "沒有電子郵件的申請人"
 
 #. module: hr_recruitment
-#: model:ir.model.fields,field_description:hr_recruitment.field_res_partner__applicant_ids
-#: model:ir.model.fields,field_description:hr_recruitment.field_res_users__applicant_ids
-#: model:ir.model.fields,field_description:hr_recruitment.field_talent_pool_add_applicants__applicant_ids
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.crm_case_tree_view_job
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_calendar_view
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_activity
@@ -885,7 +641,7 @@ msgid "Application"
 msgstr "應用程式"
 
 #. module: hr_recruitment
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__application_count
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__application_count
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_job__application_count
 msgid "Application Count"
 msgstr "應用數量"
@@ -901,15 +657,19 @@ msgid "Application email"
 msgstr "申請電郵"
 
 #. module: hr_recruitment
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_search
+msgid "Application in Progress"
+msgstr "申請進行中"
+
+#. module: hr_recruitment
 #. odoo-python
-#: code:addons/hr_recruitment/models/hr_applicant.py:0
+#: code:addons/hr_recruitment/models/hr_candidate.py:0
 #: model:ir.actions.act_window,name:hr_recruitment.action_hr_job_applications
 #: model:ir.actions.act_window,name:hr_recruitment.crm_case_categ0_act_job
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_send_mail__applicant_ids
-#: model:ir.model.fields,field_description:hr_recruitment.field_job_add_applicants__applicant_ids
 #: model:ir.ui.menu,name:hr_recruitment.menu_crm_case_categ0_act_job
 #: model:ir.ui.menu,name:hr_recruitment.menu_hr_recruitment_config_applications
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_form
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_form
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_job_view_tree_inherit
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.view_hr_job_kanban
 msgid "Applications"
@@ -923,25 +683,15 @@ msgid ""
 msgstr "經此電郵收到的申請，不會連結至聯絡人，亦不會對申請人設定電郵地址。"
 
 #. module: hr_recruitment
-#: model:ir.model.fields,help:hr_recruitment.field_hr_applicant__application_count
-msgid "Applications with the same email or phone or mobile"
-msgstr "具有相同電郵、電話或流動裝置的申請"
-
-#. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__create_date
 msgid "Applied on"
 msgstr "申請於"
 
 #. module: hr_recruitment
-#: model:ir.model,website_form_label:hr_recruitment.model_hr_applicant
-msgid "Apply for a Job"
-msgstr "申請職位"
-
-#. module: hr_recruitment
 #. odoo-javascript
 #: code:addons/hr_recruitment/static/src/views/recruitment_kanban_view.js:0
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_kanban
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_kanban_view_applicant
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_talent_pool_view_kanban
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.view_hr_job_kanban
 msgid "Archive"
 msgstr "封存"
@@ -951,6 +701,8 @@ msgstr "封存"
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_form
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search_bis
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_form
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_search
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_kanban_view_applicant
 msgid "Archived"
 msgstr "已封存"
@@ -976,33 +728,33 @@ msgstr "至少一名申請人沒有電郵，故此不能使用傳送電郵選項
 
 #. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.applicant_send_mail_view_form
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.candidate_send_mail_view_form
 msgid "Attach a file"
 msgstr "附加一個文件"
 
 #. module: hr_recruitment
-#: model:ir.model,name:hr_recruitment.model_ir_attachment
-msgid "Attachment"
-msgstr "附件"
-
-#. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__message_attachment_count
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__message_attachment_count
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__message_attachment_count
 msgid "Attachment Count"
 msgstr "附件數目"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_send_mail__attachment_ids
+#: model:ir.model.fields,field_description:hr_recruitment.field_candidate_send_mail__attachment_ids
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__attachment_ids
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__attachment_ids
 msgid "Attachments"
 msgstr "附件"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_send_mail__author_id
+#: model:ir.model.fields,field_description:hr_recruitment.field_candidate_send_mail__author_id
 msgid "Author"
 msgstr "作者"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__availability
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__availability
 msgid "Availability"
 msgstr "可用"
 
@@ -1012,12 +764,17 @@ msgid "Bachelor Degree"
 msgstr "學士學位"
 
 #. module: hr_recruitment
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__is_blacklisted
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__is_blacklisted
 msgid "Blacklist"
 msgstr "黑名單"
 
 #. module: hr_recruitment
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__phone_blacklisted
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__mobile_blacklisted
+msgid "Blacklisted Phone Is Mobile"
+msgstr "列入黑名單的電話是手機"
+
+#. module: hr_recruitment
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__phone_blacklisted
 msgid "Blacklisted Phone is Phone"
 msgstr "列入黑名單的電話是市話"
 
@@ -1036,11 +793,12 @@ msgstr "已封鎖"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_send_mail__body_has_template_value
+#: model:ir.model.fields,field_description:hr_recruitment.field_candidate_send_mail__body_has_template_value
 msgid "Body content is the same as the template"
 msgstr "正文內容與範本相同"
 
 #. module: hr_recruitment
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__message_bounce
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__message_bounce
 msgid "Bounce"
 msgstr "彈跳"
 
@@ -1073,15 +831,60 @@ msgstr "活動"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_send_mail__can_edit_body
+#: model:ir.model.fields,field_description:hr_recruitment.field_candidate_send_mail__can_edit_body
 msgid "Can Edit Body"
 msgstr "允許編輯內文"
 
 #. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.applicant_get_refuse_reason_view_form
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.applicant_send_mail_view_form
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.talent_pool_add_applicants_view_form
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.candidate_send_mail_view_form
 msgid "Cancel"
 msgstr "取消"
+
+#. module: hr_recruitment
+#: model:ir.model,name:hr_recruitment.model_hr_candidate
+#: model:ir.model.fields,field_description:hr_recruitment.field_calendar_event__candidate_id
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__candidate_id
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_employee__candidate_id
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search_bis
+msgid "Candidate"
+msgstr "候選人"
+
+#. module: hr_recruitment
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__user_id
+msgid "Candidate Manager"
+msgstr "候選人管理員"
+
+#. module: hr_recruitment
+#: model:ir.model.fields,field_description:hr_recruitment.field_res_company__candidate_properties_definition
+msgid "Candidate Properties"
+msgstr "應徵者屬性"
+
+#. module: hr_recruitment
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_form
+msgid "Candidate's Name"
+msgstr "應徵者姓名"
+
+#. module: hr_recruitment
+#: model:ir.actions.act_window,name:hr_recruitment.action_hr_candidate
+#: model:ir.model.fields,field_description:hr_recruitment.field_candidate_send_mail__candidate_ids
+#: model:ir.ui.menu,name:hr_recruitment.menu_hr_candidate
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_calendar
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_search
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_tree
+msgid "Candidates"
+msgstr "候選人"
+
+#. module: hr_recruitment
+#: model:ir.model.fields,help:hr_recruitment.field_hr_candidate__similar_candidates_count
+msgid "Candidates with the same email or phone or mobile"
+msgstr "使用相同電郵地址、電話號碼或手機號碼的應徵者"
+
+#. module: hr_recruitment
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__partner_name
+msgid "Candidates's Name"
+msgstr "應徵者姓名"
 
 #. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.crm_case_graph_view_job
@@ -1100,13 +903,9 @@ msgid "Choose an application email."
 msgstr "選擇一個申請電子郵件。"
 
 #. module: hr_recruitment
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__color
-msgid "Color"
-msgstr "顏色"
-
-#. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__color
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant_category__color
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__color
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_job__color
 msgid "Color Index"
 msgstr "顏色索引"
@@ -1118,16 +917,11 @@ msgstr "公司"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__company_id
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__company_id
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__company_id
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search_bis
 msgid "Company"
 msgstr "公司"
-
-#. module: hr_recruitment
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_job__compensation
-msgid "Compensation"
-msgstr "報酬"
 
 #. module: hr_recruitment
 #: model:ir.model,name:hr_recruitment.model_res_config_settings
@@ -1136,7 +930,6 @@ msgstr "配置設定"
 
 #. module: hr_recruitment
 #: model:ir.ui.menu,name:hr_recruitment.menu_hr_recruitment_configuration
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_talent_pool_view_kanban
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.view_hr_job_kanban
 msgid "Configuration"
 msgstr "配置"
@@ -1147,10 +940,18 @@ msgid "Confirmation email sent to all new job applications"
 msgstr "發送給所有新職位申請的確認電子郵件"
 
 #. module: hr_recruitment
-#: model:ir.model,name:hr_recruitment.model_res_partner
+#. odoo-python
+#: code:addons/hr_recruitment/models/hr_applicant.py:0
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__partner_id
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__partner_id
 msgid "Contact"
 msgstr "聯絡人"
+
+#. module: hr_recruitment
+#. odoo-python
+#: code:addons/hr_recruitment/models/hr_applicant.py:0
+msgid "Contact Email"
+msgstr "聯繫電郵"
 
 #. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.ir_attachment_view_search_inherit_hr_recruitment
@@ -1159,6 +960,7 @@ msgstr "內容"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_send_mail__body
+#: model:ir.model.fields,field_description:hr_recruitment.field_candidate_send_mail__body
 msgid "Contents"
 msgstr "內容"
 
@@ -1179,7 +981,7 @@ msgid "Copy this email address, to paste it in your email composer, to apply."
 msgstr "複製此電子郵件地址，將其貼到你的電子郵件編輯器中來進行申請。"
 
 #. module: hr_recruitment
-#: model:ir.model.fields,help:hr_recruitment.field_hr_applicant__message_bounce
+#: model:ir.model.fields,help:hr_recruitment.field_hr_candidate__message_bounce
 msgid "Counter of the number of bounced emails for this contact"
 msgstr "此聯絡人退回信件數量計數器"
 
@@ -1189,23 +991,10 @@ msgid "Create"
 msgstr "建立"
 
 #. module: hr_recruitment
-#. odoo-python
-#: code:addons/hr_recruitment/models/hr_applicant.py:0
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.crm_case_tree_view_job
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_form
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.job_add_applicants_view_form
-msgid "Create Applications"
-msgstr "建立申請"
-
-#. module: hr_recruitment
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_form
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_form
 msgid "Create Employee"
 msgstr "新增員工"
-
-#. module: hr_recruitment
-#: model:ir.model,website_form_label:hr_recruitment.model_res_partner
-msgid "Create a Customer"
-msgstr "建立客戶"
 
 #. module: hr_recruitment
 #: model:ir.actions.act_window,name:hr_recruitment.create_job_simple
@@ -1230,52 +1019,40 @@ msgid "Create your first Job Position."
 msgstr "建立公司的第一個工作職位。"
 
 #. module: hr_recruitment
-#. odoo-python
-#: code:addons/hr_recruitment/wizard/job_add_applicants.py:0
-msgid "Created %(amount)s new applications for: %(names)s"
-msgstr "已為以下項目建立 %(amount)s 項新申請：%(names)s"
-
-#. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_get_refuse_reason__create_uid
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_send_mail__create_uid
+#: model:ir.model.fields,field_description:hr_recruitment.field_candidate_send_mail__create_uid
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__create_uid
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant_category__create_uid
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant_refuse_reason__create_uid
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__create_uid
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_job_platform__create_uid
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_recruitment_degree__create_uid
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_recruitment_source__create_uid
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_recruitment_stage__create_uid
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__create_uid
-#: model:ir.model.fields,field_description:hr_recruitment.field_job_add_applicants__create_uid
-#: model:ir.model.fields,field_description:hr_recruitment.field_talent_pool_add_applicants__create_uid
 msgid "Created by"
 msgstr "建立人員"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_get_refuse_reason__create_date
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_send_mail__create_date
+#: model:ir.model.fields,field_description:hr_recruitment.field_candidate_send_mail__create_date
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant_category__create_date
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant_refuse_reason__create_date
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__create_date
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_job_platform__create_date
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_recruitment_degree__create_date
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_recruitment_source__create_date
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_recruitment_stage__create_date
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__create_date
-#: model:ir.model.fields,field_description:hr_recruitment.field_job_add_applicants__create_date
-#: model:ir.model.fields,field_description:hr_recruitment.field_talent_pool_add_applicants__create_date
 msgid "Created on"
 msgstr "建立於"
 
 #. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search_bis
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_search
 msgid "Creation Date"
 msgstr "建立日期"
-
-#. module: hr_recruitment
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_job__currency_id
-msgid "Currency"
-msgstr "貨幣"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_job__alias_bounced_content
@@ -1321,7 +1098,7 @@ msgid ""
 "Define a specific contact address for this job position. If you keep it "
 "empty, the default email address will be used which is in human resources "
 "settings"
-msgstr "為這個工作職缺定義一個特定的聯繫地址。如果為空，將預設使用人事部門預設的電子信件地址"
+msgstr "為此職位定義特定的聯絡地址。若留空，會使用預設的電郵地址，該地址可在人力資源設定中設置"
 
 #. module: hr_recruitment
 #: model_terms:ir.actions.act_window,help:hr_recruitment.hr_job_stage_act
@@ -1336,6 +1113,7 @@ msgstr ""
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__type_id
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__type_id
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_recruitment_degree_form
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_recruitment_degree_tree
 msgid "Degree"
@@ -1358,6 +1136,7 @@ msgid "Delay to Close"
 msgstr "延遲關閉"
 
 #. module: hr_recruitment
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_kanban
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_kanban_view_applicant
 msgid "Delete"
 msgstr "刪除"
@@ -1381,14 +1160,7 @@ msgid "Departments"
 msgstr "部門"
 
 #. module: hr_recruitment
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_talent_pool_view_form
-msgid ""
-"Describe the talent pool and common traits among talent pool applicants"
-msgstr "描述人才庫，以及人才庫內申請人的共同特徵"
-
-#. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant_refuse_reason__name
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_talent_pool_view_form
 msgid "Description"
 msgstr "說明"
 
@@ -1414,12 +1186,12 @@ msgstr "直接"
 
 #. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search_bis
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_search
 msgid "Directly Available"
 msgstr "直接可用"
 
 #. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_job_simple_form
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.job_add_applicants_view_form
 msgid "Discard"
 msgstr "捨棄"
 
@@ -1431,31 +1203,15 @@ msgstr "在申請表上顯示履歷"
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_get_refuse_reason__display_name
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_send_mail__display_name
-#: model:ir.model.fields,field_description:hr_recruitment.field_calendar_event__display_name
-#: model:ir.model.fields,field_description:hr_recruitment.field_digest_digest__display_name
+#: model:ir.model.fields,field_description:hr_recruitment.field_candidate_send_mail__display_name
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__display_name
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant_category__display_name
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant_refuse_reason__display_name
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_department__display_name
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_employee__display_name
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_job__display_name
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__display_name
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_job_platform__display_name
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_recruitment_degree__display_name
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_recruitment_source__display_name
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_recruitment_stage__display_name
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__display_name
-#: model:ir.model.fields,field_description:hr_recruitment.field_ir_attachment__display_name
-#: model:ir.model.fields,field_description:hr_recruitment.field_ir_ui_menu__display_name
-#: model:ir.model.fields,field_description:hr_recruitment.field_job_add_applicants__display_name
-#: model:ir.model.fields,field_description:hr_recruitment.field_mail_activity_plan__display_name
-#: model:ir.model.fields,field_description:hr_recruitment.field_mail_activity_schedule__display_name
-#: model:ir.model.fields,field_description:hr_recruitment.field_res_company__display_name
-#: model:ir.model.fields,field_description:hr_recruitment.field_res_config_settings__display_name
-#: model:ir.model.fields,field_description:hr_recruitment.field_res_partner__display_name
-#: model:ir.model.fields,field_description:hr_recruitment.field_res_users__display_name
-#: model:ir.model.fields,field_description:hr_recruitment.field_talent_pool_add_applicants__display_name
-#: model:ir.model.fields,field_description:hr_recruitment.field_utm_campaign__display_name
-#: model:ir.model.fields,field_description:hr_recruitment.field_utm_source__display_name
 msgid "Display Name"
 msgstr "顯示名稱"
 
@@ -1483,6 +1239,7 @@ msgstr "文件數"
 #. module: hr_recruitment
 #. odoo-python
 #: code:addons/hr_recruitment/models/hr_applicant.py:0
+#: code:addons/hr_recruitment/models/hr_candidate.py:0
 #: code:addons/hr_recruitment/models/hr_job.py:0
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_job__document_ids
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_job_survey
@@ -1520,6 +1277,7 @@ msgstr "重複項目數量"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__email_from
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__email_from
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_job_platform__email
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_recruitment_source__email
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search_bis
@@ -1549,6 +1307,7 @@ msgstr "此職位的電郵別名。收到新電郵時，會自動為此職位建
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__email_cc
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__email_cc
 msgid "Email cc"
 msgstr "電郵副本抄送"
 
@@ -1571,31 +1330,35 @@ msgstr "電子郵件"
 
 #. module: hr_recruitment
 #. odoo-python
-#: code:addons/hr_recruitment/models/hr_applicant.py:0
+#: code:addons/hr_recruitment/models/hr_candidate.py:0
 #: model:ir.model,name:hr_recruitment.model_hr_employee
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__employee_id
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__employee_id
 msgid "Employee"
 msgstr "員工"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__emp_is_active
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__emp_is_active
 msgid "Employee Active"
 msgstr "員工生效"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__employee_name
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__employee_name
 msgid "Employee Name"
 msgstr "員工姓名"
 
 #. module: hr_recruitment
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.applicant_hired_template
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.candidate_hired_template
 msgid "Employee created:"
 msgstr "已建立員工："
 
 #. module: hr_recruitment
 #: model:ir.model.fields,help:hr_recruitment.field_hr_applicant__employee_id
-msgid "Employee linked to the applicant."
-msgstr "連接到申請人的員工。"
+#: model:ir.model.fields,help:hr_recruitment.field_hr_candidate__employee_id
+msgid "Employee linked to the candidate."
+msgstr "與應徵者相關聯的員工。"
 
 #. module: hr_recruitment
 #: model:ir.ui.menu,name:hr_recruitment.menu_hr_recruitment_config_employees
@@ -1609,11 +1372,13 @@ msgstr "聘用類型"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__priority
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__priority
 msgid "Evaluation"
 msgstr "評估"
 
 #. module: hr_recruitment
 #: model:ir.model.fields.selection,name:hr_recruitment.selection__hr_applicant__priority__3
+#: model:ir.model.fields.selection,name:hr_recruitment.selection__hr_candidate__priority__3
 msgid "Excellent"
 msgstr "傑出"
 
@@ -1649,11 +1414,11 @@ msgid "Favorite User"
 msgstr "最愛使用者"
 
 #. module: hr_recruitment
-#: model:ir.model.fields,help:hr_recruitment.field_hr_applicant__phone_sanitized
+#: model:ir.model.fields,help:hr_recruitment.field_hr_candidate__phone_sanitized
 msgid ""
 "Field used to store sanitized phone number. Helps speeding up searches and "
 "comparisons."
-msgstr "用於存儲已清理電話號碼的欄位。説明加快搜索和比較。"
+msgstr "此欄位用於儲存已清理格式的電話號碼，有助加快資料搜尋及比對。"
 
 #. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.ir_attachment_hr_recruitment_list_view
@@ -1677,19 +1442,19 @@ msgstr "在招聘管道中已摺疊："
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__message_follower_ids
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__message_follower_ids
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__message_follower_ids
 msgid "Followers"
 msgstr "關注人"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__message_partner_ids
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__message_partner_ids
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__message_partner_ids
 msgid "Followers (Partners)"
 msgstr "關注人（業務夥伴）"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,help:hr_recruitment.field_hr_applicant__activity_type_icon
-#: model:ir.model.fields,help:hr_recruitment.field_hr_job__activity_type_icon
+#: model:ir.model.fields,help:hr_recruitment.field_hr_candidate__activity_type_icon
 msgid "Font awesome icon e.g. fa-tasks"
 msgstr "Font awesome 圖示，例如，fa-task"
 
@@ -1710,6 +1475,7 @@ msgstr "獲取拒絕理由"
 
 #. module: hr_recruitment
 #: model:ir.model.fields.selection,name:hr_recruitment.selection__hr_applicant__priority__1
+#: model:ir.model.fields.selection,name:hr_recruitment.selection__hr_candidate__priority__1
 msgid "Good"
 msgstr "好"
 
@@ -1751,6 +1517,7 @@ msgstr "團體申請人履歷顯示"
 #. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search_bis
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_search
 msgid "Group By"
 msgstr "分組依據"
 
@@ -1761,7 +1528,7 @@ msgstr "有域"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__has_message
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__has_message
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__has_message
 msgid "Has Message"
 msgstr "有訊息"
 
@@ -1783,6 +1550,7 @@ msgstr "聘用日期"
 #: model:ir.model.fields.selection,name:hr_recruitment.selection__hr_applicant__application_status__hired
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_form
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search_bis
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_search
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_kanban_view_applicant
 msgid "Hired"
 msgstr "決定聘用"
@@ -1800,31 +1568,15 @@ msgstr "聘用日期"
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_get_refuse_reason__id
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_send_mail__id
-#: model:ir.model.fields,field_description:hr_recruitment.field_calendar_event__id
-#: model:ir.model.fields,field_description:hr_recruitment.field_digest_digest__id
+#: model:ir.model.fields,field_description:hr_recruitment.field_candidate_send_mail__id
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__id
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant_category__id
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant_refuse_reason__id
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_department__id
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_employee__id
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_job__id
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__id
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_job_platform__id
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_recruitment_degree__id
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_recruitment_source__id
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_recruitment_stage__id
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__id
-#: model:ir.model.fields,field_description:hr_recruitment.field_ir_attachment__id
-#: model:ir.model.fields,field_description:hr_recruitment.field_ir_ui_menu__id
-#: model:ir.model.fields,field_description:hr_recruitment.field_job_add_applicants__id
-#: model:ir.model.fields,field_description:hr_recruitment.field_mail_activity_plan__id
-#: model:ir.model.fields,field_description:hr_recruitment.field_mail_activity_schedule__id
-#: model:ir.model.fields,field_description:hr_recruitment.field_res_company__id
-#: model:ir.model.fields,field_description:hr_recruitment.field_res_config_settings__id
-#: model:ir.model.fields,field_description:hr_recruitment.field_res_partner__id
-#: model:ir.model.fields,field_description:hr_recruitment.field_res_users__id
-#: model:ir.model.fields,field_description:hr_recruitment.field_talent_pool_add_applicants__id
-#: model:ir.model.fields,field_description:hr_recruitment.field_utm_campaign__id
-#: model:ir.model.fields,field_description:hr_recruitment.field_utm_source__id
 msgid "ID"
 msgstr "識別號"
 
@@ -1837,27 +1589,27 @@ msgstr "上級記錄ID支援別名(例如:專案支援任務建立別名)"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__activity_exception_icon
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_job__activity_exception_icon
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__activity_exception_icon
 msgid "Icon"
 msgstr "圖示"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,help:hr_recruitment.field_hr_applicant__activity_exception_icon
-#: model:ir.model.fields,help:hr_recruitment.field_hr_job__activity_exception_icon
+#: model:ir.model.fields,help:hr_recruitment.field_hr_candidate__activity_exception_icon
 msgid "Icon to indicate an exception activity."
 msgstr "用於指示異常活動的圖示。"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,help:hr_recruitment.field_hr_applicant__message_needaction
-#: model:ir.model.fields,help:hr_recruitment.field_hr_talent_pool__message_needaction
+#: model:ir.model.fields,help:hr_recruitment.field_hr_candidate__message_needaction
 msgid "If checked, new messages require your attention."
 msgstr "勾選代表有新訊息需要您留意。"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,help:hr_recruitment.field_hr_applicant__message_has_error
 #: model:ir.model.fields,help:hr_recruitment.field_hr_applicant__message_has_sms_error
-#: model:ir.model.fields,help:hr_recruitment.field_hr_talent_pool__message_has_error
-#: model:ir.model.fields,help:hr_recruitment.field_hr_talent_pool__message_has_sms_error
+#: model:ir.model.fields,help:hr_recruitment.field_hr_candidate__message_has_error
+#: model:ir.model.fields,help:hr_recruitment.field_hr_candidate__message_has_sms_error
 msgid "If checked, some messages have a delivery error."
 msgstr "勾選代表有訊息發生傳送錯誤。"
 
@@ -1883,6 +1635,7 @@ msgstr "設置後，此內容將自動發送給未經授權的用戶，而不是
 
 #. module: hr_recruitment
 #: model:ir.model.fields,help:hr_recruitment.field_hr_applicant__emp_is_active
+#: model:ir.model.fields,help:hr_recruitment.field_hr_candidate__emp_is_active
 msgid ""
 "If the active field is set to False, it will allow you to hide the resource "
 "record without removing it."
@@ -1896,14 +1649,14 @@ msgid ""
 msgstr "如果啟用欄位設為否，它允許您對資料進行隱藏但不刪除它。"
 
 #. module: hr_recruitment
-#: model:ir.model.fields,help:hr_recruitment.field_hr_applicant__is_blacklisted
+#: model:ir.model.fields,help:hr_recruitment.field_hr_candidate__is_blacklisted
 msgid ""
 "If the email address is on the blacklist, the contact won't receive mass "
 "mailing anymore, from any list"
 msgstr "若電郵地址在黑名單中，相關聯絡人不會再收到任何清單的群發郵件"
 
 #. module: hr_recruitment
-#: model:ir.model.fields,help:hr_recruitment.field_hr_applicant__phone_sanitized_blacklisted
+#: model:ir.model.fields,help:hr_recruitment.field_hr_candidate__phone_sanitized_blacklisted
 msgid ""
 "If the sanitized phone number is on the blacklist, the contact won't receive"
 " mass mailing sms anymore, from any list"
@@ -1935,7 +1688,15 @@ msgid ""
 msgstr "傳入電子郵件會自動建立應用程式。可用於直接申請，或在 LinkedIn、Monster 等上發佈工作機會時使用。"
 
 #. module: hr_recruitment
-#: model:ir.model.fields,help:hr_recruitment.field_hr_applicant__phone_blacklisted
+#: model:ir.model.fields,help:hr_recruitment.field_hr_candidate__mobile_blacklisted
+msgid ""
+"Indicates if a blacklisted sanitized phone number is a mobile number. Helps "
+"distinguish which number is blacklisted             when there is both a "
+"mobile and phone field in a model."
+msgstr "指示列入黑名單的已清理電話號碼是否為手機號碼。當模型中同時存在手機和電話欄位時，有助於區分哪個號碼被列入黑名單。"
+
+#. module: hr_recruitment
+#: model:ir.model.fields,help:hr_recruitment.field_hr_candidate__phone_blacklisted
 msgid ""
 "Indicates if a blacklisted sanitized phone number is a phone number. Helps "
 "distinguish which number is blacklisted             when there is both a "
@@ -1946,6 +1707,11 @@ msgstr "指示列入黑名單的已清理電話號碼是否為電話號碼。當
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_job__industry_id
 msgid "Industry"
 msgstr "行業"
+
+#. module: hr_recruitment
+#: model:hr.recruitment.stage,name:hr_recruitment.stage_job1
+msgid "Initial Qualification"
+msgstr "初始資歷"
 
 #. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_form
@@ -1963,25 +1729,14 @@ msgid "Interviewer"
 msgstr "面試官"
 
 #. module: hr_recruitment
-#: model:res.groups,comment:hr_recruitment.group_hr_recruitment_interviewer
-msgid ""
-"Interviewer right will give access to all job position/applications where "
-"the employee is defined. It will allow to refuse, plan meetings."
-msgstr "面試官的權利將使面試官有機會接觸到員工所在的所有職位/申請。它允許拒絕、計劃會議。"
-
-#. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__interviewer_ids
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_job__interviewer_ids
 msgid "Interviewers"
 msgstr "面試官"
 
 #. module: hr_recruitment
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__is_applicant_in_pool
-msgid "Is Applicant In Pool"
-msgstr "申請人是否在人才庫中"
-
-#. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_send_mail__is_mail_template_editor
+#: model:ir.model.fields,field_description:hr_recruitment.field_candidate_send_mail__is_mail_template_editor
 msgid "Is Editor"
 msgstr "是編輯器"
 
@@ -1992,14 +1747,9 @@ msgstr "為最愛"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__message_is_follower
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__message_is_follower
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__message_is_follower
 msgid "Is Follower"
 msgstr "是關注人"
-
-#. module: hr_recruitment
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__is_pool_applicant
-msgid "Is Pool Applicant"
-msgstr "是人才庫申請人"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_recruitment_stage__is_warning_visible
@@ -2009,8 +1759,8 @@ msgstr "警告是否可見"
 #. module: hr_recruitment
 #: model:ir.model.fields,help:hr_recruitment.field_hr_job__date_from
 msgid ""
-"Is set, update applicants availability once hired for that specific mission."
-msgstr "若設定，會在申請人獲聘處理該特定任務後，更新申請人的可用性。"
+"Is set, update candidates availability once hired for that specific mission."
+msgstr "如果設置，會在為該特定任務聘用應徵者後，更新應徵者的可用性。"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,help:hr_recruitment.field_hr_applicant__duration_tracking
@@ -2018,6 +1768,8 @@ msgid "JSON that maps ids from a many2one field to seconds spent"
 msgstr "JSON 將識別碼從 many2one 欄位對應至花費秒數"
 
 #. module: hr_recruitment
+#. odoo-python
+#: code:addons/hr_recruitment/models/hr_job.py:0
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_recruitment_source__job_id
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_form
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search_bis
@@ -2072,7 +1824,6 @@ msgstr "工作職缺已建立"
 #: model:ir.actions.act_window,name:hr_recruitment.action_hr_job
 #: model:ir.actions.act_window,name:hr_recruitment.action_hr_job_config
 #: model:ir.actions.act_window,name:hr_recruitment.action_hr_job_interviewer
-#: model:ir.model.fields,field_description:hr_recruitment.field_job_add_applicants__job_ids
 #: model:ir.ui.menu,name:hr_recruitment.menu_hr_recruitment_config_jobs
 msgid "Job Positions"
 msgstr "職務管理"
@@ -2104,6 +1855,7 @@ msgstr "工作"
 
 #. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_form
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_form
 msgid "Jobs - Recruitment Form"
 msgstr "工作－招募表"
 
@@ -2134,12 +1886,14 @@ msgstr "人力資源新聘員工KPI指標"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_send_mail__lang
+#: model:ir.model.fields,field_description:hr_recruitment.field_candidate_send_mail__lang
 msgid "Language"
 msgstr "語言"
 
 #. module: hr_recruitment
 #. odoo-python
 #: code:addons/hr_recruitment/models/hr_applicant.py:0
+#: code:addons/hr_recruitment/models/hr_candidate.py:0
 msgid "Last Meeting"
 msgstr "上次面試"
 
@@ -2157,32 +1911,30 @@ msgstr "最後階段更新"
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_get_refuse_reason__write_uid
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_send_mail__write_uid
+#: model:ir.model.fields,field_description:hr_recruitment.field_candidate_send_mail__write_uid
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__write_uid
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant_category__write_uid
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant_refuse_reason__write_uid
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__write_uid
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_job_platform__write_uid
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_recruitment_degree__write_uid
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_recruitment_source__write_uid
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_recruitment_stage__write_uid
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__write_uid
-#: model:ir.model.fields,field_description:hr_recruitment.field_job_add_applicants__write_uid
-#: model:ir.model.fields,field_description:hr_recruitment.field_talent_pool_add_applicants__write_uid
 msgid "Last Updated by"
 msgstr "最後更新者"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_get_refuse_reason__write_date
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_send_mail__write_date
+#: model:ir.model.fields,field_description:hr_recruitment.field_candidate_send_mail__write_date
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__write_date
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant_category__write_date
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant_refuse_reason__write_date
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__write_date
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_job_platform__write_date
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_recruitment_degree__write_date
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_recruitment_source__write_date
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_recruitment_stage__write_date
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__write_date
-#: model:ir.model.fields,field_description:hr_recruitment.field_job_add_applicants__write_date
-#: model:ir.model.fields,field_description:hr_recruitment.field_talent_pool_add_applicants__write_date
 msgid "Last Updated on"
 msgstr "最後更新於"
 
@@ -2193,13 +1945,9 @@ msgid "Late Activities"
 msgstr "逾期活動"
 
 #. module: hr_recruitment
-#: model_terms:ir.actions.act_window,help:hr_recruitment.action_hr_job_config
-msgid "Let's create a job position"
-msgstr "讓我們建立一個工作職位"
-
-#. module: hr_recruitment
 #. odoo-javascript
 #: code:addons/hr_recruitment/static/src/views/recruitment_helper_view.xml:0
+#: model_terms:ir.actions.act_window,help:hr_recruitment.action_hr_job_config
 msgid "Let's create a job position."
 msgstr "讓我們建立一個工作職位."
 
@@ -2231,6 +1979,7 @@ msgstr "讓我們回到儀表板."
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__linkedin_profile
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__linkedin_profile
 msgid "LinkedIn Profile"
 msgstr "LinkedIn 個人檔案"
 
@@ -2247,6 +1996,7 @@ msgstr "載入範例資料"
 
 #. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.applicant_send_mail_view_form
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.candidate_send_mail_view_form
 msgid "Load template"
 msgstr "載入範本"
 
@@ -2257,13 +2007,22 @@ msgstr "基於本地部件的來件檢測"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_send_mail__template_id
+#: model:ir.model.fields,field_description:hr_recruitment.field_candidate_send_mail__template_id
 msgid "Mail Template"
 msgstr "信件範本"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__message_main_attachment_id
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__message_main_attachment_id
 msgid "Main Attachment"
 msgstr "主要附件"
+
+#. module: hr_recruitment
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_form
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_search
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_tree
+msgid "Manager"
+msgstr "經理"
 
 #. module: hr_recruitment
 #: model:hr.recruitment.degree,name:hr_recruitment.degree_licenced
@@ -2283,16 +2042,19 @@ msgstr "媒體"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__meeting_display_date
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__meeting_display_date
 msgid "Meeting Display Date"
 msgstr "面試顯示日期"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__meeting_display_text
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__meeting_display_text
 msgid "Meeting Display Text"
 msgstr "面試顯示文本"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__meeting_ids
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__meeting_ids
 msgid "Meetings"
 msgstr "會議"
 
@@ -2303,13 +2065,13 @@ msgstr "功能表"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__message_has_error
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__message_has_error
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__message_has_error
 msgid "Message Delivery error"
 msgstr "訊息遞送錯誤"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__message_ids
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__message_ids
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__message_ids
 msgid "Messages"
 msgstr "訊息"
 
@@ -2319,18 +2081,8 @@ msgid "Mission Dates"
 msgstr "任務日期"
 
 #. module: hr_recruitment
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.job_add_applicants_view_form
-msgid "Move to..."
-msgstr "移至⋯"
-
-#. module: hr_recruitment
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search_bis
-msgid "My Activities"
-msgstr "我的活動"
-
-#. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__my_activity_date_deadline
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_job__my_activity_date_deadline
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__my_activity_date_deadline
 msgid "My Activity Deadline"
 msgstr "我的活動截止時間"
 
@@ -2338,6 +2090,11 @@ msgstr "我的活動截止時間"
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search_bis
 msgid "My Applications"
 msgstr "分派予我之應徵者"
+
+#. module: hr_recruitment
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_search
+msgid "My Candidates"
+msgstr "我的應徵者"
 
 #. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.view_job_filter_recruitment
@@ -2352,6 +2109,7 @@ msgstr "我的工作職位"
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_job_platform__name
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_recruitment_source__name
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_tree
 msgid "Name"
 msgstr "名稱"
 
@@ -2396,56 +2154,47 @@ msgid "New Hired Employee"
 msgstr "新聘用的員工"
 
 #. module: hr_recruitment
-#. odoo-python
-#: code:addons/hr_recruitment/models/hr_job.py:0
-msgid "New Job Board"
-msgstr "新增招聘平台"
-
-#. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_tree_activity
 msgid "Next Activities"
 msgstr "下一步活動"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__activity_calendar_event_id
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_job__activity_calendar_event_id
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__activity_calendar_event_id
 msgid "Next Activity Calendar Event"
 msgstr "下一個活動日曆事件"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__activity_date_deadline
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_job__activity_date_deadline
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__activity_date_deadline
 msgid "Next Activity Deadline"
 msgstr "下一活動截止日期"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__activity_summary
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_job__activity_summary
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__activity_summary
 msgid "Next Activity Summary"
 msgstr "下一活動摘要"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__activity_type_id
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_job__activity_type_id
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__activity_type_id
 msgid "Next Activity Type"
 msgstr "下一活動類型"
 
 #. module: hr_recruitment
 #. odoo-python
 #: code:addons/hr_recruitment/models/hr_applicant.py:0
+#: code:addons/hr_recruitment/models/hr_candidate.py:0
 msgid "Next Meeting"
 msgstr "下次面試"
 
 #. module: hr_recruitment
 #. odoo-python
 #: code:addons/hr_recruitment/models/hr_applicant.py:0
+#: code:addons/hr_recruitment/models/hr_candidate.py:0
 msgid "No Meeting"
 msgstr "無面試"
-
-#. module: hr_recruitment
-#: model_terms:ir.actions.act_window,help:hr_recruitment.action_hr_talent_pool_applications
-msgid "No Talents in the pool yet"
-msgstr "人才庫尚未有人才"
 
 #. module: hr_recruitment
 #. odoo-python
@@ -2458,6 +2207,11 @@ msgstr "找不到申請。讓我們創建一個"
 #: model_terms:ir.actions.act_window,help:hr_recruitment.crm_case_categ0_act_job
 msgid "No applications yet"
 msgstr "尚無應徵申請"
+
+#. module: hr_recruitment
+#: model_terms:ir.actions.act_window,help:hr_recruitment.action_hr_candidate
+msgid "No candidates yet"
+msgstr "未有應徵者"
 
 #. module: hr_recruitment
 #: model_terms:ir.actions.act_window,help:hr_recruitment.mail_activity_type_action_config_hr_applicant
@@ -2477,17 +2231,14 @@ msgid "No rules have been defined."
 msgstr "未定義任何規則。"
 
 #. module: hr_recruitment
-#: model_terms:ir.actions.act_window,help:hr_recruitment.action_hr_talent_pool
-msgid "No talent pools yet"
-msgstr "尚未建立人才庫"
-
-#. module: hr_recruitment
 #: model:ir.model.fields.selection,name:hr_recruitment.selection__hr_applicant__priority__0
+#: model:ir.model.fields.selection,name:hr_recruitment.selection__hr_candidate__priority__0
 msgid "Normal"
 msgstr "正常（沒有底線）"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__email_normalized
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__email_normalized
 msgid "Normalized Email"
 msgstr "已常規化電郵"
 
@@ -2498,12 +2249,13 @@ msgstr "備註"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__message_needaction_counter
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__message_needaction_counter
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__message_needaction_counter
 msgid "Number of Actions"
 msgstr "動作數量"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__attachment_number
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__attachment_count
 msgid "Number of Attachments"
 msgstr "附件數量"
 
@@ -2521,7 +2273,7 @@ msgstr "持續天數"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__message_has_error_counter
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__message_has_error_counter
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__message_has_error_counter
 msgid "Number of errors"
 msgstr "錯誤數量"
 
@@ -2533,13 +2285,13 @@ msgstr "招聘階段此職位已經聘請的員工數量。"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,help:hr_recruitment.field_hr_applicant__message_needaction_counter
-#: model:ir.model.fields,help:hr_recruitment.field_hr_talent_pool__message_needaction_counter
+#: model:ir.model.fields,help:hr_recruitment.field_hr_candidate__message_needaction_counter
 msgid "Number of messages requiring action"
 msgstr "需要採取行動的訊息數目"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,help:hr_recruitment.field_hr_applicant__message_has_error_counter
-#: model:ir.model.fields,help:hr_recruitment.field_hr_talent_pool__message_has_error_counter
+#: model:ir.model.fields,help:hr_recruitment.field_hr_candidate__message_has_error_counter
 msgid "Number of messages with delivery error"
 msgstr "有發送錯誤的郵件數量"
 
@@ -2576,6 +2328,12 @@ msgid "Online Posting"
 msgstr "線上發佈"
 
 #. module: hr_recruitment
+#. odoo-python
+#: code:addons/hr_recruitment/models/hr_applicant.py:0
+msgid "Operation not supported"
+msgstr "不支援該操作"
+
+#. module: hr_recruitment
 #: model:ir.model.fields,help:hr_recruitment.field_hr_job__alias_force_thread_id
 msgid ""
 "Optional ID of a thread (record) to which all incoming messages will be "
@@ -2585,6 +2343,7 @@ msgstr "所有的進來的信件都將附上一條潛在商機（記錄）選配
 
 #. module: hr_recruitment
 #: model:ir.model.fields,help:hr_recruitment.field_applicant_send_mail__lang
+#: model:ir.model.fields,help:hr_recruitment.field_candidate_send_mail__lang
 msgid ""
 "Optional translation language (ISO code) to select when sending out an "
 "email. If not set, the english version will be used. This should usually be "
@@ -2599,6 +2358,22 @@ msgstr ""
 #: code:addons/hr_recruitment/static/src/js/tours/hr_recruitment.js:0
 msgid "Or talk about this applicant privately with your colleagues."
 msgstr "或者與你的同事私下談論這個申請人。"
+
+#. module: hr_recruitment
+#. odoo-python
+#: code:addons/hr_recruitment/models/hr_applicant.py:0
+msgid "Other Applications"
+msgstr "其他申請"
+
+#. module: hr_recruitment
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__other_applications_count
+msgid "Other Applications Count"
+msgstr "其他申請數目"
+
+#. module: hr_recruitment
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_form
+msgid "Other applications"
+msgstr "其他申請"
 
 #. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_form
@@ -2625,25 +2400,31 @@ msgstr ""
 "載有該別名的母項模型。載有別名參照的模型，不一定是 alias_model_id 提供的模型，例如：專案（parent_model）與任務（model）"
 
 #. module: hr_recruitment
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__partner_name
+msgid "Partner Name"
+msgstr "合作夥伴名稱"
+
+#. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__partner_phone
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__partner_phone
 msgid "Phone"
 msgstr "電話"
 
 #. module: hr_recruitment
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__phone_sanitized_blacklisted
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__phone_sanitized_blacklisted
 msgid "Phone Blacklisted"
 msgstr "電話黑名單"
 
 #. module: hr_recruitment
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__phone_mobile_search
-msgid "Phone Number"
-msgstr "電話號碼"
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__phone_mobile_search
+msgid "Phone/Mobile"
+msgstr "電話/手機"
 
 #. module: hr_recruitment
 #. odoo-python
-#: code:addons/hr_recruitment/models/hr_applicant.py:0
-msgid "Please provide an applicant name."
-msgstr "請提供申請人名稱。"
+#: code:addons/hr_recruitment/models/hr_candidate.py:0
+msgid "Please provide an candidate name."
+msgstr "請提供應徵者姓名。"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,help:hr_recruitment.field_hr_job__alias_contact
@@ -2659,16 +2440,6 @@ msgstr ""
 "- 跟隨者：只有相關文件或下列頻道成員的跟隨者\n"
 
 #. module: hr_recruitment
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__pool_applicant_id
-msgid "Pool Applicant"
-msgstr "人才庫申請人"
-
-#. module: hr_recruitment
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__pool_manager
-msgid "Pool Manager"
-msgstr "人才庫經理"
-
-#. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__probability
 msgid "Probability"
 msgstr "概率"
@@ -2680,8 +2451,8 @@ msgstr "處理"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__applicant_properties
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__candidate_properties
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_job__job_properties
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search_bis
 msgid "Properties"
 msgstr "屬性"
 
@@ -2706,13 +2477,8 @@ msgid "Publish job offers on your website"
 msgstr "在你的網站上發佈工作機會"
 
 #. module: hr_recruitment
-#: model:hr.recruitment.stage,name:hr_recruitment.stage_job1
-msgid "Qualification"
-msgstr "資歷"
-
-#. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__rating_ids
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__rating_ids
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__rating_ids
 msgid "Ratings"
 msgstr "評分"
 
@@ -2754,7 +2520,6 @@ msgstr "招募人員"
 
 #. module: hr_recruitment
 #: model:ir.ui.menu,name:hr_recruitment.menu_hr_recruitment_root
-#: model:res.groups.privilege,name:hr_recruitment.res_groups_privilege_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.digest_digest_view_form
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_department_view_kanban
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.res_config_settings_view_form
@@ -2864,6 +2629,7 @@ msgstr "拒絕該"
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_form
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search_bis
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_search
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_kanban_view_applicant
 msgid "Refused"
 msgstr "已退回"
@@ -2898,6 +2664,7 @@ msgstr "遙距工作"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_send_mail__render_model
+#: model:ir.model.fields,field_description:hr_recruitment.field_candidate_send_mail__render_model
 msgid "Rendering Model"
 msgstr "呈現模型"
 
@@ -2920,7 +2687,7 @@ msgstr "負責人"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__activity_user_id
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_job__activity_user_id
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__activity_user_id
 msgid "Responsible User"
 msgstr "責任使用者"
 
@@ -2951,7 +2718,7 @@ msgstr "履歷顯示"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__message_has_sms_error
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__message_has_sms_error
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__message_has_sms_error
 msgid "SMS Delivery error"
 msgstr "簡訊發送錯誤"
 
@@ -2981,12 +2748,13 @@ msgid "Salary Proposed by the Organisation, extra advantages"
 msgstr "公司推薦的薪酬標準，額外優勢"
 
 #. module: hr_recruitment
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__phone_sanitized
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__phone_sanitized
 msgid "Sanitized Number"
 msgstr "消毒數量"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__partner_phone_sanitized
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__partner_phone_sanitized
 msgid "Sanitized Phone Number"
 msgstr "經淨化電話號碼"
 
@@ -2997,6 +2765,7 @@ msgid "Save it!"
 msgstr "儲存它！"
 
 #. module: hr_recruitment
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_kanban
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_kanban_view_applicant
 msgid "Schedule Interview"
 msgstr "預約面試"
@@ -3024,17 +2793,8 @@ msgid ""
 msgstr "選擇申請人的工作地點。此處列出的地址是根據公司的聯絡資料定義的。"
 
 #. module: hr_recruitment
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_form
-msgid "Select the way applicant found the offer"
-msgstr "選擇申請人得知招聘消息的方式"
-
-#. module: hr_recruitment
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_form
-msgid "Select where the applicant comes from"
-msgstr "選擇申請人來源"
-
-#. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.applicant_send_mail_view_form
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.candidate_send_mail_view_form
 msgid "Send"
 msgstr "發送"
 
@@ -3046,7 +2806,9 @@ msgstr "將履歷發送至 OCR 以填寫申請"
 #. module: hr_recruitment
 #. odoo-python
 #: code:addons/hr_recruitment/models/hr_applicant.py:0
+#: code:addons/hr_recruitment/models/hr_candidate.py:0
 #: model:ir.actions.server,name:hr_recruitment.action_applicant_send_mail
+#: model:ir.actions.server,name:hr_recruitment.action_candidate_send_mail
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_get_refuse_reason__send_mail
 msgid "Send Email"
 msgstr "發送電子郵件"
@@ -3073,6 +2835,11 @@ msgid "Send mails to applicants"
 msgstr "向申請人發送郵件"
 
 #. module: hr_recruitment
+#: model:ir.model,name:hr_recruitment.model_candidate_send_mail
+msgid "Send mails to candidates"
+msgstr "向應徵者發送郵件"
+
+#. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.res_config_settings_view_form
 msgid "Send texts to your contacts"
 msgstr "向你的聯絡人發送文字訊息"
@@ -3084,7 +2851,6 @@ msgid "Send your email. Followers will get a copy of the communication."
 msgstr "發送你的電子郵件。追隨者將獲得通訊的副本。"
 
 #. module: hr_recruitment
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__sequence
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant_refuse_reason__sequence
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_recruitment_degree__sequence
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_recruitment_stage__sequence
@@ -3106,13 +2872,31 @@ msgstr "設定"
 
 #. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search_bis
-msgid "Show all records whose next activity date is past"
-msgstr "顯示下一活動日期已過的所有記錄"
+msgid "Show all records which has next action date is before today"
+msgstr "顯示在今天之前的下一個行動日期的所有記錄"
+
+#. module: hr_recruitment
+#. odoo-python
+#: code:addons/hr_recruitment/models/hr_candidate.py:0
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_form
+msgid "Similar Candidates"
+msgstr "相似應徵者"
+
+#. module: hr_recruitment
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__similar_candidates_count
+msgid "Similar Candidates Count"
+msgstr "相似應徵者數目"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_get_refuse_reason__single_applicant_email
 msgid "Single Applicant Email"
 msgstr "單一申請人電郵"
+
+#. module: hr_recruitment
+#. odoo-python
+#: code:addons/hr_recruitment/models/hr_applicant.py:0
+msgid "Some values do not exist in the application status"
+msgstr "部份數值在應用程式狀態中不存在"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__source_id
@@ -3194,7 +2978,7 @@ msgstr "階段"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,help:hr_recruitment.field_hr_applicant__activity_state
-#: model:ir.model.fields,help:hr_recruitment.field_hr_job__activity_state
+#: model:ir.model.fields,help:hr_recruitment.field_hr_candidate__activity_state
 msgid ""
 "Status based on activities\n"
 "Overdue: Due date is already passed\n"
@@ -3213,6 +2997,7 @@ msgstr "狀態時間"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_applicant_send_mail__subject
+#: model:ir.model.fields,field_description:hr_recruitment.field_candidate_send_mail__subject
 msgid "Subject"
 msgstr "主題"
 
@@ -3229,8 +3014,7 @@ msgstr "標籤名稱已存在!"
 #. module: hr_recruitment
 #: model:ir.actions.act_window,name:hr_recruitment.hr_applicant_category_action
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__categ_ids
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__categ_ids
-#: model:ir.model.fields,field_description:hr_recruitment.field_talent_pool_add_applicants__categ_ids
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__categ_ids
 #: model:ir.ui.menu,name:hr_recruitment.hr_applicant_category_menu
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_category_view_form
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_category_view_tree
@@ -3238,42 +3022,6 @@ msgstr "標籤名稱已存在!"
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search
 msgid "Tags"
 msgstr "標籤"
-
-#. module: hr_recruitment
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__talent_ids
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_form
-msgid "Talent"
-msgstr "人才"
-
-#. module: hr_recruitment
-#: model:ir.actions.act_window,name:hr_recruitment.action_hr_talent_pool
-#: model:ir.model,name:hr_recruitment.model_hr_talent_pool
-#: model:ir.model.fields,field_description:hr_recruitment.field_talent_pool_add_applicants__talent_pool_ids
-msgid "Talent Pool"
-msgstr "人才庫"
-
-#. module: hr_recruitment
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__talent_pool_count
-msgid "Talent Pool Count"
-msgstr "人才庫數目"
-
-#. module: hr_recruitment
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__description
-msgid "Talent Pool Description"
-msgstr "人才庫描述"
-
-#. module: hr_recruitment
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__talent_pool_ids
-#: model:ir.ui.menu,name:hr_recruitment.menu_hr_talent_pools
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_form
-msgid "Talent Pools"
-msgstr "人才庫"
-
-#. module: hr_recruitment
-#: model:ir.actions.act_window,name:hr_recruitment.action_hr_talent_pool_applications
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_talent_pool_view_kanban
-msgid "Talents"
-msgstr "人才"
 
 #. module: hr_recruitment
 #: model:ir.model.constraint,message:hr_recruitment.constraint_hr_job_platform_email_uniq
@@ -3308,7 +3056,16 @@ msgid ""
 msgstr "UTM營銷活動\"%s\"不能刪除，因為它用於招聘過程。"
 
 #. module: hr_recruitment
+#. odoo-python
+#: code:addons/hr_recruitment/models/hr_candidate.py:0
+msgid ""
+"The candidate is linked to an employee, to avoid losing information, archive"
+" it instead."
+msgstr "此應徵者已連結至一名員工，為避免遺失資訊，請改為將它封存。"
+
+#. module: hr_recruitment
 #: model:ir.model.fields,help:hr_recruitment.field_hr_applicant__availability
+#: model:ir.model.fields,help:hr_recruitment.field_hr_candidate__availability
 msgid "The date at which the applicant will be available to start working"
 msgstr "申請者可以開始上班的日期"
 
@@ -3317,6 +3074,12 @@ msgstr "申請者可以開始上班的日期"
 #: code:addons/hr_recruitment/wizard/applicant_send_mail.py:0
 msgid "The following applicants are missing an email address: %s."
 msgstr "以下申請人缺少電子郵件地址：%s。"
+
+#. module: hr_recruitment
+#. odoo-python
+#: code:addons/hr_recruitment/wizard/candidate_send_mail.py:0
+msgid "The following candidates are missing an email address: %s."
+msgstr "以下應徵者缺漏電郵地址：%s。"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,help:hr_recruitment.field_hr_job__alias_model_id
@@ -3338,11 +3101,6 @@ msgid ""
 "The name of the email alias, e.g. 'jobs' if you want to catch emails for "
 "<jobs@example.odoo.com>"
 msgstr "郵箱別名，例如填寫 jobs 表示你想捕捉寄往 jobs@example.com 的電郵。"
-
-#. module: hr_recruitment
-#: model:ir.model.fields,help:hr_recruitment.field_hr_talent_pool__no_of_talents
-msgid "The number of talents in this talent pool."
-msgstr "此人才庫中的人才數量。"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,help:hr_recruitment.field_hr_job_platform__regex
@@ -3368,6 +3126,7 @@ msgstr "顯示申請人如何接觸此公司，例如：電子郵件、LinkedIn�
 
 #. module: hr_recruitment
 #: model:ir.model.fields,help:hr_recruitment.field_hr_applicant__email_normalized
+#: model:ir.model.fields,help:hr_recruitment.field_hr_candidate__email_normalized
 msgid ""
 "This field is used to search on email address as the primary email field can"
 " contain more than strictly an email address."
@@ -3410,11 +3169,6 @@ msgid "Tip: Let candidates apply by email"
 msgstr "提示：讓候選人通過電子郵件申請"
 
 #. module: hr_recruitment
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__name
-msgid "Title"
-msgstr "稱謂"
-
-#. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.view_hr_job_kanban
 msgid "To Recruit"
 msgstr "招募"
@@ -3434,11 +3188,6 @@ msgstr "提示"
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.view_hr_job_kanban
 msgid "Trackers"
 msgstr "追蹤工具"
-
-#. module: hr_recruitment
-#: model_terms:ir.actions.act_window,help:hr_recruitment.action_hr_talent_pool_applications
-msgid "Try adding some to the pool"
-msgstr "請嘗試為人才庫加入資料"
 
 #. module: hr_recruitment
 #. odoo-python
@@ -3465,7 +3214,7 @@ msgstr "請嘗試新增一些記錄，或確保搜尋列沒有生效的篩選器
 
 #. module: hr_recruitment
 #: model:ir.model.fields,help:hr_recruitment.field_hr_applicant__activity_exception_decoration
-#: model:ir.model.fields,help:hr_recruitment.field_hr_job__activity_exception_decoration
+#: model:ir.model.fields,help:hr_recruitment.field_hr_candidate__activity_exception_decoration
 msgid "Type of the exception activity on record."
 msgstr "記錄的異常活動的類型。"
 
@@ -3485,6 +3234,7 @@ msgid "UTMs"
 msgstr "UTMs"
 
 #. module: hr_recruitment
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_kanban
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_kanban_view_applicant
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.view_hr_job_kanban
 msgid "Unarchive"
@@ -3494,6 +3244,7 @@ msgstr "取消封存"
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_form
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_search_bis
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_search
 msgid "Unassigned"
 msgstr "未分派"
 
@@ -3532,14 +3283,14 @@ msgstr "使用者電郵"
 
 #. module: hr_recruitment
 #: model:ir.model.fields.selection,name:hr_recruitment.selection__hr_applicant__priority__2
+#: model:ir.model.fields.selection,name:hr_recruitment.selection__hr_candidate__priority__2
 msgid "Very Good"
 msgstr "非常好"
 
 #. module: hr_recruitment
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_form
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_job_survey
-msgid "Visible to all"
-msgstr "向全部人顯示"
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_candidate_view_search
+msgid "Waiting"
+msgstr "正在等待"
 
 #. module: hr_recruitment
 #: model_terms:ir.actions.act_window,help:hr_recruitment.action_hr_job_sources
@@ -3548,13 +3299,13 @@ msgstr "要分析應徵者來源嗎?"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,field_description:hr_recruitment.field_hr_applicant__website_message_ids
-#: model:ir.model.fields,field_description:hr_recruitment.field_hr_talent_pool__website_message_ids
+#: model:ir.model.fields,field_description:hr_recruitment.field_hr_candidate__website_message_ids
 msgid "Website Messages"
 msgstr "網站資訊"
 
 #. module: hr_recruitment
 #: model:ir.model.fields,help:hr_recruitment.field_hr_applicant__website_message_ids
-#: model:ir.model.fields,help:hr_recruitment.field_hr_talent_pool__website_message_ids
+#: model:ir.model.fields,help:hr_recruitment.field_hr_candidate__website_message_ids
 msgid "Website communication history"
 msgstr "網站溝通記錄"
 
@@ -3572,8 +3323,8 @@ msgstr "當您拒絕申請時，您可以選擇此範本"
 
 #. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_applicant_view_form
-msgid "Who can access applicants"
-msgstr "誰可存取申請人"
+msgid "Who can access candidates"
+msgstr "誰可存取應徵者資料"
 
 #. module: hr_recruitment
 #: model_terms:ir.actions.act_window,help:hr_recruitment.action_hr_job_platforms
@@ -3582,12 +3333,13 @@ msgstr "不使用 regex：電子郵件的主題將作為申請人姓名。"
 
 #. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.applicant_send_mail_view_form
+#: model_terms:ir.ui.view,arch_db:hr_recruitment.candidate_send_mail_view_form
 msgid "Write your message here..."
 msgstr "寫下訊息⋯"
 
 #. module: hr_recruitment
 #. odoo-python
-#: code:addons/hr_recruitment/models/hr_applicant.py:0
+#: code:addons/hr_recruitment/models/hr_candidate.py:0
 msgid "You are not allowed to perform this action."
 msgstr "你不允許執行此操作。"
 
@@ -3619,6 +3371,13 @@ msgstr ""
 
 #. module: hr_recruitment
 #. odoo-python
+#: code:addons/hr_recruitment/models/hr_applicant.py:0
+msgid ""
+"You cannot create an applicant in a different company than the candidate"
+msgstr "你不可在與應徵者不同的其他公司建立申請人"
+
+#. module: hr_recruitment
+#. odoo-python
 #: code:addons/hr_recruitment/models/utm_source.py:0
 msgid ""
 "You cannot delete these UTM Sources as they are linked to the following recruitment sources in Recruitment:\n"
@@ -3646,33 +3405,18 @@ msgid "You must define a Contact Name for this applicant."
 msgstr "你必須為此申請人定義一個聯絡人姓名。"
 
 #. module: hr_recruitment
+#. odoo-python
+#: code:addons/hr_recruitment/models/hr_candidate.py:0
+msgid "You must define a Contact Name for this candidate."
+msgstr "你必須為此應徵者定義一個聯絡人姓名。"
+
+#. module: hr_recruitment
 #: model:mail.template,subject:hr_recruitment.email_template_data_applicant_congratulations
 #: model:mail.template,subject:hr_recruitment.email_template_data_applicant_interest
 #: model:mail.template,subject:hr_recruitment.email_template_data_applicant_not_interested
 #: model:mail.template,subject:hr_recruitment.email_template_data_applicant_refuse
 msgid "Your Job Application: {{ object.job_id.name }}"
 msgstr "您的工作申請：{{ object.job_id.name }}"
-
-#. module: hr_recruitment
-#. odoo-python
-#: code:addons/hr_recruitment/models/hr_job.py:0
-msgid "auto_install"
-msgstr "auto_install"
-
-#. module: hr_recruitment
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_talent_pool_view_form
-msgid "e.g French-speaking, Immediately Available, Own a car"
-msgstr "例：會說法語、可立即工作、有車"
-
-#. module: hr_recruitment
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_talent_pool_view_form
-msgid "e.g Reserve, Developers, Sales"
-msgstr "例：候補人才庫、開發人員、銷售人員"
-
-#. module: hr_recruitment
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_job_survey
-msgid "e.g. Health, IT Services, Agriculture ..."
-msgstr "例：醫療衛生、資訊科技服務、農業⋯"
 
 #. module: hr_recruitment
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.quick_create_applicant_form
@@ -3740,18 +3484,6 @@ msgid "e.g. sales-manager"
 msgstr "例如：銷售經理"
 
 #. module: hr_recruitment
-#. odoo-python
-#: code:addons/hr_recruitment/models/hr_applicant.py:0
-msgid "id"
-msgstr "id"
-
-#. module: hr_recruitment
-#. odoo-python
-#: code:addons/hr_recruitment/models/hr_job.py:0
-msgid "name"
-msgstr "名稱"
-
-#. module: hr_recruitment
 #. odoo-javascript
 #: code:addons/hr_recruitment/static/src/views/recruitment_helper_view.xml:0
 msgid "or"
@@ -3761,9 +3493,3 @@ msgstr "或"
 #: model_terms:ir.ui.view,arch_db:hr_recruitment.applicant_get_refuse_reason_view_form
 msgid "other application(s)"
 msgstr "其他申請"
-
-#. module: hr_recruitment
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_talent_pool_view_form
-#: model_terms:ir.ui.view,arch_db:hr_recruitment.hr_talent_pool_view_list
-msgid "talent pool"
-msgstr "人才庫"

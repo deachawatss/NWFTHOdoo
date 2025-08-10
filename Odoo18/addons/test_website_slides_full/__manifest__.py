@@ -13,6 +13,7 @@ certification flow including purchase, certification, failure and success.
         'website_sale_slides',
         'website_slides_forum',
         'website_slides_survey',
+        'payment_demo'
     ],
     'data': [
         'data/res_groups_data.xml',
@@ -26,6 +27,5 @@ certification flow including purchase, certification, failure and success.
             'test_website_slides_full/static/tests/tours/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

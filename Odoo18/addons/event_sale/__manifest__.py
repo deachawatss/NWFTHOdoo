@@ -47,6 +47,5 @@ this event.
             'event_sale/static/tests/tours/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { Component, onMounted, onWillStart, useState } from "@odoo/owl";
 import { getDataURLFromFile } from "@web/core/utils/urls";
 import { rpc } from "@web/core/network/rpc";

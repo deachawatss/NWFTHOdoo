@@ -51,9 +51,9 @@ class TestMassMailValues(MassMailCommon):
                 return urls
             else:
                 return []
-        with patch("odoo.addons.mass_mailing.models.mailing.MailingMailing._get_image_by_url",
+        with patch("odoo.addons.mass_mailing.models.mailing.MassMailing._get_image_by_url",
                    new=patched_get_image), \
-             patch("odoo.addons.mass_mailing.models.mailing.MailingMailing._create_attachments_from_inline_images",
+             patch("odoo.addons.mass_mailing.models.mailing.MassMailing._create_attachments_from_inline_images",
                    new=patched_images_to_urls):
             mailing = self.env['mailing.mailing'].create({
                 'name': 'Test',
@@ -94,7 +94,7 @@ class TestMassMailValues(MassMailCommon):
                     'token': attachment_token,
                 })
             return urls
-        with patch("odoo.addons.mass_mailing.models.mailing.MailingMailing._create_attachments_from_inline_images",
+        with patch("odoo.addons.mass_mailing.models.mailing.MassMailing._create_attachments_from_inline_images",
                    new=patched_images_to_urls):
             mailing = self.env['mailing.mailing'].create({
                     'name': 'Test',
@@ -492,8 +492,8 @@ class TestMassMailValues(MassMailCommon):
                 'schedule_date': datetime(2023, 2, 17, 11, 0),
             })
         mailing.action_put_in_queue()
-        with self.mock_mail_gateway(mail_unlink_sent=False), self.enter_registry_test_mode():
-            self.env.ref('mass_mailing.ir_cron_mass_mailing_queue').sudo().method_direct_trigger()
+        with self.mock_mail_gateway(mail_unlink_sent=False):
+            mailing._process_mass_mailing_queue()
 
         self.assertFalse(mailing.body_html)
         self.assertEqual(mailing.mailing_model_name, 'res.partner')
@@ -711,17 +711,13 @@ class TestMassMailFeatures(MassMailCommon, CronMixinCase):
             'body_html': 'This is mass mail marketing demo'
         })
         mailing.action_put_in_queue()
-        self.assertEqual(mailing.email_from, self.env.user.email_formatted)
-        with self.mock_mail_gateway(mail_unlink_sent=False), self.enter_registry_test_mode():
-            self.env.ref('mass_mailing.ir_cron_mass_mailing_queue').sudo().method_direct_trigger()
+        with self.mock_mail_gateway(mail_unlink_sent=False):
+            mailing._process_mass_mailing_queue()
 
-        author = self.env.ref('base.user_root').partner_id
-        email_values = {'email_from': mailing.email_from}
         self.assertMailTraces(
-            [{'partner': partner_a, 'email_values': email_values},
-             {'partner': partner_b, 'trace_status': 'cancel', 'failure_type': 'mail_bl', 'email_values': email_values}],
-            mailing, partner_a + partner_b,
-            check_mail=True, author=author,
+            [{'partner': partner_a},
+             {'partner': partner_b, 'trace_status': 'cancel', 'failure_type': 'mail_bl'}],
+            mailing, partner_a + partner_b, check_mail=True
         )
 
     @users('user_marketing')
@@ -749,17 +745,14 @@ Email: <a id="url5" href="mailto:test@odoo.com">test@odoo.com</a></div>""",
 
         mailing.action_put_in_queue()
 
-        with self.mock_mail_gateway(mail_unlink_sent=False), self.enter_registry_test_mode():
-            self.env.ref('mass_mailing.ir_cron_mass_mailing_queue').sudo().method_direct_trigger()
+        with self.mock_mail_gateway(mail_unlink_sent=False):
+            mailing._process_mass_mailing_queue()
 
-        author = self.env.ref('base.user_root').partner_id
-        email_values = {'email_from': mailing.email_from}
         self.assertMailTraces(
-            [{'email': 'fleurus@example.com', 'email_values': email_values},
-             {'email': 'gorramts@example.com', 'email_values': email_values},
-             {'email': 'ybrant@example.com', 'email_values': email_values}],
-            mailing, self.mailing_list_1.contact_ids,
-            check_mail=True, author=author,
+            [{'email': 'fleurus@example.com'},
+             {'email': 'gorramts@example.com'},
+             {'email': 'ybrant@example.com'}],
+            mailing, self.mailing_list_1.contact_ids, check_mail=True
         )
 
         for contact in self.mailing_list_1.contact_ids:
@@ -820,7 +813,7 @@ class TestMailingHeaders(MassMailCommon, HttpCase):
 
             # check outgoing email headers (those are put into outgoing email
             # not in the mail.mail record)
-            email = self._find_sent_email_wemail(contact.email)
+            email = self._find_sent_mail_wemail(contact.email)
             headers = email.get("headers")
             unsubscribe_oneclick_url = test_mailing._get_unsubscribe_oneclick_url(contact.email, contact.id)
             self.assertTrue(headers, "Mass mailing emails should have headers for unsubscribe")
@@ -833,7 +826,7 @@ class TestMailingHeaders(MassMailCommon, HttpCase):
 
             # unsubscribe in one-click
             unsubscribe_oneclick_url = headers["List-Unsubscribe"].strip("<>")
-            self.url_open(unsubscribe_oneclick_url, method='POST')
+            self.opener.post(unsubscribe_oneclick_url)
 
             # should be unsubscribed
             self.assertTrue(contact.subscription_ids.opt_out)

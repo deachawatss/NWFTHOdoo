@@ -7,7 +7,7 @@
                 type="text"
                 t-att-id="props.id"
                 class="o-autocomplete--input o_input pe-3"
-                t-att-autocomplete="props.autocomplete"
+                autocomplete="off"
                 t-att-placeholder="props.placeholder"
                 role="combobox"
                 t-att-aria-activedescendant="activeSourceOptionId"
@@ -51,24 +51,27 @@
                             <t t-foreach="source.options" t-as="option" t-key="option.id">
                                 <li
                                     class="o-autocomplete--dropdown-item ui-menu-item d-block"
-                                    t-att-class="option.cssClass"
+                                    t-att-class="option.classList"
                                     t-on-mouseenter="() => this.onOptionMouseEnter([source_index, option_index])"
                                     t-on-mouseleave="() => this.onOptionMouseLeave([source_index, option_index])"
                                     t-on-click="() => this.onOptionClick(option)"
-                                    t-on-pointerdown="(ev) => this.onOptionPointerDown(option, ev)"
+                                    t-on-pointerdown="() => this.ignoreBlur = true"
                                 >
-                                    <t t-tag="option.unselectable ? 'span' : 'a'"
-                                        class="dropdown-item ui-menu-item-wrapper text-truncate"
+                                    <a
                                         t-attf-id="{{props.id or 'autocomplete'}}_{{source_index}}_{{option_index}}"
-                                        t-att-role="!option.unselectable and 'option'"
-                                        t-att-href="!option.unselectable and '#'"
+                                        role="option"
+                                        href="#"
+                                        class="dropdown-item ui-menu-item-wrapper text-truncate"
                                         t-att-class="{ 'ui-state-active': isActiveSourceOption([source_index, option_index]) }"
                                         t-att-aria-selected="isActiveSourceOption([source_index, option_index]) ? 'true' : 'false'"
                                     >
-                                        <t t-slot="{{ source.optionSlot }}" label="option.label" data="option.data">
-                                            <t t-out="option.label"/>
+                                        <t t-if="source.optionTemplate">
+                                            <t t-call="{{ source.optionTemplate }}" />
                                         </t>
-                                    </t>
+                                        <t t-else="">
+                                            <t t-esc="option.label" />
+                                        </t>
+                                    </a>
                                 </li>
                             </t>
                         </t>

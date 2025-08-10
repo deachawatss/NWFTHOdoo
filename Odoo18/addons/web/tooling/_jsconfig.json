@@ -28,9 +28,7 @@
             "@spreadsheet/*": ["addons/spreadsheet/static/src/*"],
             "@whatsapp/*": ["addons/whatsapp/static/src/*"],
 
-            "@website/*": ["addons/website/static/src/*"],
             "@html_editor/*": ["addons/html_editor/static/src/*"],
-            "@html_builder/*": ["addons/html_builder/static/src/*"],
             "@point_of_sale/*": ["addons/point_of_sale/static/src/*"],
             "@hw_posbox_homepage/*": ["addons/hw_posbox_homepage/static/src/*"],
             "@l10n_ar_pos/*": ["addons/l10n_ar_pos/static/src/*"],
@@ -63,6 +61,7 @@
             "@pos_self_order_epson_printer/*": ["addons/pos_self_order_epson_printer/static/src/*"],
             "@pos_self_order_sale/*": ["addons/pos_self_order_sale/static/src/*"],
             "@pos_self_order_stripe/*": ["addons/pos_self_order_stripe/static/src/*"],
+            "@pos_six/*": ["addons/pos_six/static/src/*"],
             "@pos_stripe/*": ["addons/pos_stripe/static/src/*"],
             "@spreadsheet_dashboard_pos_hr/*": ["addons/spreadsheet_dashboard_pos_hr/static/src/*"],
 
@@ -78,11 +77,12 @@
             "@pos_hr_mobile/*": ["pos_hr_mobile/static/src/*"],
             "@pos_iot/*": ["pos_iot/static/src/*"],
             "@pos_iot_six/*": ["pos_iot_six/static/src/*"],
-            "@l10n_se_pos/*": ["l10n_se_pos/static/src/*"],
+            "@pos_l10n_se/*": ["pos_l10n_se/static/src/*"],
             "@pos_online_payment_self_order_preparation_display/*": [
                 "pos_online_payment_self_order_preparation_display/static/src/*"
             ],
             "@pos_order_tracking_display/*": ["pos_order_tracking_display/static/src/*"],
+            "@pos_preparation_display/*": ["pos_preparation_display/static/src/*"],
             "@pos_restaurant_appointment/*": ["pos_restaurant_appointment/static/src/*"],
             "@pos_restaurant_preparation_display/*": [
                 "pos_restaurant_preparation_display/static/src/*"

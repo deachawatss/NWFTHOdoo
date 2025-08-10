@@ -3,15 +3,15 @@
 # 	* auth_oauth
 # 
 # Translators:
-# Wil Odoo, 2025
+# Wil Odoo, 2024
 # Tony Ng, 2025
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~18.3\n"
+"Project-Id-Version: Odoo Server 18.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-05-06 09:28+0000\n"
-"PO-Revision-Date: 2025-05-06 12:03+0000\n"
+"POT-Creation-Date: 2024-09-25 08:39+0000\n"
+"PO-Revision-Date: 2024-09-25 09:41+0000\n"
 "Last-Translator: Tony Ng, 2025\n"
 "Language-Team: Chinese (Taiwan) (https://app.transifex.com/odoo/teams/41243/zh_TW/)\n"
 "MIME-Version: 1.0\n"
@@ -19,6 +19,11 @@ msgstr ""
 "Content-Transfer-Encoding: \n"
 "Language: zh_TW\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
+
+#. module: auth_oauth
+#: model_terms:ir.ui.view,arch_db:auth_oauth.providers
+msgid "- or -"
+msgstr "- 或 -"
 
 #. module: auth_oauth
 #. odoo-python
@@ -84,9 +89,6 @@ msgstr "數據終端點"
 
 #. module: auth_oauth
 #: model:ir.model.fields,field_description:auth_oauth.field_auth_oauth_provider__display_name
-#: model:ir.model.fields,field_description:auth_oauth.field_ir_config_parameter__display_name
-#: model:ir.model.fields,field_description:auth_oauth.field_res_config_settings__display_name
-#: model:ir.model.fields,field_description:auth_oauth.field_res_users__display_name
 msgid "Display Name"
 msgstr "顯示名稱"
 
@@ -96,15 +98,7 @@ msgid "Google Authentication"
 msgstr "Google認證"
 
 #. module: auth_oauth
-#: model:ir.model.fields,field_description:auth_oauth.field_res_users__has_oauth_access_token
-msgid "Has OAuth Access Token"
-msgstr "有 OAuth 存取權杖"
-
-#. module: auth_oauth
 #: model:ir.model.fields,field_description:auth_oauth.field_auth_oauth_provider__id
-#: model:ir.model.fields,field_description:auth_oauth.field_ir_config_parameter__id
-#: model:ir.model.fields,field_description:auth_oauth.field_res_config_settings__id
-#: model:ir.model.fields,field_description:auth_oauth.field_res_users__id
 msgid "ID"
 msgstr "識別號"
 
@@ -124,20 +118,29 @@ msgid "Link text in Login Dialog"
 msgstr "登入連結的完整內容"
 
 #. module: auth_oauth
+#: model:auth.oauth.provider,body:auth_oauth.provider_facebook
+msgid "Log in with Facebook"
+msgstr "以 Facebook 登入"
+
+#. module: auth_oauth
+#: model:auth.oauth.provider,body:auth_oauth.provider_google
+msgid "Log in with Google"
+msgstr "使用 Google 登入"
+
+#. module: auth_oauth
+#: model:auth.oauth.provider,body:auth_oauth.provider_openerp
+msgid "Log in with Odoo.com"
+msgstr "使用 odoo帳號 登入"
+
+#. module: auth_oauth
 #: model:ir.model.fields,field_description:auth_oauth.field_auth_oauth_provider__body
 msgid "Login button label"
 msgstr "登入按鈕標籤"
 
 #. module: auth_oauth
-#. odoo-python
-#: code:addons/auth_oauth/models/res_users.py:0
-msgid "Missing subject identity"
-msgstr "缺漏主體身份"
-
-#. module: auth_oauth
 #: model:ir.model.fields,field_description:auth_oauth.field_res_users__oauth_access_token
-msgid "OAuth Access Token Store"
-msgstr "OAuth 存取權杖儲存"
+msgid "OAuth Access Token"
+msgstr "OAuth 存取權杖(token)"
 
 #. module: auth_oauth
 #: model:ir.model.fields,field_description:auth_oauth.field_res_users__oauth_provider_id
@@ -186,11 +189,6 @@ msgid "Providers"
 msgstr "服務商"
 
 #. module: auth_oauth
-#: model_terms:ir.ui.view,arch_db:auth_oauth.view_users_form
-msgid "Remove Token"
-msgstr "移除權杖"
-
-#. module: auth_oauth
 #: model:ir.model.fields,field_description:auth_oauth.field_auth_oauth_provider__scope
 msgid "Scope"
 msgstr "範圍"
@@ -204,21 +202,6 @@ msgstr "序列號"
 #: model:ir.model.fields,field_description:auth_oauth.field_res_config_settings__server_uri_google
 msgid "Server uri"
 msgstr "伺服器URI"
-
-#. module: auth_oauth
-#: model:auth.oauth.provider,body:auth_oauth.provider_facebook
-msgid "Sign in with Facebook"
-msgstr "使用 Facebook 登入"
-
-#. module: auth_oauth
-#: model:auth.oauth.provider,body:auth_oauth.provider_google
-msgid "Sign in with Google"
-msgstr "使用 Google 登入"
-
-#. module: auth_oauth
-#: model:auth.oauth.provider,body:auth_oauth.provider_openerp
-msgid "Sign in with Odoo.com"
-msgstr "使用 Odoo.com 登入"
 
 #. module: auth_oauth
 #. odoo-python
@@ -256,12 +239,6 @@ msgid ""
 msgstr ""
 "您無權存取此資料庫或者您的邀請已經過期.\n"
 "請申請一個新的邀請並在您的邀請信件中確認。"
-
-#. module: auth_oauth
-#. odoo-python
-#: code:addons/auth_oauth/models/res_users.py:0
-msgid "You do not have permissions to remove the access token"
-msgstr "你沒有權限移除存取權杖"
 
 #. module: auth_oauth
 #: model_terms:ir.ui.view,arch_db:auth_oauth.view_oauth_provider_form

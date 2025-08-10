@@ -1,9 +1,11 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from datetime import datetime, time
-
 from odoo import _, api, fields, models
-from odoo.fields import Domain
+from odoo.tools.float_utils import float_is_zero
+from odoo.osv.expression import AND
+from dateutil.relativedelta import relativedelta
+from datetime import datetime, time
 
 
 class StockWarehouseOrderpoint(models.Model):
@@ -17,9 +19,9 @@ class StockWarehouseOrderpoint(models.Model):
 
     def _get_replenishment_order_notification(self):
         self.ensure_one()
-        domain = Domain('orderpoint_id', 'in', self.ids)
+        domain = [('orderpoint_id', 'in', self.ids)]
         if self.env.context.get('written_after'):
-            domain &= Domain('write_date', '>=', self.env.context.get('written_after'))
+            domain = AND([domain, [('write_date', '>=', self.env.context.get('written_after'))]])
         production = self.env['mrp.production'].search(domain, limit=1)
         if production:
             return {
@@ -37,12 +39,6 @@ class StockWarehouseOrderpoint(models.Model):
                 }
             }
         return super()._get_replenishment_order_notification()
-
-    def _compute_allowed_replenishment_uom_ids(self):
-        super()._compute_allowed_replenishment_uom_ids()
-        for orderpoint in self:
-            if 'manufacture' in orderpoint.rule_ids.mapped('action'):
-                orderpoint.allowed_replenishment_uom_ids += orderpoint.product_id.bom_ids.product_uom_id
 
     @api.depends('route_id')
     def _compute_show_bom(self):
@@ -95,7 +91,7 @@ class StockWarehouseOrderpoint(models.Model):
             ratios_total = []
             for bom_line, bom_line_data in bom_sub_lines:
                 component = bom_line.product_id
-                if not component.is_storable or bom_line.product_uom_id.is_zero(bom_line_data['qty']):
+                if not component.is_storable or float_is_zero(bom_line_data['qty'], precision_rounding=bom_line.product_uom_id.rounding):
                     continue
                 uom_qty_per_kit = bom_line_data['qty'] / bom_line_data['original_qty']
                 qty_per_kit = bom_line.product_uom_id._compute_quantity(uom_qty_per_kit, bom_line.product_id.uom_id, raise_if_failure=False)
@@ -142,6 +138,16 @@ class StockWarehouseOrderpoint(models.Model):
                 res[orderpoint.id] += prod.product_uom_id._compute_quantity(
                         prod.product_qty, orderpoint.product_uom, round=False)
         return res
+
+    def _get_qty_multiple_to_order(self):
+        """ Calculates the minimum quantity that can be ordered according to the qty and UoM of the BoM
+        """
+        self.ensure_one()
+        qty_multiple_to_order = super()._get_qty_multiple_to_order()
+        if 'manufacture' in self.rule_ids.mapped('action'):
+            bom = self.env['mrp.bom']._bom_find(self.product_id, bom_type='normal')[self.product_id]
+            return bom.product_uom_id._compute_quantity(bom.product_qty, self.product_uom)
+        return qty_multiple_to_order
 
     def _set_default_route_id(self):
         route_ids = self.env['stock.rule'].search([

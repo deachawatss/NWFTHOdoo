@@ -42,7 +42,7 @@ class TestShopLoyaltyPayment(PaymentHttpCommon, TestSaleCouponCommon):
             'message_partner_ids': self.portal_partner.ids,
             'order_line': [Command.create({
                 'product_id': self.service_product.id,
-                'tax_ids': None,
+                'tax_id': None,
             })],
         })
         self._apply_promo_code(order, program.coupon_ids.code)

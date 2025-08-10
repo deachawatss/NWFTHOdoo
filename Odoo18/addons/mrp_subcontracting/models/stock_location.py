@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, fields, models, _
@@ -29,10 +30,10 @@ class StockLocation(models.Model):
         new_subcontracting_locations._activate_subcontracting_location_rules()
         return res
 
-    def write(self, vals):
-        res = super().write(vals)
-        if 'is_subcontracting_location' in vals:
-            if vals['is_subcontracting_location']:
+    def write(self, values):
+        res = super().write(values)
+        if 'is_subcontracting_location' in values:
+            if values['is_subcontracting_location']:
                 self._activate_subcontracting_location_rules()
             else:
                 self._archive_subcontracting_location_rules()

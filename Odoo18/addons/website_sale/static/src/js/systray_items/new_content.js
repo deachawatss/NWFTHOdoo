@@ -1,6 +1,7 @@
+/** @odoo-module **/
+
+import { NewContentModal, MODULE_STATUS } from '@website/systray_items/new_content';
 import { patch } from "@web/core/utils/patch";
-import { NewContentModal } from '@website/client_actions/website_preview/new_content_modal';
-import { MODULE_STATUS } from "@website/client_actions/website_preview/new_content_element";
 
 patch(NewContentModal.prototype, {
     setup() {

@@ -3,11 +3,10 @@ import { stripVersion } from "@html_editor/html_migrations/html_migrations_utils
 import { stripHistoryIds } from "@html_editor/others/collaboration/collaboration_odoo_plugin";
 import {
     COLLABORATION_PLUGINS,
+    DYNAMIC_PLACEHOLDER_PLUGINS,
     EMBEDDED_COMPONENT_PLUGINS,
     MAIN_PLUGINS,
-    NO_EMBEDDED_COMPONENTS_FALLBACK_PLUGINS,
 } from "@html_editor/plugin_sets";
-import { DYNAMIC_PLACEHOLDER_PLUGINS } from "@html_editor/backend/plugin_sets";
 import {
     MAIN_EMBEDDINGS,
     READONLY_MAIN_EMBEDDINGS,
@@ -23,11 +22,9 @@ import { useBus, useService } from "@web/core/utils/hooks";
 import { useRecordObserver } from "@web/model/relational_model/utils";
 import { standardFieldProps } from "@web/views/fields/standard_field_props";
 import { TranslationButton } from "@web/views/fields/translation_button";
-import { HtmlViewer } from "@html_editor/components/html_viewer/html_viewer";
-import { EditorVersionPlugin } from "@html_editor/core/editor_version_plugin";
+import { HtmlViewer } from "./html_viewer";
 import { withSequence } from "@html_editor/utils/resource";
 import { fixInvalidHTML, instanceofMarkup } from "@html_editor/utils/sanitize";
-import { isHtmlContentSupported } from "@html_editor/core/selection_plugin";
 
 /**
  * Check whether the current value contains nodes that would break
@@ -53,7 +50,6 @@ export class HtmlField extends Component {
         collaborativeTrigger: { type: String, optional: true },
         dynamicPlaceholder: { type: Boolean, optional: true, default: false },
         dynamicPlaceholderModelReferenceField: { type: String, optional: true },
-        migrateHTML: { type: Boolean, optional: true },
         cssReadonlyAssetId: { type: String, optional: true },
         sandboxedPreview: { type: Boolean, optional: true },
         codeview: { type: Boolean, optional: true },
@@ -114,14 +110,11 @@ export class HtmlField extends Component {
     }
 
     get value() {
-        const value = this.props.record.data[this.props.name] || "";
-        let newVal = fixInvalidHTML(value);
-        if (this.props.migrateHTML) {
-            newVal = this.htmlUpgradeManager.processForUpgrade(newVal, {
-                containsComplexHTML: this.state.containsComplexHTML,
-                env: this.env,
-            });
-        }
+        const value = this.props.record.data[this.props.name];
+        const newVal = this.htmlUpgradeManager.processForUpgrade(fixInvalidHTML(value), {
+            containsComplexHTML: this.state.containsComplexHTML,
+            env: this.env,
+        });
         if (instanceofMarkup(value)) {
             return markup(newVal);
         }
@@ -222,13 +215,10 @@ export class HtmlField extends Component {
         const config = {
             content: this.value,
             Plugins: [
-                ...(this.props.migrateHTML ? [EditorVersionPlugin] : []),
                 ...MAIN_PLUGINS,
                 ...(this.props.isCollaborative ? COLLABORATION_PLUGINS : []),
                 ...(this.props.dynamicPlaceholder ? DYNAMIC_PLACEHOLDER_PLUGINS : []),
-                ...(this.props.embeddedComponents
-                    ? EMBEDDED_COMPONENT_PLUGINS
-                    : NO_EMBEDDED_COMPONENTS_FALLBACK_PLUGINS),
+                ...(this.props.embeddedComponents ? EMBEDDED_COMPONENT_PLUGINS : []),
             ],
             classList: this.classList,
             onChange: this.onChange.bind(this),
@@ -249,8 +239,8 @@ export class HtmlField extends Component {
                 this.props.record.data[this.props.dynamicPlaceholderModelReferenceField || "model"],
             direction: localization.direction || "ltr",
             getRecordInfo: () => {
-                const { resModel, resId, data, fields, id } = this.props.record;
-                return { resModel, resId, data, fields, id };
+                const { resModel, resId } = this.props.record;
+                return { resModel, resId };
             },
             resources: {},
             ...this.props.editorConfig,
@@ -267,10 +257,10 @@ export class HtmlField extends Component {
 
         const { sanitize_tags, sanitize } = this.props.record.fields[this.props.name];
         if (
-            !("allowMediaDialogVideo" in config) &&
+            !("disableVideo" in config) &&
             (sanitize_tags || (sanitize_tags === undefined && sanitize))
         ) {
-            config.allowMediaDialogVideo = false; // Tag-sanitized fields remove videos.
+            config.disableVideo = true; // Tag-sanitized fields remove videos.
         }
         if (this.props.codeview) {
             config.resources = {
@@ -278,10 +268,9 @@ export class HtmlField extends Component {
                 user_commands: [
                     {
                         id: "codeview",
-                        description: _t("Code view"),
+                        title: _t("Code view"),
                         icon: "fa-code",
                         run: this.toggleCodeView.bind(this),
-                        isAvailable: isHtmlContentSupported,
                     },
                 ],
                 toolbar_groups: withSequence(100, {
@@ -302,6 +291,7 @@ export class HtmlField extends Component {
             value: this.value,
             cssAssetId: this.props.cssReadonlyAssetId,
             hasFullHtml: this.sandboxedPreview,
+            isFixedValue: true,
         };
         if (this.props.embeddedComponents) {
             config.embeddedComponents = [...READONLY_MAIN_EMBEDDINGS];
@@ -332,18 +322,14 @@ export const htmlField = {
             editorConfig.height = `${options.height}px`;
             editorConfig.classList = ["overflow-auto"];
         }
-        if ("allowImage" in options) {
-            editorConfig.allowImage = Boolean(options.allowImage);
+        if ("disableImage" in options) {
+            editorConfig.disableImage = Boolean(options.disableImage);
         }
-        if ("allowMediaDialogVideo" in options) {
-            editorConfig.allowMediaDialogVideo = Boolean(options.allowMediaDialogVideo);
+        if ("disableVideo" in options) {
+            editorConfig.disableVideo = Boolean(options.disableVideo);
         }
-        if ("allowFile" in options) {
-            editorConfig.allowFile = Boolean(options.allowFile);
-        }
-        if ("allowAttachmentCreation" in options) {
-            editorConfig.allowImage = Boolean(options.allowAttachmentCreation);
-            editorConfig.allowFile = Boolean(options.allowAttachmentCreation);
+        if ("disableFile" in options) {
+            editorConfig.disableFile = Boolean(options.disableFile);
         }
         if ("baseContainer" in options) {
             editorConfig.baseContainer = options.baseContainer;
@@ -352,12 +338,11 @@ export const htmlField = {
             editorConfig,
             isCollaborative: options.collaborative,
             collaborativeTrigger: options.collaborative_trigger,
-            migrateHTML: "migrateHTML" in options ? Boolean(options.migrateHTML) : true,
             dynamicPlaceholder: options.dynamic_placeholder,
             dynamicPlaceholderModelReferenceField:
                 options.dynamic_placeholder_model_reference_field,
             embeddedComponents:
-                "embedded_components" in options ? Boolean(options.embedded_components) : true,
+                "embedded_components" in options ? options.embedded_components : true,
             sandboxedPreview: Boolean(options.sandboxedPreview),
             cssReadonlyAssetId: options.cssReadonly,
             codeview: Boolean(odoo.debug && options.codeview),

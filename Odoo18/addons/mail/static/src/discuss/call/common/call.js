@@ -18,7 +18,6 @@ import {
 import { browser } from "@web/core/browser/browser";
 import { _t } from "@web/core/l10n/translation";
 import { useService } from "@web/core/utils/hooks";
-import { useHotkey } from "@web/core/hotkeys/hotkey_hook";
 
 /**
  * @typedef CardData
@@ -36,7 +35,7 @@ import { useHotkey } from "@web/core/hotkeys/hotkey_hook";
  */
 export class Call extends Component {
     static components = { CallActionList, CallParticipantCard, PttAdBanner };
-    static props = ["thread", "compact?", "isPip?"];
+    static props = ["thread", "compact?"];
     static template = "discuss.Call";
 
     overlayTimeout;
@@ -45,9 +44,8 @@ export class Call extends Component {
         super.setup();
         this.grid = useRef("grid");
         this.notification = useService("notification");
-        this.rtc = useService("discuss.rtc");
+        this.rtc = useState(useService("discuss.rtc"));
         this.isMobileOs = isMobileOS();
-        this.ui = useService("ui");
         this.state = useState({
             isFullscreen: false,
             sidebar: false,
@@ -58,7 +56,7 @@ export class Call extends Component {
             /** @type {CardData|undefined} */
             insetCard: undefined,
         });
-        this.store = useService("mail.store");
+        this.store = useState(useService("mail.store"));
         onMounted(() => {
             this.resizeObserver = new ResizeObserver(() => this.arrangeTiles());
             this.resizeObserver.observe(this.grid.el);
@@ -70,12 +68,10 @@ export class Call extends Component {
             browser.clearTimeout(this.overlayTimeout);
         });
         useExternalListener(browser, "fullscreenchange", this.onFullScreenChange);
-        useHotkey("shift+d", () => this.rtc.toggleDeafen());
-        useHotkey("shift+m", () => this.rtc.toggleMicrophone());
     }
 
     get isActiveCall() {
-        return Boolean(this.props.thread.eq(this.rtc.channel));
+        return Boolean(this.props.thread.eq(this.rtc.state?.channel));
     }
 
     get minimized() {
@@ -94,9 +90,9 @@ export class Call extends Component {
         const sessionCards = [];
         const invitationCards = [];
         const filterVideos = this.store.settings.showOnlyVideo && this.props.thread.videoCount > 0;
-        for (const session of this.props.thread.rtc_session_ids) {
+        for (const session of this.props.thread.rtcSessions) {
             const target = session.raisingHand ? raisingHandCards : sessionCards;
-            const cameraStream = session.is_camera_on
+            const cameraStream = session.isCameraOn
                 ? session.videoStreams.get("camera")
                 : undefined;
             if (!filterVideos || cameraStream) {
@@ -107,7 +103,7 @@ export class Call extends Component {
                     videoStream: cameraStream,
                 });
             }
-            const screenStream = session.is_screen_sharing_on
+            const screenStream = session.isScreenSharingOn
                 ? session.videoStreams.get("screen")
                 : undefined;
             if (screenStream) {
@@ -120,23 +116,26 @@ export class Call extends Component {
             }
         }
         if (!filterVideos) {
-            for (const member of this.props.thread.invited_member_ids) {
+            for (const member of this.props.thread.invitedMembers) {
                 invitationCards.push({
                     key: "member_" + member.id,
                     member,
                 });
             }
         }
-        raisingHandCards.sort((c1, c2) => c1.session.raisingHand - c2.session.raisingHand);
-        sessionCards.sort(
-            (c1, c2) =>
-                c1.session.channel_member_id?.persona?.name?.localeCompare(
-                    c2.session.channel_member_id?.persona?.name
+        raisingHandCards.sort((c1, c2) => {
+            return c1.session.raisingHand - c2.session.raisingHand;
+        });
+        sessionCards.sort((c1, c2) => {
+            return (
+                c1.session.channelMember?.persona?.name?.localeCompare(
+                    c2.session.channelMember?.persona?.name
                 ) ?? 1
-        );
-        invitationCards.sort(
-            (c1, c2) => c1.member.persona?.name?.localeCompare(c2.member.persona?.name) ?? 1
-        );
+            );
+        });
+        invitationCards.sort((c1, c2) => {
+            return c1.member.persona?.name?.localeCompare(c2.member.persona?.name) ?? 1;
+        });
         return raisingHandCards.concat(sessionCards, invitationCards);
     }
 
@@ -148,7 +147,7 @@ export class Call extends Component {
             return this.visibleCards;
         }
         const type = activeSession.mainVideoStreamType;
-        if (type === "screen" || activeSession.is_screen_sharing_on) {
+        if (type === "screen" || activeSession.isScreenSharingOn) {
             this.setInset(activeSession, type === "camera" ? "screen" : "camera");
         } else {
             this.state.insetCard = undefined;
@@ -164,7 +163,7 @@ export class Call extends Component {
     }
 
     /**
-     * @param {import("models").RtcSession} session
+     * @param {RtcSession} session
      * @param {String} [videoType]
      */
     setInset(session, videoType) {
@@ -192,14 +191,14 @@ export class Call extends Component {
 
     get hasSidebarButton() {
         return Boolean(
-            this.props.thread.activeRtcSession &&
-                this.state.overlay &&
-                (!this.props.compact || this.state.isFullscreen)
+            this.props.thread.activeRtcSession && this.state.overlay && !this.props.compact
         );
     }
 
     get isControllerFloating() {
-        return this.state.isFullscreen || (this.props.thread.activeRtcSession && !this.ui.isSmall);
+        return (
+            this.state.isFullscreen || (this.props.thread.activeRtcSession && !this.props.compact)
+        );
     }
 
     onMouseleaveMain(ev) {
@@ -315,17 +314,5 @@ export class Call extends Component {
         this.state.isFullscreen = Boolean(
             document.webkitFullscreenElement || document.fullscreenElement
         );
-        if (
-            this.rtc.state.screenTrack &&
-            this.rtc.displaySurface !== "browser" &&
-            this.state.isFullscreen
-        ) {
-            this.rtc.showMirroringWarning();
-        } else if (!this.state.isFullscreen) {
-            this.rtc.removeMirroringWarning?.();
-            if (this.rtc.state.screenTrack) {
-                this.rtc.state.screenTrack.enabled = true;
-            }
-        }
     }
 }

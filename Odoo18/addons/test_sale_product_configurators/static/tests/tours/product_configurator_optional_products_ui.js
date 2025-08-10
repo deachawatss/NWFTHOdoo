@@ -1,5 +1,7 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
-import { stepUtils } from "@web_tour/tour_utils";
+import { stepUtils } from "@web_tour/tour_service/tour_utils";
 import tourUtils from "@sale/js/tours/tour_utils";
 
 registry.category("web_tour.tours").add('sale_product_configurator_optional_products_tour', {
@@ -38,10 +40,11 @@ registry.category("web_tour.tours").add('sale_product_configurator_optional_prod
             run: "click",
         },
         {
-            trigger: 'div[name="sale_warning_text"]:contains("Conference Chair"):contains("sold")',
+            trigger: ".modal-title:contains(Warning for Conference Chair (TEST))",
         },
         {
-            trigger: 'tr.text-warning td[name="product_template_id"]:contains("Conference Chair")',
+            trigger: '.o-default-button',
+            run: "click",
         },
         {
             trigger: 'tr:has(td.o_data_cell:contains("Customizable Desk")) td.o_data_cell:contains("2.0")',

@@ -1,50 +1,12 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
-import { session } from "@web/session";
 
 /**
  * TALKS STEPS
  */
-const reminderToggleSteps = function (talkName, reminderOn, toggleReminder) {
-    let steps = [];
-    if (reminderOn) {
-        steps = steps.concat([{
-            content: `Check Favorite for ${talkName} was already on`,
-            trigger: "div.o_wetrack_js_reminder i.fa-bell",
-        }]);
-    }
-    else {
-        steps = steps.concat([{
-            content: `Check Favorite for ${talkName} was off`,
-            trigger: "div.o_wetrack_js_reminder i.fa-bell-o",
-        }]);
-        if (toggleReminder) {
-            steps = steps.concat([{
-                content: "Set Favorite",
-                trigger: "i[title='Set Favorite']",
-                run: "click",
-            }]);
-            if (session.is_public){
-                steps = steps.concat([{
-                    content: "The form of the email reminder modal is filled",
-                    trigger: "#o_wetrack_email_reminder_form input[name='email']",
-                    run: "fill visitor@odoo.com",
-                },
-                {
-                    content: "The form is submit",
-                    trigger: "#o_wetrack_email_reminder_form button[type='submit']",
-                    run: "click",
-                }]);
-            }
-            steps = steps.concat([{
-                content: `Check Favorite for ${talkName} is now on`,
-                trigger: "div.o_wetrack_js_reminder i.fa-bell",
-            }]);
-        }
-    }
-    return steps;
-};
 
-const discoverTalkSteps = function (talkName, fromList, checkToggleReminder, reminderOn, toggleReminder) {
+var discoverTalkSteps = function (talkName, fromList, reminderOn, toggleReminder) {
     var steps;
     if (fromList) {
         steps = [{
@@ -66,11 +28,46 @@ const discoverTalkSteps = function (talkName, fromList, checkToggleReminder, rem
         content: `Check we are on the "${talkName}" talk page`,
         trigger: 'div.o_wesession_track_main',
     }]);
-    if (checkToggleReminder){
-        steps = steps.concat(reminderToggleSteps(talkName, reminderOn, toggleReminder));
+
+    if (reminderOn) {
+        steps = steps.concat([{
+            content: `Check Favorite for ${talkName} was already on`,
+            trigger: 'div.o_wetrack_js_reminder i.fa-bell',
+        }]);
+    }
+    else {
+        steps = steps.concat([{
+            content: `Check Favorite for ${talkName} was off`,
+            trigger: 'div.o_wetrack_js_reminder i.fa-bell-o',
+        }]);
+        if (toggleReminder) {
+            steps = steps.concat([{
+                content: "Set Favorite",
+                trigger: 'div.o_wetrack_js_reminder',
+                run: 'click',
+            }, {
+                content: `Check Favorite for ${talkName} is now on`,
+                trigger: 'div.o_wetrack_js_reminder i.fa-bell',
+            }]);
+        }
     }
     return steps;
 };
+
+
+/**
+ * ROOMS STEPS
+ */
+
+var discoverRoomSteps = function (roomName) {
+    var steps = [{
+        content: 'Go on "' + roomName + '" room in List',
+        // can't click on it, it will try to launch Jitsi and fail on chrome headless
+        trigger: 'a.o_wevent_meeting_room_card h4:contains("' + roomName + '")',
+    }];
+    return steps;
+};
+
 
 /**
  * REGISTER STEPS
@@ -166,12 +163,8 @@ var initTourSteps = function (eventName) {
 };
 
 var browseTalksSteps = [{
-    content: 'Browse Talks Menu',
-    trigger: 'a[href*="#"]:contains("Talks")',
-    run: "click",
-}, {
-    content: 'Browse Talks Submenu',
-    trigger: 'a.dropdown-item span:contains("Talks")',
+    content: 'Browse Talks',
+    trigger: 'a:contains("Talks")',
     run: "click",
     expectUnloadPage: true,
 }, {
@@ -189,17 +182,29 @@ var browseBackSteps = [{
     trigger: 'h5:contains("Book your talks")',
 }];
 
+var browseMeetSteps = [{
+    content: 'Browse Meet',
+    trigger: 'a:contains("Community")',
+    run: "click",
+}, {
+    content: 'Check we are on the community page',
+    trigger: 'h3:contains("Join a room")',
+}];
+
+
 registry.category("web_tour.tours").add('wevent_register', {
     url: '/event',
     steps: () => [].concat(
         initTourSteps('Online Reveal'),
         browseTalksSteps,
-        discoverTalkSteps('What This Event Is All About', true, true, true),
+        discoverTalkSteps('What This Event Is All About', true, true),
+        browseTalksSteps,
+        discoverTalkSteps('Live Testimonial', false, false, false),
+        browseTalksSteps,
+        discoverTalkSteps('Our Last Day Together!', true, false, true),
         browseBackSteps,
-        discoverTalkSteps('Live Testimonial', false, false, false, false),
-        browseBackSteps,
-        discoverTalkSteps('Our Last Day Together!', true, true, false, true),
-        browseBackSteps,
+        browseMeetSteps,
+        discoverRoomSteps('Best wood for furniture'),
         registerSteps,
     )
 });

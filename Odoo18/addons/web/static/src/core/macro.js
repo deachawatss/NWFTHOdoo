@@ -134,17 +134,17 @@ export class Macro {
         }
         try {
             const currentStep = this.steps[this.currentIndex];
-            const timeoutDelay = currentStep.timeout || this.timeout || 10000;
             const executeStep = async () => {
                 const trigger = await waitForTrigger(currentStep.trigger);
                 await this.onStep(currentStep, trigger, this.currentIndex);
                 return await performAction(trigger, currentStep.action);
             };
             const launchTimer = async () => {
-                await delay(timeoutDelay);
+                const timeout_delay = currentStep.timeout || this.timeout || 10000;
+                await delay(timeout_delay);
                 throw new MacroError(
                     "Timeout",
-                    `TIMEOUT step failed to complete within ${timeoutDelay} ms.`
+                    `TIMEOUT step failed to complete within ${timeout_delay} ms.`
                 );
             };
             // If falsy action result, it means the action worked properly.

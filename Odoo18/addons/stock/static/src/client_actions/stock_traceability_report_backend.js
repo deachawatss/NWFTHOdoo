@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
 import { Component, onWillStart, useState } from "@odoo/owl";
 import { download } from "@web/core/network/download";
@@ -92,23 +94,16 @@ export class TraceabilityReport extends Component {
         });
     }
 
-    onClickPartner(line) {
+    onCLickOpenLot(line) {
         this.actionService.doAction({
-            type: "ir.actions.act_window",
-            res_model: "res.partner",
-            res_id: line.partner_id,
-            views: [[false, "form"]],
-            target: "current",
-        });
-    }
-
-    onClickOpenLot(line) {
-        this.actionService.doAction({
-            type: 'ir.actions.act_window',
-            res_model: 'stock.lot',
-            res_id: line.lot_id,
-            views: [[false, 'form']],
-            target: 'current',
+            type: "ir.actions.client",
+            tag: "stock_report_generic",
+            name: line.lot_name !== undefined && line.lot_name.toString(),
+            context: {
+                active_id: line.lot_id,
+                active_model: "stock.lot",
+                url: "/stock/output_format/stock?active_id=:active_id&active_model=:active_model",
+            },
         });
     }
 

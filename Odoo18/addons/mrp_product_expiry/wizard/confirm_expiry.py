@@ -4,7 +4,7 @@
 from odoo import api, fields, models, _
 
 
-class ExpiryPickingConfirmation(models.TransientModel):
+class ConfirmExpiry(models.TransientModel):
     _inherit = 'expiry.picking.confirmation'
 
     production_ids = fields.Many2many('mrp.production', readonly=True)
@@ -30,14 +30,14 @@ class ExpiryPickingConfirmation(models.TransientModel):
                     lot_name=self.lot_ids.name,
                 )
         else:
-            super()._compute_descriptive_fields()
+            super(ConfirmExpiry, self)._compute_descriptive_fields()
 
     def confirm_produce(self):
-        ctx = dict(self.env.context, skip_expired=True)
+        ctx = dict(self._context, skip_expired=True)
         ctx.pop('default_lot_ids')
         return self.production_ids.with_context(ctx).button_mark_done()
 
     def confirm_workorder(self):
-        ctx = dict(self.env.context, skip_expired=True)
+        ctx = dict(self._context, skip_expired=True)
         ctx.pop('default_lot_ids')
         return self.workorder_id.with_context(ctx).record_production()

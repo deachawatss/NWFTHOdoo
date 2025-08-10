@@ -1,14 +1,13 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-import psycopg2
 from unittest.mock import patch
 
 from odoo.http import request
 from odoo.addons.base.tests.common import HttpCaseWithUserPortal
 from odoo.addons.website.controllers.form import WebsiteForm
-from odoo.addons.http_routing.tests.common import MockRequest
+from odoo.addons.website.tools import MockRequest
 from odoo.tests.common import tagged, TransactionCase
-import unittest
+
 
 @tagged('post_install', '-at_install')
 class TestWebsiteFormEditor(HttpCaseWithUserPortal):
@@ -21,8 +20,6 @@ class TestWebsiteFormEditor(HttpCaseWithUserPortal):
             'phone': "+1 555-555-5555",
         })
 
-    # TODO master-mysterious-egg fix error
-    @unittest.skip("prepare mysterious-egg for merging")
     def test_tour(self):
         self.start_tour(self.env['website'].get_client_action_url('/'), 'website_form_editor_tour', login='admin', timeout=240)
         self.start_tour('/', 'website_form_editor_tour_submit')
@@ -65,7 +62,6 @@ class TestWebsiteFormEditor(HttpCaseWithUserPortal):
         self.start_tour('/', 'website_form_special_characters', login='admin')
         mail = self.env['mail.mail'].search([], order='id desc', limit=1)
         self.assertIn('Test1&#34;&#39;', mail.body_html, 'The single quotes and double quotes characters should be visible on the received mail')
-        self.assertIn('Test2`\\', mail.body_html, 'The backtick and backslash characters should be visible on the received mail')
 
     def test_website_form_nested_forms(self):
         self.start_tour('/my/account', 'website_form_nested_forms', login='admin')
@@ -92,11 +88,10 @@ class TestWebsiteForm(TransactionCase):
         self.env['ir.model.fields'].formbuilder_whitelist('res.partner', ['name'])
         WebsiteFormController = WebsiteForm()
         original_insert_record = WebsiteFormController.insert_record
-        test_sp = self.env.cr.savepoint()
         def dummy_insert_record(*args, **kwargs):
             res = original_insert_record(*args, **kwargs)
             # delete website_form savepoint by rollbacking to test savepoint
-            self.env.cr.execute('ROLLBACK TO SAVEPOINT "%s"' % test_sp.name)
+            self.env.cr.execute('ROLLBACK TO SAVEPOINT test_%d' % self._savepoint_id)
             return res
         WebsiteFormController.insert_record = dummy_insert_record
         with MockRequest(self.env):
@@ -110,4 +105,3 @@ class TestWebsiteForm(TransactionCase):
                 )
             self.assertEqual(response.status_code, 200)
             self.assertTrue(response.data.startswith(b'{"id":'))
-        test_sp.close(rollback=True)

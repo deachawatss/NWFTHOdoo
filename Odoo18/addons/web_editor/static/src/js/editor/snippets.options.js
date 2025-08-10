@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { attachComponent } from "@web_editor/js/core/owl_utils";
 import { MediaDialog } from "@web_editor/components/media_dialog/media_dialog";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
@@ -318,8 +320,7 @@ const UserValueWidget = publicWidget.Widget.extend({
             this.illustrationEl = document.createElement('i');
             this.illustrationEl.classList.add('fa', this.options.dataAttributes.icon);
         }
-        // Set no-preview = true by default (avoid uncaught promise when not set)
-        if (this.options.dataAttributes.reload && !('noPreview' in this.options.dataAttributes)) {
+        if (this.options.dataAttributes.reload) {
             this.options.dataAttributes.noPreview = "true";
         }
     },
@@ -2116,7 +2117,7 @@ const DatetimePickerUserValueWidget = InputUserValueWidget.extend({
      * @override
      */
     isPreviewed: function () {
-        return this._super(...arguments) || this.picker.isOpen();
+        return this._super(...arguments) || this.picker.isOpen;
     },
     /**
      * @override
@@ -2969,7 +2970,7 @@ const Many2oneUserValueWidget = SelectUserValueWidget.extend({
     async _search(needle) {
         const recTuples = await this.orm.call(this.options.model, "name_search", [], {
             name: needle,
-            domain: (await this._getSearchDomain()).concat(
+            args: (await this._getSearchDomain()).concat(
                 Object.values(this.options.domainComponents).filter(item => item !== null)
             ),
             operator: "ilike",
@@ -5472,6 +5473,7 @@ registry.layout_column = SnippetOptionWidget.extend(ColumnLayoutMixin, {
 
             // Create default text content.
             const pEl = document.createElement('p');
+            pEl.classList.add('o_default_snippet_text');
             pEl.textContent = _t("Write something...");
 
             newColumnEl.appendChild(pEl);
@@ -6065,6 +6067,13 @@ registry.ReplaceMedia = SnippetOptionWidget.extend({
      * @see this.selectClass for parameters
      */
     async replaceMedia() {
+        const sel = this.ownerDocument.getSelection();
+        // Ensure the element is selected before opening the media dialog.
+        if (!sel.rangeCount) {
+            const range = this.ownerDocument.createRange();
+            range.selectNodeContents(this.$target[0]);
+            sel.addRange(range);
+        }
         // open mediaDialog and replace the media.
         await this.options.wysiwyg.openMediaDialog({ node:this.$target[0] });
     },
@@ -6635,17 +6644,6 @@ registry.ImageTools = ImageHandlerOption.extend({
         return this._super(...arguments);
     },
 
-    /**
-     * @override
-     */
-    selectAttribute(previewMode, widgetValue, params) {
-        this._super(...arguments);
-        if (params.attributeName === "alt" && params.activeValue.trim() !== "") {
-            if (this.$target[0].getAttribute("role") === "presentation") {
-                this.$target[0].removeAttribute("role");
-            }
-        }
-    },
     //--------------------------------------------------------------------------
     // Options
     //--------------------------------------------------------------------------
@@ -7906,9 +7904,9 @@ registry.ImageTools = ImageHandlerOption.extend({
             // the "setImgShapeHoverEffect" option, where we trigger it when
             // preview mode is "true".
             if (previewMode === hasSetImgShapeHoverEffectMethod) {
-                this.$target[0].dispatchEvent(new Event("mouseenter"));
+                this.$target[0].dispatchEvent(new Event("mouseover"));
                 this.hoverTimeoutId = setTimeout(() => {
-                    this.$target[0].dispatchEvent(new Event("mouseleave"));
+                    this.$target[0].dispatchEvent(new Event("mouseout"));
                 }, 700);
             } else if (previewMode === "reset") {
                 clearTimeout(this.hoverTimeoutId);
@@ -9014,10 +9012,17 @@ registry.BackgroundPosition = SnippetOptionWidget.extend({
 
         this.$overlayContent.offset(targetOffset);
 
-        this.$bgDragger.css({
-            width: `${this.$target.innerWidth()}px`,
-            height: `${this.$target.innerHeight()}px`,
-        });
+        this.$bgDragger[0].style.setProperty(
+            "width",
+            `${this.$target.innerWidth()}px`,
+            "important"
+        );
+
+        this.$bgDragger[0].style.setProperty(
+            "height",
+            `${this.$target.innerHeight()}px`,
+            "important"
+        );
 
         const topPos = Math.max(0, $(window).scrollTop() - this.$target.offset().top);
         this.$overlayContent.find('.o_we_overlay_buttons').css('top', `${topPos}px`);
@@ -9232,7 +9237,7 @@ registry.ContainerWidth = SnippetOptionWidget.extend({
      */
     selectClass: async function (previewMode, widgetValue, params) {
         await this._super(...arguments);
-        if (previewMode === "reset" || !previewMode) {
+        if (previewMode === 'reset') {
             this.$target.removeClass('o_container_preview');
         } else if (previewMode) {
             this.$target.addClass('o_container_preview');

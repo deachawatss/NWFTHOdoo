@@ -1,7 +1,7 @@
 from odoo import fields, models
 
 
-class CertificateCertificate(models.Model):
+class Certificate(models.Model):
     _inherit = 'certificate.certificate'
 
     scope = fields.Selection(

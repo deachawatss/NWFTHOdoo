@@ -20,13 +20,7 @@ class Partner extends models.Model {
     txt = fields.Html({ string: "txt", trim: true });
     _records = [{ id: 1, txt: RED_TEXT }];
 }
-class User extends models.Model {
-    _name = "res.users";
-    has_group() {
-        return true;
-    }
-}
-defineModels([Partner, User]);
+defineModels([Partner]);
 
 test("html fields are correctly rendered in form view (readonly)", async () => {
     await mountView({
@@ -169,10 +163,12 @@ test("field html translatable", async () => {
             { translation_type: "char", translation_show_source: true },
         ];
     });
-    onRpc("get_installed", () => [
-        ["en_US", "English"],
-        ["fr_BE", "French (Belgium)"],
-    ]);
+    onRpc("get_installed", () => {
+        return [
+            ["en_US", "English"],
+            ["fr_BE", "French (Belgium)"],
+        ];
+    });
     onRpc("update_field_translations", ({ args }) => {
         expect(args).toEqual(
             [

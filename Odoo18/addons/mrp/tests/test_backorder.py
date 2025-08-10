@@ -13,9 +13,12 @@ class TestMrpProductionBackorder(TestMrpCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.env.ref('base.group_user').write({
-            'implied_ids': [Command.link(cls.env.ref('stock.group_production_lot').id)],
-        })
+        cls.env.ref('base.group_user').write({'implied_ids': [(4, cls.env.ref('stock.group_production_lot').id)]})
+        cls.stock_location = cls.env.ref('stock.stock_location_stock')
+        warehouse_form = Form(cls.env['stock.warehouse'])
+        warehouse_form.name = 'Test Warehouse'
+        warehouse_form.code = 'TWH'
+        cls.warehouse = warehouse_form.save()
 
     def test_no_tracking_1(self):
         """Create a MO for 4 product. Produce 4. The backorder button should
@@ -85,11 +88,11 @@ class TestMrpProductionBackorder(TestMrpCommon):
         Check that all MO are reachable through the procurement group.
         """
         # Required for `manufacture_steps` to be visible in the view
-        self.env.user.group_ids += self.env.ref("stock.group_adv_location")
-        with Form(self.warehouse_1) as warehouse:
+        self.env.user.groups_id += self.env.ref("stock.group_adv_location")
+        with Form(self.warehouse) as warehouse:
             warehouse.manufacture_steps = 'pbm'
 
-        production, _, _, product_to_use_1, product_to_use_2 = self.generate_mo(qty_base_1=4, qty_final=4, picking_type_id=self.picking_type_manu)
+        production, _, product_to_build, product_to_use_1, product_to_use_2 = self.generate_mo(qty_base_1=4, qty_final=4, picking_type_id=self.warehouse.manu_type_id)
 
         move_raw_ids = production.move_raw_ids
         self.assertEqual(len(move_raw_ids), 2)
@@ -130,10 +133,10 @@ class TestMrpProductionBackorder(TestMrpCommon):
         Check that all MO are reachable through the procurement group.
         """
         # Required for `manufacture_steps` to be visible in the view
-        self.env.user.group_ids += self.env.ref("stock.group_adv_location")
-        with Form(self.warehouse_1) as warehouse:
+        self.env.user.groups_id += self.env.ref("stock.group_adv_location")
+        with Form(self.warehouse) as warehouse:
             warehouse.manufacture_steps = 'pbm_sam'
-        production, _, product_to_build, product_to_use_1, product_to_use_2 = self.generate_mo(qty_base_1=4, qty_final=4, picking_type_id=self.picking_type_manu)
+        production, _, product_to_build, product_to_use_1, product_to_use_2 = self.generate_mo(qty_base_1=4, qty_final=4, picking_type_id=self.warehouse.manu_type_id)
 
         move_raw_ids = production.move_raw_ids
         self.assertEqual(len(move_raw_ids), 2)
@@ -287,7 +290,8 @@ class TestMrpProductionBackorder(TestMrpCommon):
             'name': 'Botox',
             'type': 'consu',
             'is_storable': True,
-            'uom_id': self.uom_kg.id,
+            'uom_id': self.env.ref('uom.product_uom_kgm').id,
+            'uom_po_id': self.env.ref('uom.product_uom_kgm').id,
         })
 
         mo_form = Form(self.env['mrp.production'])
@@ -299,11 +303,11 @@ class TestMrpProductionBackorder(TestMrpCommon):
             'product_qty': 1.0,
             'type': 'normal',
             'consumption': 'flexible',
-            'bom_line_ids': [Command.create({
+            'bom_line_ids': [(0, 0, {
                 'product_id': product_component.id,
                 'product_qty': 1,
-                'product_uom_id': self.uom_gm.id,
-            })],
+                'product_uom_id':self.env.ref('uom.product_uom_gram').id,
+            }),]
         })
         mo_form.product_qty = 1000
         mo = mo_form.save()
@@ -436,7 +440,10 @@ class TestMrpProductionBackorder(TestMrpCommon):
             backorder.save().action_backorder()
             return mo.procurement_group_id.mrp_production_ids[-1]
 
-        mo_sequence = self.picking_type_manu.sequence_id
+        default_picking_type_id = self.env['mrp.production']._get_default_picking_type_id(self.env.company.id)
+        default_picking_type = self.env['stock.picking.type'].browse(default_picking_type_id)
+        mo_sequence = default_picking_type.sequence_id
+        mo_sequence.prefix = "WH-MO-"
         initial_mo_name = mo_sequence.prefix + str(mo_sequence.number_next_actual).zfill(mo_sequence.padding)
         production = self.generate_mo(qty_final=5)[0]
         self.assertEqual(production.name, initial_mo_name)
@@ -472,12 +479,13 @@ class TestMrpProductionBackorder(TestMrpCommon):
 
     def test_backorder_name_with_multiple_backorder(self):
         """ Test that the backorder name is correct when splitting and creating
-        multiple backorders.s"""
+        multiple backorders.
+        """
         # create a mo for 5 units and split it into 2
         mo = self.generate_mo(qty_final=5)[0]
         action = mo.action_split()
         wizard = Form(self.env[action['res_model']].with_context(action['context']))
-        wizard.max_batch_size = 2.5
+        wizard.counter = 2
         wizard.save().action_split()
 
         # Ensure that the MO was correctly split into 2 MOs
@@ -518,7 +526,7 @@ class TestMrpProductionBackorder(TestMrpCommon):
 
         action = mo.action_split()
         wizard = Form.from_action(self.env, action)
-        wizard.max_batch_size = 1
+        wizard.counter = 2
         wizard.save().action_split()
         self.assertEqual(len(mo.procurement_group_id.mrp_production_ids), 2)
 
@@ -529,13 +537,13 @@ class TestMrpProductionBackorder(TestMrpCommon):
 
     def test_split_merge(self):
         # Change 'Units' rounding to 1 (integer only quantities)
-        self.env['decimal.precision'].search([('name', '=', 'Product Unit')]).digits = 0
+        self.uom_unit.rounding = 1
         # Create a mo for 10 products
         mo, _, _, p1, p2 = self.generate_mo(qty_final=10)
         # Split in 3 parts
         action = mo.action_split()
         wizard = Form.from_action(self.env, action)
-        wizard.max_batch_size = 4
+        wizard.counter = 3
         action = wizard.save().action_split()
         # Should have 3 mos
         self.assertEqual(len(mo.procurement_group_id.mrp_production_ids), 3)
@@ -543,16 +551,16 @@ class TestMrpProductionBackorder(TestMrpCommon):
         mo2 = mo.procurement_group_id.mrp_production_ids[1]
         mo3 = mo.procurement_group_id.mrp_production_ids[2]
         # Check quantities
-        self.assertEqual(mo1.product_qty, 4)
-        self.assertEqual(mo2.product_qty, 4)
-        self.assertEqual(mo3.product_qty, 2)
+        self.assertEqual(mo1.product_qty, 3)
+        self.assertEqual(mo2.product_qty, 3)
+        self.assertEqual(mo3.product_qty, 4)
         # Check raw movew quantities
-        self.assertEqual(mo1.move_raw_ids.filtered(lambda m: m.product_id == p1).product_qty, 16)
-        self.assertEqual(mo2.move_raw_ids.filtered(lambda m: m.product_id == p1).product_qty, 16)
-        self.assertEqual(mo3.move_raw_ids.filtered(lambda m: m.product_id == p1).product_qty, 8)
-        self.assertEqual(mo1.move_raw_ids.filtered(lambda m: m.product_id == p2).product_qty, 4)
-        self.assertEqual(mo2.move_raw_ids.filtered(lambda m: m.product_id == p2).product_qty, 4)
-        self.assertEqual(mo3.move_raw_ids.filtered(lambda m: m.product_id == p2).product_qty, 2)
+        self.assertEqual(mo1.move_raw_ids.filtered(lambda m: m.product_id == p1).product_qty, 12)
+        self.assertEqual(mo2.move_raw_ids.filtered(lambda m: m.product_id == p1).product_qty, 12)
+        self.assertEqual(mo3.move_raw_ids.filtered(lambda m: m.product_id == p1).product_qty, 16)
+        self.assertEqual(mo1.move_raw_ids.filtered(lambda m: m.product_id == p2).product_qty, 3)
+        self.assertEqual(mo2.move_raw_ids.filtered(lambda m: m.product_id == p2).product_qty, 3)
+        self.assertEqual(mo3.move_raw_ids.filtered(lambda m: m.product_id == p2).product_qty, 4)
 
         # Merge them back
         expected_origin = ",".join([mo1.name, mo2.name, mo3.name])
@@ -596,7 +604,8 @@ class TestMrpProductionBackorder(TestMrpCommon):
                 'location_id': self.stock_location.id,
             })._apply_inventory()
 
-        default_picking_type = self.picking_type_manu
+        default_picking_type_id = self.env['mrp.production']._get_default_picking_type_id(self.env.company.id)
+        default_picking_type = self.env['stock.picking.type'].browse(default_picking_type_id)
 
         # make sure generated MO will auto-assign
         default_picking_type.reservation_method = 'at_confirm'
@@ -650,7 +659,7 @@ class TestMrpProductionBackorder(TestMrpCommon):
         self.assertEqual(mo.state, 'draft')
         action = mo.action_split()
         wizard = Form.from_action(self.env, action)
-        wizard.max_batch_size = 1
+        wizard.counter = 10
         action = wizard.save().action_split()
         # check that the MO is split in 10 and the components are split accordingly
         self.assertEqual(len(mo.procurement_group_id.mrp_production_ids), 10)
@@ -666,14 +675,24 @@ class TestMrpProductionBackorder(TestMrpCommon):
         """
         mo, _, _, product_to_use_1, product_to_use_2 = self.generate_mo(qty_base_1=1, qty_final=10)
 
-        self.env['stock.quant']._update_available_quantity(product_to_use_1, self.stock_location, 10)
-        self.env['stock.quant']._update_available_quantity(product_to_use_2, self.stock_location, 9)
+        inventory_wizard_1 = self.env['stock.change.product.qty'].create({
+            'product_id': product_to_use_1.id,
+            'product_tmpl_id': product_to_use_1.product_tmpl_id.id,
+            'new_quantity': 10,
+        })
+        inventory_wizard_2 = self.env['stock.change.product.qty'].create({
+            'product_id': product_to_use_2.id,
+            'product_tmpl_id': product_to_use_2.product_tmpl_id.id,
+            'new_quantity': 9,
+        })
+        inventory_wizard_1.change_product_qty()
+        inventory_wizard_2.change_product_qty()
 
         self.assertEqual(mo.state, 'confirmed')
         mo.action_assign()
         action = mo.action_split()
         wizard = Form.from_action(self.env, action)
-        wizard.max_batch_size = 1
+        wizard.counter = 10
         action = wizard.save().action_split()
         # check that the MO is split in 10 and exactly one of the components is not available
         self.assertEqual(len(mo.procurement_group_id.mrp_production_ids), 10)
@@ -731,11 +750,11 @@ class TestMrpProductionBackorder(TestMrpCommon):
             'product_qty': product_qty,
             'bom_id': self.bom_1.id,
             'priority': '1',
-            'picking_type_id': picking_type_id or self.picking_type_manu.id,
+            'picking_type_id': picking_type_id or self.warehouse.manu_type_id.id,
         })
-        picking_type_always = self.picking_type_manu.copy({'name': "Always BO", 'sequence_code': "always", 'create_backorder': "always"})
-        picking_type_ask = self.picking_type_manu.copy({'name': "Ask BO", 'sequence_code': "ask", 'create_backorder': "ask"})
-        picking_type_never = self.picking_type_manu.copy({'name': "Never BO", 'sequence_code': "never", 'create_backorder': "never"})
+        picking_type_always = self.warehouse.manu_type_id.copy({'name': "Always BO", 'sequence_code': "always", 'create_backorder': "always"})
+        picking_type_ask = self.warehouse.manu_type_id.copy({'name': "Ask BO", 'sequence_code': "ask", 'create_backorder': "ask"})
+        picking_type_never = self.warehouse.manu_type_id.copy({'name': "Never BO", 'sequence_code': "never", 'create_backorder': "never"})
 
         # always + ask (backorder=yes) => both are backordered in the end
         mo_produce_all = create_mo()
@@ -885,7 +904,10 @@ class TestMrpWorkorderBackorder(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super(TestMrpWorkorderBackorder, cls).setUpClass()
-        cls.uom_unit = cls.env.ref('uom.product_uom_unit')
+        cls.uom_unit = cls.env['uom.uom'].search([
+            ('category_id', '=', cls.env.ref('uom.product_uom_categ_unit').id),
+            ('uom_type', '=', 'reference')
+        ], limit=1)
         cls.finished1 = cls.env['product.product'].create({
             'name': 'finished1',
             'type': 'consu',
@@ -916,12 +938,12 @@ class TestMrpWorkorderBackorder(TransactionCase):
             'consumption': 'flexible',
             'type': 'normal',
             'bom_line_ids': [
-                Command.create({'product_id': cls.compfinished1.id, 'product_qty': 1}),
-                Command.create({'product_id': cls.compfinished2.id, 'product_qty': 1}),
+                (0, 0, {'product_id': cls.compfinished1.id, 'product_qty': 1}),
+                (0, 0, {'product_id': cls.compfinished2.id, 'product_qty': 1}),
             ],
             'operation_ids': [
-                Command.create({'sequence': 1, 'name': 'finished operation 1', 'workcenter_id': cls.workcenter1.id}),
-                Command.create({'sequence': 2, 'name': 'finished operation 2', 'workcenter_id': cls.workcenter2.id}),
+                (0, 0, {'sequence': 1, 'name': 'finished operation 1', 'workcenter_id': cls.workcenter1.id}),
+                (0, 0, {'sequence': 2, 'name': 'finished operation 2', 'workcenter_id': cls.workcenter2.id}),
             ],
         })
         cls.bom_finished1.bom_line_ids[0].operation_id = cls.bom_finished1.operation_ids[0].id
@@ -957,7 +979,7 @@ class TestMrpWorkorderBackorder(TransactionCase):
         bo_1 = mo.procurement_group_id.mrp_production_ids - mo
         self.assertRecordValues(bo_1.workorder_ids, [
             {'state': 'cancel', 'qty_remaining': 0.0, 'workcenter_id': op_1.workcenter_id.id},
-            {'state': 'ready', 'qty_remaining': 6.0, 'workcenter_id': op_2.workcenter_id.id},
+            {'state': 'waiting', 'qty_remaining': 6.0, 'workcenter_id': op_2.workcenter_id.id},
         ])
         with Form(bo_1) as form_bo_1:
             form_bo_1.qty_producing = 2
@@ -971,7 +993,7 @@ class TestMrpWorkorderBackorder(TransactionCase):
         bo_2 = mo.procurement_group_id.mrp_production_ids - mo - bo_1
         self.assertRecordValues(bo_2.workorder_ids, [
             {'state': 'cancel', 'qty_remaining': 0.0, 'workcenter_id': op_1.workcenter_id.id},
-            {'state': 'ready', 'qty_remaining': 4.0, 'workcenter_id': op_2.workcenter_id.id},
+            {'state': 'waiting', 'qty_remaining': 4.0, 'workcenter_id': op_2.workcenter_id.id},
         ])
         op_6 = bo_2.workorder_ids.filtered(lambda wo: wo.state != 'cancel')
         with Form(bo_2) as form_bo_2:
@@ -1023,5 +1045,5 @@ class TestMrpWorkorderBackorder(TransactionCase):
         self.assertEqual(mo.state, 'draft')
         action = mo.action_split()
         wizard = Form(self.env[action['res_model']].with_context(action['context']))
-        wizard.max_batch_size = 1
+        wizard.counter = 10
         wizard.save().action_split()

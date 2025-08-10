@@ -6,7 +6,6 @@ import { patch } from "@web/core/utils/patch";
 const storeServicePatch = {
     setup() {
         super.setup();
-        /** @type {{[key: number]: {id: number, user_id: number, hasCheckedUser: boolean}}} */
         this.employees = {};
     },
     async getChat(person) {

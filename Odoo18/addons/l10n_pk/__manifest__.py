@@ -20,6 +20,7 @@ Activates:
     """,
     'depends': ['account'],
     'data': [
+        'data/res.country.state.csv',
         'data/account_tax_vat_report.xml',
         'data/account_tax_wh_report.xml',
     ],
@@ -27,6 +28,5 @@ Activates:
         'demo/res_partner_demo.xml',
         'demo/demo_company.xml',
     ],
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

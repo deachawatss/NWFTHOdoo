@@ -40,7 +40,7 @@ import { makeMockEnv } from "@web/../tests/_framework/env_test_helpers";
 import { patchWithCleanup } from "@web/../tests/web_test_helpers";
 import { Deferred } from "@web/core/utils/concurrency";
 import { Plugin } from "@html_editor/plugin";
-import { cleanHints, dispatchCleanForSave } from "./_helpers/dispatch";
+import { dispatchClean, dispatchCleanForSave } from "./_helpers/dispatch";
 import { expectElementCount } from "./_helpers/ui_expectations";
 
 function getConfig(components) {
@@ -414,7 +414,7 @@ describe("Mount and Destroy embedded components", () => {
                         </div>
                     </div>
                 </div>
-                <p class="target o-we-hint" o-we-hint-text='Type "/" for commands'>[]<br></p>
+                <p class="target o-we-hint" placeholder='Type "/" for commands'>[]<br></p>
             `)
         );
         for (const index of indexOrder) {
@@ -440,7 +440,7 @@ describe("Mount and Destroy embedded components", () => {
         expect(getContent(el)).toBe(
             unformat(`
                 <div data-embedded="recursiveComponent" data-oe-protected="true" contenteditable="false"></div>
-                <p class="target o-we-hint" o-we-hint-text='Type "/" for commands'>[]<br></p>
+                <p class="target o-we-hint" placeholder='Type "/" for commands'>[]<br></p>
             `)
         );
         // Verify that there is no potential host outside of the editable,
@@ -448,9 +448,9 @@ describe("Mount and Destroy embedded components", () => {
         // the editable element, before being removed again.
         const fixture = getFixture();
         expect(
-            [...fixture.querySelectorAll("[data-embedded]")].filter(
-                (elem) => !elem.closest(".odoo-editor-editable")
-            )
+            [...fixture.querySelectorAll("[data-embedded]")].filter((elem) => {
+                return !elem.closest(".odoo-editor-editable");
+            })
         ).toEqual([]);
     });
 
@@ -477,9 +477,9 @@ describe("Mount and Destroy embedded components", () => {
         // the editable element, before being removed again.
         const fixture = getFixture();
         expect(
-            [...fixture.querySelectorAll("[data-embedded]")].filter(
-                (elem) => !elem.closest(".odoo-editor-editable")
-            )
+            [...fixture.querySelectorAll("[data-embedded]")].filter((elem) => {
+                return !elem.closest(".odoo-editor-editable");
+            })
         ).toEqual([]);
     });
 
@@ -508,9 +508,9 @@ describe("Mount and Destroy embedded components", () => {
         // the editable element, before being removed again.
         const fixture = getFixture();
         expect(
-            [...fixture.querySelectorAll("[data-embedded]")].filter(
-                (elem) => !elem.closest(".odoo-editor-editable")
-            )
+            [...fixture.querySelectorAll("[data-embedded]")].filter((elem) => {
+                return !elem.closest(".odoo-editor-editable");
+            })
         ).toEqual([]);
         expect(editor.editable.contains(parent)).toBe(false);
         expect(parent.contains(hostElement)).toBe(true);
@@ -577,7 +577,7 @@ describe("Selection after embedded component insertion", () => {
         editor.shared.dom.insert(parseHTML(editor.document, `<div data-embedded="counter"></div>`));
         editor.shared.history.addStep();
         await animationFrame();
-        cleanHints(editor);
+        dispatchClean(editor);
         expect(getContent(el)).toBe(
             unformat(`
                 <div data-embedded="counter" data-oe-protected="true" contenteditable="false"><span class="counter">Counter:0</span></div>
@@ -591,7 +591,7 @@ describe("Selection after embedded component insertion", () => {
         editor.shared.dom.insert(parseHTML(editor.document, `<div data-embedded="counter"></div>`));
         editor.shared.history.addStep();
         await animationFrame();
-        cleanHints(editor);
+        dispatchClean(editor);
         expect(getContent(el)).toBe(
             unformat(`
                 <p>a</p>
@@ -606,7 +606,7 @@ describe("Selection after embedded component insertion", () => {
         editor.shared.dom.insert(parseHTML(editor.document, `<div data-embedded="counter"></div>`));
         editor.shared.history.addStep();
         await animationFrame();
-        cleanHints(editor);
+        dispatchClean(editor);
         expect(getContent(el)).toBe(
             unformat(`
                 <div data-embedded="counter" data-oe-protected="true" contenteditable="false"><span class="counter">Counter:0</span></div>
@@ -620,7 +620,7 @@ describe("Selection after embedded component insertion", () => {
         editor.shared.dom.insert(parseHTML(editor.document, `<div data-embedded="counter"></div>`));
         editor.shared.history.addStep();
         await animationFrame();
-        cleanHints(editor);
+        dispatchClean(editor);
         expect(getContent(el)).toBe(
             unformat(`
                 <p>a</p>
@@ -929,7 +929,7 @@ describe("In-editor manipulations", () => {
                 config: getConfig([embedding("counter", Counter)]),
             }
         );
-        cleanHints(editor);
+        dispatchClean(editor);
         expect(getContent(el)).toBe(
             `<div><p>a</p></div><div data-embedded="counter" data-oe-protected="true" contenteditable="false"><span class="counter">Counter:0</span></div>`
         );

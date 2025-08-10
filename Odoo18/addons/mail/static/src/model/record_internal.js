@@ -196,16 +196,10 @@ export class RecordInternal {
         const store = record._rawStore;
         this.fieldsComputing.set(fieldName, true);
         this.fieldsComputeOnNeed.delete(fieldName);
-        let computedValue;
-        try {
-            computedValue = Model._.fieldsCompute
-                .get(fieldName)
-                .call(this.fieldsComputeProxy2.get(fieldName));
-        } catch (err) {
-            store.handleError(err);
-        }
         store._.updateFields(record, {
-            [fieldName]: computedValue,
+            [fieldName]: Model._.fieldsCompute
+                .get(fieldName)
+                .call(this.fieldsComputeProxy2.get(fieldName)),
         });
         this.fieldsComputing.delete(fieldName);
     }
@@ -224,11 +218,7 @@ export class RecordInternal {
         const proxy2Sort = this.fieldsSortProxy2.get(fieldName);
         const func = Model._.fieldsSort.get(fieldName).bind(proxy2Sort);
         if (isRelation(Model, fieldName)) {
-            try {
-                store._.sortRecordList(proxy2Sort[fieldName]._proxy, func);
-            } catch (err) {
-                store.handleError(err);
-            }
+            store._.sortRecordList(proxy2Sort[fieldName]._proxy, func);
         } else {
             // sort on copy of list so that reactive observers not triggered while sorting
             const copy = [...proxy2Sort[fieldName]];
@@ -241,7 +231,6 @@ export class RecordInternal {
         this.fieldsSorting.delete(fieldName);
     }
     onUpdate(record, fieldName) {
-        const store = record._rawStore;
         const Model = record.Model;
         if (!Model._.fieldsOnUpdate.get(fieldName)) {
             return;
@@ -250,11 +239,7 @@ export class RecordInternal {
          * Forward internal proxy for performance as onUpdate does not
          * need reactive (observe is called separately).
          */
-        try {
-            Model._.fieldsOnUpdate.get(fieldName).call(record._proxyInternal);
-        } catch (err) {
-            store.handleError(err);
-        }
+        Model._.fieldsOnUpdate.get(fieldName).call(record._proxyInternal);
         this.fieldsOnUpdateObserves.get(fieldName)?.();
     }
     /**

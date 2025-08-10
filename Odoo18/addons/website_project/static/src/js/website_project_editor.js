@@ -1,7 +1,9 @@
-import { _t } from "@web/core/l10n/translation";
-import { registry } from '@web/core/registry';
+/** @odoo-module **/
 
-registry.category("website.form_editor_actions").add('create_task', {
+import { _t } from "@web/core/l10n/translation";
+import FormEditorRegistry from "@website/js/form_editor_registry";
+
+FormEditorRegistry.add('create_task', {
     formFields: [{
         type: 'char',
         required: true,
@@ -46,7 +48,6 @@ registry.category("website.form_editor_actions").add('create_task', {
         required: true,
         relation: 'project.project',
         string: _t('Project'),
-        domain: [["is_template", "=", false]],
         createAction: 'project.open_view_project_all',
     }],
     successPage: '/your-task-has-been-submitted',

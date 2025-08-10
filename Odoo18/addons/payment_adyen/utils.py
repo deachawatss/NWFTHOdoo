@@ -1,3 +1,5 @@
+from odoo import _
+from odoo.exceptions import ValidationError
 
 from odoo.addons.payment import utils as payment_utils
 

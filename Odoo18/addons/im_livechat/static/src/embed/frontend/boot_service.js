@@ -1,11 +1,11 @@
 import { makeRoot, makeShadow } from "@im_livechat/embed/common/boot_helpers";
-import { canLoadLivechat } from "@im_livechat/embed/common/misc";
 import { LivechatRoot } from "@im_livechat/embed/frontend/livechat_root";
-import { App } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
+import { App } from "@odoo/owl";
 
-import { registry } from "@web/core/registry";
 import { getTemplate } from "@web/core/templates";
+import { registry } from "@web/core/registry";
+import { session } from "@web/session";
 
 export const livechatBootService = {
     dependencies: ["mail.store"],
@@ -18,7 +18,7 @@ export const livechatBootService = {
     },
 
     start(env) {
-        if (!canLoadLivechat()) {
+        if (!session.livechatData?.isAvailable) {
             return;
         }
         const target = this.getTarget();

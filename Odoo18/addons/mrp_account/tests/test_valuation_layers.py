@@ -421,9 +421,8 @@ class TestMrpValuationStandard(TestMrpValuationCommon):
         byproduct = self.env['product.product'].create({
             'name': 'byproduct',
             'is_storable': True,
-            'categ_id': self.product1.categ_id.id,
         })
-        self.product1.categ_id.property_cost_method = 'average'
+        (self.product1 | byproduct).categ_id.property_cost_method = 'average'
         self.component.standard_price = 100
 
         self.bom.write({'byproduct_ids': [
@@ -491,6 +490,7 @@ class TestMrpStockValuation(TestStockValuationBase):
         })
         move = self.env['stock.move'].create({
             'picking_id': production_in.id,
+            'name': 'IN 10 @ 10',
             'location_id': self.stock_location.id,
             'location_dest_id': production_location.id,
             'product_id': self.product1.id,
@@ -514,6 +514,7 @@ class TestMrpStockValuation(TestStockValuationBase):
         })
         move = self.env['stock.move'].create({
             'picking_id': production_out.id,
+            'name': 'OUT 10 @ 10',
             'location_id': production_location.id,
             'location_dest_id': self.stock_location.id,
             'product_id': self.product1.id,
@@ -566,6 +567,7 @@ class TestMrpStockValuation(TestStockValuationBase):
         })
         move = self.env['stock.move'].create({
             'picking_id': production_in.id,
+            'name': 'IN 10 @ 10',
             'location_id': self.stock_location.id,
             'location_dest_id': production_location.id,
             'product_id': self.product1.id,
@@ -591,6 +593,7 @@ class TestMrpStockValuation(TestStockValuationBase):
         })
         move = self.env['stock.move'].create({
             'picking_id': production_out.id,
+            'name': 'OUT 10 @ 10',
             'location_id': production_location.id,
             'location_dest_id': self.stock_location.id,
             'product_id': self.product1.id,

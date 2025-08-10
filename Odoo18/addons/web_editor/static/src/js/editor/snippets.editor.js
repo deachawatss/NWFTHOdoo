@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { clamp } from "@web/core/utils/numbers";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { useService, useBus } from "@web/core/utils/hooks";
@@ -2223,6 +2225,34 @@ class SnippetsMenu extends Component {
             await this._updateInvisibleDOM();
         })());
 
+        // Auto-selects text elements with a specific class and remove this
+        // on text changes
+        const alreadySelectedElements = new Set();
+        this.$body.on('click.snippets_menu', '.o_default_snippet_text', ev => {
+            const el = ev.currentTarget;
+            if (alreadySelectedElements.has(el)) {
+                // If the element was already selected in such a way before, we
+                // don't reselect it. This actually allows to have the first
+                // click on an element to select its text, but the second click
+                // to place the cursor inside of that text.
+                return;
+            }
+            alreadySelectedElements.add(el);
+            $(el).selectContent();
+        });
+        this.$body.on('keyup.snippets_menu', () => {
+            // Note: we cannot listen to keyup in .o_default_snippet_text
+            // elements via delegation because keyup only bubbles from focusable
+            // elements which contenteditable are not.
+            const selection = this.$body[0].ownerDocument.getSelection();
+            if (!selection.rangeCount) {
+                return;
+            }
+            const range = selection.getRangeAt(0);
+            const $defaultTextEl = $(range.startContainer).closest('.o_default_snippet_text');
+            $defaultTextEl.removeClass('o_default_snippet_text');
+            alreadySelectedElements.delete($defaultTextEl[0]);
+        });
         const refreshSnippetEditors = debounce(() => {
             for (const snippetEditor of this.snippetEditors) {
                 this._mutex.exec(() => snippetEditor.destroy());
@@ -2654,7 +2684,6 @@ class SnippetsMenu extends Component {
                 var $zone = $(this);
                 var $children = $zone.find('> :not(.oe_drop_zone, .oe_drop_clone)');
 
-                
                 if (!$zone.children().last().is('.oe_drop_zone')) {
                     data = testPreviousSibling($zone[0].lastChild, $zone)
                         || setDropZoneDirection($zone, $zone, toInsertInline, $children.last());
@@ -2901,6 +2930,9 @@ class SnippetsMenu extends Component {
                 }
                 resolve(null);
             }).then(async editorToEnable => {
+                if (editorToEnable && editorToEnable.$target[0] && !editorToEnable.$target[0].closest("body")) {
+                    return null;
+                }
                 if (!previewMode && this._enabledEditorHierarchy[0] === editorToEnable
                         || ifInactiveOptions && this._enabledEditorHierarchy.includes(editorToEnable)) {
                     return editorToEnable;
@@ -3210,6 +3242,11 @@ class SnippetsMenu extends Component {
         var self = this;
         var $html = $(html);
 
+        // TODO: Remove in master and add it in template s_website_form
+        const websiteFormEditorOptionsEl = $html.find('[data-js="WebsiteFormEditor"]')[0];
+        if (websiteFormEditorOptionsEl) {
+            websiteFormEditorOptionsEl.dataset.dropExcludeAncestor = "form";
+        }
         this.templateOptions = [];
         var selectors = [];
         var $styles = $html.find('[data-selector]');
@@ -3306,7 +3343,6 @@ class SnippetsMenu extends Component {
                     isCustom: isCustom,
                     snippetGroup: snippetEl.dataset.oSnippetGroup,
                     group: isCustom ? "custom" : snippetEl.dataset.oGroup,
-                    label: snippetEl.dataset.oLabel,
                     key: index++,
                 };
 
@@ -3366,6 +3402,8 @@ class SnippetsMenu extends Component {
                 }
             }
         }
+        // Register the text nodes that needs to be auto-selected on click
+        this._registerDefaultTexts();
 
         // Make elements draggable
         this._makeSnippetDraggable();
@@ -3863,6 +3901,32 @@ class SnippetsMenu extends Component {
             $selectorSiblings: $selectorSiblings,
             $selectorChildren: $selectorChildren,
         };
+    }
+    /**
+     * Adds the 'o_default_snippet_text' class on nodes which contain only
+     * non-empty text nodes. Those nodes are then auto-selected by the editor
+     * when they are clicked.
+     *
+     * @private
+     * @param {jQuery} [$in] - the element in which to search, default to the
+     *                       snippet bodies in the menu
+     */
+    _registerDefaultTexts($in) {
+        if ($in === undefined) {
+            // By default, we don't want the `o_default_snippet_text` class on
+            // custom snippets. Those are most likely already ready, we don't
+            // really need the auto-selection by the editor.
+            const snippets = [...this.snippets.values()]
+                .filter((snippet) => !snippet.isCustom)
+                .map((snippet) => snippet.baseBody);
+            $in = $(snippets);
+        }
+
+        $in.find('*').addBack()
+            .contents()
+            .filter(function () {
+                return this.nodeType === 3 && this.textContent.match(/\S/);
+            }).parent().addClass('o_default_snippet_text');
     }
     /**
      * Changes the content of the left panel and selects a tab.
@@ -5216,11 +5280,8 @@ class SnippetsMenu extends Component {
             body: markup(`${escape(bodyText)}\n<a href="${escape(linkUrl)}" target="_blank"><i class="oi oi-arrow-right me-1"></i>${escape(linkText)}</a>`),
             confirm: async () => {
                 try {
-                    this._execWithLoadingEffect(async () => {
-                        await this.orm.call("ir.module.module", "button_immediate_install", [[moduleID]]);
-                    }, "both");
+                    await this.orm.call("ir.module.module", "button_immediate_install", [[moduleID]]);
                     this.invalidateSnippetCache = true;
-                    this.dialog.closeAll(); // Close the "add snippet" dialog.
                     this._onSaveRequest({
                         data: {
                             reloadWebClient: true,

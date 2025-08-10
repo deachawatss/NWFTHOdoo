@@ -45,7 +45,7 @@ class TestSubcontractingDropshippingFlows(TestMrpSubcontractingCommon):
         })
 
         # Create a receipt picking from the subcontractor
-        so_form = Form(self.env['sale.order'].sudo())
+        so_form = Form(self.env['sale.order'])
         so_form.partner_id = partner
         so_form.warehouse_id = warehouse
         with so_form.order_line.new() as line:
@@ -93,7 +93,6 @@ class TestSubcontractingDropshippingFlows(TestMrpSubcontractingCommon):
         # Create a supplier and set it to component
         vendor = self.env['res.partner'].create({'name': 'AAA', 'email': 'from.test@example.com'})
         self.env['product.supplierinfo'].create({
-            'product_id': self.finished.id,
             'partner_id': vendor.id,
             'price': 50,
         })
@@ -196,7 +195,7 @@ class TestSubcontractingDropshippingFlows(TestMrpSubcontractingCommon):
         the supplier as destination
         """
         grp_multi_loc = self.env.ref('stock.group_stock_multi_locations')
-        self.env.user.write({'group_ids': [(4, grp_multi_loc.id)]})
+        self.env.user.write({'groups_id': [(4, grp_multi_loc.id)]})
 
         subcontractor, client = self.env['res.partner'].create([
             {'name': 'SuperSubcontractor'},

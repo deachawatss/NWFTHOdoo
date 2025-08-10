@@ -1,5 +1,6 @@
-import { fields } from "@mail/core/common/record";
+import { Record } from "@mail/core/common/record";
 import { Store } from "@mail/core/common/store_service";
+import { RtcSession } from "@mail/discuss/call/common/rtc_session_model";
 
 import { patch } from "@web/core/utils/patch";
 
@@ -7,24 +8,26 @@ import { patch } from "@web/core/utils/patch";
 const StorePatch = {
     setup() {
         super.setup(...arguments);
-        this.rtc = fields.One("Rtc", {
+        /** @type {typeof import("@mail/discuss/call/common/rtc_session_model").RtcSession} */
+        this.RtcSession = RtcSession;
+        this.rtc = Record.one("Rtc", {
             compute() {
                 return {};
             },
         });
-        this.ringingThreads = fields.Many("Thread", {
+        this.ringingThreads = Record.many("Thread", {
             /** @this {import("models").Store} */
             onUpdate() {
                 if (this.ringingThreads.length > 0) {
-                    this.env.services["mail.sound_effects"].play("call-invitation", {
+                    this.env.services["mail.sound_effects"].play("incoming-call", {
                         loop: true,
                     });
                 } else {
-                    this.env.services["mail.sound_effects"].stop("call-invitation");
+                    this.env.services["mail.sound_effects"].stop("incoming-call");
                 }
             },
         });
-        this.allActiveRtcSessions = fields.Many("discuss.channel.rtc.session");
+        this.allActiveRtcSessions = Record.many("RtcSession");
         this.nextTalkingTime = 1;
     },
     onStarted() {

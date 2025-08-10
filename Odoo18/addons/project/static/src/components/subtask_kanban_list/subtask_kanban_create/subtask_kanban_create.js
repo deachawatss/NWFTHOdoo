@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { Component, useState, useRef } from "@odoo/owl";
 
 import { _t } from "@web/core/l10n/translation";
@@ -12,11 +14,10 @@ export class SubtaskCreate extends Component {
         onBlur: { type: Function },
     };
     setup() {
-        this.placeholder = _t("Write a task name");
+        this.placeholder = _t("Add Sub-tasks");
         this.state = useState({
             inputSize: 1,
             name: this.props.name,
-            isFieldInvalid: false,
         });
         this.input = useRef("subtaskCreateInput");
         useAutofocus({ refName: "subtaskCreateInput" });
@@ -38,11 +39,14 @@ export class SubtaskCreate extends Component {
     _onInput(ev) {
         const value = ev.target.value;
         this.state.name = value;
-        this.state.isFieldInvalid = false;
     }
 
     _onClick() {
         this.input.el.focus();
+    }
+
+    async _onBlur() {
+        this.props.onBlur();
     }
 
     /**
@@ -51,17 +55,13 @@ export class SubtaskCreate extends Component {
      */
     _onNameChanged(ev) {
         const value = ev.target.value.trim();
-        if (value !== "") {
-            this.props.onSubtaskCreateNameChanged(value);
-            ev.target.blur();
-        }
+        this.props.onSubtaskCreateNameChanged(value);
+        ev.target.blur();
     }
 
     _onSaveClick() {
-        if (this.input.el.value.trim() === "") {
-            this.props.onSubtaskCreateNameChanged(this.input.el.value.trim());
-            this.state.isFieldInvalid = true;
-            this.state.name = "";
+        if (this.input.el.value !== "") {
+            this.props.onSubtaskCreateNameChanged(this.input.el.value);
         }
     }
 }

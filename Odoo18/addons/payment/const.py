@@ -2,7 +2,6 @@
 
 from odoo.tools.translate import LazyTranslate
 
-
 _lt = LazyTranslate(__name__, default_lang='en_US')
 
 

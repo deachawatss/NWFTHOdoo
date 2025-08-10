@@ -1,3 +1,4 @@
+/** @odoo-module */
 
 import { Component } from "@odoo/owl";
 import { formatCurrency } from "@web/core/currency";

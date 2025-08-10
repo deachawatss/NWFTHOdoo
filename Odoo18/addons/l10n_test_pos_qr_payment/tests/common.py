@@ -25,7 +25,7 @@ class TestPosQrCommon(AccountTestInvoicingHttpCommon):
             'name': 'A simple PoS man!',
             'login': 'pos_user',
             'password': 'pos_user',
-            'group_ids': [
+            'groups_id': [
                 (4, cls.env.ref('base.group_user').id),
                 (4, cls.env.ref('point_of_sale.group_pos_user').id),
                 (4, cls.env.ref('account.group_account_invoice').id),

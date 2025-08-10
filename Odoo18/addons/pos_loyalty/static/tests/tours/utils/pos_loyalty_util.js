@@ -1,9 +1,9 @@
-import * as Order from "@point_of_sale/../tests/generic_helpers/order_widget_util";
-import * as ProductScreen from "@point_of_sale/../tests/pos/tours/utils/product_screen_util";
-import * as TextInputPopup from "@point_of_sale/../tests/generic_helpers/text_input_popup_util";
-import * as PaymentScreen from "@point_of_sale/../tests/pos/tours/utils/payment_screen_util";
-import * as ReceiptScreen from "@point_of_sale/../tests/pos/tours/utils/receipt_screen_util";
-import * as Dialog from "@point_of_sale/../tests/generic_helpers/dialog_util";
+import * as Order from "@point_of_sale/../tests/tours/utils/generic_components/order_widget_util";
+import * as ProductScreen from "@point_of_sale/../tests/tours/utils/product_screen_util";
+import * as TextInputPopup from "@point_of_sale/../tests/tours/utils/text_input_popup_util";
+import * as PaymentScreen from "@point_of_sale/../tests/tours/utils/payment_screen_util";
+import * as ReceiptScreen from "@point_of_sale/../tests/tours/utils/receipt_screen_util";
+import * as Dialog from "@point_of_sale/../tests/tours/utils/dialog_util";
 
 export function selectRewardLine(rewardName) {
     return [
@@ -178,6 +178,16 @@ export function createManualGiftCard(code, amount, date = false) {
         run: "click",
     });
     return steps;
+}
+
+export function clickGiftCardProgram(name) {
+    return [
+        {
+            content: `Click gift card program '${name}'`,
+            trigger: `button.selection-item:has(span:contains("${name}"))`,
+            run: "click",
+        },
+    ];
 }
 
 export function clickPhysicalGiftCard(code = "Sell physical gift card?") {

@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { session } from "@web/session";
 import { loadJS } from "@web/core/assets";
 import { _t } from "@web/core/l10n/translation";
@@ -12,8 +14,7 @@ export class ReCaptcha {
     /**
      * Loads the recaptcha libraries.
      *
-     * @returns {Promise|boolean} promise if libs are loading else false if the
-     * reCaptcha is disabled or its key is empty.
+     * @returns {Promise|boolean} promise if libs are loading else false if the reCaptcha key is empty.
      */
     loadLibs() {
         if (this._publicKey) {
@@ -34,7 +35,7 @@ export class ReCaptcha {
     async getToken(action) {
         if (!this._publicKey) {
             return {
-                message: _t("reCAPTCHA disabled or no site key has been configured. Please check your settings."),
+                message: _t("No recaptcha site key set."),
             };
         }
         await this._recaptchaReady;

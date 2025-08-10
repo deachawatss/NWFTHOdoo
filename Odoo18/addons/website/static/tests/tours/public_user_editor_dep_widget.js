@@ -2,23 +2,19 @@
 
 odoo.loader.bus.addEventListener("module-started", (e) => {
     if (e.detail.moduleName === "@web_editor/js/frontend/loadWysiwygFromTextarea") {
-        const { Interaction } = odoo.loader.modules.get("@web/public/interaction");
-        const { registry } = odoo.loader.modules.get("@web/core/registry");
+        const publicWidget = odoo.loader.modules.get("@web/legacy/js/public/public_widget")[Symbol.for('default')];
         const { loadWysiwygFromTextarea } = e.detail.module;
 
-        class PublicUserEditorTest extends Interaction {
-            static selector = "textarea.o_public_user_editor_test_textarea";
+        publicWidget.registry['public_user_editor_test'] = publicWidget.Widget.extend({
+            selector: 'textarea.o_public_user_editor_test_textarea',
 
             /**
              * @override
              */
-            async start() {
+            start: async function () {
+                await this._super(...arguments);
                 await loadWysiwygFromTextarea(this, this.el, {});
-            }
-        }
-
-        registry
-            .category("public.interactions")
-            .add("website.public_user_editor_test", PublicUserEditorTest);
+            },
+        });
     }
-});
+})

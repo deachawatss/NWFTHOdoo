@@ -1,122 +1,117 @@
+/** @odoo-module **/
+
+import { Many2XAutocomplete } from '@web/views/fields/relational_utils';
+import { Many2OneField, many2OneField } from '@web/views/fields/many2one/many2one_field';
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
-import { computeM2OProps, Many2One } from "@web/views/fields/many2one/many2one";
-import { buildM2OFieldDescription, Many2OneField } from "@web/views/fields/many2one/many2one_field";
-import { Component } from "@odoo/owl";
-import { Many2XAutocomplete, useOpenMany2XRecord } from "@web/views/fields/relational_utils";
 
 import { usePartnerAutocomplete } from "@partner_autocomplete/js/partner_autocomplete_core";
 import { PartnerAutoComplete } from "@partner_autocomplete/js/partner_autocomplete_component";
 
-class PartnerMany2XAutocomplete extends Many2XAutocomplete {
+export class PartnerMany2XAutocomplete extends Many2XAutocomplete {
+    static template = "partner_autocomplete.PartnerAutoCompleteMany2XField";
     static components = {
-        ...super.components,
-        AutoComplete: PartnerAutoComplete,
+        ...Many2XAutocomplete.components,
+        PartnerAutoComplete,
     };
-}
-class PartnerMany2One extends Many2One {
-    static components = {
-        ...super.components,
-        Many2XAutocomplete: PartnerMany2XAutocomplete,
-    };
-}
-
-class PartnerAutoCompleteMany2one extends Component {
-    static template = "partner_autocomplete.PartnerAutoCompleteMany2one";
-    static components = { Many2One: PartnerMany2One };
-    static props = { ...Many2OneField.props };
 
     setup() {
         super.setup();
         this.orm = useService("orm");
         this.partnerAutocomplete = usePartnerAutocomplete();
-        this.openRecord = useOpenMany2XRecord({
-            resModel: this.props.record.fields[this.props.name].relation,
-            activeActions: {
-                create: this.props.canCreate,
-                createEdit: this.props.canCreateEdit,
-                write: this.props.canWrite,
-            },
-            isToMany: false,
-            onRecordSaved: (record) => this.props.record.update({
-                [this.props.name]: {
-                    id: record.resId,
-                    display_name: record.data.display_name || record.data.name,
-                },
-            }),
-            onRecordDiscarded: () => this.props.record.update(false),
-            fieldString: this.props.string || this.props.record.fields[this.props.name].string,
-        });
     }
 
     validateSearchTerm(request) {
         return request && request.length > 2;
     }
 
-    get m2oProps() {
-        return {
-            ...computeM2OProps(this.props),
-            otherSources: this.sources,
-        };
-    }
-
     get sources() {
+        const sources = super.sources;
         if (!this.props.canCreate) {
-            return [];
+            return sources;
         }
-        return [
+        return sources.concat(
             {
                 options: async (request, shouldSearchWorldWide) => {
                     if (this.validateSearchTerm(request)) {
                         let queryCountryId = false;
-                    	if (shouldSearchWorldWide){
-							queryCountryId = 0;
-						}
+                        if (shouldSearchWorldWide){
+                            queryCountryId = 0;
+                        }
                         const suggestions = await this.partnerAutocomplete.autocomplete(request, queryCountryId);
-                        return suggestions.map((suggestion) => ({
-                            cssClass: "partner_autocomplete_dropdown_many2one",
-                            data: suggestion,
-                            label: suggestion.name,
-                            onSelect: () => this.onSelectPartnerAutocompleteOption(suggestion),
-                        }));
+                        suggestions.forEach((suggestion) => {
+                            suggestion.classList = "partner_autocomplete_dropdown_many2one";
+                            suggestion.isFromPartnerAutocomplete = true;
+                        });
+                        return suggestions;
                     }
                     else {
                         return [];
                     }
                 },
-                optionSlot: "partnerOption",
+                optionTemplate: "partner_autocomplete.DropdownOption",
                 placeholder: _t("Searching Autocomplete..."),
             },
-        ];
+        );
     }
 
-    async onSelectPartnerAutocompleteOption(option) {
-        const data = await this.partnerAutocomplete.getCreateData(option);
-		if (!data?.company) {
-			return;
-		}
-        let context = {
-            'default_is_company': true
+    async onSelect(option, params) {
+        if (option.isFromPartnerAutocomplete) {  // Checks that it is a partner autocomplete option
+            const data = await this.partnerAutocomplete.getCreateData(Object.getPrototypeOf(option));
+            if (!data?.company) {
+                return;
+            }
+            let context = {
+                'default_is_company': true
+            };
+
+            for (const [key, val] of Object.entries(data.company)) {
+                context['default_' + key] = val && val.id ? val.id : val;
+            }
+
+            if (data.logo) {
+                context.default_image_1920 = data.logo;
+            }
+
+            const unspsc_codes = data.company.unspsc_codes;
+            if(unspsc_codes){
+                context.default_category_id = await this.orm.call("res.partner", "iap_partner_autocomplete_add_tags", [[], unspsc_codes]);
+            }
+            return this.openMany2X({ context });
+        }
+        else {
+            return super.onSelect(option, params);
+        }
+    }
+
+}
+
+PartnerMany2XAutocomplete.props = {
+    ...Many2XAutocomplete.props,
+    canCreate: { type: Boolean, optional: true },
+}
+
+export class PartnerAutoCompleteMany2one extends Many2OneField {
+    static components = {
+        ...Many2OneField.components,
+        Many2XAutocomplete: PartnerMany2XAutocomplete,
+    };
+    static props = {
+        ...Many2OneField.props,
+        canCreate: this.props.canCreate,
+    };
+    get Many2XAutocompleteProps() {
+        return {
+            ...super.Many2XAutocompleteProps,
+            canCreate: this.props.canCreate,
         };
-
-        for (const [key, val] of Object.entries(data.company)) {
-            context['default_' + key] = val && val.id ? val.id : val;
-        }
-
-        if (data.logo) {
-            context.default_image_1920 = data.logo;
-        }
-
-        const unspsc_codes = data.company.unspsc_codes;
-        if(unspsc_codes){
-            context.default_category_id = await this.orm.call("res.partner", "iap_partner_autocomplete_get_tag_ids", [[], unspsc_codes]);
-        }
-
-        return this.openRecord({ context });
     }
 }
 
-registry.category("fields").add("res_partner_many2one", {
-    ...buildM2OFieldDescription(PartnerAutoCompleteMany2one),
-});
+export const partnerAutoCompleteMany2one = {
+    ...many2OneField,
+    component: PartnerAutoCompleteMany2one,
+};
+
+registry.category("fields").add("res_partner_many2one", partnerAutoCompleteMany2one);

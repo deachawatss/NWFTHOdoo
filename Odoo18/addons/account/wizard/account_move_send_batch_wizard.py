@@ -18,11 +18,11 @@ class AccountMoveSendBatchWizard(models.TransientModel):
     # -------------------------------------------------------------------------
 
     @api.model
-    def default_get(self, fields):
+    def default_get(self, fields_list):
         # EXTENDS 'base'
-        results = super().default_get(fields)
-        if 'move_ids' in fields and 'move_ids' not in results:
-            move_ids = self.env.context.get('active_ids', [])
+        results = super().default_get(fields_list)
+        if 'move_ids' in fields_list and 'move_ids' not in results:
+            move_ids = self._context.get('active_ids', [])
             results['move_ids'] = [Command.set(move_ids)]
         return results
 
@@ -43,11 +43,9 @@ class AccountMoveSendBatchWizard(models.TransientModel):
             for move in wizard.move_ids:
                 edi_counter += Counter([edi for edi in self._get_default_extra_edis(move)])
                 sending_settings = self._get_default_sending_settings(move)
-                sending_method_counter += Counter([
-                    sending_method
-                    for sending_method in self._get_default_sending_methods(move)
-                    if self._is_applicable_to_move(sending_method, move, **sending_settings)
-                ])
+                sending_method = next(iter(sending_settings['sending_methods']))  # In batch sending & in 18.0 there can only have !one sending method per move.
+                if self._is_applicable_to_move(sending_method, move, **sending_settings):
+                    sending_method_counter[sending_method] += 1
 
             summary_data = dict()
             for edi, edi_count in edi_counter.items():

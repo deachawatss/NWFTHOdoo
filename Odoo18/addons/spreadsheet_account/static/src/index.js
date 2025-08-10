@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { _t } from "@web/core/l10n/translation";
 import * as spreadsheet from "@odoo/o-spreadsheet";
 import { AccountingPlugin } from "./plugins/accounting_plugin";
@@ -14,7 +16,7 @@ featurePluginRegistry.add("odooAccountingAggregates", AccountingPlugin);
 cellMenuRegistry.add("move_lines_see_records", {
     name: _t("See records"),
     sequence: 176,
-    async execute(env, newWindow) {
+    async execute(env) {
         const position = env.model.getters.getActivePosition();
         const sheetId = position.sheetId;
         const cell = env.model.getters.getCell(position);
@@ -64,7 +66,7 @@ cellMenuRegistry.add("move_lines_see_records", {
             "spreadsheet_move_line_action",
             param
         );
-        await env.services.action.doAction(action, { newWindow });
+        await env.services.action.doAction(action);
     },
     isVisible: (env) => {
         const position = env.model.getters.getActivePosition();

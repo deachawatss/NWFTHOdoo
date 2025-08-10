@@ -1,5 +1,4 @@
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
-from odoo import Command
 
 
 class L10nInTestInvoicingCommon(AccountTestInvoicingCommon):
@@ -29,9 +28,6 @@ class L10nInTestInvoicingCommon(AccountTestInvoicingCommon):
             'street2': "Sala Number 3",
             'city': "Amreli",
             'zip': "365220",
-            'l10n_in_is_gst_registered': True,
-            'l10n_in_tds_feature': True,
-            'l10n_in_tcs_feature': True,
         })
 
         cls.outside_in_company = cls._create_company(
@@ -74,16 +70,18 @@ class L10nInTestInvoicingCommon(AccountTestInvoicingCommon):
             'zip': "45660",
         })
 
+        cls.partner_foreign_no_state = cls.env['res.partner'].create({
+            'name': "Foreign Partner Without State",
+            'country_id': cls.country_us.id,
+            # No state_id defined
+        })
+
         # === Taxes === #
         cls.sgst_sale_5 = cls.env["account.chart.template"].ref('sgst_sale_5')
         cls.sgst_purchase_5 = cls.env["account.chart.template"].ref('sgst_purchase_5')
         cls.igst_sale_5 = cls.env["account.chart.template"].ref('igst_sale_5')
         cls.igst_sale_18 = cls.env["account.chart.template"].ref('igst_sale_18')
         cls.sgst_sale_18 = cls.env["account.chart.template"].ref('sgst_sale_18')
-        cls.gst_with_cess = (
-            cls.env['account.chart.template'].ref("sgst_sale_12")
-            + cls.env['account.chart.template'].ref("cess_5_plus_1591_sale")
-        )
 
         # === Products === #
         cls.product_a.write({
@@ -99,17 +97,6 @@ class L10nInTestInvoicingCommon(AccountTestInvoicingCommon):
             'standard_price': 1000.0,
             'taxes_id': cls.sgst_sale_5.ids,
             'supplier_taxes_id': cls.sgst_purchase_5.ids,
-        })
-        cls.product_with_cess = cls.env["product.product"].create({
-            "name": "product_with_cess",
-            "uom_id": cls.env.ref("uom.product_uom_unit").id,
-            "lst_price": 1000.0,
-            "standard_price": 800.0,
-            "property_account_income_id": cls.company_data["default_account_revenue"].id,
-            "property_account_expense_id": cls.company_data["default_account_expense"].id,
-            "taxes_id": [Command.set(cls.gst_with_cess.ids)],
-            "supplier_taxes_id": [Command.set(cls.sgst_purchase_5.ids)],
-            "l10n_in_hsn_code": "333333",
         })
 
         # === Fiscal Positions === #
@@ -136,5 +123,12 @@ class L10nInTestInvoicingCommon(AccountTestInvoicingCommon):
             move_type='out_invoice',
             partner=cls.partner_foreign,
             amounts=[300, 740],
+            taxes=cls.igst_sale_18,
+        )
+
+        cls.invoice_d = cls.init_invoice(
+            move_type='out_invoice',
+            partner=cls.partner_foreign_no_state,
+            amounts=[100, 200],
             taxes=cls.igst_sale_18,
         )

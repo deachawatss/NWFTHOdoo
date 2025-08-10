@@ -1,10 +1,10 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 from random import randint
 
-from odoo import api, fields, models
+from odoo import fields, models
 
 
-class HrLeaveMandatoryDay(models.Model):
+class MandatoryDay(models.Model):
     _name = 'hr.leave.mandatory.day'
     _description = 'Mandatory Day'
     _order = 'start_date desc, end_date desc'
@@ -18,9 +18,7 @@ class HrLeaveMandatoryDay(models.Model):
         'resource.calendar', 'Working Hours',
         domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]")
     department_ids = fields.Many2many('hr.department', string="Departments")
-    job_ids = fields.Many2many('hr.job', string="Job Position")
 
-    _date_from_after_day_to = models.Constraint(
-        'CHECK(start_date <= end_date)',
-        'The start date must be anterior than the end date.',
-    )
+    _sql_constraints = [
+        ('date_from_after_day_to', 'CHECK(start_date <= end_date)', 'The start date must be anterior than the end date.')
+    ]

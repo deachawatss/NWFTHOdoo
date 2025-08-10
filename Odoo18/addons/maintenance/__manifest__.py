@@ -4,7 +4,7 @@
     'name': 'Maintenance',
     'version': '1.0',
     'sequence': 100,
-    'category': 'Supply Chain/Maintenance',
+    'category': 'Manufacturing/Maintenance',
     'description': """
 Track equipment and maintenance requests""",
     'depends': ['mail'],
@@ -31,6 +31,5 @@ Track equipment and maintenance requests""",
             'maintenance/static/tests/tours/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

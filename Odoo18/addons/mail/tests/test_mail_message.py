@@ -4,14 +4,13 @@ from odoo.addons.mail.tests import common
 from odoo.tests import new_test_user, tagged
 
 
-@tagged("-at_install", "post_install", "mail_message")
+@tagged("-at_install", "post_install")
 class TestMailMessage(common.MailCommon):
     def test_unlink_failure_message_notify_author(self):
         recipient = new_test_user(self.env, login="Bob", email="invalid_email_addr")
-        with self.mock_mail_gateway():
-            message = self.env.user.partner_id.message_post(
-                body="Hello world!", partner_ids=recipient.partner_id.ids
-            )
+        message = self.env.user.partner_id.message_post(
+            body="Hello world!", partner_ids=recipient.partner_id.ids
+        )
         self.assertEqual(message.notification_ids.failure_type, "mail_email_invalid")
         self.assertEqual(message.notification_ids.res_partner_id, recipient.partner_id)
         self.assertEqual(message.notification_ids.author_id, self.env.user.partner_id)

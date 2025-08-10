@@ -1,3 +1,4 @@
+/** @odoo-module **/
 import { UNBREAKABLE_ROLLBACK_CODE } from '../utils/constants.js';
 
 import {

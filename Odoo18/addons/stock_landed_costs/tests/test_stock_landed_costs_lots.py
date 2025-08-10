@@ -14,7 +14,6 @@ class TestStockLandedCostsLots(TestLotValuation):
             'name': 'product1',
             'type': 'service',
             'landed_cost_ok': True,
-            'categ_id': cls.env.ref('product.product_category_goods').id,
         })
 
     def test_stock_landed_costs_lots(self):
@@ -22,6 +21,7 @@ class TestStockLandedCostsLots(TestLotValuation):
         picking_1 = self.env['stock.picking'].create({
             'picking_type_id': self.env.ref('stock.picking_type_in').id,
             'move_ids': [Command.create({
+                'name': 'Picking 1',
                 'product_id': self.product1.id,
                 'product_uom_qty': 15,
                 'product_uom': self.ref('uom.product_uom_unit'),
@@ -35,11 +35,11 @@ class TestStockLandedCostsLots(TestLotValuation):
             'is_storable': True,
             'tracking': 'lot',
             'lot_valuated': True,
-            'categ_id': self.env.ref('product.product_category_goods').id,
         })
         picking_2 = self.env['stock.picking'].create({
             'picking_type_id': self.env.ref('stock.picking_type_in').id,
             'move_ids': [Command.create({
+                'name': 'Picking 2',
                 'product_id': product2.id,
                 'product_uom_qty': 10,
                 'product_uom': self.ref('uom.product_uom_unit'),
@@ -130,13 +130,13 @@ class TestStockLandedCostsLots(TestLotValuation):
             'is_storable': True,
             'tracking': 'lot',
             'lot_valuated': True,
-            'categ_id': self.env.ref('product.product_category_goods').id,
         })
-        product1.categ_id.property_cost_method = 'fifo'
+        self.product1.categ_id.property_cost_method = 'fifo'
         # acquire 5 products
         picking_1 = self.env['stock.picking'].create({
             'picking_type_id': self.env.ref('stock.picking_type_in').id,
             'move_ids': [Command.create({
+                'name': 'Picking 2',
                 'product_id': product1.id,
                 'product_uom_qty': 5,
                 'product_uom': self.ref('uom.product_uom_unit'),

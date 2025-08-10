@@ -1,11 +1,10 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo.tests import tagged
-from odoo.addons.website.tests.common import HttpCaseWithWebsiteUser
+from odoo.tests import HttpCase, tagged
 
 
 @tagged('post_install', '-at_install')
-class TestStockNotificationWishlist(HttpCaseWithWebsiteUser):
+class TestStockNotificationWishlist(HttpCase):
 
     @classmethod
     def setUpClass(cls):
@@ -31,17 +30,19 @@ class TestStockNotificationWishlist(HttpCaseWithWebsiteUser):
             'name': 'Public Pricelist',
         })
         cls.currency = cls.env.ref("base.USD")
+        cls.partner = cls.env['res.partner'].search([('id', '=', 3)])
         cls.env['product.wishlist'].create({
-            'partner_id': cls.partner_website_user.id,
+            'partner_id': cls.partner.id,
             'product_id': cls.product.id,
             'website_id': current_website.id,
             'pricelist_id': cls.pricelist.id
         })
 
     def test_stock_notification_wishlist(self):
-        self.start_tour("/", 'stock_notification_wishlist', login="website_user")
+        self.start_tour("/", 'stock_notification_wishlist', login='admin')
 
-        partner = self.env['mail.thread']._partner_find_from_emails_single(['test@test.test'], no_create=True)
+        partner_ids = self.env['res.partner']._mail_find_partner_from_emails(['test@test.test'])
+        partner = partner_ids[0]
         ProductProduct = self.env['product.product']
         product = ProductProduct.browse(self.product.id)
         self.assertTrue(product._has_stock_notification(partner))

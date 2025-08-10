@@ -21,6 +21,5 @@
             'payment_xendit/static/src/**/*',
         ]
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

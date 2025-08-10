@@ -4,7 +4,7 @@
 from datetime import datetime, timedelta, time
 from unittest.mock import patch
 
-from odoo import Command, fields
+from odoo import fields
 from .common import PurchaseTestCommon
 from odoo.tests import Form
 
@@ -21,7 +21,7 @@ class TestPurchaseLeadTime(PurchaseTestCommon):
         company.write({'po_lead': 3.00})
 
         # Make procurement request from product_1's form view, create procurement and check it's state
-        date_planned = fields.Datetime.now() + timedelta(days=10)
+        date_planned = fields.datetime.now() + timedelta(days=10)
         self._create_make_procurement(self.product_1, 15.00, date_planned=date_planned)
         purchase = self.env['purchase.order.line'].search([('product_id', '=', self.product_1.id)], limit=1).order_id
 
@@ -52,12 +52,12 @@ class TestPurchaseLeadTime(PurchaseTestCommon):
         company.write({'po_lead': 0.00})
 
         # Make procurement request from product_1's form view, create procurement and check it's state
-        date_planned1 = fields.Datetime.now() + timedelta(days=10)
+        date_planned1 = fields.datetime.now() + timedelta(days=10)
         self._create_make_procurement(self.product_1, 10.00, date_planned=date_planned1)
         purchase1 = self.env['purchase.order.line'].search([('product_id', '=', self.product_1.id)], limit=1).order_id
 
         # Make procurement request from product_2's form view, create procurement and check it's state
-        date_planned2 = fields.Datetime.now() + timedelta(days=10)
+        date_planned2 = fields.datetime.now() + timedelta(days=10)
         self._create_make_procurement(self.product_2, 5.00, date_planned=date_planned2)
         purchase2 = self.env['purchase.order.line'].search([('product_id', '=', self.product_2.id)], limit=1).order_id
 
@@ -100,17 +100,18 @@ class TestPurchaseLeadTime(PurchaseTestCommon):
         # create a product with manufacture route
         product_1 = self.env['product.product'].create({
             'name': 'AAA',
-            'route_ids': [Command.link(self.route_buy.id)],
-            'seller_ids': [Command.create({'partner_id': self.partner_1.id, 'delay': 5})]
+            'route_ids': [(4, self.route_buy)],
+            'seller_ids': [(0, 0, {'partner_id': self.partner_1.id, 'delay': 5})]
         })
 
         # create a move for product_1 from stock to output and reserve to trigger the
         # rule
         move_1 = self.env['stock.move'].create({
+            'name': 'move_1',
             'product_id': product_1.id,
-            'product_uom': self.uom_unit.id,
-            'location_id': self.stock_location.id,
-            'location_dest_id': self.output_location.id,
+            'product_uom': self.ref('uom.product_uom_unit'),
+            'location_id': self.ref('stock.stock_location_stock'),
+            'location_dest_id': self.ref('stock.stock_location_output'),
             'product_uom_qty': 10,
             'procure_method': 'make_to_order'
         })
@@ -123,10 +124,11 @@ class TestPurchaseLeadTime(PurchaseTestCommon):
         self.assertEqual(po_line.product_qty, 10, 'the purchase order line has a wrong quantity')
 
         move_2 = self.env['stock.move'].create({
+            'name': 'move_2',
             'product_id': product_1.id,
-            'product_uom': self.uom_unit.id,
-            'location_id': self.stock_location.id,
-            'location_dest_id': self.output_location.id,
+            'product_uom': self.ref('uom.product_uom_unit'),
+            'location_id': self.ref('stock.stock_location_stock'),
+            'location_dest_id': self.ref('stock.stock_location_output'),
             'product_uom_qty': 5,
             'procure_method': 'make_to_order'
         })
@@ -153,14 +155,13 @@ class TestPurchaseLeadTime(PurchaseTestCommon):
             lang=partner.lang,
             partner_id=partner.id,
         )
-        t_shirt.description_pickingin = 'Receive with care'
 
         # Create procurement order of product_1
         ProcurementGroup = self.env['procurement.group']
         procurement_values = {
             'warehouse_id': self.warehouse_1,
             'rule_id': self.warehouse_1.buy_pull_id,
-            'date_planned': fields.Datetime.now() + timedelta(days=10),
+            'date_planned': fields.datetime.now() + timedelta(days=10),
             'group_id': False,
             'route_ids': [],
         }
@@ -172,6 +173,7 @@ class TestPurchaseLeadTime(PurchaseTestCommon):
             self.t_shirt.name, '/', self.env.company, order_1_values)
         ])
         purchase_order = self.env['purchase.order.line'].search([('product_id', '=', self.t_shirt.id)], limit=1).order_id
+        order_line_description = purchase_order.order_line.product_id.description_pickingin or ''
         self.assertEqual(len(purchase_order.order_line), 1, 'wrong number of order line is created')
         self.assertEqual(purchase_order.order_line.name, t_shirt.display_name + "\n" + "Color (Red)", 'wrong description in po lines')
 
@@ -197,8 +199,8 @@ class TestPurchaseLeadTime(PurchaseTestCommon):
         self.assertEqual(purchase_order.order_line.filtered(lambda x: x.product_qty == 10).name, t_shirt.display_name + "\n" + "Color (Green)", 'wrong description in po lines')
 
         purchase_order.button_confirm()
-        self.assertEqual(purchase_order.picking_ids[0].move_ids_without_package.filtered(lambda x: x.product_uom_qty == 15).description_picking, t_shirt.display_name + "\n" + "Receive with care", 'wrong description in picking')
-        self.assertEqual(purchase_order.picking_ids[0].move_ids_without_package.filtered(lambda x: x.product_uom_qty == 10).description_picking, t_shirt.display_name + "\n" + "Receive with care", 'wrong description in picking')
+        self.assertEqual(purchase_order.picking_ids[0].move_ids_without_package.filtered(lambda x: x.product_uom_qty == 15).description_picking, t_shirt.display_name + "\n" + order_line_description + "Color (Red)", 'wrong description in picking')
+        self.assertEqual(purchase_order.picking_ids[0].move_ids_without_package.filtered(lambda x: x.product_uom_qty == 10).description_picking, t_shirt.display_name + "\n" + order_line_description + "Color (Green)", 'wrong description in picking')
 
     def test_reordering_days_to_purchase(self):
         company = self.env.ref('base.main_company')
@@ -223,18 +225,19 @@ class TestPurchaseLeadTime(PurchaseTestCommon):
             'name': 'Carrot',
             'is_storable': True,
             'seller_ids': [
-                Command.create({'partner_id': vendor.id, 'delay': 1.0, 'company_id': company.id})
+                (0, 0, {'partner_id': vendor.id, 'delay': 1.0, 'company_id': company.id})
             ]
         })
 
         warehouse = self.env['stock.warehouse'].search([], limit=1)
         self.env['stock.move'].create({
+            'name': 'Delivery',
             'date': datetime.today() + timedelta(days=3),
             'product_id': prod.id,
             'product_uom': prod.uom_id.id,
             'product_uom_qty': 5.0,
             'location_id': warehouse.lot_stock_id.id,
-            'location_dest_id': self.customer_location.id,
+            'location_dest_id': self.ref('stock.stock_location_customers'),
         })._action_confirm()
         self.env['stock.warehouse.orderpoint'].action_open_orderpoints()
         replenishment = self.env['stock.warehouse.orderpoint'].search([
@@ -247,30 +250,31 @@ class TestPurchaseLeadTime(PurchaseTestCommon):
             'name': 'Chicory',
             'is_storable': True,
             'seller_ids': [
-                Command.create({'partner_id': vendor2.id, 'delay': 15.0, 'company_id': company2.id}),
-                Command.create({'partner_id': vendor.id, 'delay': 1.0, 'company_id': company.id})
+                (0, 0, {'partner_id': vendor2.id, 'delay': 15.0, 'company_id': company2.id}),
+                (0, 0, {'partner_id': vendor.id, 'delay': 1.0, 'company_id': company.id})
             ]
         })
         orderpoint_form = Form(self.env['stock.warehouse.orderpoint'])
         orderpoint_form.product_id = product
         orderpoint_form.product_min_qty = 0.0
         orderpoint_form.visibility_days = 1.0
-        orderpoint_form.save()
+        orderpoint = orderpoint_form.save()
 
         orderpoint_form = Form(self.env['stock.warehouse.orderpoint'].with_company(company2))
         orderpoint_form.product_id = product
         orderpoint_form.product_min_qty = 0.0
-        orderpoint_form.save()
+        orderpoint = orderpoint_form.save()
 
         delivery_moves = self.env['stock.move']
         for i in range(0, 6):
             delivery_moves |= self.env['stock.move'].create({
+                'name': 'Delivery',
                 'date': datetime.today() + timedelta(days=i),
                 'product_id': product.id,
                 'product_uom': product.uom_id.id,
                 'product_uom_qty': 5.0,
                 'location_id': warehouse.lot_stock_id.id,
-                'location_dest_id': self.customer_location.id,
+                'location_dest_id': self.ref('stock.stock_location_customers'),
             })
         delivery_moves._action_confirm()
         self.env['procurement.group'].run_scheduler()
@@ -280,9 +284,11 @@ class TestPurchaseLeadTime(PurchaseTestCommon):
         self.assertEqual(len(po_line), 1)
         self.assertEqual(po_line.product_uom_qty, 25.0)
         self.assertEqual(len(po_line.order_id), 1)
+        orderpoint_form = Form(orderpoint)
+        orderpoint_form.save()
 
         self.mock_date.today.return_value = fields.Date.today() + timedelta(days=2)
-        self.env.invalidate_all()
+        orderpoint._compute_qty()
         self.env['procurement.group'].run_scheduler()
         po_line02 = self.env['purchase.order.line'].search([('product_id', '=', product.id)])
         self.assertEqual(po_line02, po_line, 'The orderpoint execution should not create a new POL')

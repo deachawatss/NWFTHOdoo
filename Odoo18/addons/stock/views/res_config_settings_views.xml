@@ -17,7 +17,7 @@
                                      documentation="/applications/inventory_and_mrp/inventory/management/misc/batch_transfers.html">
                                 <field name="module_stock_picking_batch"/>
                             </setting>
-                            <setting id="warning_info" string="Partner-Specific Instructions" help="Display instructions tailored to the customer or vendor on stock operations.">
+                            <setting id="warning_info" string="Warnings" help="Get informative or blocking warnings on partners">
                                 <field name="group_warning_stock"/>
                             </setting>
                             <setting id="quality_control" help="Add quality checks to your transfer operations"
@@ -72,17 +72,37 @@
                             </setting>
                         </block>
                         <block title="Shipping Connectors" name="shipping_connectors_setting_container">
-                            <setting id="compute_shipping_costs_ups" documentation="/applications/inventory_and_mrp/inventory/shipping/setup/third_party_shipper.html" help="Compute shipping costs and ship with UPS">
-                                <field name="module_delivery_ups_rest" widget="upgrade_boolean"/>
+                            <setting id="compute_shipping_costs_ups" help="Compute shipping costs and ship with UPS">
+                                <div class="o_form_label">UPS Connector</div>
+                                <a href="https://www.odoo.com/documentation/17.0/applications/inventory_and_mrp/inventory/shipping/setup/third_party_shipper.html" title="Documentation" class="o_doc_link" target="_blank"></a>
+                                <div class="text-muted">
+                                    Compute shipping costs and ship with UPS<br/>
+                                    <strong>(please go to Home>Apps to install)</strong>
+                                </div>
                             </setting>
-                            <setting id="compute_shipping_costs_dhl" help=" Compute shipping costs and ship with DHL" documentation="/applications/inventory_and_mrp/inventory/shipping/setup/third_party_shipper.html">
-                                <field name="module_delivery_dhl" widget="upgrade_boolean"/>
+                            <setting id="compute_shipping_costs_dhl" help=" Compute shipping costs and ship with DHL">
+                                <div class="o_form_label">DHL Connector</div>
+                                <a href="https://www.odoo.com/documentation/17.0/applications/inventory_and_mrp/inventory/shipping/setup/third_party_shipper.html" title="Documentation" class="o_doc_link" target="_blank"></a>
+                                <div class="text-muted">
+                                    Compute shipping costs and ship with DHL<br/>
+                                    <strong>(please go to Home>Apps to install)</strong>
+                                </div>
                             </setting>
-                            <setting id="compute_shipping_costs_fedex" help="Compute shipping costs and ship with FedEx" documentation="/applications/inventory_and_mrp/inventory/shipping/setup/third_party_shipper.html">
-                                <field name="module_delivery_fedex_rest" widget="upgrade_boolean"/>
+                            <setting id="compute_shipping_costs_fedex" help="Compute shipping costs and ship with FedEx">
+                                <div class="o_form_label">FedEx Connector</div>
+                                <a href="https://www.odoo.com/documentation/17.0/applications/inventory_and_mrp/inventory/shipping/setup/third_party_shipper.html" title="Documentation" class="o_doc_link" target="_blank"></a>
+                                <div class="text-muted">
+                                    Compute shipping costs and ship with FedEx<br/>
+                                    <strong>(please go to Home>Apps to install)</strong>
+                                </div>
                             </setting>
-                            <setting id="compute_shipping_costs_usps" help="Compute shipping costs and ship with USPS" documentation="/applications/inventory_and_mrp/inventory/shipping/setup/third_party_shipper.html">
-                                <field name="module_delivery_usps_rest" widget="upgrade_boolean"/>
+                            <setting id="compute_shipping_costs_usps" help="Compute shipping costs and ship with USPS">
+                                <div class="o_form_label">USPS Connector</div>
+                                <a href="https://www.odoo.com/documentation/17.0/applications/inventory_and_mrp/inventory/shipping/setup/third_party_shipper.html" title="Documentation" class="o_doc_link" target="_blank"></a>
+                                <div class="text-muted">
+                                    Compute shipping costs and ship with USPS<br/>
+                                    <strong>(please go to Home>Apps to install)</strong>
+                                </div>
                             </setting>
                             <setting id="compute_shipping_costs_bpost" help="Compute shipping costs and ship with bpost" documentation="/applications/inventory_and_mrp/inventory/shipping/setup/third_party_shipper.html">
                                 <field name="module_delivery_bpost" widget="upgrade_boolean"/>
@@ -100,9 +120,6 @@
                             <setting id="compute_shipping_costs_starshipit" help="Compute shipping costs and ship with Starshipit" documentation="/applications/inventory_and_mrp/inventory/shipping/setup/third_party_shipper.html">
                                 <field name="module_delivery_starshipit" widget="upgrade_boolean"/>
                             </setting>
-                            <setting id="compute_shipping_costs_envia" help="Compute shipping costs and ship with Envia.com" documentation="/applications/inventory_and_mrp/inventory/shipping/setup/third_party_shipper.html">
-                                <field name="module_delivery_envia" widget="upgrade_boolean"/>
-                            </setting>
                         </block>
                         <block title="Products" name="product_setting_container">
                             <setting id="product_attributes" help="Set product attributes (e.g. color, size) to manage variants" documentation="/applications/sales/sales/products_prices/products/variants.html">
@@ -113,11 +130,19 @@
                                     </div>
                                 </div>
                             </setting>
-                            <setting id="sell_purchase_uom" help="Sell and purchase products in different units of measure or packagings" documentation="/applications/inventory_and_mrp/inventory/management/products/uom.html">
+                            <setting id="sell_purchase_uom" help="Sell and purchase products in different units of measure" documentation="/applications/inventory_and_mrp/inventory/management/products/uom.html">
                                 <field name="group_uom"/>
                                 <div class="content-group">
                                     <div class="mt8" invisible="not group_uom">
-                                        <button name="%(uom.product_uom_form_action)d" icon="oi-arrow-right" type="action" string="Units &amp; Packagings" class="btn-link"/>
+                                        <button name="%(uom.product_uom_categ_form_action)d" icon="oi-arrow-right" type="action" string="Units Of Measure" class="btn-link"/>
+                                    </div>
+                                </div>
+                            </setting>
+                            <setting id="manage_product_packaging" title="Manage product packagings (e.g. pack of 6 bottles, box of 10 pieces)" help="Manage product packagings (e.g. pack of 6 bottles, box of 10 pieces)" documentation="/applications/inventory_and_mrp/inventory/product_management/product_tracking/packaging.html">
+                                <field name="group_stock_packaging"/>
+                                <div class="content-group">
+                                    <div class="mt8" invisible="not group_stock_packaging">
+                                        <button name="%(product.action_packaging_view)d" icon="oi-arrow-right" type="action" string="Product Packagings" class="btn-link"/>
                                     </div>
                                 </div>
                             </setting>
@@ -181,10 +206,6 @@
                             documentation="/applications/inventory_and_mrp/inventory/management/delivery/dropshipping.html">
                                 <field name="module_stock_dropshipping"/>
                             </setting>
-                            <setting title="This adds a Replenish On Order (MTO) route to apply on products in order to generate on-demand replenishment linked to your sales orders (for example) as soon as they are confirmed, with a direct link. Purchase orders, manufacturing orders, etc. are triggered based on what way to replenish is set on the product (Buy or Manufacture route)." help="Allow Make to Order, or automate PO, when a product is sold and get direct links between documents."
-                            documentation="/applications/inventory_and_mrp/inventory/warehouses_storage/replenishment/mto.html">
-                                <field name="replenish_on_order"/>
-                            </setting>
                         </block>
                     </app>
                 </xpath>
@@ -195,6 +216,7 @@
             <field name="name">Settings</field>
             <field name="res_model">res.config.settings</field>
             <field name="view_mode">form</field>
+            <field name="target">inline</field>
             <field name="context">{'module' : 'stock', 'bin_size': False}</field>
         </record>
 

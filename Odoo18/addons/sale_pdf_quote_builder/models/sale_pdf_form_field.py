@@ -2,9 +2,8 @@
 
 import re
 
-from odoo import _, api, fields, models
+from odoo import Command, _, api, fields, models
 from odoo.exceptions import ValidationError
-from odoo.fields import Command
 
 from odoo.addons.sale_pdf_quote_builder import utils
 
@@ -41,10 +40,11 @@ class SalePdfFormField(models.Model):
         string="Quotation Documents", comodel_name='quotation.document'
     )
 
-    _unique_name_per_doc_type = models.Constraint(
+    _sql_constraints = [(
+        'unique_name_per_doc_type',
         'UNIQUE(name, document_type)',
-        'Form field name must be unique for a given document type.',
-    )
+        "Form field name must be unique for a given document type."
+    )]
 
     # === CONSTRAINT METHODS ===#
 
@@ -150,8 +150,8 @@ class SalePdfFormField(models.Model):
                 "quantity": "product_uom_qty",
                 "tax_excl_price": "price_subtotal",
                 "tax_incl_price": "price_total",
-                "taxes": "tax_ids",
-                "uom": "product_uom_id.name",
+                "taxes": "tax_id",
+                "uom": "product_uom.name",
                 "user_id__name": "salesman_id.name",
                 "validity_date": "order_id.validity_date",
             },

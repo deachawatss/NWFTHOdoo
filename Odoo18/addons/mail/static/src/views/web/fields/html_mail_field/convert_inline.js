@@ -1,6 +1,6 @@
 import { isBlock } from "@html_editor/utils/blocks";
+import { blendColors } from "@html_editor/utils/color";
 import { getAdjacentPreviousSiblings } from "@html_editor/utils/dom_traversal";
-import { blendColors } from "@web/core/utils/colors";
 
 function parentsGet(node, root = undefined) {
     const parents = [];
@@ -39,7 +39,6 @@ const RE_PADDING_MATCH = /[ ]*padding[^;]*;/g;
 const RE_PADDING = /([\d.]+)/;
 const RE_WHITESPACE = /[\s\u200b]*/;
 const SELECTORS_IGNORE = /(^\*$|:hover|:before|:after|:active|:link|::|'|\([^(),]+[,(])|@page/;
-const CONVERT_INLINE_BLACKLIST_CLASSES = ["o_mail_redirect"];
 // CSS properties relating to font, which Outlook seem to have trouble inheriting.
 const FONT_PROPERTIES_TO_INHERIT = [
     "color",
@@ -627,45 +626,6 @@ export function classToStyle(element, cssRules) {
                 }
             }
         });
-
-        const matchedBlacklistRules = nodeRules?.filter((rule) =>
-            CONVERT_INLINE_BLACKLIST_CLASSES.some(
-                (cls) => rule.selector.includes(cls) && node.classList.contains(cls)
-            )
-        );
-
-        const blacklistedStyles = {};
-        for (const rule of matchedBlacklistRules) {
-            for (const [key, value] of Object.entries(rule.style)) {
-                if (
-                    !blacklistedStyles[key] ||
-                    !blacklistedStyles[key].includes("important") ||
-                    value.includes("important")
-                ) {
-                    blacklistedStyles[key] = value;
-                }
-            }
-        }
-
-        for (const [key, value] of Object.entries(blacklistedStyles)) {
-            if (value && value.endsWith("important")) {
-                blacklistedStyles[key] = value.replace(/\s*!important\s*$/, "");
-            }
-        }
-
-        // Find styles to remove if they are from a blacklisted class and match
-        // existing styles.
-        const stylesToRemove = Object.fromEntries(
-            Object.entries(css).filter(([key, value]) => blacklistedStyles[key] === value)
-        );
-        // Remove style from blacklisted classes.
-        writes.push(() => {
-            for (const [key] of Object.entries(stylesToRemove)) {
-                if (node.style[key]) {
-                    node.style.removeProperty(key);
-                }
-            }
-        });
     }
     writes.forEach((fn) => fn());
 }
@@ -971,15 +931,15 @@ function fontToImg(element) {
 
     for (const font of element.querySelectorAll(".fa")) {
         let icon, content;
-        fonts.fontIcons.find((fontIcon) =>
-            fonts.getCssSelectors(fontIcon.parser).find((data) => {
+        fonts.fontIcons.find((fontIcon) => {
+            return fonts.getCssSelectors(fontIcon.parser).find((data) => {
                 if (font.matches(data.selector.replace(/::?before/g, ""))) {
                     icon = data.names[0].split("-").shift();
                     content = data.css.match(/content:\s*['"]?(.)['"]?/)[1];
                     return true;
                 }
-            })
-        );
+            });
+        });
         if (content) {
             const color = _getStylePropertyValue(font, "color").replace(/\s/g, "");
             let backgroundColoredElement = font;

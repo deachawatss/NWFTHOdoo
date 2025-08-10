@@ -3,24 +3,16 @@
 import ast
 from collections import defaultdict
 
-from odoo import api, fields, models, _
-from odoo.fields import Command, Domain
+from odoo import api, fields, models, _, Command
 from odoo.exceptions import UserError
+from odoo.osv.expression import AND, NEGATIVE_TERM_OPERATORS, TERM_OPERATORS_NEGATION
 from odoo.addons.project.models.project_task import CLOSED_STATES
 
 
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
-    @api.model
-    def default_get(self, fields):
-        res = super().default_get(fields)
-        if 'origin' in fields and (task_id := self.env.context.get('create_for_task_id')):
-            task = self.env['project.task'].browse(task_id)
-            res['origin'] = self.env._('[Project] %(task_name)s', task_name=task.name)
-        return res
-
-    tasks_ids = fields.Many2many('project.task', compute='_compute_tasks_ids', search='_search_tasks_ids', groups="project.group_project_user", string='Tasks associated with this sale', export_string_translation=False)
+    tasks_ids = fields.Many2many('project.task', compute='_compute_tasks_ids', search='_search_tasks_ids', string='Tasks associated with this sale', export_string_translation=False)
     tasks_count = fields.Integer(string='Tasks', compute='_compute_tasks_ids', groups="project.group_project_user", export_string_translation=False)
 
     visible_project = fields.Boolean('Display project', compute='_compute_visible_project', readonly=True, export_string_translation=False)
@@ -31,9 +23,9 @@ class SaleOrder(models.Model):
     show_create_project_button = fields.Boolean(compute='_compute_show_project_and_task_button', groups='project.group_project_user', export_string_translation=False)
     show_project_button = fields.Boolean(compute='_compute_show_project_and_task_button', groups='project.group_project_user', export_string_translation=False)
     show_task_button = fields.Boolean(compute='_compute_show_project_and_task_button', groups='project.group_project_user', export_string_translation=False)
-    closed_task_count = fields.Integer(compute='_compute_tasks_ids', groups="project.group_project_user", export_string_translation=False)
-    completed_task_percentage = fields.Float(compute="_compute_completed_task_percentage", groups="project.group_project_user", export_string_translation=False)
-    project_id = fields.Many2one('project.project', domain=[('allow_billable', '=', True), ('is_template', '=', False)], copy=False, help="A task will be created for the project upon sales order confirmation. The analytic distribution of this project will also serve as a reference for newly created sales order items.")
+    closed_task_count = fields.Integer(compute='_compute_tasks_ids', export_string_translation=False)
+    completed_task_percentage = fields.Float(compute="_compute_completed_task_percentage", export_string_translation=False)
+    project_id = fields.Many2one('project.project', domain=[('allow_billable', '=', True)], copy=False, help="A task will be created for the project upon sales order confirmation. The analytic distribution of this project will also serve as a reference for newly created sales order items.")
     project_account_id = fields.Many2one('account.analytic.account', related='project_id.account_id')
 
     def _compute_milestone_count(self):
@@ -55,6 +47,7 @@ class SaleOrder(models.Model):
         show_button_ids = self.env['sale.order.line']._read_group([
             ('order_id', 'in', self.ids),
             ('order_id.state', 'not in', ['draft', 'sent']),
+            ('product_id.type', '=', 'service'),
         ], aggregates=['order_id:array_agg'])[0][0]
         for order in self:
             order.show_project_button = order.id in show_button_ids and order.project_count
@@ -67,14 +60,13 @@ class SaleOrder(models.Model):
 
     @api.model
     def _search_tasks_ids(self, operator, value):
-        if Domain.is_negative_operator(operator):
-            return NotImplemented
-        task_domain = [
-            ('display_name' if isinstance(value, str) else 'id', operator, value),
-            ('sale_order_id', '!=', False),
-        ]
+        if operator in NEGATIVE_TERM_OPERATORS:
+            positive_operator = TERM_OPERATORS_NEGATION[operator]
+        else:
+            positive_operator = operator
+        task_domain = [('display_name' if isinstance(value, str) else 'id', positive_operator, value), ('sale_order_id', '!=', False)]
         query = self.env['project.task']._search(task_domain)
-        return [('id', 'in', query.subselect('sale_order_id'))]
+        return [('id', 'in' if positive_operator == operator else 'not in', query.subselect('sale_order_id'))]
 
     @api.depends('order_line.product_id.project_id')
     def _compute_tasks_ids(self):
@@ -131,9 +123,6 @@ class SaleOrder(models.Model):
 
     def _action_confirm(self):
         """ On SO confirmation, some lines should generate a task or a project. """
-        if self.env.context.get('disable_project_task_generation'):
-            return super()._action_confirm()
-
         if len(self.company_id) == 1:
             # All orders are in the same company
             self.order_line.sudo().with_company(self.company_id)._timesheet_service_generation()
@@ -141,16 +130,6 @@ class SaleOrder(models.Model):
             # Orders from different companies are confirmed together
             for order in self:
                 order.order_line.sudo().with_company(order.company_id)._timesheet_service_generation()
-
-        # If the order has exactly one project and that project comes from a template, set the company of the template
-        # on the project.
-        for order in self.sudo(): # Salesman may not have access to projects
-            if len(order.project_ids) == 1:
-                project = order.project_ids[0]
-                for sol in order.order_line:
-                    if project == sol.project_id and (project_template := sol.product_template_id.project_template_id):
-                        project.sudo().company_id = project_template.sudo().company_id
-                        break
         return super()._action_confirm()
 
     def action_view_task(self):
@@ -165,7 +144,7 @@ class SaleOrder(models.Model):
         project_ids = self.tasks_ids.project_id
         if len(project_ids) > 1:
             action = self.env['ir.actions.actions']._for_xml_id('project.action_view_task')
-            action['domain'] = list(Domain.AND([ast.literal_eval(action['domain']), self._tasks_ids_domain()]))
+            action['domain'] = AND([ast.literal_eval(action['domain']), self._tasks_ids_domain()])
             action['context'] = {}
         else:
             # Load top bar if all the tasks linked to the SO belong to the same project
@@ -176,7 +155,7 @@ class SaleOrder(models.Model):
             }
 
         if self.tasks_count > 1:  # cross project kanban task
-            for idx, (_view_id, view_type) in enumerate(action['views']):
+            for idx, (view_id, view_type) in enumerate(action['views']):
                 if view_type == 'kanban':
                     action['views'][idx] = (kanban_view_id, 'kanban')
                 elif view_type == 'list':
@@ -210,7 +189,7 @@ class SaleOrder(models.Model):
                 'tag': 'display_notification',
                 'params': {
                     'type': 'danger',
-                    'message': self.env._("The project couldn't be created as the Sales Order must be confirmed or is already linked to a project."),
+                    'message': _("The project couldn't be created as the Sales Order must be confirmed, is already linked to a project, or doesn't involve any services."),
                 }
             }
 
@@ -223,7 +202,6 @@ class SaleOrder(models.Model):
             **self.env["ir.actions.actions"]._for_xml_id("project.open_create_project"),
             'context': {
                 'default_sale_order_id': self.id,
-                'default_reinvoiced_sale_order_id': self.id,
                 'default_sale_line_id': default_sale_line.id,
                 'default_partner_id': self.partner_id.id,
                 'default_user_ids': [self.env.uid],
@@ -251,7 +229,7 @@ class SaleOrder(models.Model):
             'views': [(False, 'kanban'), (False, 'list'), (False, 'form')],
             'view_mode': 'kanban,list,form',
             'context': {
-                **self.env.context,
+                **self._context,
                 'default_partner_id': self.partner_id.id,
                 'default_sale_line_id': default_sale_line.id,
                 'default_allow_billable': 1,
@@ -274,7 +252,7 @@ class SaleOrder(models.Model):
             'name': _('Milestones'),
             'domain': [('sale_line_id', 'in', self.order_line.ids)],
             'res_model': 'project.milestone',
-            'views': [(self.env.ref('sale_project.project_milestone_view_tree').id, 'list')],
+            'views': [(self.env.ref('sale_project.sale_project_milestone_view_tree').id, 'list')],
             'view_mode': 'list',
             'help': _("""
                 <p class="o_view_nocontent_smiling_face">
@@ -294,23 +272,17 @@ class SaleOrder(models.Model):
     def create(self, vals_list):
         created_records = super().create(vals_list)
         project = self.env['project.project'].browse(self.env.context.get('create_for_project_id'))
-        task = self.env['project.task'].browse(self.env.context.get('create_for_task_id'))
-        if project or task:
+        if project:
             service_sol = next((sol for sol in created_records.order_line if sol.is_service), False)
             if not service_sol and not self.env.context.get('from_embedded_action'):
-                raise UserError(_('The Sales Order must contain at least one service product.'))
-            if project and not project.sale_line_id:
+                raise UserError(_('This Sales Order must contain at least one product of type "Service".'))
+            if not project.sale_line_id:
                 project.sale_line_id = service_sol
-                if not project.reinvoiced_sale_order_id:
-                    project.reinvoiced_sale_order_id = service_sol.order_id
-            if task and not task.sale_line_id:
-                created_records.with_context(disable_project_task_generation=True).action_confirm()
-                task.sale_line_id = service_sol
         return created_records
 
-    def write(self, vals):
-        res = super().write(vals)
-        if 'state' in vals and vals['state'] == 'cancel':
+    def write(self, values):
+        res = super().write(values)
+        if 'state' in values and values['state'] == 'cancel':
             # Remove sale line field reference from all projects
             self.env['project.project'].sudo().search([('sale_line_id.order_id', 'in', self.ids)]).sale_line_id = False
         return res
@@ -318,15 +290,3 @@ class SaleOrder(models.Model):
     def _compute_completed_task_percentage(self):
         for so in self:
             so.completed_task_percentage = so.tasks_count and so.closed_task_count / so.tasks_count
-
-    def action_confirm(self):
-        if len(self) == 1 and self.env.context.get('create_for_project_id') and self.state == 'sale':
-            # do nothing since the SO has been automatically confirmed during its creation
-            return True
-        return super().action_confirm()
-
-    def get_first_service_line(self):
-        line = next((sol for sol in self.order_line if sol.is_service), False)
-        if not line:
-            raise UserError(self.env._('The Sales Order must contain at least one service product.'))
-        return line

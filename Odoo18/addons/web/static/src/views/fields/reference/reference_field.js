@@ -1,9 +1,9 @@
-import { Component, useState } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 import { useRecordObserver } from "@web/model/relational_model/utils";
-import { computeM2OProps, Many2One } from "../many2one/many2one";
-import { extractM2OFieldProps, Many2OneField } from "../many2one/many2one_field";
+import { many2OneField, Many2OneField } from "../many2one/many2one_field";
+
+import { Component, useState } from "@odoo/owl";
 
 /**
  * @typedef ReferenceValue
@@ -35,11 +35,16 @@ import { extractM2OFieldProps, Many2OneField } from "../many2one/many2one_field"
  */
 export class ReferenceField extends Component {
     static template = "web.ReferenceField";
-    static components = { Many2One };
+    static components = {
+        Many2OneField,
+    };
     static props = {
         ...Many2OneField.props,
         hideModel: { type: Boolean, optional: true },
         modelField: { type: String, optional: true },
+    };
+    static defaultProps = {
+        ...Many2OneField.defaultProps,
     };
 
     setup() {
@@ -61,12 +66,12 @@ export class ReferenceField extends Component {
         } else if (this.props.modelField) {
             /** Fetch the technical name of the co model */
             useRecordObserver(async (record, props) => {
-                if (this.currentModelId !== record.data[props.modelField]?.id) {
+                if (this.currentModelId !== record.data[props.modelField]?.[0]) {
                     this.state.modelName = await this._fetchModelTechnicalName(props);
                     if (this.currentModelId !== undefined) {
                         record.update({ [props.name]: false });
                     }
-                    this.currentModelId = record.data[props.modelField]?.id;
+                    this.currentModelId = record.data[props.modelField]?.[0];
                 }
             });
         }
@@ -74,18 +79,25 @@ export class ReferenceField extends Component {
 
     get m2oProps() {
         const value = this.getValue();
-        return {
-            ...computeM2OProps(this.props),
+        const p = {
+            ...this.props,
             relation: this.getRelation(),
-            value: value && { id: value.resId, display_name: value.displayName },
+            value: value && [value.resId, value.displayName],
             update: this.updateM2O.bind(this),
         };
+        delete p.hideModel;
+        delete p.modelField;
+        return p;
     }
     get selection() {
         if (!this._isCharField(this.props) && !this.hideModelSelector) {
             return this.props.record.fields[this.props.name].selection;
         }
         return [];
+    }
+
+    get relation() {
+        return this.getRelation();
     }
 
     get hideModelSelector() {
@@ -129,13 +141,14 @@ export class ReferenceField extends Component {
         this.props.record.update({ [this.props.name]: false });
     }
 
-    updateM2O(value) {
+    updateM2O(data) {
+        const value = data[this.props.name];
         const resModel = this.state.currentRelation || this.getRelation();
         this.props.record.update({
             [this.props.name]: value && {
                 resModel,
-                resId: value.id,
-                displayName: value.display_name,
+                resId: value[0],
+                displayName: value[1],
             },
         });
     }
@@ -197,7 +210,7 @@ export class ReferenceField extends Component {
     async _fetchModelTechnicalName(props) {
         this._assertMany2OneToIrModel(props);
         const record = props.record;
-        const modelId = record.data[props.modelField]?.id;
+        const modelId = record.data[props.modelField]?.[0];
         if (!modelId) {
             return false;
         }
@@ -237,7 +250,7 @@ export const referenceField = {
 
         We want to display the model selector only in the 4th case.
         */
-        const props = extractM2OFieldProps(...arguments);
+        const props = many2OneField.extractProps(...arguments);
         props.hideModel = !!options.hide_model;
         props.modelField = options.model_field;
         return props;

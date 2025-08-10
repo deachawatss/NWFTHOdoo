@@ -1,6 +1,6 @@
 import { MessagingMenu } from "@mail/core/public_web/messaging_menu";
 import { onExternalClick } from "@mail/utils/common/hooks";
-import { useEffect } from "@odoo/owl";
+import { useEffect, useState } from "@odoo/owl";
 
 import { _t } from "@web/core/l10n/translation";
 import { useService } from "@web/core/utils/hooks";
@@ -13,8 +13,8 @@ patch(MessagingMenu.prototype, {
     setup() {
         super.setup();
         this.action = useService("action");
-        this.pwa = useService("pwa");
-        this.notification = useService("mail.notification.permission");
+        this.pwa = useState(useService("pwa"));
+        this.notification = useState(useService("mail.notification.permission"));
         Object.assign(this.state, {
             searchOpen: false,
         });
@@ -99,7 +99,6 @@ patch(MessagingMenu.prototype, {
     get tabs() {
         return [
             {
-                counter: this.env.inDiscussApp ? this.store.inbox.counter : undefined,
                 icon: this.env.inDiscussApp ? "fa fa-inbox" : "fa fa-envelope",
                 id: "main",
                 label: this.env.inDiscussApp ? _t("Mailboxes") : _t("All"),
@@ -109,18 +108,16 @@ patch(MessagingMenu.prototype, {
     },
     /** @param {import("models").Failure} failure */
     onClickFailure(failure) {
-        const threadIds = new Set(
-            failure.notifications.map(({ mail_message_id: message }) => message.thread.id)
-        );
+        const threadIds = new Set(failure.notifications.map(({ message }) => message.thread.id));
         if (threadIds.size === 1) {
-            const message = failure.notifications[0].mail_message_id;
+            const message = failure.notifications[0].message;
             this.openThread(message.thread);
         } else {
             this.openFailureView(failure);
             this.dropdown.close();
         }
     },
-    async openThread(thread) {
+    openThread(thread) {
         if (this.store.discuss.isActive) {
             this.action.doAction({
                 type: "ir.actions.act_window",
@@ -128,12 +125,11 @@ patch(MessagingMenu.prototype, {
                 views: [[false, "form"]],
                 res_id: thread.id,
             });
-            await this.store.chatHub.initPromise;
             // Close the related chat window as having both the form view
             // and the chat window does not look good.
             this.store.ChatWindow.get({ thread })?.close();
         } else {
-            thread.open({ focus: true, fromMessagingMenu: true });
+            thread.open({ fromMessagingMenu: true });
         }
         this.dropdown.close();
     },
@@ -176,6 +172,9 @@ patch(MessagingMenu.prototype, {
             value++;
         }
         return value;
+    },
+    get displayStartConversation() {
+        return this.store.discuss.activeTab !== "channel" && !this.state.adding;
     },
     get shouldAskPushPermission() {
         return (

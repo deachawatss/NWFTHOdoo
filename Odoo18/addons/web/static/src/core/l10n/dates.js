@@ -129,11 +129,21 @@ export function clampDate(desired, minDate, maxDate) {
 }
 
 /**
- * Get the week year and week number of a given date as well as the starting
- * date of the week, in the user's locale settings.
+ * Get the week number of a given date, in the user's locale settings.
  *
  * @param {Date | luxon.DateTime} date
- * @returns {{ year: number, week: number, startDate: luxon.DateTime }}
+ * @returns {number}
+ *  the ISO week number (1-53) of the Monday nearest to the locale's first day of the week
+ */
+export function getLocalWeekNumber(date) {
+    return getLocalYearAndWeek(date).week;
+}
+
+/**
+ * Get the week year and week number of a given date, in the user's locale settings.
+ *
+ * @param {Date | luxon.DateTime} date
+ * @returns {{ year: number, week: number }}
  *  the year the week is part of, and
  *  the ISO week number (1-53) of the Monday nearest to the locale's first day of the week
  */
@@ -143,22 +153,18 @@ export function getLocalYearAndWeek(date) {
     }
     const { weekStart } = localization;
     // go to start of week
-    const startDate = date.minus({ days: (date.weekday + 7 - weekStart) % 7 });
+    date = date.minus({ days: (date.weekday + 7 - weekStart) % 7 });
     // go to nearest Monday, up to 3 days back- or forwards
     date =
         weekStart > 1 && weekStart < 5 // if firstDay after Mon & before Fri
-            ? startDate.minus({ days: (startDate.weekday + 6) % 7 }) // then go back 1-3 days
-            : startDate.plus({ days: (8 - startDate.weekday) % 7 }); // else go forwards 0-3 days
+            ? date.minus({ days: (date.weekday + 6) % 7 }) // then go back 1-3 days
+            : date.plus({ days: (8 - date.weekday) % 7 }); // else go forwards 0-3 days
     date = date.plus({ days: 6 }); // go to last weekday of ISO week
     const jan4 = DateTime.local(date.year, 1, 4);
     // count from previous year if week falls before Jan 4
     const diffDays =
         date < jan4 ? date.diff(jan4.minus({ years: 1 }), "day").days : date.diff(jan4, "day").days;
-    return {
-        year: date.year,
-        week: Math.trunc(diffDays / 7) + 1,
-        startDate,
-    };
+    return { year: date.year, week: Math.trunc(diffDays / 7) + 1 };
 }
 
 /**
@@ -196,6 +202,16 @@ export function getEndOfLocalWeek(date) {
 }
 
 /**
+ * Returns whether the given format is a 24-hour format.
+ * Falls back to localization time format if none is given.
+ *
+ * @param {string} format
+ */
+export function is24HourFormat(format) {
+    return /H/.test(format || localization.timeFormat);
+}
+
+/**
  * @param {NullableDateTime | NullableDateRange} value
  * @param {NullableDateRange} range
  * @returns {boolean}
@@ -205,17 +221,27 @@ export function isInRange(value, range) {
         return false;
     }
     if (Array.isArray(value)) {
-        const actualValues = value.filter(Boolean).sort();
+        const actualValues = value.filter(Boolean);
         if (actualValues.length < 2) {
             return isInRange(actualValues[0], range);
         }
         return (
-            (actualValues[0] <= range[0] && range[0] <= actualValues[1]) ||
-            (range[0] <= actualValues[0] && actualValues[0] <= range[1])
+            (value[0] <= range[0] && range[0] <= value[1]) ||
+            (range[0] <= value[0] && value[0] <= range[1])
         );
     } else {
         return range[0] <= value && value <= range[1];
     }
+}
+
+/**
+ * Returns whether the given format uses a meridiem suffix (AM/PM).
+ * Falls back to localization time format if none is given.
+ *
+ * @param {string} format
+ */
+export function isMeridiemFormat(format) {
+    return /a/.test(format || localization.timeFormat);
 }
 
 /**
@@ -320,7 +346,7 @@ const condensedFormats = {};
  * @param {string} format
  * @returns string
  */
-export function getCondensedFormat(format) {
+function getCondensedFormat(format) {
     const originalFormat = format;
     if (!condensedFormats[originalFormat]) {
         format = format.replace(/(^|[^M])M{2}([^M]|$)/, "$1M$2");

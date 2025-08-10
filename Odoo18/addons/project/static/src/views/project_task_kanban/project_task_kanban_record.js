@@ -1,3 +1,5 @@
+/* @odoo-module */
+
 import { KanbanRecord } from "@web/views/kanban/kanban_record";
 import { useState } from "@odoo/owl";
 import { ProjectTaskKanbanCompiler } from "./project_task_kanban_compiler";

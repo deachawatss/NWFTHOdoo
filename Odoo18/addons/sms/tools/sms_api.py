@@ -40,7 +40,7 @@ class SmsApi:
 
     def _contact_iap(self, local_endpoint, params, timeout=15):
         if not self.env.registry.ready:  # Don't reach IAP servers during module installation
-            raise exceptions.AccessError("Unavailable during module installation.")  # pylint: disable=missing-gettext
+            raise exceptions.AccessError("Unavailable during module installation.")
 
         params['account_token'] = self.account.account_token
         endpoint = self.env['ir.config_parameter'].sudo().get_param('sms.endpoint', self.DEFAULT_ENDPOINT)

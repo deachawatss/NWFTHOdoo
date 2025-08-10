@@ -1,6 +1,6 @@
 import { Dialog } from "@web/core/dialog/dialog";
 import { _t } from "@web/core/l10n/translation";
-import { Field, fieldVisualFeedback } from "@web/views/fields/field";
+import { Field } from "@web/views/fields/field";
 import { useAutofocus } from "@web/core/utils/hooks";
 
 import { Component } from "@odoo/owl";
@@ -35,22 +35,6 @@ export class ListConfirmationDialog extends Component {
         useAutofocus();
     }
 
-    get validRecordsText() {
-        return _t(
-            "Among the %(total)s selected records, %(valid_count)s are valid for this update.",
-            {
-                total: this.props.nbRecords,
-                valid_count: this.props.nbValidRecords,
-            }
-        );
-    }
-
-    get updateConfirmationText() {
-        return _t("Are you sure you want to update %(count)s records?", {
-            count: this.props.nbValidRecords,
-        });
-    }
-
     _cancel() {
         if (this.props.cancel) {
             this.props.cancel();
@@ -63,16 +47,5 @@ export class ListConfirmationDialog extends Component {
             await this.props.confirm();
         }
         this.props.close();
-    }
-
-    /**
-     * Whether the Field component would show nothing
-     */
-    isValueEmpty(field) {
-        // force readonly as we force that state on the Field component
-        return fieldVisualFeedback(field, this.props.record, field.name, {
-            ...field.fieldNode,
-            readonly: true,
-        }).empty;
     }
 }

@@ -3,22 +3,49 @@
 from datetime import datetime
 
 from odoo.fields import Command
-from odoo.tests import HttpCase, tagged
+from odoo.tests import tagged
 
+from odoo.addons.base.tests.common import HttpCaseWithUserDemo, HttpCaseWithUserPortal
+from odoo.addons.sale.tests.product_configurator_common import TestProductConfiguratorCommon
+from odoo.addons.website.tools import MockRequest
 from odoo.addons.website_sale.controllers.product_configurator import (
     WebsiteSaleProductConfiguratorController,
 )
-from odoo.addons.website_sale.tests.common import MockRequest, WebsiteSaleCommon
+from odoo.addons.website_sale.tests.common import WebsiteSaleCommon
 
 
 @tagged('post_install', '-at_install')
-class TestWebsiteSaleProductConfigurator(HttpCase, WebsiteSaleCommon):
-
+class TestWebsiteSaleProductConfigurator(
+    TestProductConfiguratorCommon, HttpCaseWithUserPortal, HttpCaseWithUserDemo, WebsiteSaleCommon
+):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        cls.product_product_custo_desk.write({
+            'optional_product_ids': [(4, cls.product_product_conf_chair.id)],
+            'website_published': True,
+        })
+        cls.product_product_conf_chair.website_published = True
 
+        ptav_ids = cls.product_product_custo_desk.attribute_line_ids.product_template_value_ids
+        ptav_ids.filtered(lambda ptav: ptav.name == 'Aluminium').price_extra = 50.4
         cls.pc_controller = WebsiteSaleProductConfiguratorController()
+
+    def test_01_product_configurator_variant_price(self):
+        product = self.product_product_conf_chair.with_user(self.user_portal)
+        ptav_ids = self.product_product_custo_desk.attribute_line_ids.product_template_value_ids
+        parent_combination = ptav_ids.filtered(lambda ptav: ptav.name in ('Aluminium', 'White'))
+        self.assertEqual(product._is_add_to_cart_possible(parent_combination), True)
+        # This is a regression test. The product configurator menu is proposed
+        # whenever a product has optional products. However, as the end user
+        # already picked a variant, the variant configuration menu is omitted
+        # in this case. However, we still want to make sure that the correct
+        # variant attributes are taken into account when calculating the price.
+        url = self.product_product_custo_desk.website_url
+        # Ensure that no pricelist is available during the test.
+        # This ensures that tours with triggers on the amounts will run properly.
+        self.env['product.pricelist'].search([]).action_archive()
+        self.start_tour(url, 'website_sale_product_configurator_optional_products_tour', login='portal')
 
     def test_02_variants_modal_window(self):
         """
@@ -91,25 +118,30 @@ class TestWebsiteSaleProductConfigurator(HttpCase, WebsiteSaleCommon):
         product_short = self.env['product.template'].create({
             'name': 'Short (TEST)',
             'website_published': True,
-            'attribute_line_ids': [
-                Command.create({
-                    'attribute_id': always_attribute.id,
-                    'value_ids': [(4, always_S.id), (4, always_M.id)],
-                }),
-                Command.create({
-                    'attribute_id': dynamic_attribute.id,
-                    'value_ids': [(4, dynamic_S.id), (4, dynamic_M.id)],
-                }),
-                Command.create({
-                    'attribute_id': never_attribute.id,
-                    'value_ids': [(4, never_S.id), (4, never_M.id)],
-                }),
-                Command.create({
-                    'attribute_id': never_attribute_custom.id,
-                    'value_ids': [(4, never_custom_no.id), (4, never_custom_yes.id)],
-                }),
-            ]
         })
+
+        self.env['product.template.attribute.line'].create([
+            {
+                'product_tmpl_id': product_short.id,
+                'attribute_id': always_attribute.id,
+                'value_ids': [(4, always_S.id), (4, always_M.id)],
+            },
+            {
+                'product_tmpl_id': product_short.id,
+                'attribute_id': dynamic_attribute.id,
+                'value_ids': [(4, dynamic_S.id), (4, dynamic_M.id)],
+            },
+            {
+                'product_tmpl_id': product_short.id,
+                'attribute_id': never_attribute.id,
+                'value_ids': [(4, never_S.id), (4, never_M.id)],
+            },
+            {
+                'product_tmpl_id': product_short.id,
+                'attribute_id': never_attribute_custom.id,
+                'value_ids': [(4, never_custom_no.id), (4, never_custom_yes.id)],
+            },
+        ])
 
         # Add an optional product to trigger the modal window
         optional_product = self.env['product.template'].create({
@@ -119,12 +151,12 @@ class TestWebsiteSaleProductConfigurator(HttpCase, WebsiteSaleCommon):
         product_short.optional_product_ids = [(4, optional_product.id)]
 
         old_sale_order = self.env['sale.order'].search([])
-        self.start_tour("/", 'tour_variants_modal_window')
+        self.start_tour("/", 'tour_variants_modal_window', login="demo")
 
         # Check the name of the created sale order line
         new_sale_order = self.env['sale.order'].search([]) - old_sale_order
         new_order_line = new_sale_order.order_line
-        self.assertEqual(new_order_line.name, 'Short (TEST) (M always, M dynamic)\nNever attribute size: M never\nNever attribute size custom: Yes never custom: TEST')
+        self.assertEqual(new_order_line.name, 'Short (TEST) (M always, M dynamic)\n\nNever attribute size: M never\nNever attribute size custom: Yes never custom: TEST')
 
     def test_product_configurator_force_dialog(self):
         """ Test that the product configurator is shown if forced. """
@@ -133,7 +165,7 @@ class TestWebsiteSaleProductConfigurator(HttpCase, WebsiteSaleCommon):
             'name': "Main product", 'website_published': True
         })
 
-        with MockRequest(self.env, website=self.website):
+        with (MockRequest(self.env, website=self.website)):
             show_configurator = self.pc_controller.website_sale_should_show_product_configurator(
                 product_template_id=main_product.id, ptav_ids=[], is_product_configured=False
             )
@@ -142,18 +174,16 @@ class TestWebsiteSaleProductConfigurator(HttpCase, WebsiteSaleCommon):
 
     def test_product_configurator_optional_products(self):
         """ Test that the product configurator is shown if the product has optional products. """
+        optional_product = self.env['product.template'].create({
+            'name': "Optional product", 'website_published': True
+        })
         main_product = self.env['product.template'].create({
             'name': "Main product",
             'website_published': True,
-            'optional_product_ids': [
-                Command.create({
-                    'name': "Optional product",
-                    'website_published': True,
-                })
-            ],
+            'optional_product_ids': [Command.set(optional_product.ids)],
         })
 
-        with MockRequest(self.env, website=self.website):
+        with (MockRequest(self.env, website=self.website)):
             show_configurator = self.pc_controller.website_sale_should_show_product_configurator(
                 product_template_id=main_product.id, ptav_ids=[], is_product_configured=False
             )
@@ -177,7 +207,7 @@ class TestWebsiteSaleProductConfigurator(HttpCase, WebsiteSaleCommon):
             ],
         })
 
-        with MockRequest(self.env, website=self.website):
+        with (MockRequest(self.env, website=self.website)):
             show_configurator = self.pc_controller.website_sale_should_show_product_configurator(
                 product_template_id=main_product.id, ptav_ids=[], is_product_configured=False
             )
@@ -208,7 +238,7 @@ class TestWebsiteSaleProductConfigurator(HttpCase, WebsiteSaleCommon):
             ],
         })
 
-        with MockRequest(self.env, website=self.website):
+        with (MockRequest(self.env, website=self.website)):
             show_configurator = self.pc_controller.website_sale_should_show_product_configurator(
                 product_template_id=main_product.id, ptav_ids=[], is_product_configured=True
             )
@@ -238,7 +268,7 @@ class TestWebsiteSaleProductConfigurator(HttpCase, WebsiteSaleCommon):
             ],
         })
 
-        with MockRequest(self.env, website=self.website):
+        with (MockRequest(self.env, website=self.website)):
             show_configurator = self.pc_controller.website_sale_should_show_product_configurator(
                 product_template_id=main_product.id, ptav_ids=[], is_product_configured=False
             )
@@ -268,7 +298,7 @@ class TestWebsiteSaleProductConfigurator(HttpCase, WebsiteSaleCommon):
             ],
         })
 
-        with MockRequest(self.env, website=self.website):
+        with (MockRequest(self.env, website=self.website)):
             show_configurator = self.pc_controller.website_sale_should_show_product_configurator(
                 product_template_id=main_product.id, ptav_ids=[], is_product_configured=False
             )
@@ -299,7 +329,7 @@ class TestWebsiteSaleProductConfigurator(HttpCase, WebsiteSaleCommon):
             ],
         })
 
-        with MockRequest(self.env, website=self.website):
+        with (MockRequest(self.env, website=self.website)):
             show_configurator = self.pc_controller.website_sale_should_show_product_configurator(
                 product_template_id=main_product.id, ptav_ids=[], is_product_configured=False
             )
@@ -319,7 +349,7 @@ class TestWebsiteSaleProductConfigurator(HttpCase, WebsiteSaleCommon):
             'optional_product_ids': [Command.set(optional_product.ids)],
         })
 
-        with MockRequest(self.env, website=self.website):
+        with (MockRequest(self.env, website=self.website)):
             show_configurator = self.pc_controller.website_sale_should_show_product_configurator(
                 product_template_id=main_product.id, ptav_ids=[], is_product_configured=False
             )
@@ -354,7 +384,7 @@ class TestWebsiteSaleProductConfigurator(HttpCase, WebsiteSaleCommon):
             'taxes_id': tax,
         })
 
-        with MockRequest(self.env, website=self.website):
+        with (MockRequest(self.env, website=self.website)):
             ptav_price_extra = self.pc_controller._get_ptav_price_extra(
                 product.attribute_line_ids.product_template_value_ids,
                 self.currency,
@@ -394,11 +424,9 @@ class TestWebsiteSaleProductConfigurator(HttpCase, WebsiteSaleCommon):
 
     def test_product_configurator_strikethrough_price(self):
         """ Test that the product configurator displays the strikethrough price correctly. """
-        self.env['res.config.settings'].create({
-            'group_product_price_comparison': True,
-            # Need to enable pricelists for self.pricelist to be considered and applied
-            'group_product_pricelist': True,
-        }).execute()
+        self.env.ref('base.group_public').implied_ids += (
+            self.env.ref('website_sale.group_product_price_comparison')
+        )
         self.website.show_line_subtotals_tax_selection = 'tax_included'
         tax = self.env['account.tax'].create({'name': "Tax", 'amount': 10})
         optional_product = self.env['product.template'].create({
@@ -415,7 +443,7 @@ class TestWebsiteSaleProductConfigurator(HttpCase, WebsiteSaleCommon):
             'optional_product_ids': [Command.set(optional_product.ids)],
             'taxes_id': tax,
         })
-        self.pricelist.item_ids = [
+        self.website.pricelist_id.item_ids = [
             Command.create({
                 'applied_on': '1_product',
                 'percent_price': 50,
@@ -423,4 +451,4 @@ class TestWebsiteSaleProductConfigurator(HttpCase, WebsiteSaleCommon):
                 'product_tmpl_id': main_product.id,
             }),
         ]
-        self.start_tour('/shop', 'website_sale_product_configurator_strikethrough_price')
+        self.start_tour('/', 'website_sale_product_configurator_strikethrough_price')

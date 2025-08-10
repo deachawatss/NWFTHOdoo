@@ -21,7 +21,7 @@ class StockMove(models.Model):
                 date=order.date_order,
             )
 
-        uom_precision_digits = self.env['decimal.precision'].precision_get('Product Unit')
+        uom_precision_digits = self.env['decimal.precision'].precision_get('Product Unit of Measure')
         if float_is_zero(self.quantity, precision_digits=uom_precision_digits):
             return 0.0
 
@@ -46,10 +46,10 @@ class StockMove(models.Model):
 
         return {
             'order_id': order.id,
-            'name': self.reference,
+            'name': self.name,
             'sequence': last_sequence,
             'price_unit': price,
-            'tax_ids': [x.id for x in taxes],
+            'tax_id': [x.id for x in taxes],
             'discount': 0.0,
             'product_id': self.product_id.id,
             'product_uom_qty': self.product_uom_qty,
@@ -67,3 +67,10 @@ class StockMove(models.Model):
             **super()._assign_picking_values(picking),
             'project_id': self[:1].sale_line_id.order_id.project_id.id,
         }
+
+    def _prepare_procurement_values(self):
+        res = super()._prepare_procurement_values()
+        project = self.sale_line_id.order_id.project_id
+        if project:
+            res['project_id'] = project.id
+        return res

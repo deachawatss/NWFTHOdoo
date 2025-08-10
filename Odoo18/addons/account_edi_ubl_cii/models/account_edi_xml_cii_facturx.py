@@ -15,10 +15,16 @@ CII_NAMESPACES = {
     'udt': "urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100",
 }
 
+# Imcomplete, full list on https://service.unece.org/trade/untdid/d16b/tred/tred4461.htm
+PAYMENT_MEAN_CODES = {
+    'Payment to bank account': 42,
+    'SEPA direct debit': 59
+}
 
-class AccountEdiXmlCii(models.AbstractModel):
-    _name = 'account.edi.xml.cii'
-    _inherit = ['account.edi.common']
+
+class AccountEdiXmlCII(models.AbstractModel):
+    _name = "account.edi.xml.cii"
+    _inherit = 'account.edi.common'
     _description = "Factur-x/XRechnung CII 2.2.0"
 
     def _find_value(self, xpath, tree, nsmap=False):
@@ -61,7 +67,7 @@ class AccountEdiXmlCii(models.AbstractModel):
             ),
             # [BR-DE-6] The element "Seller contact telephone number" (BT-42) must be transmitted.
             'seller_phone': self._check_required_fields(
-                vals['record']['company_id']['partner_id']['commercial_partner_id'], ['phone'],
+                vals['record']['company_id']['partner_id']['commercial_partner_id'], ['phone', 'mobile'],
             ),
             # [BR-DE-7] The element "Seller contact email address" (BT-43) must be transmitted.
             'seller_email': self._check_required_fields(
@@ -116,8 +122,6 @@ class AccountEdiXmlCii(models.AbstractModel):
         }
 
     def _export_invoice_vals(self, invoice):
-        customer = invoice.partner_id
-        supplier = invoice.company_id.partner_id.commercial_partner_id
 
         def format_date(dt):
             # Format the date in the Factur-x standard.
@@ -130,9 +134,10 @@ class AccountEdiXmlCii(models.AbstractModel):
 
         def grouping_key_generator(base_line, tax_data):
             tax = tax_data['tax']
+            customer = invoice.commercial_partner_id
+            supplier = invoice.company_id.partner_id.commercial_partner_id
             grouping_key = {
-                'tax_category_code': self._get_tax_category_code(customer.commercial_partner_id, supplier, tax),
-                **self._get_tax_exemption_reason(customer.commercial_partner_id, supplier, tax),
+                **self._get_tax_unece_codes(customer, supplier, tax),
                 'amount': tax.amount,
                 'amount_type': tax.amount_type,
             }
@@ -160,6 +165,14 @@ class AccountEdiXmlCii(models.AbstractModel):
             tax_details['base_amount_currency'] += fixed_tax_details['tax_amount_currency']
             tax_details['base_amount'] += fixed_tax_details['tax_amount']
 
+        if 'siret' in invoice.company_id._fields and invoice.company_id.siret:
+            seller_siret = invoice.company_id.siret
+        else:
+            seller_siret = invoice.company_id.company_registry
+
+        buyer_siret = invoice.commercial_partner_id.company_registry
+        if 'siret' in invoice.commercial_partner_id._fields and invoice.commercial_partner_id.siret:
+            buyer_siret = invoice.commercial_partner_id.siret
         template_values = {
             **invoice._prepare_edi_vals_to_export(),
             'tax_details': tax_details,
@@ -169,8 +182,8 @@ class AccountEdiXmlCii(models.AbstractModel):
             'scheduled_delivery_time': self._get_scheduled_delivery_time(invoice),
             'intracom_delivery': False,
             'ExchangedDocument_vals': self._get_exchanged_document_vals(invoice),
-            'seller_specified_legal_organization': invoice.company_id.company_registry,
-            'buyer_specified_legal_organization': invoice.commercial_partner_id.company_registry,
+            'seller_specified_legal_organization': seller_siret,
+            'buyer_specified_legal_organization': buyer_siret,
             'ship_to_trade_party': invoice.partner_shipping_id if 'partner_shipping_id' in invoice._fields and invoice.partner_shipping_id
                 else invoice.commercial_partner_id,
             # Chorus Pro fields
@@ -182,13 +195,25 @@ class AccountEdiXmlCii(models.AbstractModel):
             'document_context_id': "urn:cen.eu:en16931:2017#conformant#urn:factur-x.eu:1p0:extended",
         }
 
-        template_values['billing_start'] = invoice.invoice_date
-        template_values['billing_end'] = invoice.invoice_date_due
-
         # data used for IncludedSupplyChainTradeLineItem / SpecifiedLineTradeSettlement
         for line_vals in template_values['invoice_line_vals_list']:
             line = line_vals['line']
             line_vals['unece_uom_code'] = self._get_uom_unece_code(line.product_uom_id)
+
+            if line._fields.get('deferred_start_date') and (line.deferred_start_date or line.deferred_end_date):
+                line_vals['billing_start'] = line.deferred_start_date
+                line_vals['billing_end'] = line.deferred_end_date
+
+        # [BR - IC - 11] - In an Invoice with a VAT breakdown (BG-23) where the VAT category code (BT-118) is
+        # "Intra-community supply" the Actual delivery date (BT-72) or the Invoicing period (BG-14) shall not be blank.
+        billing_start_dates = [invoice.invoice_date] if invoice.invoice_date else []
+        billing_start_dates += [line_vals['billing_start'] for line_vals in template_values['invoice_line_vals_list'] if line_vals.get('billing_start')]
+        billing_end_dates = [invoice.invoice_date_due] if invoice.invoice_date_due else []
+        billing_end_dates += [line_vals['billing_end'] for line_vals in template_values['invoice_line_vals_list'] if line_vals.get('billing_end')]
+        if billing_start_dates:
+            template_values['billing_start'] = min(billing_start_dates)
+        if billing_end_dates:
+            template_values['billing_end'] = max(billing_end_dates)
 
         # data used for ApplicableHeaderTradeSettlement / ApplicableTradeTax (at the end of the xml)
         for tax_detail_vals in template_values['tax_details']['tax_details'].values():
@@ -199,12 +224,6 @@ class AccountEdiXmlCii(models.AbstractModel):
 
             if tax_detail_vals.get('tax_category_code') == 'K':
                 template_values['intracom_delivery'] = True
-            # [BR - IC - 11] - In an Invoice with a VAT breakdown (BG-23) where the VAT category code (BT-118) is
-            # "Intra-community supply" the Actual delivery date (BT-72) or the Invoicing period (BG-14) shall not be blank.
-            if tax_detail_vals.get('tax_category_code') == 'K' and not template_values['scheduled_delivery_time']:
-                date_range = self._get_invoicing_period(invoice)
-                template_values['billing_start'] = min(date_range)
-                template_values['billing_end'] = max(date_range)
 
         # Fixed taxes: add them as charges on the invoice lines
         for line_vals in template_values['invoice_line_vals_list']:
@@ -233,6 +252,11 @@ class AccountEdiXmlCii(models.AbstractModel):
         template_values['tax_basis_total_amount'] = tax_details['base_amount_currency']
         template_values['tax_total_amount'] = tax_details['tax_amount_currency']
 
+        if self.env['account.payment']._fields.get('sdd_mandate_id') and invoice.matched_payment_ids.sdd_mandate_id:
+            template_values['payment_means_code'] = PAYMENT_MEAN_CODES['SEPA direct debit']
+        else:
+            template_values['payment_means_code'] = PAYMENT_MEAN_CODES['Payment to bank account']
+
         return template_values
 
     def _export_invoice(self, invoice):
@@ -251,16 +275,7 @@ class AccountEdiXmlCii(models.AbstractModel):
             'name': self._find_value(f".//ram:{role}/ram:Name", tree),
             'phone': self._find_value(f".//ram:{role}/ram:DefinedTradeContact/ram:TelephoneUniversalCommunication/ram:CompleteNumber", tree),
             'email': self._find_value(f".//ram:{role}//ram:EmailURIUniversalCommunication/ram:URIID", tree),
-            'postal_address': self._get_postal_address(tree, role),
-        }
-
-    def _get_postal_address(self, tree, role):
-        return {
             'country_code': self._find_value(f'.//ram:{role}/ram:PostalTradeAddress//ram:CountryID', tree),
-            'street': self._find_value(f'.//ram:{role}/ram:PostalTradeAddress//ram:LineOne', tree),
-            'additional_street': self._find_value(f'.//ram:{role}/ram:PostalTradeAddress//ram:LineTwo', tree),
-            'city': self._find_value(f'.//ram:{role}/ram:PostalTradeAddress//ram:CityName', tree),
-            'zip': self._find_value(f'.//ram:{role}/ram:PostalTradeAddress//ram:PostcodeCode', tree),
         }
 
     def _import_fill_invoice(self, invoice, tree, qty_factor):
@@ -310,8 +325,7 @@ class AccountEdiXmlCii(models.AbstractModel):
             tree, invoice, invoice.journal_id.type, qty_factor,
         )
         logs += self._import_prepaid_amount(invoice, tree, './/{*}ApplicableHeaderTradeSettlement/{*}SpecifiedTradeSettlementHeaderMonetarySummation/{*}TotalPrepaidAmount', qty_factor)
-        invoice_line_vals, line_logs = self._import_lines(invoice, tree, './{*}SupplyChainTradeTransaction/{*}IncludedSupplyChainTradeLineItem',
-                                                          document_type=invoice.move_type, tax_type=invoice.journal_id.type, qty_factor=qty_factor)
+        invoice_line_vals, line_logs = self._import_invoice_lines(invoice, tree, './{*}SupplyChainTradeTransaction/{*}IncludedSupplyChainTradeLineItem', qty_factor)
         line_vals = allowance_charges_line_vals + invoice_line_vals
 
         invoice_values = {
@@ -334,6 +348,13 @@ class AccountEdiXmlCii(models.AbstractModel):
             'reason': './{*}Reason',
             'percentage': './{*}CalculationPercent',
             'tax_percentage': './{*}CategoryTradeTax/{*}RateApplicablePercent',
+        }
+
+    def _get_invoice_line_xpaths(self, document_type=False, qty_factor=1):
+        return {
+            'deferred_start_date': './{*}SpecifiedLineTradeSettlement/{*}BillingSpecifiedPeriod/{*}StartDateTime/{*}DateTimeString',
+            'deferred_end_date': './{*}SpecifiedLineTradeSettlement/{*}BillingSpecifiedPeriod/{*}EndDateTime/{*}DateTimeString',
+            'date_format': DEFAULT_FACTURX_DATE_FORMAT,
         }
 
     def _get_line_xpaths(self, document_type=False, qty_factor=1):

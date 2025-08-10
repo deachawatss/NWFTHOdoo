@@ -11,9 +11,9 @@
         <field name="search_view_id" ref="hr.view_employee_filter"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                Create an employee.
+                Add a new employee
             </p><p>
-                Find all the information on employees.
+                Quickly find all the information you need for your employees such as contact data, job position, availability, etc.
             </p>
         </field>
     </record>
@@ -23,35 +23,26 @@
         <field name="model">hr.employee</field>
         <field name="inherit_id" ref="hr.view_employee_form"/>
         <field name="arch" type="xml">
-            <div id="o_employee_org_chart" position="inside">
-                <div invisible="not subordinate_ids and (not parent_id or parent_id == id)">
-                    <div class="d-flex flex-column align-items-start mt-0 pt-4 w-100" style="cursor: default;">
-                        <div class="d-flex justify-content-between w-100 mb-0">
-                            <span class="text-uppercase fw-bolder" style="font-size: 13px">Organization Chart</span>
-                            <a name="%(hr_org_chart.action_hr_employee_org_chart)d"
-                                type="action"
-                                role="button"
-                                context="{'hierarchy_res_id': id}">
-                                <i class="fa fa-sitemap me-1 mt-1"/>
-                                <span class="fw-bolder">Zoom</span>
-                            </a>
-                        </div>
-                        <div class="w-100 border-top border-1 border-secondary mt-0 mb-3"></div>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="%(hr_org_chart.action_hr_employee_org_chart)d"
+                    icon="fa-users"
+                    type="action"
+                    context="{'hierarchy_res_id': id}"
+                    invisible="(not parent_id and not child_ids) or parent_id == id">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Org Chart</span>
                     </div>
+                </button>
+            </xpath>
+            <div id="o_work_employee_main" position="after">
+                <div id="o_employee_right" class="col-lg-4 px-0 ps-lg-5 pe-lg-0">
+                    <separator string="Organization Chart"/>
+                    <field name="child_ids" class="position-relative" widget="hr_org_chart" readonly="1" nolabel="1"/>
                 </div>
-                <div invisible="subordinate_ids or (parent_id and not parent_id == id)">
-                    <div class="d-flex flex-column align-items-start mt-0 pt-4" style="cursor: default;">
-                        <div class="d-flex align-items-left mb-0">
-                            <span class="text-uppercase fw-bolder" style="font-size: 13px">Organization Chart</span>
-                        </div>
-                        <div class="w-100 border-top border-1 border-secondary mt-0 mb-3"></div>
-                    </div>
-                </div>
-                <field name="child_ids" class="position-relative" widget="hr_org_chart" readonly="1" nolabel="1"/>
             </div>
         </field>
     </record>
-
+    
     <record id="hr_employee_view_pivot_inherit_org_chart" model="ir.ui.view">
         <field name="name">hr.employee.view.pivot.inherit.org_chart</field>
         <field name="model">hr.employee</field>
@@ -62,7 +53,7 @@
             </xpath>
         </field>
     </record>
-
+    
     <record id="hr_employee_view_graph_inherit_org_chart" model="ir.ui.view">
         <field name="name">hr.employee.view.graph.inherit.org_chart</field>
         <field name="model">hr.employee</field>
@@ -104,35 +95,28 @@
         </field>
     </record>
 
+    <record id="hr_employee_public_view_form_inherit_org_chart" model="ir.ui.view">
+        <field name="name">hr.employee.public.view.form.inherit.org_chart</field>
+        <field name="model">hr.employee.public</field>
+        <field name="inherit_id" ref="hr.hr_employee_public_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@id='o_work_employee_main']" position="after">
+                <div id="o_employee_right" class="col-lg-4 px-0 ps-lg-5">
+                    <separator string="Organization Chart"/>
+                    <field name="child_ids" class="position-relative" widget="hr_org_chart" readonly="1" nolabel="1"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
     <record id="res_users_view_form" model="ir.ui.view">
         <field name="name">res.users.preferences.view.form.inherit.org_chart</field>
         <field name="model">res.users</field>
         <field name="inherit_id" ref="hr.res_users_view_form_profile"/>
         <field name="arch" type="xml">
             <div id="o_work_employee_main" position="after">
-                <div id="o_employee_org_chart" class="col-lg-5">
-                    <div invisible="not employee_id.subordinate_ids and (not employee_parent_id or employee_parent_id == id)">
-                        <div class="d-flex flex-column align-items-start mt-0 pt-4 w-100" style="cursor: default;">
-                            <div class="d-flex justify-content-between w-100 mb-0">
-                                <span class="text-uppercase fw-bolder" style="font-size: 13px">Organization Chart</span>
-                                <a name="%(hr_org_chart.action_hr_employee_org_chart)d"
-                                    type="action"
-                                    role="button"
-                                    context="{'hierarchy_res_id': id}">
-                                    <i style="font-size: 0.7rem;">Zoom</i>
-                                </a>
-                            </div>
-                            <div class="w-100 border-top border-1 border-secondary mt-0 mb-3"></div>
-                        </div>
-                    </div>
-                    <div invisible="employee_id.subordinate_ids or (employee_parent_id and not employee_parent_id == id)">
-                        <div class="d-flex flex-column align-items-start mt-0 pt-4" style="cursor: default;">
-                            <div class="d-flex align-items-left mb-0">
-                                <span class="text-uppercase fw-bolder" style="font-size: 13px">Organization Chart</span>
-                            </div>
-                            <div class="w-100 border-top border-1 border-secondary mt-0 mb-3"></div>
-                        </div>
-                    </div>
+                <div id="o_employee_right" class="col-lg-4 px-0 ps-lg-5">
+                    <separator string="Organization Chart"/>
                     <field name="child_ids" class="position-relative" widget="hr_org_chart" readonly="1" nolabel="1"/>
                 </div>
             </div>
@@ -140,7 +124,7 @@
     </record>
 
     <record id="act_open_view_employee_list_my_hierarchy_view" model="ir.actions.act_window.view">
-        <field name="sequence" eval="16"/>
+        <field name="sequence" eval="40"/>
         <field name="view_mode">hierarchy</field>
         <field name="act_window_id" ref="hr.open_view_employee_list_my"/>
     </record>

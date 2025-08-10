@@ -3,8 +3,7 @@
 from collections import defaultdict
 
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError
-from odoo.fields import Domain
+from odoo.osv import expression
 from odoo.tools import float_compare
 
 
@@ -72,18 +71,9 @@ class SaleOrder(models.Model):
         for order in self:
             order.show_hours_recorded_button = order.timesheet_count or order.project_count and order.id in show_button_ids
 
-    @api.model_create_multi
-    def create(self, vals_list):
-        created_records = super().create(vals_list)
-        if self.env.context.get('create_for_employee_mapping'):
-            if not next((sol for sol in created_records.order_line if sol.is_service), False):
-                raise UserError(_('The Sales Order must contain at least one service product.'))
-            created_records.with_context(disable_project_task_generation=True).action_confirm()
-        return created_records
-
     def _get_order_with_valid_service_product(self):
         SaleOrderLine = self.env['sale.order.line']
-        return SaleOrderLine._read_group(Domain.AND([
+        return SaleOrderLine._read_group(expression.AND([
             SaleOrderLine._domain_sale_line_service(),
             [
                 ('order_id', 'in', self.ids),
@@ -100,7 +90,7 @@ class SaleOrder(models.Model):
                 - service_policy="ordered_prepaid",
         """
         self.ensure_one()
-        precision = self.env['decimal.precision'].precision_get('Product Unit')
+        precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
         return self.order_line.filtered(lambda sol:
             sol.is_service
             and sol.invoice_status != "invoiced"
@@ -150,9 +140,9 @@ class SaleOrder(models.Model):
         return action
 
     def _reset_has_displayed_warning_upsell_order_lines(self):
-        precision = self.env['decimal.precision'].precision_get('Product Unit')
+        precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
         for line in self.order_line:
-            if line.has_displayed_warning_upsell and line.product_uom_id and float_compare(line.qty_delivered, line.product_uom_qty, precision_digits=precision) == 0:
+            if line.has_displayed_warning_upsell and line.product_uom and float_compare(line.qty_delivered, line.product_uom_qty, precision_digits=precision) == 0:
                 line.has_displayed_warning_upsell = False
 
     def _create_invoices(self, grouped=False, final=False, date=None):

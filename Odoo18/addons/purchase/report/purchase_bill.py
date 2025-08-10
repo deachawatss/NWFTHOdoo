@@ -4,7 +4,6 @@
 from odoo import api, fields, models, tools
 from odoo.tools import formatLang
 
-
 class PurchaseBillUnion(models.Model):
     _name = 'purchase.bill.union'
     _auto = False
@@ -38,7 +37,7 @@ class PurchaseBillUnion(models.Model):
                     NULL as vendor_bill_id, id as purchase_order_id
                 FROM purchase_order
                 WHERE
-                    state = 'purchase' AND
+                    state in ('purchase', 'done') AND
                     invoice_status in ('to invoice', 'no')
             )""")
 

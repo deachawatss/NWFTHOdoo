@@ -17,7 +17,7 @@ class TestSaleMrpProcurement(TransactionCase):
 
     def test_sale_mrp(self):
         # Required for `uom_id` to be visible in the view
-        self.env.user.group_ids += self.env.ref('uom.group_uom')
+        self.env.user.groups_id += self.env.ref('uom.group_uom')
         self.env.ref('stock.route_warehouse0_mto').active = True
         warehouse0 = self.env.ref('stock.warehouse0')
         # In order to test the sale_mrp module in OpenERP, I start by creating a new product 'Slider Mobile'
@@ -85,9 +85,9 @@ class TestSaleMrpProcurement(TransactionCase):
         to the customer location
         """
         # Required for `uom_id` to be visible in the view
-        self.env.user.group_ids += self.env.ref('uom.group_uom')
+        self.env.user.groups_id += self.env.ref('uom.group_uom')
         # Required for `manufacture_step` to be visible in the view
-        self.env.user.group_ids += self.env.ref('stock.group_adv_location')
+        self.env.user.groups_id += self.env.ref('stock.group_adv_location')
         self.env.ref('stock.route_warehouse0_mto').active = True
         # Create warehouse
         self.customer_location = self.env['ir.model.data']._xmlid_to_res_id('stock.stock_location_customers')
@@ -230,6 +230,7 @@ class TestSaleMrpProcurement(TransactionCase):
                     'name': product.name,
                     'product_id': product.id,
                     'product_uom_qty': 1.0,
+                    'product_uom': product.uom_id.id,
                     'price_unit': 1,
                 })],
         })
@@ -288,6 +289,7 @@ class TestSaleMrpProcurement(TransactionCase):
             'name': 'Finished',
             'is_storable': True,
             'uom_id': uom_kg.id,
+            'uom_po_id': uom_kg.id,
             'route_ids': [(6, 0, manufacture_route.ids)],
         }, {
             'name': 'Component',
@@ -312,11 +314,7 @@ class TestSaleMrpProcurement(TransactionCase):
             'product_min_qty': 0,
             'product_max_qty': 0,
             'trigger': 'auto',
-            'replenishment_uom_id': self.env['uom.uom'].create({
-                'name': 'test uom',
-                'relative_factor': 0.01,
-                'relative_uom_id': uom_gram.id,
-            }).id,
+            'qty_multiple': 0.01,
         })
 
         so = self.env['sale.order'].create({
@@ -326,7 +324,7 @@ class TestSaleMrpProcurement(TransactionCase):
                     'name': product.name,
                     'product_id': product.id,
                     'product_uom_qty': 510,
-                    'product_uom_id': uom_gram.id,
+                    'product_uom': uom_gram.id,
                     'price_unit': 1,
                 })],
         })
@@ -345,7 +343,7 @@ class TestSaleMrpProcurement(TransactionCase):
                     'name': product.name,
                     'product_id': product.id,
                     'product_uom_qty': 510,
-                    'product_uom_id': uom_gram.id,
+                    'product_uom': uom_gram.id,
                     'price_unit': 1,
                 })],
         })
@@ -370,11 +368,13 @@ class TestSaleMrpProcurement(TransactionCase):
                     'name': 'sol_p1',
                     'product_id': self.env['product.product'].create({'name': 'p1'}).id,
                     'product_uom_qty': 1,
+                    'product_uom': self.env.ref('uom.product_uom_unit').id,
                 }),
                 Command.create({
                     'name': 'sol_p2',
                     'product_id': self.env['product.product'].create({'name': 'p2'}).id,
                     'product_uom_qty': 1,
+                    'product_uom': self.env.ref('uom.product_uom_unit').id,
                 }),
             ],
         })

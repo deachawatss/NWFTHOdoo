@@ -27,6 +27,5 @@ to support In-App purchases inside Odoo. """,
             'iap/static/src/**/*.xml',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

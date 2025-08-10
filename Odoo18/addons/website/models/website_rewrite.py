@@ -11,8 +11,8 @@ _logger = logging.getLogger(__name__)
 
 
 class WebsiteRoute(models.Model):
-    _name = 'website.route'
     _rec_name = 'path'
+    _name = 'website.route'
     _description = "All Website Route"
     _order = 'path'
 

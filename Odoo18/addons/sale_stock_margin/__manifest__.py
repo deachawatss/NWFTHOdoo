@@ -7,6 +7,5 @@
     'depends': ['sale_stock', 'sale_margin'],
     'installable': True,
     'auto_install': True,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

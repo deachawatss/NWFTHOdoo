@@ -3,7 +3,7 @@
 {
     'name': "Spreadsheet dashboard for expenses",
     'version': '1.0',
-    'category': 'Productivity/Dashboard',
+    'category': 'Hidden',
     'summary': 'Spreadsheet',
     'description': 'Spreadsheet',
     'depends': ['spreadsheet_dashboard', 'sale_expense'],
@@ -12,6 +12,5 @@
     ],
     'installable': True,
     'auto_install': ['sale_expense'],
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

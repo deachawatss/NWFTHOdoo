@@ -120,7 +120,7 @@
                 <a href="#" role="button" data-bs-toggle="dropdown" t-attf-class="#{'' if _no_caret else 'dropdown-toggle'} #{_link_class}">
                     <t t-if="_avatar">
                         <t t-set="avatar_source" t-value="image_data_uri(user_id.avatar_256)"/>
-                        <img t-att-src="avatar_source" t-attf-class="rounded-circle object-fit-cover #{_avatar_class}" width="24" height="24" alt="" loading="eager"/>
+                        <img t-att-src="avatar_source" t-attf-class="rounded-circle o_object_fit_cover #{_avatar_class}" width="24" height="24" alt="" loading="eager"/>
                     </t>
                     <div t-if="_icon" t-attf-class="#{_icon_wrap_class}">
                         <i t-attf-class="fa fa-1x fa-fw fa-user #{_icon_class}"/>
@@ -129,11 +129,11 @@
                 </a>
                 <div t-attf-class="dropdown-menu js_usermenu #{_dropdown_menu_class}" role="menu">
                     <a groups="base.group_user" href="/odoo" role="menuitem" class="dropdown-item ps-3" id="o_backend_user_dropdown_link">
-                        <i class="fa fa-fw fa-th me-1 small text-primary-emphasis"/> Apps
+                        <i class="fa fa-fw fa-th me-1 small text-primary text-primary-emphasis"/> Apps
                     </a>
                     <div id="o_logout_divider" class="dropdown-divider"/>
                     <a t-attf-href="/web/session/logout?redirect=/" role="menuitem" id="o_logout" class="dropdown-item ps-3">
-                        <i class="fa fa-fw fa-sign-out me-1 small text-primary-emphasis"/> Logout
+                        <i class="fa fa-fw fa-sign-out me-1 small text-primary text-primary-emphasis"/> Logout
                     </a>
                 </div>
             </li>
@@ -143,11 +143,7 @@
     <template id="portal_breadcrumbs" name="Portal Breadcrumbs">
         <ol t-if="page_name != 'home'" class="o_portal_submenu breadcrumb mb-0 flex-grow-1 px-0">
             <li class="breadcrumb-item ms-1"><a href="/my/home" aria-label="Home" title="Home"><i class="fa fa-home"/></a></li>
-            <li t-if="page_name == 'my_addresses'" class="breadcrumb-item">Addresses</li>
-            <li t-elif="page_name == 'address_form'" class="breadcrumb-item">
-                <a href="/my/addresses" aria-label="Addresses" title="Addresses">Addresses</a>
-            </li>
-            <li t-if="page_name in ['my_details', 'address_form']" class="breadcrumb-item">Details</li>
+            <li t-if="page_name == 'my_details'" class="breadcrumb-item">Details</li>
         </ol>
     </template>
 
@@ -212,7 +208,7 @@
                 t-nocache-_item_class="_item_class"
                 t-nocache-_link_class="_link_class"
                 groups="base.group_public" t-attf-class="#{_item_class} o_no_autohide_item">
-                <a t-attf-href="/web/login" t-attf-class="#{_link_class}">Sign in<span t-if="request.session.get('profile_session')" class="text-danger fa fa-circle"/></a>
+                <a t-attf-href="/web/login" t-attf-class="#{_link_class}">Sign in<span t-if="request.session.profile_session" class="text-danger fa fa-circle"/></a>
             </li>
         </xpath>
     </template>
@@ -234,13 +230,7 @@
                     <div t-if="portal_service_category_enable" class="o_portal_category row g-2 mt-3" id="portal_service_category"/>
                     <div t-if="portal_vendor_category_enable" class="o_portal_category row g-2 mt-3" id="portal_vendor_category"/>
                     <div class="o_portal_category row g-2 mt-3" id="portal_common_category">
-                        <t t-call="portal.portal_docs_entry">
-                            <t t-set="icon" t-value="'/portal/static/src/img/portal-addresses.svg'"/>
-                            <t t-set="title">Addresses</t>
-                            <t t-set="text">Add, remove or modify your addresses</t>
-                            <t t-set="url" t-value="'/my/addresses'"/>
-                            <t t-set="config_card" t-value="True"/>
-                        </t>
+                        <t t-call="portal.portal_docs_entry" t-if="False"/>
                         <t t-call="portal.portal_docs_entry">
                             <t t-set="icon" t-value="'/portal/static/src/img/portal-connection.svg'"/>
                             <t t-set="title">Connection &amp; Security</t>
@@ -440,7 +430,7 @@
     <template id="portal_my_contact">
         <div t-attf-class="o_portal_contact_details d-flex flex-column gap-2 #{_spacingClass}">
             <div class="d-flex gap-2">
-                <img class="o_avatar rounded" t-att-src="_contactAvatar" alt="Contact"/>
+                <img class="o_avatar o_portal_contact_img rounded" t-att-src="_contactAvatar" alt="Contact"/>
                 <div>
                     <span t-attf-class="d-block lh-1 mb-1 {{ 'pt-1' if not _contactLink else '' }}" t-out="_contactName"/>
                     <a t-if="_contactLink" href="#discussion" class="d-flex align-items-center gap-2 small lh-1">Send message</a>
@@ -448,6 +438,118 @@
             </div>
             <t t-out="0"/>
         </div>
+    </template>
+
+    <template id="portal_my_details_fields">
+        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+        <div t-if="error_message" class="alert alert-danger" role="alert">
+            <div class="col-lg-12">
+                <t t-foreach="error_message" t-as="err"><t t-esc="err"/><br /></t>
+            </div>
+        </div>
+        <div t-if="not partner_can_edit_vat" class="col-12 d-none d-xl-block">
+            <small class="form-text text-muted">
+                Company name, VAT Number and country can not be changed once document(s) have been issued for your account.
+                <br/>Please contact us directly for that operation.
+            </small>
+        </div>
+        <div t-attf-class="mb-3 #{error.get('name') and 'o_has_error' or ''} col-xl-6">
+            <label class="col-form-label" for="name">Name</label>
+            <input type="text" name="name" t-attf-class="form-control #{error.get('name') and 'is-invalid' or ''}" t-att-value="name or partner.name" />
+        </div>
+        <div t-attf-class="mb-3 #{error.get('email') and 'o_has_error' or ''} col-xl-6">
+            <label class="col-form-label" for="email">Email</label>
+            <input type="email" name="email" t-attf-class="form-control #{error.get('email') and 'is-invalid' or ''}" t-att-value="email or partner.email" />
+        </div>
+
+        <div class="clearfix" />
+        <div t-attf-class="mb-1 #{error.get('company_name') and 'o_has_error' or ''} col-xl-6">
+            <label class="col-form-label label-optional" for="company_name">Company Name</label>
+            <!-- The <input> use "disabled" attribute to avoid sending an unauthorized value on form submit.
+                 The user might not have rights to change company_name but should still be able to see it.
+            -->
+            <input type="text" name="company_name" t-attf-class="form-control #{error.get('company_name') and 'is-invalid' or ''}" t-att-value="company_name or partner.commercial_company_name" t-att-disabled="None if partner_can_edit_vat else '1'" />
+            <small t-if="not partner_can_edit_vat" class="form-text text-muted d-block d-xl-none">
+                Changing company name is not allowed once document(s) have been issued for your account. Please contact us directly for this operation.
+            </small>
+        </div>
+        <div t-attf-class="mb-1 #{error.get('vat') and 'o_has_error' or ''} col-xl-6">
+            <label class="col-form-label label-optional" for="vat">VAT Number</label>
+            <!-- The <input> use "disabled" attribute to avoid sending an unauthorized value on form submit.
+                 The user might not have rights to change company_name but should still be able to see it.
+            -->
+            <input type="text" name="vat" t-attf-class="form-control #{error.get('vat') and 'is-invalid' or ''}" t-att-value="vat or partner.vat" t-att-disabled="None if partner_can_edit_vat else '1'" />
+            <small t-if="not partner_can_edit_vat" class="form-text text-muted d-block d-xl-none">Changing VAT number is not allowed once document(s) have been issued for your account. Please contact us directly for this operation.</small>
+        </div>
+        <div t-attf-class="mb-3 #{error.get('phone') and 'o_has_error' or ''} col-xl-6">
+            <label class="col-form-label" for="phone">Phone</label>
+            <input type="tel" name="phone" t-attf-class="form-control #{error.get('phone') and 'is-invalid' or ''}" t-att-value="phone or partner.phone" />
+        </div>
+
+        <div class="clearfix" />
+        <div t-attf-class="mb-3 #{error.get('street') and 'o_has_error' or ''} col-xl-6">
+            <label class="col-form-label" for="street">Street</label>
+            <input type="text" name="street" t-attf-class="form-control #{error.get('street') and 'is-invalid' or ''}" t-att-value="street or partner.street"/>
+        </div>
+        <div t-attf-class="mb-3 #{error.get('city') and 'o_has_error' or ''} col-xl-6">
+            <label class="col-form-label" for="city">City</label>
+            <input type="text" name="city" t-attf-class="form-control #{error.get('city') and 'is-invalid' or ''}" t-att-value="city or partner.city" />
+        </div>
+        <div t-attf-class="mb-3 #{error.get('street2') and 'o_has_error' or ''} col-xl-6">
+            <label class="col-form-label" for="street2">Street 2</label>
+            <input type="text" name="street2" t-attf-class="form-control #{error.get('street2') and 'is-invalid' or ''}" t-att-value="street2 or partner.street2"/>
+        </div>
+        <div t-attf-class="mb-3 #{error.get('state_id') and 'o_has_error' or ''} col-xl-6">
+            <label class="col-form-label label-optional" for="state_id">State / Province</label>
+            <select name="state_id" t-attf-class="form-select #{error.get('state_id') and 'is-invalid' or ''}">
+                <option value="">select...</option>
+                <t t-foreach="states or []" t-as="state">
+                    <option t-att-value="state.id" class="d-none" t-att-data-country_id="state.country_id.id" t-att-selected="state.id == int(state_id) if state_id else state.id == partner.state_id.id">
+                        <t t-esc="state.name" />
+                    </option>
+                </t>
+            </select>
+        </div>
+        <div t-attf-class="mb-3 #{error.get('zip') and 'o_has_error' or ''} col-xl-6">
+            <label class="col-form-label label-optional" for="zipcode">Zip / Postal Code</label>
+            <input type="text" name="zipcode" t-attf-class="form-control #{error.get('zip') and 'is-invalid' or ''}" t-att-value="zipcode or partner.zip" />
+        </div>
+        <div t-attf-class="mb-3 #{error.get('country_id') and 'o_has_error' or ''} col-xl-6">
+            <label class="col-form-label" for="country_id">Country</label>
+            <select name="country_id" t-attf-class="form-select #{error.get('country_id') and 'is-invalid' or ''}" t-att-disabled="None if partner_can_edit_vat else '1'">
+                <option value="">Country...</option>
+                <t t-foreach="countries or []" t-as="country">
+                    <option t-att-value="country.id" t-att-selected="country.id == int(country_id) if country_id else country.id == partner.country_id.id">
+                        <t t-esc="country.name" />
+                    </option>
+                </t>
+            </select>
+            <small t-if="not partner_can_edit_vat" class="form-text text-muted d-block d-xl-none">Changing the country is not allowed once document(s) have been issued for your account. Please contact us directly for this operation.</small>
+        </div>
+    </template>
+
+    <template id="portal_my_details">
+        <t t-call="portal.portal_layout">
+            <t t-set="additional_title">Contact Details</t>
+            <form action="/my/account" method="post">
+                <div class="row o_portal_details">
+                    <div class="col-lg-8">
+                        <div class="row">
+                            <t t-call="portal.portal_my_details_fields"/>
+                            <input type="hidden" name="redirect" t-att-value="redirect"/>
+                        </div>
+                        <div class="clearfix text-end mb-5">
+                            <a href="/my/" class="btn btn-light me-2">
+                                Discard
+                            </a>
+                            <button type="submit" class="btn btn-primary float-end">
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </t>
     </template>
 
     <template id="portal_my_security">
@@ -473,47 +575,31 @@
                 <form action="/my/security" method="post" class="oe_reset_password_form">
                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                     <input type="hidden" name="op" value="password"/>
-                    <div class="mb-4">
+                    <div class="mb-3">
                         <label for="current">Password:</label>
-                        <div class="input-group input-group-sm">
-                            <input type="password" t-attf-class="form-control {{ 'is-invalid' if get_error(errors, 'password.old') else '' }}"
-                                   id="current" name="old"
-                                   autocomplete="current-password" required="required"/>
-                            <button class="btn btn-secondary o_show_password rounded-end" type="button">
-                                <i class="fa fa-eye"/>
-                            </button>
-                            <div class="invalid-feedback">
-                                <t t-out="get_error(errors, 'password.old')"/>
-                            </div>
+                        <input type="password" t-attf-class="form-control form-control-sm {{ 'is-invalid' if get_error(errors, 'password.old') else '' }}"
+                               id="current" name="old"
+                               autocomplete="current-password" required="required"/>
+                        <div class="invalid-feedback">
+                            <t t-esc="get_error(errors, 'password.old')"/>
                         </div>
                     </div>
-                    <div class="mb-1 o_caps_lock_warning">
+                    <div class="mb-3">
                         <label for="new">New Password:</label>
-                        <div class="input-group input-group-sm mb-1">
-                            <input type="password"
-                                t-attf-class="form-control {{ 'is-invalid' if get_error(errors, 'password.new1') else '' }}"
-                                id="new" name="new1"
-                                autocomplete="new-password" required="required"/>
-                            <button type="button" class="btn btn-secondary o_show_password rounded-end">
-                                <i class="fa fa-eye"/>
-                            </button>
-                            <div class="invalid-feedback">
-                                <t t-out="get_error(errors, 'password.new1')"/>
-                            </div>
+                        <input type="password" t-attf-class="form-control form-control-sm {{ 'is-invalid' if get_error(errors, 'password.new1') else '' }}"
+                               id="new" name="new1"
+                               autocomplete="new-password" required="required"/>
+                        <div class="invalid-feedback">
+                            <t t-esc="get_error(errors, 'password.new1')"/>
                         </div>
                     </div>
                     <div class="mb-3">
                         <label for="new2">Verify New Password:</label>
-                        <div class="input-group input-group-sm">
-                            <input type="password" t-attf-class="form-control {{ 'is-invalid' if get_error(errors, 'password.new2') else '' }}"
-                                id="new2" name="new2"
-                                autocomplete="new-password" required="required"/>
-                            <button type="button" class="btn btn-secondary o_show_password rounded-end">
-                                <i class="fa fa-eye"/>
-                            </button>
-                            <div class="invalid-feedback">
-                                <t t-out="get_error(errors, 'password.new2')"/>
-                            </div>
+                        <input type="password" t-attf-class="form-control form-control-sm {{ 'is-invalid' if get_error(errors, 'password.new2') else '' }}"
+                               id="new2" name="new2"
+                               autocomplete="new-password" required="required"/>
+                        <div class="invalid-feedback">
+                            <t t-esc="get_error(errors, 'password.new2')"/>
                         </div>
                     </div>
                     <button type="submit" class="btn btn-light">Change Password</button>
@@ -644,17 +730,15 @@
         <ul t-if="pager['page_count'] > 1" t-attf-class="#{ classname or '' } pagination m-0 #{_classes}" t-att-style="style or None">
             <li t-attf-class="page-item #{'disabled' if pager['page']['num'] == 1 else ''}">
                 <a t-att-href=" pager['page_previous']['url'] if pager['page']['num'] != 1 else None" t-attf-class="page-link #{extraLinkClass}">
-                    <span class="oi oi-chevron-left" role="img" aria-label="Previous" title="Previous"/>
+                    <span class="fa fa-chevron-left" role="img" aria-label="Previous" title="Previous"/>
                 </a>
             </li>
             <t t-foreach="pager['pages']" t-as="page">
-                <li t-attf-class="page-item #{'active' if page['num'] == pager['page']['num'] else ''} #{'disabled' if page['num'] == '…' else ''}">
-                    <a t-att-href="page['url']" t-attf-class="page-link #{extraLinkClass} #{'px-0' if page['num'] == '…' else ''}" t-out="page['num']"/>
-                </li>
+                <li t-attf-class="page-item #{'active' if page['num'] == pager['page']['num'] else ''}"> <a t-att-href="page['url']" t-attf-class="page-link #{extraLinkClass}" t-out="page['num']"/></li>
             </t>
             <li t-attf-class="page-item #{'disabled' if pager['page']['num'] == pager['page_count'] else ''}">
                 <a t-att-href="pager['page_next']['url'] if pager['page']['num'] != pager['page_count'] else None" t-attf-class="page-link #{extraLinkClass}">
-                    <span class="oi oi-chevron-right" role="img" aria-label="Next" title="Next"/>
+                    <span class="fa fa-chevron-right" role="img" aria-label="Next" title="Next"/>
                 </a>
             </li>
         </ul>
@@ -663,7 +747,7 @@
     <template id="my_account_link" name="Link to frontend portal" inherit_id="portal.user_dropdown">
         <xpath expr="//*[@id='o_logout_divider']" position="before">
             <a href="/my/home" role="menuitem" class="dropdown-item ps-3">
-                <i class="fa fa-fw fa-id-card-o me-1 small text-primary-emphasis"/> My Account
+                <i class="fa fa-fw fa-id-card-o me-1 small text-primary text-primary-emphasis"/> My Account
             </a>
         </xpath>
     </template>
@@ -742,7 +826,7 @@
         </div>
         <div t-attf-class="{{'offcanvas-body' if isOffcanvas else 'mt-3 mw-100'}}">
             <div class="d-flex justify-content-start align-items-start gap-3 mb-4">
-                <img class="rounded object-fit-cover" t-att-src="image_data_uri(user_id.partner_id.avatar_128)" alt="Contact" width="50"/>
+                <img class="o_portal_contact_img rounded o_object_fit_cover" t-att-src="image_data_uri(user_id.partner_id.avatar_128)" alt="Contact" width="50"/>
                 <div class="d-flex flex-column justify-content-center">
                     <h5 class="mb-0" t-out="user_id.name"/>
                     <p class="mb-0 text-muted" t-out="user_id.company_name"/>

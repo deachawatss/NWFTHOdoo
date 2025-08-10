@@ -233,7 +233,7 @@ test(`error on save when breadcrumb clicked`, async () => {
     await contains(`.breadcrumb-item.o_back_button`).click();
     expect.verifySteps(["web_save"]);
     await animationFrame();
-    expect(`.o_form_error_dialog`).toHaveCount(1);
+    expect(`.o_error_dialog`).toHaveCount(1);
 });
 
 test.tags("desktop");
@@ -809,7 +809,7 @@ test("error on save when action button clicked", async () => {
     await contains(`.o-dropdown--menu .dropdown-item`).click();
     expect.verifySteps(["save"]);
     await animationFrame();
-    expect(`.o_form_error_dialog`).toHaveCount(1);
+    expect(`.o_error_dialog`).toHaveCount(1);
 });
 
 test.tags("desktop");
@@ -847,7 +847,7 @@ test("error on save when create button clicked", async () => {
     await contains(`.o_form_button_create`).click();
     expect.verifySteps(["save"]);
     await animationFrame();
-    expect(`.o_form_error_dialog`).toHaveCount(1);
+    expect(`.o_error_dialog`).toHaveCount(1);
 });
 
 test("doesn't autosave when in dialog (visibility change)", async () => {

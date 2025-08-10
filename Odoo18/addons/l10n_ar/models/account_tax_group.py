@@ -4,6 +4,7 @@ from odoo.exceptions import UserError
 
 
 class AccountTaxGroup(models.Model):
+
     _inherit = 'account.tax.group'
 
     # values from http://www.afip.gob.ar/fe/documentos/otros_Tributos.xlsx

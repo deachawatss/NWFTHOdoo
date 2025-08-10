@@ -6,20 +6,24 @@ from collections import defaultdict
 from functools import reduce
 
 from odoo import api, models
-from odoo.fields import Domain
-from odoo.tools.intervals import Intervals
+
+from odoo.osv import expression
+from odoo.addons.resource.models.utils import Intervals
 
 
-class ResPartner(models.Model):
-    _inherit = 'res.partner'
+class Partner(models.Model):
+    _inherit = ['res.partner']
 
     def _get_employees_from_attendees(self, everybody=False):
-        domain = (
-            Domain('company_id', 'in', self.env.companies.ids)
-            & Domain('work_contact_id', '!=', False)
-        )
+        domain = [
+            ('company_id', 'in', self.env.companies.ids),
+            ('work_contact_id', '!=', False),
+        ]
         if not everybody:
-            domain &= Domain('work_contact_id', 'in', self.ids)
+            domain = expression.AND([
+                domain,
+                [('work_contact_id', 'in', self.ids)]
+            ])
         return dict(self.env['hr.employee'].sudo()._read_group(domain, groupby=['work_contact_id'], aggregates=['id:recordset']))
 
     def _get_schedule(self, start_period, stop_period, everybody=False, merge=True):
@@ -47,8 +51,8 @@ class ResPartner(models.Model):
         employees = sum(employees_by_partner.values(), start=self.env['hr.employee'])
         calendar_periods_by_employee = employees._get_calendar_periods(start_period, stop_period)
         for employee, calendar_periods in calendar_periods_by_employee.items():
-            for _start, _stop, calendar in calendar_periods:
-                calendar = calendar or self.env.company.resource_calendar_id
+            for (start, stop, calendar) in calendar_periods:
+                calendar = calendar or self.env.company.resource_calendar_id  # No calendar if fully flexible
                 resources_by_calendar[calendar] += employee.resource_id
 
         # Compute all work intervals per calendar

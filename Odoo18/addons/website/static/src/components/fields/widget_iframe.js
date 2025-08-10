@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { registry } from '@web/core/registry';
 import { useBus } from "@web/core/utils/hooks";
 import { Component, useState } from "@odoo/owl";

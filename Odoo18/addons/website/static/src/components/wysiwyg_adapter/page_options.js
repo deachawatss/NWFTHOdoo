@@ -1,3 +1,4 @@
+/** @odoo-module **/
 export const pageOptionsCallbacks = {
     header_overlay: function (value) {
         this.document.getElementById('wrapwrap').classList.toggle('o_header_overlay', value);

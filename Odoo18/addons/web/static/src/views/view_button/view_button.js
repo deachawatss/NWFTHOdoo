@@ -110,7 +110,7 @@ export class ViewButton extends Component {
     /**
      * @param {MouseEvent} ev
      */
-    onClick(ev, newWindow) {
+    onClick(ev) {
         if (this.props.tag === "a") {
             ev.preventDefault();
         }
@@ -131,7 +131,6 @@ export class ViewButton extends Component {
                     "resIds"
                 ),
             beforeExecute: () => this.dropdownControl.close(),
-            newWindow,
         });
     }
 

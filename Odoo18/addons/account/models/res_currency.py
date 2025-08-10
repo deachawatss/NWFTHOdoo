@@ -122,7 +122,7 @@ class ResCurrency(models.Model):
 
             last_date_to = date_to
 
-        self.env.cr.execute(SQL(
+        self._cr.execute(SQL(
             """
                 -- Tests may call this function multiple times within the same transaction; we then need to delete an regenerate the currency table
                 DROP TABLE IF EXISTS account_currency_table;

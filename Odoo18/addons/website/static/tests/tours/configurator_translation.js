@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { localization } from "@web/core/l10n/localization";
 import { translatedTerms } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
@@ -58,7 +60,6 @@ registry.category("web_tour.tours").add('configurator_translation', {
         trigger: '.card:contains(Parseltongue_privacy)',
         run: "click",
     }, {
-        id: "build_website",
         content: "Click on build my website",
         trigger: 'button.btn-primary',
         run: "click",
@@ -67,7 +68,7 @@ registry.category("web_tour.tours").add('configurator_translation', {
         trigger: '.o_website_loader_container',
     }, {
         content: "Wait until the configurator is finished",
-        trigger: ":iframe [data-view-xmlid='website.homepage']",
+        trigger: ".o_website_preview[data-view-xmlid='website.homepage']",
         timeout: 30000,
     }, {
         content: "Check if the current interface language is active and monkey patch terms",
@@ -86,10 +87,10 @@ registry.category("web_tour.tours").add('configurator_translation', {
         // Parseltongue. (The editor should be in the website's default language,
         // which should be parseltongue in this test.)
         content: "exit edit mode",
-        trigger: '.o-snippets-top-actions button.btn-primary:contains("Save_Parseltongue")',
+        trigger: '.o_we_website_top_actions button.btn-primary:contains("Save_Parseltongue")',
         run: "click",
     }, {
          content: "wait for editor to be closed",
-         trigger: ':iframe #wrapwrap:not(.odoo-editor-editable)',
+         trigger: ':iframe body:not(.editor_enable)',
     }
 ]});

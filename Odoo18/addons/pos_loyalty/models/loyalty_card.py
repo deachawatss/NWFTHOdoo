@@ -3,23 +3,19 @@
 
 from odoo import fields, models, api
 
-
 class LoyaltyCard(models.Model):
     _name = 'loyalty.card'
     _inherit = ['loyalty.card', 'pos.load.mixin']
 
     source_pos_order_id = fields.Many2one('pos.order', "PoS Order Reference",
         help="PoS order where this coupon was generated.")
-    source_pos_order_partner_id = fields.Many2one(
-        'res.partner', "PoS Order Customer",
-        related="source_pos_order_id.partner_id")
 
     @api.model
-    def _load_pos_data_domain(self, data, config):
-        return False
+    def _load_pos_data_domain(self, data):
+        return [('program_id', 'in', [program["id"] for program in data["loyalty.program"]['data']])]
 
     @api.model
-    def _load_pos_data_fields(self, config):
+    def _load_pos_data_fields(self, config_id):
         return ['partner_id', 'code', 'points', 'program_id', 'expiration_date', 'write_date']
 
     def _has_source_order(self):
@@ -31,8 +27,8 @@ class LoyaltyCard(models.Model):
             return self.env.ref('pos_loyalty.mail_coupon_template', False)
         return super()._get_default_template()
 
-    def _mail_get_partner_fields(self, introspect_fields=False):
-        return super()._mail_get_partner_fields(introspect_fields=introspect_fields) + ['source_pos_order_partner_id']
+    def _get_mail_partner(self):
+        return super()._get_mail_partner() or self.sudo().source_pos_order_id.partner_id
 
     def _get_signature(self):
         return self.source_pos_order_id.user_id.signature or super()._get_signature()

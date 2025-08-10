@@ -1,10 +1,9 @@
-import { Component } from "@odoo/owl";
+import { Component, useState } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { useService } from "@web/core/utils/hooks";
+import { FollowerSubtypeDialog } from "./follower_subtype_dialog";
 import { useVisible } from "@mail/utils/common/hooks";
 import { DropdownItem } from "@web/core/dropdown/dropdown_item";
-import { Follower } from "@mail/core/web/follower";
-import { FollowerSubtypeDialog } from "@mail/core/web/follower_subtype_dialog";
 
 /**
  * @typedef {Object} Props
@@ -16,13 +15,13 @@ import { FollowerSubtypeDialog } from "@mail/core/web/follower_subtype_dialog";
 
 export class FollowerList extends Component {
     static template = "mail.FollowerList";
-    static components = { DropdownItem, Follower };
+    static components = { DropdownItem };
     static props = ["onAddFollowers?", "onFollowerChanged?", "thread", "dropdown"];
 
     setup() {
         super.setup();
         this.action = useService("action");
-        this.store = useService("mail.store");
+        this.store = useState(useService("mail.store"));
         useVisible("load-more", (isVisible) => {
             if (isVisible) {
                 this.props.thread.loadMoreFollowers();
@@ -33,16 +32,15 @@ export class FollowerList extends Component {
     onClickAddFollowers() {
         const action = {
             type: "ir.actions.act_window",
-            res_model: "mail.followers.edit",
+            res_model: "mail.wizard.invite",
             view_mode: "form",
             views: [[false, "form"]],
             name: _t("Add followers to this document"),
             target: "new",
             context: {
                 default_res_model: this.props.thread.model,
-                default_res_ids: [this.props.thread.id],
+                default_res_id: this.props.thread.id,
                 dialog_size: "medium",
-                form_view_ref: "mail.mail_followers_list_edit_form",
             },
         };
         this.action.doAction(action, {
@@ -52,22 +50,34 @@ export class FollowerList extends Component {
         });
     }
 
-    async onClickFollow() {
-        this.props.thread.follow();
-        this.props.onFollowerChanged?.();
+    /**
+     * @param {MouseEvent} ev
+     * @param {import("models").Follower} follower
+     */
+    onClickDetails(ev, follower) {
+        this.store.openDocument({ id: follower.partner.id, model: "res.partner" });
+        this.props.dropdown.close();
     }
 
-    async onClickUnfollow() {
-        if (this.props.thread.selfFollower) {
-            await this.props.thread.selfFollower.remove();
-            this.props.onFollowerChanged?.();
-        }
-    }
-
-    async onClickEdit() {
+    /**
+     * @param {MouseEvent} ev
+     * @param {import("models").Follower} follower
+     */
+    async onClickEdit(ev, follower) {
         this.env.services.dialog.add(FollowerSubtypeDialog, {
-            follower: this.props.thread.selfFollower,
-            onFollowerChanged: () => this.props.onFollowerChanged?.(),
+            follower,
+            onFollowerChanged: () => this.props.onFollowerChanged?.(this.props.thread),
         });
+        this.props.dropdown.close();
+    }
+
+    /**
+     * @param {MouseEvent} ev
+     * @param {import("models").Follower} follower
+     */
+    async onClickRemove(ev, follower) {
+        const thread = this.props.thread;
+        await follower.remove();
+        this.props.onFollowerChanged?.(thread);
     }
 }

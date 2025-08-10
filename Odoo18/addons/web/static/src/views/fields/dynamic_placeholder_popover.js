@@ -53,9 +53,6 @@ export class DynamicPlaceholderPopover extends Component {
         if (!this.isTemplateEditor && !this.allowedQwebExpressions.includes(fullPath)) {
             return false;
         }
-        if (fieldDef.is_property && fieldDef.type === "separator") {
-            return false;
-        }
         return !["one2many", "boolean", "many2many"].includes(fieldDef.type) && fieldDef.searchable;
     }
     closeFieldSelector(isPathSelected = false) {
@@ -68,13 +65,12 @@ export class DynamicPlaceholderPopover extends Component {
     setPath(path, fieldInfo) {
         this.state.path = path;
         this.state.fieldName = fieldInfo?.string;
-        this.fieldType = fieldInfo?.type
     }
     setDefaultValue(value) {
         this.state.defaultValue = value;
     }
     validate() {
-        this.props.validate(this.state.path, this.state.defaultValue, this.fieldType);
+        this.props.validate(this.state.path, this.state.defaultValue);
         this.props.close();
     }
 

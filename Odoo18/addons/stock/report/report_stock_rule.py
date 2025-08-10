@@ -5,7 +5,7 @@ from odoo import api, models, _
 from odoo.exceptions import UserError
 
 
-class ReportStockReport_Stock_Rule(models.AbstractModel):
+class ReportStockRule(models.AbstractModel):
     _name = 'report.stock.report_stock_rule'
     _description = 'Stock rule report'
 
@@ -54,7 +54,9 @@ class ReportStockReport_Stock_Rule(models.AbstractModel):
                 color_index = color_index + 1
                 for rule in rules_to_display:
                     rule_loc = [r for r in rules_and_loc if r['rule'] == rule][0]
-                    res = [[] for _loc in locations_names]
+                    res = []
+                    for x in range(len(locations_names)):
+                        res.append([])
                     idx = locations_names.index(rule_loc['destination'].display_name)
                     tpl = (rule, 'destination', route_color, )
                     res[idx] = tpl

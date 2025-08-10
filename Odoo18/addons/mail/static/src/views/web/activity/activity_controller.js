@@ -28,7 +28,7 @@ export class ActivityController extends Component {
         this.dialog = useService("dialog");
         this.action = useService("action");
         this.store = useService("mail.store");
-        this.ui = useService("ui");
+        this.ui = useState(useService("ui"));
         usePager(() => {
             const { count, hasLimitedCount, limit, offset } = this.model.root;
             return {
@@ -38,10 +38,7 @@ export class ActivityController extends Component {
                 onUpdate: async (params) => {
                     // Ensure that only (active) records with at least one activity, "done" (archived) or not, are fetched.
                     // We don't use active_test=false in the context because otherwise we would also get archived records.
-                    params.domain = [
-                        ...(this.model.originalDomain || []),
-                        ["activity_ids.active", "in", [true, false]],
-                    ];
+                    params.domain = [...(this.model.originalDomain || []), ["activity_ids.active", "in", [true, false]]];
                     await Promise.all([
                         this.model.root.load(params),
                         this.model.fetchActivityData(params),
@@ -69,8 +66,8 @@ export class ActivityController extends Component {
         return { comparision, context, domain, groupBy, orderBy };
     }
 
-    get getSelectCreateDialogProps() {
-        return {
+    scheduleActivity() {
+        this.dialog.add(SelectCreateDialog, {
             resModel: this.props.resModel,
             searchViewId: this.env.searchModel.searchViewId,
             domain: this.model.originalDomain,
@@ -81,12 +78,8 @@ export class ActivityController extends Component {
             onSelected: async (resIds) => {
                 await this.store.scheduleActivity(this.props.resModel, resIds);
             },
-        };
-    }
-
-    scheduleActivity() {
-        this.dialog.add(SelectCreateDialog, this.getSelectCreateDialogProps, {
-            onClose: () => this.model.load(this.getSearchProps()),
+        }, {
+            onClose: () => this.model.load(this.getSearchProps())
         });
     }
 
@@ -104,7 +97,6 @@ export class ActivityController extends Component {
                     default_res_id: resId,
                     default_res_model: this.props.resModel,
                     default_activity_type_id: activityTypeId,
-                    dialog_size: "large",
                 },
             },
             {
@@ -126,9 +118,9 @@ export class ActivityController extends Component {
         this.model.orm.call(this.props.resModel, "activity_send_mail", [resIds, templateID], {});
     }
 
-    async openRecord(record, { newWindow } = {}) {
+    async openRecord(record, mode) {
         const activeIds = this.model.root.records.map((datapoint) => datapoint.resId);
-        this.props.selectRecord(record.resId, { activeIds, newWindow });
+        this.props.selectRecord(record.resId, { activeIds, mode });
     }
 
     get rendererProps() {

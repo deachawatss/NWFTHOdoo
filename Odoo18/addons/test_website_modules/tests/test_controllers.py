@@ -55,7 +55,7 @@ class TestWebEditorController(HttpCaseWithUserDemo):
 
         # Base user cannot modify page
         self.user_demo.write({
-            'group_ids': [
+            'groups_id': [
                 Command.clear(),
                 Command.link(self.env.ref('base.group_user').id),
             ]
@@ -66,7 +66,7 @@ class TestWebEditorController(HttpCaseWithUserDemo):
 
         # Restricted editor with event right cannot modify page
         self.user_demo.write({
-            'group_ids': [
+            'groups_id': [
                 Command.clear(),
                 Command.link(self.env.ref('base.group_user').id),
                 Command.link(self.env.ref('website.group_website_restricted_editor').id),
@@ -79,7 +79,7 @@ class TestWebEditorController(HttpCaseWithUserDemo):
 
         # Website designer can modify page
         self.user_demo.write({
-            'group_ids': [
+            'groups_id': [
                 Command.clear(),
                 Command.link(self.env.ref('base.group_user').id),
                 Command.link(self.env.ref('website.group_website_designer').id),
@@ -87,7 +87,12 @@ class TestWebEditorController(HttpCaseWithUserDemo):
         })
         modify('demo', 'page-demo.gif')
 
-        event = self.env['event.event'].create({'name': 'test event'})
+        # Portal user cannot modify page
+        with mute_logger('odoo.http'):
+            json = modify('portal', 'page-portalfail.gif', True)
+        self.assertEqual('odoo.exceptions.AccessError', json['error']['data']['name'], "Expect access error")
+
+        event = self.env['event.event'].search([], limit=1)
         attachment.res_model = 'event.event'
         attachment.res_id = event.id
 
@@ -96,7 +101,7 @@ class TestWebEditorController(HttpCaseWithUserDemo):
 
         # Base user cannot modify event
         self.user_demo.write({
-            'group_ids': [
+            'groups_id': [
                 Command.clear(),
                 Command.link(self.env.ref('base.group_user').id),
             ]
@@ -107,7 +112,7 @@ class TestWebEditorController(HttpCaseWithUserDemo):
 
         # Restricted editor with sales rights cannot modify event
         self.user_demo.write({
-            'group_ids': [
+            'groups_id': [
                 Command.clear(),
                 Command.link(self.env.ref('base.group_user').id),
                 Command.link(self.env.ref('website.group_website_restricted_editor').id),
@@ -120,7 +125,7 @@ class TestWebEditorController(HttpCaseWithUserDemo):
 
         # Restricted editor with event rights can modify event
         self.user_demo.write({
-            'group_ids': [
+            'groups_id': [
                 Command.clear(),
                 Command.link(self.env.ref('base.group_user').id),
                 Command.link(self.env.ref('website.group_website_restricted_editor').id),
@@ -131,7 +136,7 @@ class TestWebEditorController(HttpCaseWithUserDemo):
 
         # Website designer cannot modify event
         self.user_demo.write({
-            'group_ids': [
+            'groups_id': [
                 Command.clear(),
                 Command.link(self.env.ref('base.group_user').id),
                 Command.link(self.env.ref('website.group_website_designer').id),
@@ -140,3 +145,8 @@ class TestWebEditorController(HttpCaseWithUserDemo):
         with mute_logger('odoo.http'):
             json = modify('demo', 'event-demofail3.gif', True)
         self.assertFalse(json.get('result'), "Expect no URL when called with insufficient rights")
+
+        # Portal user cannot modify event
+        with mute_logger('odoo.http'):
+            json = modify('portal', 'event-portalfail.gif', True)
+        self.assertEqual('odoo.exceptions.AccessError', json['error']['data']['name'], "Expect access error")

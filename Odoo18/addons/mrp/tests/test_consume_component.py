@@ -34,18 +34,21 @@ class TestConsumeComponentCommon(common.TransactionCase):
         cls.produced_lot = cls.env['product.product'].create({
             'name': 'Produced Lot',
             'is_storable': True,
+            'categ_id': cls.env.ref('product.product_category_all').id,
             'tracking': 'lot',
             'route_ids': [(4, cls.manufacture_route.id, 0)],
         })
         cls.produced_serial = cls.env['product.product'].create({
             'name': 'Produced Serial',
             'is_storable': True,
+            'categ_id': cls.env.ref('product.product_category_all').id,
             'tracking': 'serial',
             'route_ids': [(4, cls.manufacture_route.id, 0)],
         })
         cls.produced_none = cls.env['product.product'].create({
             'name': 'Produced None',
             'is_storable': True,
+            'categ_id': cls.env.ref('product.product_category_all').id,
             'tracking': 'none',
             'route_ids': [(4, cls.manufacture_route.id, 0)],
         })
@@ -53,16 +56,19 @@ class TestConsumeComponentCommon(common.TransactionCase):
         cls.raw_lot = cls.env['product.product'].create({
             'name': 'Raw Lot',
             'is_storable': True,
+            'categ_id': cls.env.ref('product.product_category_all').id,
             'tracking': 'lot',
         })
         cls.raw_serial = cls.env['product.product'].create({
             'name': 'Raw Serial',
             'is_storable': True,
+            'categ_id': cls.env.ref('product.product_category_all').id,
             'tracking': 'serial',
         })
         cls.raw_none = cls.env['product.product'].create({
             'name': 'Raw None',
             'is_storable': True,
+            'categ_id': cls.env.ref('product.product_category_all').id,
             'tracking': 'none',
         })
 
@@ -171,6 +177,7 @@ class TestConsumeComponentCommon(common.TransactionCase):
         for _ in range(count):
             vals.append(copy.deepcopy(template))
         mos = cls.env['mrp.production'].create(vals)
+        mos.move_raw_ids.mapped('manual_consumption')
         return mos
 
     def executeConsumptionTriggers(self, mrp_productions):
@@ -443,6 +450,7 @@ class TestConsumeComponent(TestConsumeComponentCommon):
             {'should_consume_qty': 1.0, 'quantity': 1.0, 'picked': True},
         ])
         move = self.env['stock.move'].create({
+            'name': mo.name,
             'product_id': compo2.id,
             'raw_material_production_id': mo.id,
             'location_id': self.ref('stock.stock_location_stock'),

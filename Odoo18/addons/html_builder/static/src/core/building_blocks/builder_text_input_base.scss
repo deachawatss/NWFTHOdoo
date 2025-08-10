@@ -1,6 +1,0 @@
-.o-hb-input-base {
-    .popover & {
-        --o-hb-field-input-bg: var(--o-hb-field-input-bg-popover, #{$o-we-fg-lighter});
-    }
-    @extend %o-hb-input-base;
-}

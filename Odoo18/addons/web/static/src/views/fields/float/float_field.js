@@ -16,16 +16,15 @@ export class FloatField extends Component {
         inputType: { type: String, optional: true },
         step: { type: Number, optional: true },
         digits: { type: Array, optional: true },
+        placeholder: { type: String, optional: true },
         humanReadable: { type: Boolean, optional: true },
         decimals: { type: Number, optional: true },
-        trailingZeros: { type: Boolean, optional: true },
     };
     static defaultProps = {
         formatNumber: true,
         inputType: "text",
         humanReadable: false,
         decimals: 0,
-        trailingZeros: true,
     };
 
     setup() {
@@ -62,7 +61,6 @@ export class FloatField extends Component {
         const options = {
             digits: this.props.digits,
             field: this.props.record.fields[this.props.name],
-            trailingZeros: this.props.trailingZeros,
         };
         if (this.props.humanReadable && !this.state.hasFocus) {
             return formatFloat(this.value, {
@@ -115,12 +113,6 @@ export const floatField = {
             help: _t("Use a human readable format (e.g.: 500G instead of 500,000,000,000)."),
         },
         {
-            label: _t("Hide trailing zeros"),
-            name: "hide_trailing_zeros",
-            type: "boolean",
-            help: _t("Hide zeros to the right of the last non-zero digit, e.g. 1.20 becomes 1.2"),
-        },
-        {
             label: _t("Decimals"),
             name: "decimals",
             type: "number",
@@ -128,7 +120,7 @@ export const floatField = {
             help: _t("Use it with the 'User-friendly format' option to customize the formatting."),
         },
     ],
-    supportedTypes: ["float", "monetary"],
+    supportedTypes: ["float"],
     isEmpty: () => false,
     extractProps: ({ attrs, options }) => {
         // Sadly, digits param was available as an option and an attr.
@@ -149,8 +141,8 @@ export const floatField = {
             humanReadable: !!options.human_readable,
             step: options.step,
             digits,
+            placeholder: attrs.placeholder,
             decimals: options.decimals || 0,
-            trailingZeros: !options.hide_trailing_zeros,
         };
     },
 };

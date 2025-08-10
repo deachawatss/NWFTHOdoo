@@ -5,7 +5,7 @@ from odoo import api, fields, models, _
 
 class ApplicantSendMail(models.TransientModel):
     _name = 'applicant.send.mail'
-    _inherit = ['mail.composer.mixin']
+    _inherit = 'mail.composer.mixin'
     _description = 'Send mails to applicants'
 
     applicant_ids = fields.Many2many('hr.applicant', string='Applications', required=True)
@@ -44,6 +44,7 @@ class ApplicantSendMail(models.TransientModel):
                     'name': applicant.partner_name,
                     'email': applicant.email_from,
                     'phone': applicant.partner_phone,
+                    'mobile': applicant.partner_phone,
                 })
 
             attachment_ids = []

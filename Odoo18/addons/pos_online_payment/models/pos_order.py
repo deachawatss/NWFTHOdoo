@@ -36,7 +36,7 @@ class PosOrder(models.Model):
             database, because it was probably added for the online payment flow.
         """
         self.ensure_one()
-        is_paid = self.state in ('paid', 'done')
+        is_paid = self.state in ('paid', 'done', 'invoiced')
         if is_paid:
             return {
                 'id': self.id,

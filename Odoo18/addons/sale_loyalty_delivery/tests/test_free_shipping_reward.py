@@ -78,6 +78,7 @@ class TestSaleCouponProgramRules(TestSaleCouponCommon):
             (0, False, {
                 'product_id': self.product_B.id,
                 'name': 'Product B',
+                'product_uom': self.uom_unit.id,
                 'product_uom_qty': 1.0,
             })
         ]})
@@ -103,6 +104,7 @@ class TestSaleCouponProgramRules(TestSaleCouponCommon):
             (0, False, {
                 'product_id': self.product_B.id,
                 'name': 'Product 1B',
+                'product_uom': self.uom_unit.id,
                 'product_uom_qty': 1.0,
                 'price_unit': 81.74,
             })
@@ -116,6 +118,7 @@ class TestSaleCouponProgramRules(TestSaleCouponCommon):
             (0, False, {
                 'product_id': self.product_A.id,
                 'name': 'Product 1',
+                'product_uom': self.uom_unit.id,
                 'product_uom_qty': 1.0,
                 'price_unit': 0.30,
             })

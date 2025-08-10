@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
 import { ReorderDialog } from "@website_sale/js/website_sale_reorder";
 import { patch } from "@web/core/utils/patch";
@@ -40,15 +42,15 @@ patch(ReorderDialog.prototype, {
         if (!product.max_quantity_available) {
             product.add_to_cart_allowed = false;
         }
-        if (product.max_quantity_available < product.quantity) {
+        if (product.max_quantity_available < product.qty) {
             product.qty_warning = _t(
                 "You ask for %(quantity1)s Units but only %(quantity2)s are available.",
                 {
-                    quantity1: product.quantity.toFixed(1),
+                    quantity1: product.qty.toFixed(1),
                     quantity2: product.max_quantity_available.toFixed(1),
                 }
             );
-            product.quantity = product.max_quantity_available;
+            product.qty = product.max_quantity_available;
             product.stock_warning = true;
         } else if (product.combinationInfo.cart_qty) {
             product.qty_warning = _t(

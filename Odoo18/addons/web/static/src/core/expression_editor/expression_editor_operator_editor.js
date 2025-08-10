@@ -6,13 +6,15 @@ const EXPRESSION_VALID_OPERATORS = [
     ">",
     ">=",
     "between",
-    "in range",
+    "within",
     "in",
     "not in",
     "=",
     "!=",
     "set",
-    "not set",
+    "not_set",
+    "is",
+    "is_not",
 ];
 
 export function getExpressionDisplayedOperators(fieldDef) {

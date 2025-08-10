@@ -1,13 +1,10 @@
+/** @odoo-module */
+
 import { ListRenderer } from "@web/views/list/list_renderer";
 import { getRawValue } from "@web/views/kanban/kanban_record";
-import { ProjectTaskGroupConfigMenu } from "../project_task_kanban/project_task_group_config_menu";
+import { _t } from "@web/core/l10n/translation";
 
 export class ProjectTaskListRenderer extends ListRenderer {
-    static components = {
-        ...ListRenderer.components,
-        GroupConfigMenu: ProjectTaskGroupConfigMenu,
-    };
-
     /**
      * This method prevents from computing the selection once for each cell when
      * rendering the list. Indeed, `selection` is a getter which browses all
@@ -36,5 +33,15 @@ export class ProjectTaskListRenderer extends ListRenderer {
             readonly = !this.areSelectedTasksInSameProject();
         }
         return readonly || super.isCellReadonly(column, record);
+    }
+
+    getGroupDisplayName(group) {
+        if (group.groupByField.name === "project_id" && !group.value) {
+            return _t("🔒 Private");
+        } else if (group.groupByField.name === "user_ids" && !group.value) {
+            return _t("👤 Unassigned");
+        } else {
+            return super.getGroupDisplayName(group);
+        }
     }
 }

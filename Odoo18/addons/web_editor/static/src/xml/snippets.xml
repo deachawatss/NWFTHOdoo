@@ -95,7 +95,7 @@
         <div class="o_colorpicker_sections py-3 px-2" data-color-tab="custom-colors">
             <div class="o_colorpicker_section_container"/>
             <t t-if="!this.props.excluded.includes('custom')">
-                <ColorPicker
+                <Colorpicker
                     document="this.props.document"
                     defaultColor="this.state.customDefaultColor"
                     noTransparency="!!this.props.noTransparency"
@@ -108,7 +108,7 @@
         <div class="o_colorpicker_sections py-3 px-2" data-color-tab="gradients">
             <div class="o_colorpicker_section_container"/>
             <t t-if="state.showGradientPicker">
-                <ColorPicker
+                <Colorpicker
                     document="this.props.document"
                     stopClickPropagation="true"
                     selectedColor="this.state.gradientSelectedColor"
@@ -199,7 +199,7 @@
                                             <span class="oe_snippet_thumbnail_title"><t t-out="snippet.displayName"/></span>
                                         </t>
                                         <t t-if="snippet.installable">
-                                            <button class="btn btn-primary o_install_btn rounded-0 shadow" t-on-click="_onInstallBtnClick">Install</button>
+                                            <button class="btn btn-primary o_install_btn w-100" t-on-click="_onInstallBtnClick">Install</button>
                                         </t>
                                     </div>
                                     <t t-if="snippet.isCustom and !snippet.renaming">

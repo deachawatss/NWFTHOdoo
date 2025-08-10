@@ -1,6 +1,6 @@
 import { queryOne } from "@odoo/hoot-dom";
-import * as Numpad from "@point_of_sale/../tests/generic_helpers/numpad_util";
-import { negate } from "@point_of_sale/../tests/generic_helpers/utils";
+import * as NumberPopup from "@point_of_sale/../tests/tours/utils/number_popup_util";
+import * as Dialog from "@point_of_sale/../tests/tours/utils/dialog_util";
 
 export function table({ name, withClass = "", withoutClass, run = () => {}, numOfSeats }) {
     let trigger = `.floor-map .table${withClass}`;
@@ -53,28 +53,17 @@ export function clickSaveEditButton() {
             trigger: '.edit-buttons button:contains("Save")',
             run: "click",
         },
-        {
-            trigger: negate(".edit-buttons button:contains('Save')"),
-        },
-    ];
-}
-export function clickTableSelectorButton() {
-    return [
-        {
-            content: "click on table selector button",
-            trigger: ".floor-screen .right-buttons button.btn-secondary",
-            run: "click",
-        },
     ];
 }
 export function goTo(name) {
     return [
-        ...clickTableSelectorButton(),
-        ...Numpad.enterValue(name),
         {
-            trigger: ".floor-screen .right-buttons .jump-button",
+            content: `click on Go To button`,
+            trigger: `.navbar-menu .btn:contains("Table")`,
             run: "click",
         },
+        ...NumberPopup.enterValue(name),
+        Dialog.confirm(),
     ];
 }
 export function selectedFloorIs(name) {
@@ -86,13 +75,6 @@ export function selectedFloorIs(name) {
     ];
 }
 export function orderCountSyncedInTableIs(table, count) {
-    if (count === 0 || count === "0") {
-        return [
-            {
-                trigger: `.floor-map .table:has(.label:contains("${table}")):not(:has(.order-count))`,
-            },
-        ];
-    }
     return [
         {
             trigger: `.floor-map .table:has(.label:contains("${table}")):has(.order-count:contains("${count}"))`,
@@ -131,46 +113,11 @@ export function linkTables(child, parent) {
         },
     };
 }
-export function unlinkTables(child, parent) {
-    return {
-        content: `Drag table ${child} away from table ${parent} to unlink them`,
-        trigger: table({ name: child }).trigger,
-        async run(helpers) {
-            await helpers.drag_and_drop(`div.floor-map`, {
-                position: {
-                    bottom: 0,
-                },
-                relative: true,
-            });
-        },
-    };
-}
 export function isChildTable(child) {
     return {
         content: `Verify that table ${child} is a child table`,
         trigger: table({ name: child }).trigger + ` .info.opacity-25`,
     };
-}
-export function clickNewOrder() {
-    return { trigger: ".new-order", run: "click" };
-}
-
-export function addFloor(floorName) {
-    return [
-        {
-            trigger: ".floor-selector button i[aria-label='Add Floor']",
-            run: "click",
-        },
-        {
-            trigger: ".modal-body textarea",
-            run: `edit ${floorName}`,
-        },
-        {
-            trigger: ".modal-footer button.btn-primary",
-            run: "click",
-        },
-        ...selectedFloorIs(floorName),
-    ];
 }
 
 import { TourHelpers } from "@web_tour/tour_service/tour_helpers";

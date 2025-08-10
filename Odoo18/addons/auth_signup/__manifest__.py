@@ -31,6 +31,5 @@ Allow users to sign up and reset their password
             'auth_signup/static/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

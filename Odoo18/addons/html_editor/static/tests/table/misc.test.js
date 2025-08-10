@@ -1,10 +1,9 @@
 import { expect, test } from "@odoo/hoot";
 import { setupEditor } from "../_helpers/editor";
-import { click, queryAll, queryFirst } from "@odoo/hoot-dom";
+import { click, queryAll, queryFirst, waitFor } from "@odoo/hoot-dom";
 import { animationFrame, tick } from "@odoo/hoot-mock";
 import { setSelection } from "../_helpers/selection";
 import { execCommand } from "../_helpers/userCommands";
-import { expandToolbar } from "../_helpers/toolbar";
 import { expectElementCount } from "../_helpers/ui_expectations";
 
 function insertTable(editor, cols, rows) {
@@ -30,7 +29,7 @@ test("can color cells", async () => {
             </tbody>
         </table>`);
 
-    await expandToolbar();
+    await waitFor(".o-we-toolbar");
     expect(".o_font_color_selector").toHaveCount(0);
     await click(".o-select-color-background");
     await animationFrame();

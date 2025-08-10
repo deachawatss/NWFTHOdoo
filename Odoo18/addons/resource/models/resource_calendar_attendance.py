@@ -6,7 +6,7 @@ from odoo import api, fields, models, _
 
 
 class ResourceCalendarAttendance(models.Model):
-    _name = 'resource.calendar.attendance'
+    _name = "resource.calendar.attendance"
     _description = "Work Detail"
     _order = 'sequence, week_type, dayofweek, hour_from'
 
@@ -31,7 +31,7 @@ class ResourceCalendarAttendance(models.Model):
     # value based on the day_period but can be manually overridden.
     duration_hours = fields.Float(compute='_compute_duration_hours', string='Duration (hours)')
     duration_days = fields.Float(compute='_compute_duration_days', string='Duration (days)', store=True, readonly=False)
-    calendar_id = fields.Many2one("resource.calendar", string="Resource's Calendar", required=True, index=True, ondelete='cascade')
+    calendar_id = fields.Many2one("resource.calendar", string="Resource's Calendar", required=True, ondelete='cascade')
     day_period = fields.Selection([
         ('morning', 'Morning'),
         ('lunch', 'Break'),
@@ -105,6 +105,3 @@ class ResourceCalendarAttendance(models.Model):
             'display_type': self.display_type,
             'sequence': self.sequence,
         }
-
-    def _is_work_period(self):
-        return self.day_period != 'lunch'

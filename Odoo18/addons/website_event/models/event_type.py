@@ -4,7 +4,8 @@ from odoo import api, fields, models
 
 
 class EventType(models.Model):
-    _inherit = 'event.type'
+    _name = 'event.type'
+    _inherit = ['event.type']
 
     website_menu = fields.Boolean('Display a dedicated menu on Website')
     community_menu = fields.Boolean(

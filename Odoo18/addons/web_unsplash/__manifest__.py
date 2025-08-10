@@ -36,6 +36,5 @@
             ('remove', 'web_unsplash/static/tests/legacy/**/*'),
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

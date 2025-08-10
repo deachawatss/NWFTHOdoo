@@ -61,8 +61,6 @@ export class AddSnippetDialog extends Component {
         this.state = useState({
             groupSelected: [],
             search: "",
-            hasNoSearchResults: false,
-            isIframeContentLoaded: false,
         });
 
         onMounted(async () => {
@@ -92,7 +90,7 @@ export class AddSnippetDialog extends Component {
     }
 
     get iframeDocument() {
-        return this.iframeRef.el.contentDocument;
+        return this.iframeRef.el?.contentDocument;
     }
     /**
      * Gets snippet groups.
@@ -140,7 +138,6 @@ export class AddSnippetDialog extends Component {
                     || strMatches(snippet.displayName)
                     || strMatches(snippet.data.oeKeywords || '');
             });
-            this.state.hasNoSearchResults = !Boolean(snippetsToDisplay.length);
             // Make sure to show the snippets that "better" match first
             if (selectorSearch) {
                 snippetsToDisplay.sort((snippetA, snippetB) => {
@@ -236,18 +233,8 @@ export class AddSnippetDialog extends Component {
                 clonedSnippetEl.classList.remove("oe_snippet_body");
                 const snippetPreviewWrapEl = document.createElement("div");
                 snippetPreviewWrapEl.classList.add("o_snippet_preview_wrap", "position-relative");
-                // TODO consolidate, we have many things (data-snippet,
-                // data-snippet-key, data-snippet-id), sometimes duplicated and
-                // not meaning the same thing, etc). Here we rely on the
-                // original key, because e.g. there are multiple masonry
-                // snippets but all with the same data-snippet attribute
-                // (s_masonry_block), while we need to differentiate them for
-                // the tours here.
-                snippetPreviewWrapEl.dataset.snippetId = snippet.data.oeSnippetKey;
+                snippetPreviewWrapEl.dataset.snippetId = snippet.name;
                 snippetPreviewWrapEl.dataset.snippetKey = snippet.key;
-                if (snippet.label) {
-                    snippetPreviewWrapEl.dataset.label = snippet.label;
-                }
                 snippetPreviewWrapEl.appendChild(clonedSnippetEl);
                 this.__onSnippetPreviewClick = this._onSnippetPreviewClick.bind(this);
                 snippetPreviewWrapEl.addEventListener("click", this.__onSnippetPreviewClick);
@@ -259,7 +246,7 @@ export class AddSnippetDialog extends Component {
                     clonedSnippetEl.dataset.moduleId = snippet.moduleId;
                     clonedSnippetEl.dataset.moduleDisplayName = snippet.moduleDisplayName;
                     const installBtnEl = document.createElement("button");
-                    installBtnEl.classList.add("o_snippet_preview_install_btn", "btn", "text-white", "rounded-1", "mx-auto", "p-2", "bottom-50", "shadow");
+                    installBtnEl.classList.add("o_snippet_preview_install_btn", "btn", "text-white", "rounded-1", "mx-auto", "p-2", "bottom-50");
                     installBtnEl.innerText = _t("Install %s", snippet.displayName);
                     snippetPreviewWrapEl.appendChild(installBtnEl);
                 }
@@ -274,7 +261,7 @@ export class AddSnippetDialog extends Component {
                     const previewImgEl = document.createElement("img");
                     previewImgEl.src = imagePreview;
                     previewImgDivEl.appendChild(previewImgEl);
-                    clonedSnippetEl.textContent = "";
+                    clonedSnippetEl.innerHTML = "";
                     clonedSnippetEl.appendChild(previewImgDivEl);
                 }
 
@@ -366,7 +353,6 @@ export class AddSnippetDialog extends Component {
                 for (const el of colItemEls) {
                     colEl.appendChild(el);
                     el.classList.remove("invisible");
-                    this.state.isIframeContentLoaded = true;
                 }
             }
 

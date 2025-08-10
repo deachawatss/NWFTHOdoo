@@ -1,21 +1,14 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
-from __future__ import annotations
 
-import logging
-import typing
 from contextlib import suppress
 
-from odoo.tools.misc import file_open
-
-if typing.TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
-
-    from odoo.sql_db import Cursor
+import odoo
+import logging
 
 _logger = logging.getLogger(__name__)
 
-
-def get_installed_modules(cursor: Cursor) -> list[str]:
+def get_installed_modules(cursor):
     cursor.execute('''
         SELECT name
           FROM ir_module_module
@@ -23,17 +16,15 @@ def get_installed_modules(cursor: Cursor) -> list[str]:
     ''')
     return [result[0] for result in cursor.fetchall()]
 
-
-def get_neutralization_queries(modules: Iterable[str]) -> Iterator[str]:
+def get_neutralization_queries(modules):
     # neutralization for each module
     for module in modules:
         filename = f'{module}/data/neutralize.sql'
         with suppress(FileNotFoundError):
-            with file_open(filename) as file:
+            with odoo.tools.misc.file_open(filename) as file:
                 yield file.read().strip()
 
-
-def neutralize_database(cursor: Cursor) -> None:
+def neutralize_database(cursor):
     installed_modules = get_installed_modules(cursor)
     queries = get_neutralization_queries(installed_modules)
     for query in queries:

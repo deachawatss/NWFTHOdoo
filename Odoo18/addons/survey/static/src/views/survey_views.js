@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { registry } from '@web/core/registry';
 import { ListRenderer } from "@web/views/list/list_renderer";
 import { KanbanRenderer } from "@web/views/kanban/kanban_renderer";
@@ -32,7 +34,7 @@ export function useSurveyLoadSampleHook(selector) {
             }
             const handler = (ev) => {
                 if (!isLoadingSample) {
-                    const surveyMethod = ev.currentTarget.closest('.o_survey_load_sample').getAttribute('action');
+                    const surveyMethod = ev.currentTarget.closest('.o_survey_sample_container').getAttribute('action');
                     loadSample(surveyMethod);
                 }
             }

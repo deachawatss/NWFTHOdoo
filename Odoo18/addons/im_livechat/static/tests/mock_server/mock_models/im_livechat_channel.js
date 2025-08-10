@@ -69,9 +69,9 @@ export class LivechatChannel extends models.ServerModel {
         return {
             channel_partner_ids: [operator.partner_id],
             channel_member_ids: membersToAdd,
+            livechat_active: true,
             livechat_operator_id: operator.partner_id,
             livechat_channel_id: id,
-            livechat_status: "in_progress",
             anonymous_name: ResUsers._is_public(this.env.uid) ? false : anonymous_name,
             country_id: country_id,
             channel_type: "livechat",
@@ -93,19 +93,22 @@ export class LivechatChannel extends models.ServerModel {
         );
     }
 
-    _to_store(store, fields) {
-        const kwargs = getKwArgs(arguments, "store", "fields");
+    _to_store(ids, store, fields) {
+        const kwargs = getKwArgs(arguments, "ids", "store", "fields");
         fields = kwargs.fields;
-        store._add_record_fields(
-            this,
-            fields.filter((field) => field !== "are_you_inside")
-        );
-        for (const livechatChannel of this) {
+        if (!fields) {
+            fields = [];
+        }
+        for (const livechatChannel of this.browse(ids)) {
+            const [res] = this._read_format(
+                livechatChannel.id,
+                fields.filter((field) => field !== "are_you_inside"),
+                false
+            );
             if (fields.includes("are_you_inside")) {
-                store._add_record_fields(this.browse(livechatChannel.id), {
-                    are_you_inside: livechatChannel.user_ids.includes(this.env.user.id),
-                });
+                res.are_you_inside = livechatChannel.user_ids.includes(this.env.user.id);
             }
+            store.add(this.browse(livechatChannel.id), res);
         }
     }
 }

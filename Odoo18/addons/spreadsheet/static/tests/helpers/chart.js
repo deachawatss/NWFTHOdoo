@@ -15,20 +15,20 @@ const uuidGenerator = new spreadsheet.helpers.UuidGenerator();
  * @param {string} type
  * @param {import("@spreadsheet/chart/odoo_chart/odoo_chart").OdooChartDefinition} definition
  */
-export function insertChartInSpreadsheet(model, type = "odoo_bar", definition = {}) {
-    definition = { ...getChartDefinition(type), ...definition };
+export function insertChartInSpreadsheet(
+    model,
+    type = "odoo_bar",
+    definition = getChartDefinition(type)
+) {
     model.dispatch("CREATE_CHART", {
         sheetId: model.getters.getActiveSheetId(),
-        figureId: definition.id,
-        col: 0,
-        row: 0,
-        offset: {
+        id: definition.id,
+        position: {
             x: 10,
             y: 10,
         },
         definition,
     });
-    return definition.id;
 }
 /**
  *
@@ -41,10 +41,12 @@ export function insertChartInSpreadsheet(model, type = "odoo_bar", definition = 
  * @returns { Promise<{ model: OdooSpreadsheetModel, env: Object }>}
  */
 export async function createSpreadsheetWithChart(params = {}) {
-    const { model, env } = await createModelWithDataSource(params);
+    const model = await createModelWithDataSource(params);
 
     insertChartInSpreadsheet(model, params.type, params.definition);
 
+    const env = model.config.custom.env;
+    env.model = model;
     await animationFrame();
     return { model, env };
 }
@@ -69,8 +71,8 @@ function getChartDefinition(type) {
         background: "#FFFFFF",
         legendPosition: "top",
         verticalAxisPosition: "left",
-        dataSourceId: uuidGenerator.smallUuid(),
-        id: uuidGenerator.smallUuid(),
+        dataSourceId: uuidGenerator.uuidv4(),
+        id: uuidGenerator.uuidv4(),
         type,
     };
 }

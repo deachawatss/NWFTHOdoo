@@ -9,7 +9,6 @@ from odoo.http import request
 
 _logger = logging.getLogger(__name__)
 
-
 class IrHttp(models.AbstractModel):
     _inherit = 'ir.http'
 

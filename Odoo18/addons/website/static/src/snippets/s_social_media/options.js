@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import fonts from '@web_editor/js/wysiwyg/fonts';
 import weUtils from '@web_editor/js/common/utils';
 import options from '@web_editor/js/editor/snippets.options';
@@ -90,7 +92,6 @@ options.registry.SocialMedia = options.Class.extend({
             "instagram": _t("Instagram"),
             "github": _t("GitHub"),
             "tiktok": _t("TikTok"),
-            "discord": _t("Discord"),
         };
         const setAriaLabelOfSocialNetwork = (el, name, url) => {
             let ariaLabel = ariaLabelsOfSocialNetworks[name];
@@ -294,7 +295,6 @@ options.registry.SocialMedia = options.Class.extend({
                 "social_instagram",
                 "social_github",
                 "social_tiktok",
-                "social_discord",
             ]).then(function (values) {
                 [dbSocialValues] = values;
                 delete dbSocialValues.id;
@@ -315,7 +315,6 @@ options.registry.SocialMedia = options.Class.extend({
             ['facebook', /^(https?:\/\/)(www\.)?(facebook|fb|m\.facebook)\.(com|me).*$/],
             ['youtube', /^(https?:\/\/)(www\.)?(youtube.com|youtu.be).*$/],
             ['instagram', /^(https?:\/\/)(www\.)?(instagram.com|instagr.am|instagr.com).*$/],
-            ['discord', /^(https?:\/\/)(www\.)?(discord.com|discord.gg).*$/],
         ];
         for (const [socialMedia, regex] of supportedSocialMedia) {
             if (regex.test(url)) {

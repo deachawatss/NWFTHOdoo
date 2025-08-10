@@ -5,9 +5,9 @@ from lxml import html
 from werkzeug.urls import url_encode
 
 from odoo.tests import HttpCase, tagged
-from odoo.addons.http_routing.tests.common import MockRequest
-from odoo.addons.website.tools import create_image_attachment
-import unittest
+from odoo.addons.website.tools import MockRequest, create_image_attachment
+from odoo.tests.common import HOST
+from odoo.tools import config
 
 _logger = logging.getLogger(__name__)
 
@@ -27,26 +27,22 @@ class TestSnippets(HttpCase):
     def test_02_default_shape_gets_palette_colors(self):
         self.start_tour('/@/', 'default_shape_gets_palette_colors', login='admin')
 
-    # TODO master-mysterious-egg fix error
-    @unittest.skip("prepare mysterious-egg for merging")
     def test_03_snippets_all_drag_and_drop(self):
         with MockRequest(self.env, website=self.env['website'].browse(1)):
             snippets_template = self.env['ir.ui.view'].render_public_asset('website.snippets')
         html_template = html.fromstring(snippets_template)
-        data_snippet_els = html_template.xpath("//*[snippets and not(hasclass('d-none'))]//*[@data-oe-snippet-key]")
-
+        data_snippet_els = html_template.xpath("//*[snippets and not(contains(@class, 'd-none'))]//*[@data-oe-type='snippet']/*[@data-snippet]")
         blacklist = [
             's_facebook_page',  # avoid call to external services (facebook.com)
             's_map',  # avoid call to maps.google.com
             's_instagram_page',  # avoid call to instagram.com
             's_image',  # Avoid specific case where the media dialog opens on drop
             's_snippet_group',  # Snippet groups are not snippets
-            's_inline_text',
         ]
         snippets_names = ','.join({
-            f"{el.attrib['data-oe-snippet-key']}:{el.attrib.get('data-o-group', '')}"
+            f"{el.attrib['data-snippet']}:{el.getparent().attrib.get('data-o-group', '')}"
             for el in data_snippet_els
-            if el.attrib['data-oe-snippet-key'] not in blacklist
+            if el.attrib['data-snippet'] not in blacklist
         })
         snippets_names_encoded = url_encode({'snippets_names': snippets_names})
         path = url_encode({
@@ -71,7 +67,6 @@ class TestSnippets(HttpCase):
             'social_github': 'https://github.com/odoo',
             'social_instagram': 'https://www.instagram.com/explore/tags/odoo/',
             'social_tiktok': 'https://www.tiktok.com/@odoo',
-            'social_discord': 'https://discord.com/servers/discord-town-hall-169256939211980800',
         })
         create_image_attachment(self.env, '/web/image/website.s_banner_default_image', 's_banner_default_image.jpg')
         self.start_tour(self.env['website'].get_client_action_url('/'), 'snippet_social_media', login="admin")
@@ -92,7 +87,7 @@ class TestSnippets(HttpCase):
 
     def test_09_snippet_image_gallery(self):
         create_image_attachment(self.env, '/web/image/website.s_banner_default_image.jpg', 's_default_image.jpg')
-        create_image_attachment(self.env, '/web/image/website.s_banner_default_image.jpg', 's_default_image2.webp')
+        create_image_attachment(self.env, '/web/image/website.s_banner_default_image.jpg', 's_default_image2.jpg')
         self.start_tour("/", "snippet_image_gallery_remove", login='admin')
 
     def test_10_parallax(self):
@@ -114,8 +109,6 @@ class TestSnippets(HttpCase):
     def test_12_snippet_images_wall(self):
         self.start_tour('/', 'snippet_images_wall', login='admin')
 
-    # TODO master-mysterious-egg fix error
-    @unittest.skip("prepare mysterious-egg for merging")
     def test_snippet_popup_with_scrollbar_and_animations(self):
         website = self.env.ref('website.default_website')
         website.cookies_bar = True
@@ -133,10 +126,8 @@ class TestSnippets(HttpCase):
         self.start_tour(self.env['website'].get_client_action_url('/'), 'snippet_image_gallery_thumbnail_update', login='admin')
 
     def test_dropdowns_and_header_hide_on_scroll(self):
-        self.env.ref('base.user_admin').write({
-            'name': 'mitchell admin',
-            'email': 'mitchell.admin@example.com',
-        })
+        admin_user = self.env['res.partner'].search([("email", "ilike", "admin")])
+        admin_user.name = "mitchell admin" # We need to force Admin user name for no-demo cases
         self.start_tour(self.env['website'].get_client_action_url('/'), 'dropdowns_and_header_hide_on_scroll', login='admin')
 
     def test_snippet_image(self):
@@ -149,8 +140,8 @@ class TestSnippets(HttpCase):
     def test_custom_popup_snippet(self):
         self.start_tour(self.env["website"].get_client_action_url("/"), "custom_popup_snippet", login="admin")
 
-    def test_snippet_popup_open_on_top(self):
-        self.start_tour(self.env['website'].get_client_action_url('/'), 'snippet_popup_open_on_top', login='admin')
-
     def test_tabs_snippet(self):
         self.start_tour(self.env["website"].get_client_action_url("/"), "snippet_tabs", login="admin")
+
+    def test_snippet_popup_open_on_top(self):
+        self.start_tour(self.env['website'].get_client_action_url('/'), 'snippet_popup_open_on_top', login='admin')

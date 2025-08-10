@@ -1,6 +1,8 @@
+/** @odoo-module **/
+
 import { markup } from "@odoo/owl";
 import { registry } from "@web/core/registry";
-import { stepUtils } from "@web_tour/tour_utils";
+import { stepUtils } from "@web_tour/tour_service/tour_utils";
 
 registry.category("web_tour.tours").add('mass_mailing_code_view_tour', {
     url: '/odoo?debug=tests',

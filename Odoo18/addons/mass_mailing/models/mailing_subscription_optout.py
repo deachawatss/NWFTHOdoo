@@ -4,7 +4,7 @@
 from odoo import fields, models
 
 
-class MailingSubscriptionOptout(models.Model):
+class MailingSubscriptionReason(models.Model):
     """ Reason for opting out of mailing lists or for blacklisting. """
     _name = 'mailing.subscription.optout'
     _description = 'Mailing Subscription Reason'

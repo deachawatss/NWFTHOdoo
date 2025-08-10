@@ -2,11 +2,10 @@
 
 import logging
 
-from odoo import _, models
+from odoo import _, api, models
 from odoo.exceptions import ValidationError
 
 from odoo.addons.payment_custom.controllers.main import CustomController
-
 
 _logger = logging.getLogger(__name__)
 
@@ -70,15 +69,6 @@ class PaymentTransaction(models.Model):
                 "Wire Transfer: " + _("No transaction found matching reference %s.", reference)
             )
         return tx
-
-    def _compare_notification_data(self, notification_data):
-        """ Override of `payment` to skip the transaction comparison for custom flows.
-
-        :param dict notification_data: The custom data.
-        :return: None
-        """
-        if self.provider_code != 'custom':
-            return super()._compare_notification_data(notification_data)
 
     def _process_notification_data(self, notification_data):
         """ Override of payment to process the transaction based on custom data.

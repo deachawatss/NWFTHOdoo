@@ -8,7 +8,7 @@ import * as hootDom from "@odoo/hoot-dom";
 
 export class TourAutomatic {
     mode = "auto";
-    allowUnload = true;
+    allowUnload = false;
     constructor(data) {
         Object.assign(this, data);
         this.steps = this.steps.map((step, index) => new TourStepAutomatic(step, this, index));
@@ -39,15 +39,18 @@ export class TourAutomatic {
                         if (this.debugMode) {
                             console.groupCollapsed(step.describeMe);
                             console.log(step.stringify);
-                            if (stepDelay > 0) {
-                                await hootDom.delay(stepDelay);
-                            }
                             if (step.break) {
                                 // eslint-disable-next-line no-debugger
                                 debugger;
                             }
                         } else {
                             console.log(step.describeMe);
+                        }
+                        // This delay is important for making the current set of tour tests pass.
+                        // IMPROVEMENT: Find a way to remove this delay.
+                        await new Promise((resolve) => requestAnimationFrame(resolve));
+                        if (stepDelay > 0) {
+                            await hootDom.delay(stepDelay);
                         }
                     },
                 },
@@ -61,7 +64,6 @@ export class TourAutomatic {
                         if (delayToCheckUndeterminisms > 0) {
                             await step.checkForUndeterminisms(trigger, delayToCheckUndeterminisms);
                         }
-                        this.allowUnload = false;
                         if (!step.skipped && step.expectUnloadPage) {
                             this.allowUnload = true;
                             setTimeout(() => {
@@ -138,20 +140,6 @@ export class TourAutomatic {
                 end();
             },
         });
-
-        const beforeUnloadHandler = () => {
-            if (!this.allowUnload) {
-                const message = `
-                    Be sure to use { expectUnloadPage: true } for any step
-                    that involves firing a beforeUnload event.
-                    This avoid a non-deterministic behavior by explicitly stopping
-                    the tour that might continue before the page is unloaded.
-                `.replace(/^\s+/gm, "");
-                this.throwError(message);
-            }
-        };
-        window.addEventListener("beforeunload", beforeUnloadHandler);
-
         if (this.debugMode && this.currentIndex === 0) {
             // Starts the tour with a debugger to allow you to choose devtools configuration.
             // eslint-disable-next-line no-debugger

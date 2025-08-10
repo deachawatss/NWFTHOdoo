@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import {
     clickOnExtraMenuItem,
     clickOnSave,
@@ -10,7 +12,7 @@ registerWebsitePreviewTour('translate_menu_name', {
 }, () => [
     {
         content: "Open Edit dropdown",
-        trigger: ".o_menu_systray button:contains('Edit')",
+        trigger: '.o_edit_website_container button',
         run: "click",
     },
     {

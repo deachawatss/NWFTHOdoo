@@ -135,9 +135,11 @@ class SaleOrder(models.Model):
             return
 
         def line_eqv(line, t_line):
-            return line and t_line and all(
-                line[fname] == t_line[fname]
-                for fname in ['product_id', 'product_uom_id', 'product_uom_qty', 'display_type']
+            return line and t_line and (
+                line.product_id == t_line.product_id
+                and line.display_type == t_line.display_type
+                and line.product_uom == t_line.product_uom_id
+                and line.product_uom_qty == t_line.product_uom_qty
             )
 
         def option_eqv(option, t_option):

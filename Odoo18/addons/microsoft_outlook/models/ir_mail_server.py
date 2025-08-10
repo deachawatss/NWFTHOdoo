@@ -7,7 +7,7 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 
-class IrMail_Server(models.Model):
+class IrMailServer(models.Model):
     """Add the Outlook OAuth authentication on the outgoing mail servers."""
 
     _name = 'ir.mail_server'
@@ -23,7 +23,7 @@ class IrMail_Server(models.Model):
     def _compute_is_microsoft_outlook_configured(self):
         outlook_servers = self.filtered(lambda server: server.smtp_authentication == 'outlook')
         (self - outlook_servers).is_microsoft_outlook_configured = False
-        super(IrMail_Server, outlook_servers)._compute_is_microsoft_outlook_configured()
+        super(IrMailServer, outlook_servers)._compute_is_microsoft_outlook_configured()
 
     def _compute_smtp_authentication_info(self):
         outlook_servers = self.filtered(lambda server: server.smtp_authentication == 'outlook')
@@ -31,7 +31,7 @@ class IrMail_Server(models.Model):
             'Connect your Outlook account with the OAuth Authentication process.  \n'
             'By default, only a user with a matching email address will be able to use this server. '
             'To extend its use, you should set a "mail.default.from" system parameter.')
-        super(IrMail_Server, self - outlook_servers)._compute_smtp_authentication_info()
+        super(IrMailServer, self - outlook_servers)._compute_smtp_authentication_info()
 
     @api.constrains('smtp_authentication', 'smtp_pass', 'smtp_encryption', 'smtp_user')
     def _check_use_microsoft_outlook_service(self):

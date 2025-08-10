@@ -3,7 +3,7 @@
     <record id="peppol_registration_form" model="ir.ui.view">
         <field name="name">peppol.registration.form</field>
         <field name="model">peppol.registration</field>
-        <field name="group_ids" eval="[Command.link(ref('account.group_account_manager'))]"/>
+        <field name="groups_id" eval="[Command.link(ref('account.group_account_manager'))]"/>
         <field name="arch" type="xml">
             <form class="form_peppol_registration">
                 <field name="company_id" invisible="1"/>
@@ -14,8 +14,12 @@
 
                     <div name="peppol_registration" invisible="account_peppol_proxy_state not in ('not_registered', 'in_verification')">
                         <p class="text-muted">Send electronic invoices, and receive bills automatically via Peppol</p>
+
+                            <!-- Optional step: receiver registration fields -->
+
                         <group col="1">
                             <group>
+                                <field name="smp_registration" string="Allow incoming invoices" invisible="1"/>
                                 <field name="peppol_eas"
                                        placeholder="Peppol ID"
                                        nolabel="1"
@@ -25,7 +29,10 @@
                                 <field name="phone_number" required="edi_mode not in ('demo', 'test')" string="Phone"/>
                             </group>
 
+                            <!-- edi mode info -->
+                            <field name="edi_mode_constraint" invisible="1"/>
                             <group invisible="account_peppol_proxy_state != 'not_registered'">
+                                <field name="edi_mode" invisible="1"/>
                                 <div class="text-muted col" invisible="edi_mode != 'prod'">
                                     By clicking the button below I accept that Odoo may process my e-invoices.
                                 </div>
@@ -38,13 +45,8 @@
                     </div>
                 </sheet>
                 <footer>
-                    <button string="Activate Peppol" name="button_register_peppol_participant" type="object"
-                            class="btn-primary" data-hotkey="q" invisible="edi_mode != 'prod'"/>
-                    <button string="Activate Peppol (Test)" name="button_register_peppol_participant" type="object"
-                            class="btn-primary" data-hotkey="q" invisible="edi_mode != 'test'"/>
-                    <button string="Activate Peppol (Demo)" name="button_register_peppol_participant" type="object"
-                            class="btn-primary" data-hotkey="q" invisible="edi_mode != 'demo'"/>
-                    <button string="Cancel" class="btn-secondary" special="cancel" data-hotkey="x"/>
+                    <widget name="peppol_settings_buttons"
+                            invisible="account_peppol_proxy_state in ('rejected', False)"/>
                 </footer>
             </form>
         </field>

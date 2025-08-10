@@ -126,6 +126,31 @@ export function unwrapContents(node) {
     return contents;
 }
 
+// @todo @phoenix
+// This utils seem to handle a particular case of LI element.
+// If only relevant to the list plugin, a specific util should be created
+// that plugin instead.
+// TODO: deprecated, use the DomPlugin shared function instead.
+export function setTagName(el, newTagName) {
+    const document = el.ownerDocument;
+    if (el.tagName === newTagName) {
+        return el;
+    }
+    const newEl = document.createElement(newTagName);
+    while (el.firstChild) {
+        newEl.append(el.firstChild);
+    }
+    if (el.tagName === "LI") {
+        el.append(newEl);
+    } else {
+        for (const attribute of el.attributes) {
+            newEl.setAttribute(attribute.name, attribute.value);
+        }
+        el.parentNode.replaceChild(newEl, el);
+    }
+    return newEl;
+}
+
 /**
  * Removes the specified class names from the given element.  If the element has
  * no more class names after removal, the "class" attribute is removed.
@@ -139,15 +164,6 @@ export function removeClass(element, ...classNames) {
         element.removeAttribute("class");
     } else {
         element.classList.remove(...classNames);
-    }
-}
-
-export function removeStyle(element, ...styleProperties) {
-    const propsToRemoveSet = new Set(styleProperties);
-    if ([...element.style].every((prop) => propsToRemoveSet.has(prop))) {
-        element.removeAttribute("style");
-    } else {
-        styleProperties.forEach((prop) => element.style.removeProperty(prop));
     }
 }
 
@@ -218,18 +234,10 @@ export function cleanTrailingBR(el, predicates = []) {
     }
 }
 
-/**
- * Wrapper for classList.toggle that removes the class attribute if the
- * element has no class name after the toggle.
- *
- * @param {Element} element
- * @param {string} className
- * @param {boolean} [force]
- */
-export function toggleClass(element, className, force) {
-    element.classList.toggle(className, force);
-    if (!element.className) {
-        element.removeAttribute("class");
+export function toggleClass(node, className) {
+    node.classList.toggle(className);
+    if (!node.className) {
+        node.removeAttribute("class");
     }
 }
 

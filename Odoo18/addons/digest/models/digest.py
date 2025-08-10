@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import logging
@@ -11,13 +12,13 @@ from werkzeug.urls import url_encode, url_join
 from odoo import api, fields, models, tools, _
 from odoo.addons.base.models.ir_mail_server import MailDeliveryException
 from odoo.exceptions import AccessError
-from odoo.fields import Domain
+from odoo.osv import expression
 from odoo.tools.float_utils import float_round
 
 _logger = logging.getLogger(__name__)
 
 
-class DigestDigest(models.Model):
+class Digest(models.Model):
     _name = 'digest.digest'
     _description = 'Digest'
 
@@ -246,7 +247,7 @@ class DigestDigest(models.Model):
         """ Compute KPIs to display in the digest template. It is expected to be
         a list of KPIs, each containing values for 3 columns display.
 
-        :return: result [{
+        :return list: result [{
             'kpi_name': 'kpi_mail_message',
             'kpi_fullname': 'Messages',  # translated
             'kpi_action': 'crm.crm_lead_action_pipeline',  # xml id of an action to execute
@@ -308,7 +309,7 @@ class DigestDigest(models.Model):
     def _compute_tips(self, company, user, tips_count=1, consumed=True):
         tips = self.env['digest.tip'].search([
             ('user_ids', '!=', user.id),
-            '|', ('group_id', 'in', user.all_group_ids.ids), ('group_id', '=', False)
+            '|', ('group_id', 'in', user.groups_id.ids), ('group_id', '=', False)
         ], limit=tips_count)
         tip_descriptions = [
             tools.html_sanitize(
@@ -329,20 +330,18 @@ class DigestDigest(models.Model):
     def _compute_kpis_actions(self, company, user):
         """ Give an optional action to display in digest email linked to some KPIs.
 
-        :returns: key: kpi name (field name), value: an action that will be
+        :return dict: key: kpi name (field name), value: an action that will be
           concatenated with /odoo/action-{action}
-        :rtype: dict
         """
         return {}
 
     def _compute_preferences(self, company, user):
         """ Give an optional text for preferences, like a shortcut for configuration.
 
-        :returns: html to put in template
-        :rtype: str
+        :return string: html to put in template
         """
         preferences = []
-        if self.env.context.get('digest_slowdown'):
+        if self._context.get('digest_slowdown'):
             _dummy, new_perioridicy_str = self._get_next_periodicity()
             preferences.append(
                 _("We have noticed you did not connect these last few days. We have automatically switched your preference to %(new_perioridicy_str)s Digests.",
@@ -411,14 +410,14 @@ class DigestDigest(models.Model):
         """
         start, end, companies = self._get_kpi_compute_parameters()
 
-        base_domain = Domain([
+        base_domain = [
             ('company_id', 'in', companies.ids),
             (date_field, '>=', start),
             (date_field, '<', end),
-        ])
+        ]
 
         if additional_domain:
-            base_domain &= Domain(additional_domain)
+            base_domain = expression.AND([base_domain, additional_domain])
 
         values = self.env[model]._read_group(
             domain=base_domain,

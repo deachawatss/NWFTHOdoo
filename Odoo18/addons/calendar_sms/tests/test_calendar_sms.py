@@ -14,7 +14,7 @@ class TestCalendarSms(SMSCommon):
     def setUpClass(cls):
         super(TestCalendarSms, cls).setUpClass()
 
-        now = fields.Datetime.now()
+        now = fields.datetime.now()
 
         cls.partner_phone = cls.env['res.partner'].create({
             'name': 'Partner With Phone Number',

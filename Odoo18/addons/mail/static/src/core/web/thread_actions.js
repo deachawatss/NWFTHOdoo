@@ -1,5 +1,5 @@
 import { threadActionsRegistry } from "@mail/core/common/thread_actions";
-import { useComponent } from "@odoo/owl";
+import { useComponent, useState } from "@odoo/owl";
 
 import { _t } from "@web/core/l10n/translation";
 import { useService } from "@web/core/utils/hooks";
@@ -10,7 +10,7 @@ threadActionsRegistry
             return component.thread?.id === "inbox";
         },
         disabledCondition(component) {
-            return component.thread.isEmpty;
+            return component.thread.isEmpty && !component.store.inbox.counter;
         },
         open(component) {
             component.orm.silent.call("mail.message", "mark_all_as_read");
@@ -31,7 +31,7 @@ threadActionsRegistry
         sequence: 2,
         setup() {
             const component = useComponent();
-            component.store = useService("mail.store");
+            component.store = useState(useService("mail.store"));
         },
         text: _t("Unstar all"),
     })
@@ -48,7 +48,6 @@ threadActionsRegistry
             component.actionService = useService("action");
         },
         icon: "fa fa-fw fa-expand",
-        iconLarge: "fa fa-lg fa-fw fa-expand",
         name: _t("Open Form View"),
         open(component) {
             component.actionService.doAction({

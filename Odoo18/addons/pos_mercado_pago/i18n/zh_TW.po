@@ -3,15 +3,16 @@
 # 	* pos_mercado_pago
 # 
 # Translators:
-# Wil Odoo, 2025
+# Wil Odoo, 2024
+# Tony Ng, 2024
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~18.2\n"
+"Project-Id-Version: Odoo Server 18.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-02-20 10:02+0000\n"
-"PO-Revision-Date: 2025-05-06 12:04+0000\n"
-"Last-Translator: Wil Odoo, 2025\n"
+"POT-Creation-Date: 2024-09-25 08:39+0000\n"
+"PO-Revision-Date: 2024-09-25 09:41+0000\n"
+"Last-Translator: Tony Ng, 2024\n"
 "Language-Team: Chinese (Taiwan) (https://app.transifex.com/odoo/teams/41243/zh_TW/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -30,12 +31,6 @@ msgid "APP_USR-..."
 msgstr "APP_USR-..."
 
 #. module: pos_mercado_pago
-#: model:ir.model.fields,field_description:pos_mercado_pago.field_pos_payment_method__display_name
-#: model:ir.model.fields,field_description:pos_mercado_pago.field_pos_session__display_name
-msgid "Display Name"
-msgstr "顯示名稱"
-
-#. module: pos_mercado_pago
 #. odoo-python
 #: code:addons/pos_mercado_pago/models/pos_payment_method.py:0
 msgid "Do not have access to fetch token from Mercado Pago"
@@ -52,12 +47,6 @@ msgstr "輸入終端機背面的 Point Smart 終端機序號（在序號之後�
 #: model_terms:ir.ui.view,arch_db:pos_mercado_pago.pos_payment_method_view_form_inherit_pos_mercado_pago
 msgid "Force PDV"
 msgstr "強制 PDV"
-
-#. module: pos_mercado_pago
-#: model:ir.model.fields,field_description:pos_mercado_pago.field_pos_payment_method__id
-#: model:ir.model.fields,field_description:pos_mercado_pago.field_pos_session__id
-msgid "ID"
-msgstr "識別號"
 
 #. module: pos_mercado_pago
 #: model:ir.model.fields,help:pos_mercado_pago.field_pos_payment_method__mp_bearer_token
@@ -84,37 +73,37 @@ msgstr "Mp識別碼Point Smart已完成"
 
 #. module: pos_mercado_pago
 #. odoo-javascript
-#: code:addons/pos_mercado_pago/static/src/app/utils/payment/payment_mercado_pago.js:0
+#: code:addons/pos_mercado_pago/static/src/app/payment_mercado_pago.js:0
 msgid "Payment has been canceled"
 msgstr "付款已取消"
 
 #. module: pos_mercado_pago
 #. odoo-javascript
-#: code:addons/pos_mercado_pago/static/src/app/utils/payment/payment_mercado_pago.js:0
+#: code:addons/pos_mercado_pago/static/src/app/payment_mercado_pago.js:0
 msgid "Payment has been processed"
 msgstr "付款已處理"
 
 #. module: pos_mercado_pago
 #. odoo-javascript
-#: code:addons/pos_mercado_pago/static/src/app/utils/payment/payment_mercado_pago.js:0
+#: code:addons/pos_mercado_pago/static/src/app/payment_mercado_pago.js:0
 msgid "Payment has been rejected"
 msgstr "付款被拒絕"
 
 #. module: pos_mercado_pago
 #. odoo-javascript
-#: code:addons/pos_mercado_pago/static/src/app/utils/payment/payment_mercado_pago.js:0
+#: code:addons/pos_mercado_pago/static/src/app/payment_mercado_pago.js:0
 msgid "Payment has to be canceled on terminal"
 msgstr "必須在終端機上取消付款"
 
 #. module: pos_mercado_pago
 #. odoo-javascript
-#: code:addons/pos_mercado_pago/static/src/app/utils/payment/payment_mercado_pago.js:0
+#: code:addons/pos_mercado_pago/static/src/app/payment_mercado_pago.js:0
 msgid "Payment not found (canceled/finished on terminal)"
 msgstr "找不到付款（可能已在終端機上取消/完成）"
 
 #. module: pos_mercado_pago
 #. odoo-javascript
-#: code:addons/pos_mercado_pago/static/src/app/utils/payment/payment_mercado_pago.js:0
+#: code:addons/pos_mercado_pago/static/src/app/payment_mercado_pago.js:0
 msgid "Payment status could not be confirmed"
 msgstr "未能確認付款狀態"
 
@@ -163,7 +152,7 @@ msgstr "未預期的 Mercado Pago 回應：%s"
 
 #. module: pos_mercado_pago
 #. odoo-javascript
-#: code:addons/pos_mercado_pago/static/src/app/utils/payment/payment_mercado_pago.js:0
+#: code:addons/pos_mercado_pago/static/src/app/payment_mercado_pago.js:0
 msgid "Unknown payment status"
 msgstr "未知付款狀態"
 

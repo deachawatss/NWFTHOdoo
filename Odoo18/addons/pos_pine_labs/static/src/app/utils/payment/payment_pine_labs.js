@@ -1,9 +1,9 @@
 import { _t } from "@web/core/l10n/translation";
-import { PaymentInterface } from "@point_of_sale/app/utils/payment/payment_interface";
+import { PaymentInterface } from "@point_of_sale/app/payment/payment_interface";
 import { AlertDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { serializeDateTime } from "@web/core/l10n/dates";
-import { offlineErrorHandler, handleRPCError } from "@point_of_sale/app/utils/error_handlers";
-import { register_payment_method } from "@point_of_sale/app/services/pos_store";
+import { offlineErrorHandler, handleRPCError } from "@point_of_sale/app/errors/error_handlers";
+import { register_payment_method } from "@point_of_sale/app/store/pos_store";
 import { ConnectionLostError, RPCError } from "@web/core/network/rpc";
 
 const REQUEST_TIMEOUT_MS = 5000;
@@ -18,8 +18,8 @@ export class PaymentPineLabs extends PaymentInterface {
         this.payment_stopped = false;
     }
 
-    sendPaymentRequest(cid) {
-        super.sendPaymentRequest(cid);
+    send_payment_request(cid) {
+        super.send_payment_request(cid);
         return this._processPineLabs();
     }
 
@@ -27,8 +27,8 @@ export class PaymentPineLabs extends PaymentInterface {
         return this.pos.getPendingPaymentLine("pine_labs");
     }
 
-    sendPaymentCancel(order, cid) {
-        super.sendPaymentCancel(order, cid);
+    send_payment_cancel(order, cid) {
+        super.send_payment_cancel(order, cid);
         return this._pineLabsCancel();
     }
 
@@ -39,7 +39,7 @@ export class PaymentPineLabs extends PaymentInterface {
                 const line = this.pendingPineLabsPaymentLine();
                 this.pos.paymentTerminalInProgress = false;
                 if (line) {
-                    line.setPaymentStatus("force_done");
+                    line.set_payment_status("force_done");
                 }
                 if (error instanceof ConnectionLostError) {
                     offlineErrorHandler(this.env, error, error);
@@ -59,12 +59,12 @@ export class PaymentPineLabs extends PaymentInterface {
     async _makePaymentRequestHandler(response) {
         const line = this.pendingPineLabsPaymentLine();
         if (!response || response?.error) {
-            line.setPaymentStatus("retry");
+            line.set_payment_status("retry");
             this._showError(response?.error || _t("Pine Labs make payment request failed"));
             return false;
         }
 
-        line.setPaymentStatus("waitingCard");
+        line.set_payment_status("waitingCard");
         line.update({ pine_labs_plutus_transaction_ref: response.plutusTransactionReferenceID });
         return await this._waitForPaymentToConfirm();
     }
@@ -77,11 +77,11 @@ export class PaymentPineLabs extends PaymentInterface {
      * @returns {Promise<Object|boolean>} - Resolves with the response object on success, otherwise `false`.
      */
     _paymentStatusRequestHandler(response, callBack, resolve, reject) {
-        const line = this.pos.getOrder().getSelectedPaymentline();
+        const line = this.pendingPineLabsPaymentLine();
 
         if (!response || response?.error) {
             const status = response ? "retry" : "force_done";
-            line.setPaymentStatus(status);
+            line.set_payment_status(status);
             this._showError(response?.error || _t("Pine Labs get payment status request failed"));
             if (response) {
                 return resolve(false);
@@ -127,7 +127,7 @@ export class PaymentPineLabs extends PaymentInterface {
             this._showError(response?.error || _t("Pine Labs payment cancellation request failed"));
             return false;
         } else if (response.notification) {
-            line.setPaymentStatus("retry");
+            line.set_payment_status("retry");
             if (this.payment_stopped) {
                 this._showError(_t("Transaction failed due to inactivity"));
             } else {
@@ -159,8 +159,8 @@ export class PaymentPineLabs extends PaymentInterface {
      * This method processes order data and sends payment requests from POS to Pine Labs.
      */
     async _processPineLabs() {
-        const order = this.pos.getOrder();
-        const paymentLine = order.getSelectedPaymentline();
+        const order = this.pos.get_order();
+        const paymentLine = order.get_selected_paymentline();
         const sequenceNumber = order.payment_ids.filter(
             (pi) => pi.payment_method_id.use_payment_terminal === "pine_labs"
         ).length;
@@ -192,7 +192,7 @@ export class PaymentPineLabs extends PaymentInterface {
      * Also, this method uses polling to check the payment status..
      */
     async _waitForPaymentToConfirm() {
-        const paymentLine = this.pos.getOrder().getSelectedPaymentline();
+        const paymentLine = this.pos.get_order().get_selected_paymentline();
         if (!paymentLine || paymentLine.payment_status == "retry") {
             return false;
         }
@@ -205,14 +205,14 @@ export class PaymentPineLabs extends PaymentInterface {
             clearTimeout(this.pollingTimeout);
 
             // If the user navigates to another screen, stop the polling
-            if (this.pos.router.state.current !== "PaymentScreen") {
+            if (this.pos.mainScreen.component.name !== "PaymentScreen") {
                 this._removePaymentHandler();
                 return;
             }
 
             if (this.payment_stopped) {
                 this._pineLabsCancel().then(() => {
-                    paymentLine.setPaymentStatus("retry");
+                    paymentLine.set_payment_status("retry");
                     this.payment_stopped = false;
                 });
                 return resolve(false);

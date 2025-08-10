@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { LocationList } from '@delivery/js/location_selector/location_list/location_list';
 import { MapContainer } from '@delivery/js/location_selector/map_container/map_container';
 import { Component, onMounted, onWillUnmount, useEffect, useState } from '@odoo/owl';
@@ -103,10 +105,6 @@ export class LocationSelectorDialog extends Component {
         }
     }
 
-    get showListView() {
-        return this.state.locations.length !== 1;
-    }
-
     /**
      * Find the selected location based on its id.
      *
@@ -158,9 +156,6 @@ export class LocationSelectorDialog extends Component {
     }
 
     get title() {
-        if (this.state.locations.length === 1) {
-            return _t("Pickup Location")
-        }
         return _t("Choose a pick-up point");
     }
 

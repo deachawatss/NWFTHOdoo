@@ -4,7 +4,7 @@ from odoo import api, fields, models
 from odoo.tools.translate import html_translate
 
 
-class ResPartner(models.Model):
+class WebsiteResPartner(models.Model):
     _name = 'res.partner'
     _inherit = ['res.partner', 'website.seo.metadata']
 
@@ -12,7 +12,6 @@ class ResPartner(models.Model):
     website_short_description = fields.Text('Website Partner Short Description', translate=True)
 
     def _compute_website_url(self):
-        super()._compute_website_url()
+        super(WebsiteResPartner, self)._compute_website_url()
         for partner in self:
-            if partner.id:
-                partner.website_url = "/partners/%s" % self.env['ir.http']._slug(partner)
+            partner.website_url = "/partners/%s" % self.env['ir.http']._slug(partner)

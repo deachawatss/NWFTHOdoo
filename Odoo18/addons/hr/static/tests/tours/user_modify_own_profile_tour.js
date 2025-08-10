@@ -1,4 +1,6 @@
-import { stepUtils } from "@web_tour/tour_utils";
+/** @odoo-module **/
+
+import { stepUtils } from "@web_tour/tour_service/tour_utils";
 import { registry } from "@web/core/registry";
 import { patch } from "@web/core/utils/patch";
 

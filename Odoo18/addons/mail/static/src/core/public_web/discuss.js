@@ -6,9 +6,22 @@ import { Thread } from "@mail/core/common/thread";
 import { useThreadActions } from "@mail/core/common/thread_actions";
 import { ThreadIcon } from "@mail/core/common/thread_icon";
 import { DiscussSidebar } from "@mail/core/public_web/discuss_sidebar";
-import { useMessageScrolling } from "@mail/utils/common/hooks";
+import {
+    useMessageEdition,
+    useMessageHighlight,
+    useMessageToReplyTo,
+} from "@mail/utils/common/hooks";
 
-import { Component, useRef, useState, useExternalListener, useEffect, useSubEnv } from "@odoo/owl";
+import {
+    Component,
+    onMounted,
+    onWillUnmount,
+    useRef,
+    useState,
+    useExternalListener,
+    useEffect,
+    useSubEnv,
+} from "@odoo/owl";
 import { getActiveHotkey } from "@web/core/hotkeys/hotkey_service";
 
 import { _t } from "@web/core/l10n/translation";
@@ -30,21 +43,22 @@ export class Discuss extends Component {
     };
     static props = {
         hasSidebar: { type: Boolean, optional: true },
-        thread: { optional: true },
     };
     static defaultProps = { hasSidebar: true };
     static template = "mail.Discuss";
 
     setup() {
         super.setup();
-        this.store = useService("mail.store");
-        this.messageHighlight = useMessageScrolling();
+        this.store = useState(useService("mail.store"));
+        this.messageHighlight = useMessageHighlight();
+        this.messageEdition = useMessageEdition();
+        this.messageToReplyTo = useMessageToReplyTo();
         this.contentRef = useRef("content");
         this.root = useRef("root");
         this.state = useState({ jumpThreadPresent: 0 });
         this.orm = useService("orm");
         this.effect = useService("effect");
-        this.ui = useService("ui");
+        this.ui = useState(useService("ui"));
         useSubEnv({
             inDiscussApp: true,
             messageHighlight: this.messageHighlight,
@@ -60,11 +74,6 @@ export class Discuss extends Component {
                         this.thread.composer.autofocus++;
                     }
                 }
-                if (getActiveHotkey(ev) === "control+k") {
-                    this.store.env.services.command.openMainPalette({ searchValue: "@" });
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                }
             },
             { capture: true }
         );
@@ -75,9 +84,7 @@ export class Discuss extends Component {
                         return;
                     }
                     if (isSmall) {
-                        this.thread
-                            .openChatWindow({ focus: true })
-                            .then((chatWindow) => (this.chatWindow = chatWindow));
+                        this.chatWindow = this.thread.openChatWindow();
                     } else {
                         this.chatWindow?.close();
                     }
@@ -85,30 +92,29 @@ export class Discuss extends Component {
                 () => [this.thread, this.ui.isSmall]
             );
         }
+        onMounted(() => (this.store.discuss.isActive = true));
+        onWillUnmount(() => (this.store.discuss.isActive = false));
         useEffect(
-            () => this.actionPanelAutoOpenFn(),
-            () => [this.thread]
+            (memberListAction) => {
+                if (!memberListAction) {
+                    return;
+                }
+                if (this.store.discuss.isMemberPanelOpenByDefault) {
+                    if (!this.threadActions.activeAction) {
+                        memberListAction.open();
+                    } else if (this.threadActions.activeAction === memberListAction) {
+                        return; // no-op (already open)
+                    } else {
+                        this.store.discuss.isMemberPanelOpenByDefault = false;
+                    }
+                }
+            },
+            () => [this.threadActions.actions.find((a) => a.id === "member-list")]
         );
     }
 
-    actionPanelAutoOpenFn() {
-        const memberListAction = this.threadActions.actions.find((a) => a.id === "member-list");
-        if (!memberListAction) {
-            return;
-        }
-        if (this.store.discuss.isMemberPanelOpenByDefault) {
-            if (!this.threadActions.activeAction) {
-                memberListAction.open();
-            } else if (this.threadActions.activeAction === memberListAction) {
-                return; // no-op (already open)
-            } else {
-                this.store.discuss.isMemberPanelOpenByDefault = false;
-            }
-        }
-    }
-
     get thread() {
-        return this.props.thread || this.store.discuss.thread;
+        return this.store.discuss.thread;
     }
 
     async onFileUploaded(file) {

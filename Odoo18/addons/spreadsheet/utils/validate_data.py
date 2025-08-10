@@ -28,8 +28,7 @@ def links_urls(data):
     link_prefix = "odoo://view/"
     for sheet in data.get("sheets", []):
         for cell in sheet.get("cells", {}).values():
-            # 'cell' was an object in versions <saas-18.1
-            content = cell if isinstance(cell, str) else cell.get("content", "")
+            content = cell.get("content", "")
             match = re.match(markdown_link_regex, content)
             if match and match.group(2).startswith(link_prefix):
                 urls.append(match.group(2))
@@ -92,7 +91,7 @@ def pivot_fields(pivot):
         + domain_fields(pivot["domain"])
     )
     measure = pivot.get("sortedColumn") and pivot["sortedColumn"]["measure"]
-    if measure and not measure.startswith("__count"):
+    if measure and measure != "__count":
         fields.add(measure)
     return model, fields
 
@@ -130,7 +129,8 @@ def filter_fields(data):
     """return all field names used in global filter definitions"""
     fields_by_model = defaultdict(set)
     charts = odoo_charts(data)
-    if "odooVersion" in data and data["odooVersion"] < 5:
+    odoo_version = data.get("odooVersion", 1)
+    if odoo_version < 5:
         for filter_definition in data.get("globalFilters", []):
             for pivot_id, matching in filter_definition.get("pivotFields", dict()).items():
                 model = data["pivots"][pivot_id]["model"]
@@ -143,13 +143,13 @@ def filter_fields(data):
                 model = chart["metaData"]["resModel"]
                 fields_by_model[model].add(matching["field"])
     else:
-        for pivot in data.get("pivots", {}).values():
+        for pivot in data["pivots"].values():
             if pivot.get("type", "ODOO") == "ODOO":
                 model = pivot["model"]
                 field = pivot.get("fieldMatching", {}).get("chain")
                 if field:
                     fields_by_model[model].add(field)
-        for _list in data.get("lists", {}).values():
+        for _list in data["lists"].values():
             model = _list["model"]
             field = _list.get("fieldMatching", {}).get("chain")
             if field:

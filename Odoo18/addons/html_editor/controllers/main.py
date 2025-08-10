@@ -7,13 +7,11 @@ import werkzeug.exceptions
 import werkzeug.urls
 import requests
 from os.path import join as opj
-from urllib.parse import urlparse
 
 from odoo import _, http, tools, SUPERUSER_ID
 from odoo.addons.html_editor.tools import get_video_url_data
 from odoo.exceptions import UserError, MissingError, AccessError
 from odoo.http import request
-from odoo.tools.image import image_process
 from odoo.tools.mimetypes import guess_mimetype
 from odoo.tools.misc import file_open
 from odoo.addons.iap.tools import iap_tools
@@ -209,12 +207,12 @@ class HTML_Editor(http.Controller):
             subst = ("\\g<0>\n\t<style>\n\t\t:root { \n\t\t\t" +
                      declaration +
                      ";\n\t\t}\n\t</style>")
-            svg = re.sub(regex, subst, svg, flags=re.MULTILINE)
+            svg = re.sub(regex, subst, svg, 0, re.MULTILINE)
         return svg
 
     def _clean_context(self):
         # avoid allowed_company_ids which may erroneously restrict based on website
-        context = dict(request.env.context)
+        context = dict(request.context)
         context.pop('allowed_company_ids', None)
         request.update_env(context=context)
 
@@ -281,7 +279,7 @@ class HTML_Editor(http.Controller):
 
         return attachment
 
-    @http.route(['/web_editor/get_image_info', '/html_editor/get_image_info'], type='jsonrpc', auth='user', website=True)
+    @http.route(['/web_editor/get_image_info', '/html_editor/get_image_info'], type='json', auth='user', website=True)
     def get_image_info(self, src=''):
         """This route is used to determine the information of an attachment so that
         it can be used as a base to modify it again (crop/optimization/filters).
@@ -315,7 +313,7 @@ class HTML_Editor(http.Controller):
             'original': (attachment.original_id or attachment).read(['id', 'image_src', 'mimetype'])[0],
         }
 
-    @http.route(['/web_editor/video_url/data', '/html_editor/video_url/data'], type='jsonrpc', auth='user', website=True)
+    @http.route(['/web_editor/video_url/data', '/html_editor/video_url/data'], type='json', auth='user', website=True)
     def video_url_data(self, video_url, autoplay=False, loop=False,
                        hide_controls=False, hide_fullscreen=False,
                        hide_dm_logo=False, hide_dm_share=False):
@@ -325,7 +323,7 @@ class HTML_Editor(http.Controller):
             hide_dm_logo=hide_dm_logo, hide_dm_share=hide_dm_share
         )
 
-    @http.route(['/web_editor/attachment/add_data', '/html_editor/attachment/add_data'], type='jsonrpc', auth='user', methods=['POST'], website=True)
+    @http.route(['/web_editor/attachment/add_data', '/html_editor/attachment/add_data'], type='json', auth='user', methods=['POST'], website=True)
     def add_data(self, name, data, is_image, quality=0, width=0, height=0, res_id=False, res_model='ir.ui.view', **kwargs):
         data = b64decode(data)
         if is_image:
@@ -340,7 +338,7 @@ class HTML_Editor(http.Controller):
                         str(uuid.uuid4())[:6],
                         SUPPORTED_IMAGE_MIMETYPES[mimetype],
                     )
-                data = image_process(data, size=(width, height), quality=quality, verify_resolution=True)
+                data = tools.image_process(data, size=(width, height), quality=quality, verify_resolution=True)
             except (ValueError, UserError) as e:
                 # When UserError thrown, browser considers file input an
                 # image but not recognized as such by PIL, eg .webp
@@ -350,13 +348,13 @@ class HTML_Editor(http.Controller):
         attachment = self._attachment_create(name=name, data=data, res_id=res_id, res_model=res_model)
         return attachment._get_media_info()
 
-    @http.route(['/web_editor/attachment/add_url', '/html_editor/attachment/add_url'], type='jsonrpc', auth='user', methods=['POST'], website=True)
+    @http.route(['/web_editor/attachment/add_url', '/html_editor/attachment/add_url'], type='json', auth='user', methods=['POST'], website=True)
     def add_url(self, url, res_id=False, res_model='ir.ui.view', **kwargs):
         self._clean_context()
         attachment = self._attachment_create(url=url, res_id=res_id, res_model=res_model)
         return attachment._get_media_info()
 
-    @http.route(['/web_editor/modify_image/<model("ir.attachment"):attachment>', '/html_editor/modify_image/<model("ir.attachment"):attachment>'], type="jsonrpc", auth="user", website=True)
+    @http.route(['/web_editor/modify_image/<model("ir.attachment"):attachment>', '/html_editor/modify_image/<model("ir.attachment"):attachment>'], type="json", auth="user", website=True)
     def modify_image(self, attachment, res_model=None, res_id=None, name=None, data=None, original_id=None, mimetype=None, alt_data=None):
         """
         Creates a modified copy of an attachment and returns its image_src to be
@@ -443,7 +441,7 @@ class HTML_Editor(http.Controller):
         attachment.generate_access_token()
         return '%s?access_token=%s' % (attachment.image_src, attachment.access_token)
 
-    @http.route(['/web_editor/save_library_media', '/html_editor/save_library_media'], type='jsonrpc', auth='user', methods=['POST'])
+    @http.route(['/web_editor/save_library_media', '/html_editor/save_library_media'], type='json', auth='user', methods=['POST'])
     def save_library_media(self, media):
         """
         Saves images from the media library as new attachments, making them
@@ -540,7 +538,7 @@ class HTML_Editor(http.Controller):
             ('Cache-control', 'max-age=%s' % http.STATIC_CACHE_LONG),
         ])
 
-    @http.route(["/web_editor/generate_text", "/html_editor/generate_text"], type="jsonrpc", auth="user")
+    @http.route(["/web_editor/generate_text", "/html_editor/generate_text"], type="json", auth="user")
     def generate_text(self, prompt, conversation_history):
         try:
             IrConfigParameter = request.env['ir.config_parameter'].sudo()
@@ -562,47 +560,36 @@ class HTML_Editor(http.Controller):
         except AccessError:
             raise AccessError(_("Oops, it looks like our AI is unreachable!"))
 
-    @http.route(["/web_editor/get_ice_servers", "/html_editor/get_ice_servers"], type='jsonrpc', auth="user")
+    @http.route(["/web_editor/get_ice_servers", "/html_editor/get_ice_servers"], type='json', auth="user")
     def get_ice_servers(self):
         return request.env['mail.ice.server']._get_ice_servers()
 
-    @http.route(["/web_editor/bus_broadcast", "/html_editor/bus_broadcast"], type="jsonrpc", auth="user")
+    @http.route(["/web_editor/bus_broadcast", "/html_editor/bus_broadcast"], type="json", auth="user")
     def bus_broadcast(self, model_name, field_name, res_id, bus_data):
         document = request.env[model_name].browse([res_id])
 
         document.check_access('read')
         document.check_access('write')
-        if field := document._fields.get(field_name):
-            document._check_field_access(field, 'read')
-            document._check_field_access(field, 'write')
+        document.check_field_access_rights('read', [field_name])
+        document.check_field_access_rights('write', [field_name])
 
         channel = (request.db, 'editor_collaboration', model_name, field_name, int(res_id))
         bus_data.update({'model_name': model_name, 'field_name': field_name, 'res_id': res_id})
         request.env['bus.bus']._sendone(channel, 'editor_collaboration', bus_data)
 
-    @http.route('/html_editor/link_preview_external', type="jsonrpc", auth="public", methods=['POST'])
+    @http.route('/html_editor/link_preview_external', type="json", auth="public", methods=['POST'])
     def link_preview_metadata(self, preview_url):
         link_preview_data = link_preview.get_link_preview_from_url(preview_url)
         if link_preview_data and link_preview_data.get('og_description'):
             link_preview_data['og_description'] = html.fromstring(link_preview_data['og_description']).text_content()
         return link_preview_data
 
-    @http.route('/html_editor/link_preview_internal', type="jsonrpc", auth="user", methods=['POST'])
+    @http.route('/html_editor/link_preview_internal', type="json", auth="user", methods=['POST'])
     def link_preview_metadata_internal(self, preview_url):
         try:
             Actions = request.env['ir.actions.actions']
             context = dict(request.env.context)
-            parsed_preview_url = urlparse(preview_url)
-            words = parsed_preview_url.path.strip('/').split('/')
-            last_segment = words[-1]
-
-            if not last_segment.isnumeric():
-                # this could be a frontend or an external page
-                link_preview_data = self.link_preview_metadata(preview_url)
-                result = {}
-                if link_preview_data and link_preview_data.get('og_description'):
-                    result['description'] = link_preview_data['og_description']
-                return result
+            words = preview_url.strip('/').split('/')
 
             record_id = int(words.pop())
             action_name = words.pop()

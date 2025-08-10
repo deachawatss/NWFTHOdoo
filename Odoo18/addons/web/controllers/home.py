@@ -4,14 +4,12 @@ import json
 import logging
 import psycopg2
 
-import odoo.api
 import odoo.exceptions
 import odoo.modules.registry
 from odoo import http
 from odoo.exceptions import AccessError
 from odoo.http import request
 from odoo.service import security
-from odoo.tools.misc import hmac
 from odoo.tools.translate import _
 from .utils import (
     ensure_db,
@@ -39,7 +37,7 @@ class Home(http.Controller):
             return request.redirect_query('/web/login_successful', query=request.params)
         return request.redirect_query('/odoo', query=request.params)
 
-    def _web_client_readonly(self, rule, args):
+    def _web_client_readonly(self):
         return False
 
     # ideally, this route should be `auth="user"` but that don't work in non-monodb mode.
@@ -66,26 +64,17 @@ class Home(http.Controller):
             if request.env.user:
                 request.env.user._on_webclient_bootstrap()
             context = request.env['ir.http'].webclient_rendering_context()
-
-            # Add the browser_cache_secret here and not in session_info() to ensure that it is only in
-            # the webclient page, which is cache-control: "no-store" (see below)
-            # Reuse session security related fields, to change the key when a security event
-            # occurs for the user, like a password or 2FA change.
-            hmac_payload = request.env.user._session_token_get_values()  # already ordered
-            session_info = context.get("session_info")
-            session_info['browser_cache_secret'] = hmac(request.env(su=True), "browser_cache_key", hmac_payload)
-
             response = request.render('web.webclient_bootstrap', qcontext=context)
             response.headers['X-Frame-Options'] = 'DENY'
-            response.headers['Cache-Control'] = 'no-store'
             return response
         except AccessError:
             return request.redirect('/web/login?error=access')
 
-    @http.route('/web/webclient/load_menus', type='http', auth='user', methods=['GET'], readonly=True)
-    def web_load_menus(self, lang=None):
+    @http.route('/web/webclient/load_menus/<string:unique>', type='http', auth='user', methods=['GET'], readonly=True)
+    def web_load_menus(self, unique, lang=None):
         """
         Loads the menus for the webclient
+        :param unique: this parameters is not used, but mandatory: it is used by the HTTP stack to make a unique request
         :param lang: language in which the menus should be loaded (only works if language is installed)
         :return: the menus (including the images in Base64)
         """
@@ -132,9 +121,7 @@ class Home(http.Controller):
             try:
                 credential = {key: value for key, value in request.params.items() if key in CREDENTIAL_PARAMS and value}
                 credential.setdefault('type', 'password')
-                if request.env['res.users']._should_captcha_login(credential):
-                    request.env['ir.http']._verify_request_recaptcha_token('login')
-                auth_info = request.session.authenticate(request.env, credential)
+                auth_info = request.session.authenticate(request.db, credential)
                 request.params['login_success'] = True
                 return request.redirect(self._login_redirect(auth_info['uid'], redirect=redirect))
             except odoo.exceptions.AccessDenied as e:

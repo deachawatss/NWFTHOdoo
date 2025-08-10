@@ -1,11 +1,33 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import _, api, models
-from odoo.http import request
+from odoo import _, api, fields, models
+
+from odoo.addons.website.models import ir_http
 
 
 class ResPartner(models.Model):
     _inherit = 'res.partner'
+
+    last_website_so_id = fields.Many2one(
+        string="Last Online Sales Order",
+        comodel_name='sale.order',
+        compute='_compute_last_website_so_id',
+    )
+
+    def _compute_last_website_so_id(self):
+        SaleOrder = self.env['sale.order']
+        for partner in self:
+            is_public = partner.is_public
+            website = ir_http.get_request_website()
+            if website and not is_public:
+                partner.last_website_so_id = SaleOrder.search([
+                    ('partner_id', '=', partner.id),
+                    ('pricelist_id', '=', partner.property_product_pricelist.id),
+                    ('website_id', '=', website.id),
+                    ('state', '=', 'draft'),
+                ], order='write_date desc', limit=1)
+            else:
+                partner.last_website_so_id = SaleOrder  # Not in a website context or public User
 
     @api.onchange('property_product_pricelist')
     def _onchange_property_product_pricelist(self):
@@ -27,20 +49,28 @@ class ResPartner(models.Model):
                 ),
             }}
 
-    def _get_current_partner(self, *, order_sudo=False, **kwargs):
-        """ Override `portal` to get current partner from order_sudo if user is not signed up. """
-        if order_sudo:
-            return (
-                (not order_sudo._is_anonymous_cart() and order_sudo.partner_id)
-                or self.env['res.partner'] # Avoid returning public user's partner
-            )
-        return super()._get_current_partner(order_sudo=order_sudo, **kwargs)
+    def _can_be_edited_by_current_customer(self, sale_order, address_type):
+        self.ensure_one()
+        children_partner_ids = self.env['res.partner']._search([
+            ('id', 'child_of', sale_order.partner_id.commercial_partner_id.id),
+            ('type', 'in', ('invoice', 'delivery', 'other')),
+        ])
+        return self == sale_order.partner_id or self.id in children_partner_ids
 
-    def _get_frontend_writable_fields(self):
-        """ Override `portal` to make website whitelist fields writable in portal address. """
-        frontend_writable_fields = super()._get_frontend_writable_fields()
-        frontend_writable_fields.update(
-            self.env['ir.model']._get('res.partner')._get_form_writable_fields().keys()
-        )
-
-        return frontend_writable_fields
+    def write(self, vals):
+        res = super().write(vals)
+        if {'country_id', 'vat', 'zip'} & vals.keys():
+            # Recompute fiscal position for open website orders
+            if orders_sudo := self.env['sale.order'].sudo().search([
+                ('state', '=', 'draft'),
+                ('website_id', '!=', False),
+                '|', ('partner_id', 'in', self.ids), ('partner_shipping_id', 'in', self.ids),
+            ]):
+                orders_by_fpos = orders_sudo.grouped('fiscal_position_id')
+                self.env.add_to_compute(orders_sudo._fields['fiscal_position_id'], orders_sudo)
+                if fpos_changed := orders_sudo.filtered(
+                    lambda so: so not in orders_by_fpos.get(so.fiscal_position_id, []),
+                ):
+                    fpos_changed._recompute_taxes()
+                    fpos_changed._recompute_prices()
+        return res

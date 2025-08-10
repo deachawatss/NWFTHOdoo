@@ -7,12 +7,12 @@ from odoo import api, models, _
 from odoo.addons.website.tools import add_form_signature
 
 
-class IrQwebFieldContact(models.AbstractModel):
+class Contact(models.AbstractModel):
     _inherit = 'ir.qweb.field.contact'
 
     @api.model
     def get_available_options(self):
-        options = super().get_available_options()
+        options = super(Contact, self).get_available_options()
         options.update(
             website_description=dict(type='boolean', string=_('Display the website description')),
             UserBio=dict(type='boolean', string=_('Display the biography')),
@@ -21,7 +21,7 @@ class IrQwebFieldContact(models.AbstractModel):
         return options
 
 
-class IrQwebFieldHtml(models.AbstractModel):
+class HTML(models.AbstractModel):
     _inherit = 'ir.qweb.field.html'
 
     @api.model

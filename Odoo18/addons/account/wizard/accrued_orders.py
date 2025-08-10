@@ -7,16 +7,15 @@ from odoo.exceptions import UserError
 from odoo.tools import date_utils
 from odoo.tools.misc import formatLang
 
-
-class AccountAccruedOrdersWizard(models.TransientModel):
+class AccruedExpenseRevenue(models.TransientModel):
     _name = 'account.accrued.orders.wizard'
     _description = 'Accrued Orders Wizard'
     _check_company_auto = True
 
     def _get_default_company(self):
-        if not self.env.context.get('active_model'):
+        if not self._context.get('active_model'):
             return
-        orders = self.env[self.env.context['active_model']].browse(self.env.context['active_ids'])
+        orders = self.env[self._context['active_model']].browse(self._context['active_ids'])
         return orders and orders[0].company_id.id
 
     def _get_default_date(self):
@@ -56,7 +55,7 @@ class AccountAccruedOrdersWizard(models.TransientModel):
 
     @api.depends('date', 'amount')
     def _compute_display_amount(self):
-        single_order = len(self.env.context['active_ids']) == 1
+        single_order = len(self._context['active_ids']) == 1
         for record in self:
             preview_data = json.loads(self.preview_data)
             lines = preview_data.get('groups_vals', [])[0].get('items_vals', [])
@@ -135,7 +134,7 @@ class AccountAccruedOrdersWizard(models.TransientModel):
         self.ensure_one()
         move_lines = []
         is_purchase = self.env.context.get('active_model') == 'purchase.order'
-        orders = self.env[self.env.context['active_model']].with_company(self.company_id).browse(self.env.context['active_ids'])
+        orders = self.env[self._context['active_model']].with_company(self.company_id).browse(self._context['active_ids'])
 
         if orders.filtered(lambda o: o.company_id != self.company_id):
             raise UserError(_('Entries can only be created for a single company at a time.'))
@@ -166,21 +165,21 @@ class AccountAccruedOrdersWizard(models.TransientModel):
                     o.order_line.with_context(accrual_entry_date=self.date)._compute_untaxed_amount_invoiced()
                     o.order_line.with_context(accrual_entry_date=self.date)._compute_qty_to_invoice()
                 lines = o.order_line.filtered(
-                    # We only want non-comment lines (no sections, notes, ...) and include all lines
+                    # We only want lines that are not sections or notes and include all lines
                     # for purchase orders but exclude downpayment lines for sales orders.
-                    lambda l: not l.display_type and not l.is_downpayment and
+                    lambda l: l.display_type not in ['line_section', 'line_note'] and not l.is_downpayment and
                     fields.Float.compare(
                         l.qty_to_invoice,
                         0,
-                        precision_rounding=l.product_uom_id.rounding,
+                        precision_rounding=l.product_uom.rounding,
                     ) != 0
                 )
                 for order_line in lines:
                     if is_purchase:
                         account = self._get_computed_account(order, order_line.product_id, is_purchase)
-                        if any(tax.price_include for tax in order_line.tax_ids):
+                        if any(tax.price_include for tax in order_line.taxes_id):
                             # As included taxes are not taken into account in the price_unit, we need to compute the price_subtotal
-                            price_subtotal = order_line.tax_ids.compute_all(
+                            price_subtotal = order_line.taxes_id.compute_all(
                                 order_line.price_unit,
                                 currency=order_line.order_id.currency_id,
                                 quantity=order_line.qty_to_invoice,

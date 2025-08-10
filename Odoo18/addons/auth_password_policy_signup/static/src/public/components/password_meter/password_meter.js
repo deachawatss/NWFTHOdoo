@@ -1,10 +1,16 @@
+/** @odoo-module */
+
 import { Meter } from "@auth_password_policy/password_meter";
 import { ConcretePolicy, recommendations } from "@auth_password_policy/password_policy";
-import { Component, useExternalListener, useState } from "@odoo/owl";
+import { Component, useExternalListener, useState, xml } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 
 class PasswordMeter extends Component {
-    static template = "auth_password_policy_signup.PasswordMeter";
+    static template = xml`
+        <Meter t-if="hasMinlength"
+            password="state.password"
+            required="required"
+            recommended="recommended"/>`;
     static components = { Meter };
     static props = {
         selector: String,

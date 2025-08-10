@@ -1,9 +1,11 @@
-import { stepUtils } from "@web_tour/tour_utils";
+/** @odoo-module **/
+
 import {
     clickOnEditAndWaitEditMode,
     clickOnSave,
     registerWebsitePreviewTour,
 } from '@website/js/tours/tour_utils';
+import { stepUtils } from "@web_tour/tour_service/tour_utils";
 
 const clickOnImgAndWaitForLoad = [
     {
@@ -13,7 +15,7 @@ const clickOnImgAndWaitForLoad = [
     },
     {
         content: "Check that the snippet editor of the clicked image has been loaded",
-        trigger: ".o_customize_tab [data-container-title='Image']",
+        trigger: "we-customizeblock-options:has(we-title:contains('Re-order'))",
     },
 ];
 const enterEditModeOfTestProduct = () => [
@@ -23,24 +25,20 @@ const enterEditModeOfTestProduct = () => [
         trigger: ":iframe a:contains('Test Remove Image')",
         run: "click",
     },
-    {
-        content: "Check that the product page is loaded",
-        trigger: ":iframe .o_wsale_product_page",
-    },
     ...clickOnEditAndWaitEditMode(),
 ];
 
 const removeImg = [
     {
         content: "Click on Remove",
-        trigger: ".o_customize_tab [data-container-title='Image'] button[data-action-id='removeMedia']",
+        trigger: "we-customizeblock-options:has(we-title:contains('Image')) we-button[data-name='media_wsale_remove']",
         run: "click",
     },
     // If the snippet editor is not visible, the remove process is considered as
     // finished.
     {
         content: "Check that the snippet editor is not visible",
-        trigger: ".o_customize_tab:not(:has([data-container-title='Image']))",
+        trigger: ".o_we_customize_panel:not(:has(we-customizeblock-options:has(we-title:contains('Re-order'))))",
     },
 ];
 

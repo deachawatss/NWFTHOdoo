@@ -1,19 +1,17 @@
 import { onRpc } from "@web/../tests/web_test_helpers";
 
 onRpc("hierarchy_read", function hierarchyRead({ model, args, kwargs }) {
-    const [domain, specification, parentFieldName, childFieldName, order] = args;
+    const [domain, fields, parentFieldName, childFieldName, order] = args;
     kwargs.order = order;
-    if (!(parentFieldName in specification)) {
-        specification[parentFieldName] = { fields: { display_name: {} } };
+    if (!(parentFieldName in fields)) {
+        fields.push(parentFieldName);
     }
-    const result = this.env[model].web_search_read(domain, specification, kwargs);
+    const records = this.env[model].search_read(domain, kwargs);
     let focusedRecordId = false;
     let fetchChildIdsForAllRecords = false;
-    if (!result.length) {
+    if (!records.length) {
         return [];
-    }
-    const records = result.records;
-    if (result.length === 1) {
+    } else if (records.length === 1) {
         const record = records[0];
         let domain = [
             [parentFieldName, "=", record.id],
@@ -21,7 +19,7 @@ onRpc("hierarchy_read", function hierarchyRead({ model, args, kwargs }) {
         ];
         if (record[parentFieldName]) {
             focusedRecordId = record.id;
-            const parentResId = record[parentFieldName].id;
+            const parentResId = record[parentFieldName][0];
             domain = [
                 ["id", "!=", record.id],
                 "|",
@@ -29,9 +27,7 @@ onRpc("hierarchy_read", function hierarchyRead({ model, args, kwargs }) {
                 [parentFieldName, "in", [parentResId, record.id]],
             ];
         }
-        records.push(
-            ...(this.env[model].web_search_read(domain, specification, kwargs)?.records || [])
-        );
+        records.push(...this.env[model].search_read(domain, kwargs));
     } else {
         fetchChildIdsForAllRecords = true;
     }
@@ -40,11 +36,11 @@ onRpc("hierarchy_read", function hierarchyRead({ model, args, kwargs }) {
         const parentResIds = [];
         for (const rec of records) {
             if (rec[parentFieldName]) {
-                parentResIds.push(rec[parentFieldName].id);
+                parentResIds.push(rec[parentFieldName][0]);
             }
         }
         const recordIds = records.map((rec) => rec.id);
-        const groups = this.env[model].formatted_read_group({
+        const data = this.env[model].web_read_group({
             ...kwargs,
             domain: [
                 [
@@ -56,10 +52,10 @@ onRpc("hierarchy_read", function hierarchyRead({ model, args, kwargs }) {
                 ],
             ],
             groupby: [parentFieldName],
-            aggregates: ["id:array_agg"],
+            fields: ["id:array_agg"],
         });
-        for (const group of groups) {
-            childrenIdsPerRecordId[group[parentFieldName][0]] = group["id:array_agg"];
+        for (const group of data.groups) {
+            childrenIdsPerRecordId[group[parentFieldName][0]] = group.id;
         }
     }
     if (focusedRecordId || Object.keys(childrenIdsPerRecordId).length) {

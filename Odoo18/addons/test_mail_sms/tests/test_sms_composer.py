@@ -437,7 +437,7 @@ class TestSMSComposerMass(SMSCommon):
             'active': True,
         } for p in self.partners[:5]])
         for p in self.partners[5:8]:
-            p.phone = self.partners[5].phone
+            p.mobile = self.partners[5].mobile
             self.assertEqual(p.phone_sanitized, self.partners[5].phone_sanitized)
 
         with self.with_user('employee'):

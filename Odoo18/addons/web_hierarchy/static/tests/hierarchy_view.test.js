@@ -5,20 +5,17 @@ import {
     contains,
     defineModels,
     fields,
-    getService,
     makeServerError,
     MockServer,
     mockService,
     models,
     mountView,
-    mountWithCleanup,
     onRpc,
     patchWithCleanup,
     removeFacet,
     toggleMenuItem,
     toggleSearchBarMenu,
 } from "@web/../tests/web_test_helpers";
-import { WebClient } from "@web/webclient/webclient";
 import { HierarchyModel } from "@web_hierarchy/hierarchy_model";
 
 async function enableFilters(filterNames = []) {
@@ -124,10 +121,10 @@ test("load hierarchy view", async () => {
 });
 
 test("display child nodes", async () => {
-    onRpc("web_search_read", () => {
+    onRpc("search_read", () => {
         expect.step("get child data");
     });
-    onRpc("formatted_read_group", () => {
+    onRpc("read_group", () => {
         expect.step("fetch descendants");
     });
     await mountView({
@@ -168,7 +165,7 @@ test("display child nodes", async () => {
 });
 
 test("display child nodes with child_field set on the view", async () => {
-    onRpc("web_search_read", () => {
+    onRpc("search_read", () => {
         expect.step("get child data with descendants");
     });
     await mountView({
@@ -320,6 +317,27 @@ test("search record in hierarchy view", async () => {
         "Josephine\nAlbert",
         "Louis\nJosephine",
     ]);
+});
+
+test("prohibit `hierarchy_search_parent_node` button from appearing on a node where you're your own manager", async () => {
+    Employee._records.push({
+        id: 5,
+        name: "Lisa",
+        parent_id: 5,
+        child_ids: [],
+    });
+    await mountView({
+        type: "hierarchy",
+        resModel: "hr.employee",
+        viewId: false,
+        searchViewArch: `
+            <search>
+                <filter name="test_filter" domain="[['id', '=', 5]]"/>
+            </search>
+        `,
+    })
+    await enableFilters(["test_filter"]);
+    expect(".o_hierarchy_node_container button[name=hierarchy_search_parent_node]").toHaveCount(0);
 });
 
 test("search record in hierarchy view with child field name defined in the arch", async () => {
@@ -1388,139 +1406,4 @@ test("The view displays the No Content help", async () => {
         resModel: "hr.employee",
     });
     expect("div.o_view_nocontent").toHaveCount(1);
-});
-
-test("Keep the same hierarchy state when we go back to the view with the breadcrumb", async () => {
-    await mountWithCleanup(WebClient);
-    await getService("action").doAction({
-        res_model: "hr.employee",
-        type: "ir.actions.act_window",
-        views: [
-            [false, "hierarchy"],
-            [false, "form"],
-        ],
-    });
-
-    expect(".o_hierarchy_row").toHaveCount(2);
-    expect(".o_hierarchy_node_button").toHaveCount(2);
-    expect(".o_hierarchy_node_button.btn-secondary").toHaveCount(1);
-    expect(".o_hierarchy_node_button.btn-primary").toHaveCount(1);
-    await contains(".o_hierarchy_node_button.btn-primary").click();
-    expect(".o_hierarchy_row").toHaveCount(3);
-    expect(".o_hierarchy_separator").toHaveCount(2);
-    expect(".o_hierarchy_node_container").toHaveCount(4);
-    expect(".o_hierarchy_node").toHaveCount(4);
-    expect(".o_hierarchy_node_button").toHaveCount(2);
-    expect(queryAllTexts(".o_hierarchy_node_content")).toEqual([
-        "Albert",
-        "Georges\nAlbert",
-        "Josephine\nAlbert",
-        "Louis\nJosephine",
-    ]);
-    await contains(".o_hierarchy_node_container:eq(1) .o_hierarchy_node").click();
-    expect(".o_hierarchy_view").toHaveCount(0);
-    expect(".o_form_view").toHaveCount(1);
-    await contains(".o_back_button").click();
-    expect(queryAllTexts(".o_hierarchy_node_content")).toEqual([
-        "Albert",
-        "Georges\nAlbert",
-        "Josephine\nAlbert",
-        "Louis\nJosephine",
-    ]);
-});
-
-test("Keep the state of the branch when we open another branch in the same level", async () => {
-    Employee._records.push(
-        { id: 5, name: "Jean", parent_id: 2, child_ids: [6] },
-        { id: 6, name: "Claude", parent_id: 5, child_ids: [] }
-    );
-    // check we keep in cache the previous branch to avoid fetching again the same data
-    await mountView({
-        resModel: "hr.employee",
-        type: "hierarchy",
-    });
-    expect(".o_hierarchy_view").toHaveCount(1);
-    expect(".o_hierarchy_row").toHaveCount(2);
-    expect(queryAllTexts(".o_hierarchy_node_content")).toEqual([
-        "Albert",
-        "Georges\nAlbert",
-        "Josephine\nAlbert",
-    ]);
-    await contains(".o_hierarchy_node_button.btn-primary:eq(0)").click();
-    expect(queryAllTexts(".o_hierarchy_node_content")).toEqual([
-        "Albert",
-        "Georges\nAlbert",
-        "Josephine\nAlbert",
-        "Jean\nGeorges",
-    ]);
-    await contains(".o_hierarchy_node_button.btn-primary:eq(1)").click();
-    expect(queryAllTexts(".o_hierarchy_node_content")).toEqual([
-        "Albert",
-        "Georges\nAlbert",
-        "Josephine\nAlbert",
-        "Jean\nGeorges",
-        "Claude\nJean",
-    ]);
-    expect(".o_hierarchy_node_button.btn-primary").toHaveCount(1);
-    await contains(".o_hierarchy_node_button.btn-primary").click();
-    expect(queryAllTexts(".o_hierarchy_node_content")).toEqual([
-        "Albert",
-        "Georges\nAlbert",
-        "Josephine\nAlbert",
-        "Louis\nJosephine",
-    ]);
-    expect(".o_hierarchy_node_button.btn-primary").toHaveCount(1);
-    await contains(".o_hierarchy_node_button.btn-primary").click();
-    expect(queryAllTexts(".o_hierarchy_node_content")).toEqual([
-        "Albert",
-        "Georges\nAlbert",
-        "Josephine\nAlbert",
-        "Jean\nGeorges",
-        "Claude\nJean",
-    ]);
-});
-
-test("Avoid fetching subnodes if those subnodes are already in the view", async () => {
-    Employee._records.push({ id: 5, name: "Jean", parent_id: 2, child_ids: [] });
-
-    onRpc("web_search_read", () => {
-        expect.step("get child data");
-    });
-    onRpc("read_group", () => {
-        expect.step("fetch descendants");
-    });
-    await mountView({
-        type: "hierarchy",
-        resModel: "hr.employee",
-        arch: Employee._views.hierarchy,
-        searchViewArch: `
-            <search>
-                <filter name="test_filter" domain="[['id', 'in', [1, 2, 3, 4, 5]]]"/>
-            </search>
-        `,
-    });
-    await enableFilters(["test_filter"]);
-    expect(".o_hierarchy_row").toHaveCount(1);
-    expect(".o_hierarchy_node").toHaveCount(5);
-    expect(queryAllTexts(".o_hierarchy_node_content")).toEqual([
-        "Albert",
-        "Georges\nAlbert",
-        "Josephine\nAlbert",
-        "Louis\nJosephine",
-        "Jean\nGeorges",
-    ]);
-    await contains(".o_hierarchy_node_button.btn-primary:eq(0)").click();
-    expect.verifySteps([]);
-    expect(".o_hierarchy_row").toHaveCount(2);
-    expect(queryAllTexts(".o_hierarchy_row:first-child .o_hierarchy_node_content")).toEqual([
-        "Albert",
-        "Louis\nJosephine",
-        "Jean\nGeorges",
-    ]);
-    expect(queryAllTexts(".o_hierarchy_row:last-child .o_hierarchy_node_content")).toEqual([
-        "Georges\nAlbert",
-        "Josephine\nAlbert",
-    ]);
-    // The button to show the subnodes should be displayed for Georges and Josephine
-    expect(".o_hierarchy_node_button.btn-primary").toHaveCount(2);
 });

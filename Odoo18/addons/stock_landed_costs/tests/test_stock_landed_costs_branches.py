@@ -35,6 +35,7 @@ class TestStockLandedCostsBranches(TestStockValuationLCCommon):
             'location_dest_id': warehouse.lot_stock_id.id,
             'picking_type_id': warehouse.in_type_id.id,
             'move_ids': [(0, 0, {
+                'name': self.product1.name,
                 'location_id': supplier_location.id,
                 'location_dest_id': warehouse.lot_stock_id.id,
                 'picking_type_id': warehouse.in_type_id.id,
@@ -73,7 +74,7 @@ class TestStockLandedCostsBranches(TestStockValuationLCCommon):
             po_line.product_id = self.product1
             po_line.product_qty = 1
             po_line.price_unit = 10
-            po_line.tax_ids.clear()
+            po_line.taxes_id.clear()
         po = po_form.save()
         po.button_confirm()
 

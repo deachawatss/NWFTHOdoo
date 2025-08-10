@@ -3,8 +3,7 @@
 
 from odoo import fields, models
 
-
-class ResCompany(models.Model):
+class Company(models.Model):
     _inherit = "res.company"
 
     snailmail_color = fields.Boolean(default=True)

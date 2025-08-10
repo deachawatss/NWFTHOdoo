@@ -1,7 +1,9 @@
+/** @odoo-module */
 // @ts-check
 
 import { parse, helpers, iterateAstNodes } from "@odoo/o-spreadsheet";
 import { isLoadingError } from "@spreadsheet/o_spreadsheet/errors";
+import { loadBundle } from "@web/core/assets";
 import { OdooSpreadsheetModel } from "@spreadsheet/model";
 import { OdooDataProvider } from "@spreadsheet/data_sources/odoo_data_provider";
 
@@ -17,9 +19,9 @@ import {
  */
 
 export async function fetchSpreadsheetModel(env, resModel, resId) {
-    const { data, revisions } = await env.services.http.get(
-        `/spreadsheet/data/${resModel}/${resId}`
-    );
+    const { data, revisions } = await env.services.orm.call(resModel, "join_spreadsheet_session", [
+        resId,
+    ]);
     return createSpreadsheetModel({ env, data, revisions });
 }
 
@@ -95,17 +97,17 @@ export async function freezeOdooData(model) {
     const data = model.exportData();
     for (const sheet of Object.values(data.sheets)) {
         sheet.formats ??= {};
-        for (const [xc, content] of Object.entries(sheet.cells)) {
+        for (const [xc, cell] of Object.entries(sheet.cells)) {
             const { col, row } = toCartesian(xc);
             const sheetId = sheet.id;
             const position = { sheetId, col, row };
             const evaluatedCell = model.getters.getEvaluatedCell(position);
-            if (containsOdooFunction(content)) {
+            if (containsOdooFunction(cell.content)) {
                 const pivotId = model.getters.getPivotIdFromPosition(position);
                 if (pivotId && model.getters.getPivotCoreDefinition(pivotId).type !== "ODOO") {
                     continue;
                 }
-                sheet.cells[xc] = evaluatedCell.value.toString();
+                cell.content = evaluatedCell.value.toString();
                 if (evaluatedCell.format) {
                     sheet.formats[xc] = getItemId(evaluatedCell.format, data.formats);
                 }
@@ -120,7 +122,10 @@ export async function freezeOdooData(model) {
                                 col,
                                 row,
                             });
-                            sheet.cells[xc] = evaluatedCell.value.toString();
+                            sheet.cells[xc] = {
+                                ...sheet.cells[xc],
+                                content: evaluatedCell.value.toString(),
+                            };
                             if (evaluatedCell.format) {
                                 sheet.formats[xc] = getItemId(evaluatedCell.format, data.formats);
                             }
@@ -129,14 +134,12 @@ export async function freezeOdooData(model) {
                 }
             }
             if (containsLinkToOdoo(evaluatedCell.link)) {
-                sheet.cells[xc] = evaluatedCell.link.label;
+                cell.content = evaluatedCell.link.label;
             }
         }
         for (const figure of sheet.figures) {
-            if (
-                figure.tag === "chart" &&
-                (figure.data.type.startsWith("odoo_") || figure.data.type === "geo")
-            ) {
+            if (figure.tag === "chart" && figure.data.type.startsWith("odoo_")) {
+                await loadBundle("web.chartjs_lib");
                 const img = odooChartToImage(model, figure);
                 figure.tag = "image";
                 figure.data = {

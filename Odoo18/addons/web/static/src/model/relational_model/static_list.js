@@ -7,14 +7,10 @@ import { fromUnityToServerValues, getBasicEvalContext, getId, patchActiveFields 
 
 import { markRaw } from "@odoo/owl";
 
-/**
- * @typedef {import("./record").Record} RelationalRecord
- */
-
 function compareFieldValues(v1, v2, fieldType) {
     if (fieldType === "many2one") {
-        v1 = v1 ? v1.display_name : "";
-        v2 = v2 ? v2.display_name : "";
+        v1 = v1 ? v1[1] : "";
+        v2 = v2 ? v2[1] : "";
     }
     return v1 < v2;
 }
@@ -42,12 +38,13 @@ export class StaticList extends DataPoint {
     static type = "StaticList";
 
     /**
-     * @type {typeof DataPoint.prototype.setup<{
-     *  onUpdate?: () => unknown;
-     *  parent?: RelationalRecord;
-     * }>}
+     * @param {import("./relational_model").Config} config
+     * @param {Object} data
+     * @param {Object} [options={}]
+     * @param {Function} [options.onUpdate]
+     * @param {Record} [options.parent]
      */
-    setup(_config, data, options = {}) {
+    setup(config, data, options = {}) {
         this._parent = options.parent;
         this._onUpdate = options.onUpdate;
 
@@ -66,7 +63,6 @@ export class StaticList extends DataPoint {
         // config to add the form view's fields in activeFields.
         this._extendedRecords = new Set();
 
-        /** @type {RelationalRecord[]} */
         this.records = data
             .slice(this.offset, this.limit)
             .map((r) => this._createRecordDatapoint(r));
@@ -108,10 +104,6 @@ export class StaticList extends DataPoint {
 
     get resIds() {
         return this.config.resIds;
-    }
-
-    get selection() {
-        return [];
     }
 
     // -------------------------------------------------------------------------
@@ -180,8 +172,8 @@ export class StaticList extends DataPoint {
      * @param {Object} [params.context]
      * @param {boolean} [params.withoutParent]
      * @param {string} [params.mode]
-     * @param {RelationalRecord} [record]
-     * @returns {RelationalRecord}
+     * @param {Record} [record]
+     * @returns {Record}
      */
     extendRecord(params, record) {
         return this.model.mutex.exec(async () => {
@@ -365,7 +357,7 @@ export class StaticList extends DataPoint {
      * add this record to the list (if it is a new one), and to notify the parent record of the
      * update. We may also want to sort the list.
      *
-     * @param {RelationalRecord} record
+     * @param {Record} record
      */
     validateExtendedRecord(record) {
         return this.model.mutex.exec(async () => {
@@ -534,9 +526,7 @@ export class StaticList extends DataPoint {
                             }
                             changes[fieldName] = command[2][fieldName];
                         }
-                        record._applyChanges(
-                            record._parseServerValues(changes, { currentValues: record.data })
-                        );
+                        record._applyChanges(record._parseServerValues(changes, record.data));
                     }
                     break;
                 }
@@ -748,6 +738,7 @@ export class StaticList extends DataPoint {
             resIds: resId ? [resId] : [],
             mode: params.mode || "readonly",
             isMonoRecord: true,
+            currentCompanyId: this.currentCompanyId,
         };
         const { CREATE, UPDATE } = x2ManyCommands;
         const options = {
@@ -1002,9 +993,9 @@ export class StaticList extends DataPoint {
             }
         }
         const allRecords = currentIds.map((id) => this._cache[id]);
-        const sortedRecords = allRecords.sort((r1, r2) =>
-            compareRecords(r1, r2, orderBy, this.fields)
-        );
+        const sortedRecords = allRecords.sort((r1, r2) => {
+            return compareRecords(r1, r2, orderBy, this.fields);
+        });
         await this._load({
             orderBy,
             nextCurrentIds: sortedRecords.map((r) => r.resId || r._virtualId),
@@ -1017,11 +1008,7 @@ export class StaticList extends DataPoint {
         if (fieldName) {
             if (orderBy.length && orderBy[0].name === fieldName) {
                 if (!this._needsReordering) {
-                    if (orderBy[0].asc) {
-                        orderBy[0] = { name: orderBy[0].name, asc: false };
-                    } else {
-                        orderBy = [{ name: "id", asc: true }];
-                    }
+                    orderBy[0] = { name: orderBy[0].name, asc: !orderBy[0].asc };
                 }
             } else {
                 orderBy = orderBy.filter((o) => o.name !== fieldName);

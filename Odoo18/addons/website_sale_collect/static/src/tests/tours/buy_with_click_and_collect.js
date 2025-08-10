@@ -6,7 +6,7 @@ registry.category('web_tour.tours').add('website_sale_collect_buy_product', {
     url: '/shop',
     steps: () => [
         ...tourUtils.searchProduct("Test CAC Product", { select: true }),
-        clickOnElement("Open Location selector", '[name="click_and_collect_availability"]'),
+        clickOnElement("Open Location selector", '.o_click_and_collect_availability'),
         clickOnElement("Choose location", '#submit_location_large'),
         clickOnElement('Add to cart', '#add_to_cart'),
         tourUtils.goToCart({quantity: 1}),
@@ -41,8 +41,8 @@ registry.category('web_tour.tours').add('website_sale_collect_buy_product', {
             run: 'edit 10000',
         },
         {
-            content: "Click on confirm button",
-            trigger: '[name="website_sale_main_button"]',
+            content: "Click on next button",
+            trigger: '.oe_cart .btn:contains("Continue checkout")',
             run: 'click',
         },
         {
@@ -62,7 +62,7 @@ registry.category('web_tour.tours').add('website_sale_collect_buy_product', {
         ...tourUtils.pay({ expectUnloadPage: true, waitFinalizeYourPayment: true }),
         {
             content: "Check payment status confirmation window",
-            trigger: '[name="order_confirmation"][data-order-tracking-info]',
+            trigger: '.oe_website_sale_tx_status[data-order-tracking-info]',
         },
     ],
 });

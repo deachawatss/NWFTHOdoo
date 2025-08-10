@@ -79,31 +79,32 @@ class WebsiteCustomer(GoogleMap):
             domain += [('website_tag_ids', 'in', tag_id)]
 
         # group by industry, based on customers found with the search(domain)
-        industry_groups = Partner.sudo()._read_group(
-            domain, ["industry_id"], ["__count"], order="industry_id")
+        industries = Partner.sudo().read_group(domain, ["id", "industry_id"], groupby="industry_id", orderby="industry_id")
+        partners_count = Partner.sudo().search_count(domain)
 
         if industry:
             domain.append(('industry_id', '=', industry.id))
-            if not any(ind.id == industry.id for ind, __ in industry_groups) and industry.exists():
-                industry_groups.append((industry, 0))
-                industry_groups = sorted(industry_groups, key=lambda group: group[0].name or '')
+            if industry.id not in (x['industry_id'][0] for x in industries if x['industry_id']):
+                if industry.exists():
+                    industries.append({
+                        'industry_id_count': 0,
+                        'industry_id': (industry.id, industry.name)
+                    })
 
-        industries = [{
-            'industry_id_count': sum(count for __, count, in industry_groups),
-            'industry_id': (0, _("All Industries")),
-        }]
-        for g_industry, count in industry_groups:
-            industries.append({
-                'industry_id_count': count,
-                'industry_id': g_industry and (g_industry.id, g_industry.display_name),
-            })
+        industries.sort(key=lambda d: (d.get('industry_id') or (0, ''))[1])
+
+        industries.insert(0, {
+            'industry_id_count': partners_count,
+            'industry_id': (0, _("All Industries"))
+        })
 
         # group by country, based on customers found with the search(domain)
-        country_groups = Partner.sudo()._read_group(domain, ["country_id"], ["__count"], order="country_id")
+        countries = Partner.sudo().read_group(domain, ["id", "country_id"], groupby="country_id", orderby="country_id")
+        country_count = Partner.sudo().search_count(domain)
 
         fallback_all_countries = False
         if country:
-            if country_groups and country.id not in (country.id for country, __ in country_groups):
+            if country_count > 0 and country.id not in (x['country_id'][0] for x in countries if x['country_id']):
                 # fallback on all countries if no customer found for the country
                 # and there are matching customers for other countries
                 fallback_all_countries = True
@@ -111,15 +112,10 @@ class WebsiteCustomer(GoogleMap):
             else:
                 domain += [('country_id', '=', country.id)]
 
-        countries = [{
-            'country_id_count': sum(count for __, count in country_groups),
-            'country_id': (0, _("All Countries")),
-        }]
-        for g_country, count in country_groups:
-            countries.append({
-                'country_id_count': count,
-                'country_id': g_country and (g_country.id, g_country.sudo().display_name),
-            })
+        countries.insert(0, {
+            'country_id_count': country_count,
+            'country_id': (0, _("All Countries"))
+        })
 
         # search customers to display
         partner_count = Partner.sudo().search_count(domain)
@@ -171,5 +167,7 @@ class WebsiteCustomer(GoogleMap):
                     return request.redirect('/customers/%s' % request.env['ir.http']._slug(partner))
                 values = {}
                 values['main_object'] = values['partner'] = partner
+                # See REVIEW_CAN_PUBLISH_UNSUDO
+                values['main_object'] = values['main_object'].with_context(can_publish_unsudo_main_object=True)
                 return request.render("website_customer.details", values)
         raise request.not_found()

@@ -13,15 +13,14 @@ class TestWorkingHours(TestHrCalendarCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        # YTI TODO: Those tests seem to be never launched from now.
-        if 'hr.version' in cls.env:
+        if 'hr.contract' in cls.env:
             cls.skipTest(cls,
                 "hr_contract module is installed. To test these features you need to install hr_holidays_contract"
             )
 
         cls.leave_type = cls.env['hr.leave.type'].create({
             'name': 'Unpaid Time Off',
-            'requires_allocation': False,
+            'requires_allocation': 'no',
             'leave_validation_type': 'no_validation',
         })
 

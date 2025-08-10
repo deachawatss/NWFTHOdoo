@@ -8,14 +8,10 @@ defineHrHolidaysModels();
 
 test("out of office message on direct chat with out of office partner", async () => {
     const pyEnv = await startServer();
-    const partnerId = pyEnv["res.partner"].create({ name: "Demo", im_status: "online" });
-    const userId = pyEnv["res.users"].create({ partner_id: partnerId });
-    const employee = pyEnv["hr.employee"].create({
-        user_id: userId,
-        leave_date_to: "2023-01-01",
-    });
-    pyEnv["res.users"].write([userId], {
-        employee_ids: [Command.link(employee)],
+    const partnerId = pyEnv["res.partner"].create({
+        name: "Demo",
+        im_status: "leave_online",
+        out_of_office_date_end: "2023-01-01",
     });
     const channelId = pyEnv["discuss.channel"].create({
         channel_member_ids: [

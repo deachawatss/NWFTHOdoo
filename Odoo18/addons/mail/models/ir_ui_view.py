@@ -2,7 +2,7 @@
 from odoo import fields, models
 
 
-class IrUiView(models.Model):
+class View(models.Model):
     _inherit = 'ir.ui.view'
 
     type = fields.Selection(selection_add=[('activity', 'Activity')])

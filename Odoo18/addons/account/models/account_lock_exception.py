@@ -1,5 +1,6 @@
-from odoo import _, api, fields, models
-from odoo.fields import Command, Domain
+from odoo import _, api, fields, models, Command
+from odoo.osv import expression
+from odoo.tools import create_index
 from odoo.tools.misc import format_datetime
 from odoo.exceptions import UserError, ValidationError
 
@@ -8,8 +9,8 @@ from odoo.addons.account.models.company import SOFT_LOCK_DATE_FIELDS
 from datetime import date
 
 
-class AccountLock_Exception(models.Model):
-    _name = 'account.lock_exception'
+class AccountLockException(models.Model):
+    _name = "account.lock_exception"
     _description = "Account Lock Exception"
 
     active = fields.Boolean(
@@ -95,7 +96,15 @@ class AccountLock_Exception(models.Model):
         help="The date the Purchase Lock Date is set to by this exception. If the lock date is not changed it is set to the maximal date.",
     )
 
-    _company_id_end_datetime_idx = models.Index("(company_id, user_id, end_datetime) WHERE active IS TRUE")
+    def init(self):
+        super().init()
+        create_index(
+            self.env.cr,
+            indexname='account_lock_exception_company_id_end_datetime_idx',
+            tablename=self._table,
+            expressions=['company_id', 'user_id', 'end_datetime'],
+            where="active = TRUE"
+        )
 
     def _compute_display_name(self):
         for record in self:
@@ -121,21 +130,36 @@ class AccountLock_Exception(models.Model):
                     exception[field] = date.max
 
     def _search_state(self, operator, value):
-        if operator != 'in':
-            return NotImplemented
+        if operator not in ['=', '!='] or value not in ['revoked', 'expired', 'active']:
+            raise UserError(_('Operation not supported'))
 
-        domain = Domain.FALSE
-        if 'revoked' in value:
-            domain |= Domain('active', '=', False)
-        if 'expired' in value:
-            domain |= Domain('active', '=', True) & Domain('end_datetime', '<', self.env.cr.now())
-        if 'active' in value:
-            domain |= Domain('active', '=', True) & (Domain('end_datetime', '=', False) | Domain('end_datetime', '>=', self.env.cr.now()))
-        return domain
+        normal_domain_for_equals = []
+        if value == 'revoked':
+            normal_domain_for_equals = [
+                ('active', '=', False),
+            ]
+        elif value == 'expired':
+            normal_domain_for_equals = [
+                '&',
+                    ('active', '=', True),
+                    ('end_datetime', '<', self.env.cr.now()),
+            ]
+        elif value == 'active':
+            normal_domain_for_equals = [
+                '&',
+                    ('active', '=', True),
+                    '|',
+                        ('end_datetime', '=', None),
+                        ('end_datetime', '>=', self.env.cr.now()),
+            ]
+        if operator == '=':
+            return normal_domain_for_equals
+        else:
+            return ['!'] + normal_domain_for_equals
 
     def _search_lock_date(self, field, operator, value):
         if operator not in ['<', '<='] or not value:
-            return NotImplemented
+            raise UserError(_('Operation not supported'))
         return ['&',
                   ('lock_date_field', '=', field),
                   '|',
@@ -244,15 +268,11 @@ class AccountLock_Exception(models.Model):
 
     @api.model
     def _get_active_exceptions_domain(self, company, soft_lock_date_fields):
-        return (
-            Domain.OR(
-                Domain(field, '<', company[field])
-                for field in soft_lock_date_fields
-                if company[field]
-            )
-            & Domain('company_id', '=', company.id)
-            & Domain('state', '=', 'active'),  # checks the datetime
-        )
+        return [
+            *expression.OR([(field, '<', company[field])] for field in soft_lock_date_fields if company[field]),
+            ('company_id', '=', company.id),
+            ('state', '=', 'active'),  # checks the datetime
+        ]
 
     def _get_audit_trail_during_exception_domain(self):
         self.ensure_one()
@@ -288,11 +308,11 @@ class AccountLock_Exception(models.Model):
                 ('audit_trail_message_ids', 'any', [
                     ('tracking_value_ids.field_id', '=', self.env['ir.model.fields']._get('account.move', 'date').id),
                     '|',
-                        *Domain.AND(tracking_old_datetime_domain),
-                        *Domain.AND(tracking_new_datetime_domain),
+                        *expression.AND(tracking_old_datetime_domain),
+                        *expression.AND(tracking_new_datetime_domain),
                 ]),
                 # The date of the move is inside the excepted period and sth. was changed on the move
-                *Domain.AND(move_date_domain),
+                *expression.AND(move_date_domain),
         ]
 
     def action_show_audit_trail_during_exception(self):

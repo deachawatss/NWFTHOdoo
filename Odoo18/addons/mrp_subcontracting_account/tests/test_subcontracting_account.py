@@ -18,7 +18,7 @@ class TestAccountSubcontractingFlows(TestMrpSubcontractingCommon):
         self.supplier_location = self.env.ref('stock.stock_location_suppliers')
         self.uom_unit = self.env.ref('uom.product_uom_unit')
 
-        product_category_all = self.product_category
+        product_category_all = self.env.ref('product.product_category_all')
         product_category_all.property_cost_method = 'fifo'
         product_category_all.property_valuation = 'real_time'
         in_account = self.env['account.account'].create({
@@ -49,10 +49,10 @@ class TestAccountSubcontractingFlows(TestMrpSubcontractingCommon):
         stock_out_acc_id = product_category_all.property_stock_account_output_categ_id.id
         stock_valu_acc_id = product_category_all.property_stock_valuation_account_id.id
         stock_cop_acc_id = product_category_all.property_stock_account_production_cost_id.id
-        expense_acc_id = product_category_all.property_account_expense_categ_id.id
 
         # IN 10@10 comp1 10@20 comp2
         move1 = self.env['stock.move'].create({
+            'name': 'IN 10 units @ 10.00 per unit',
             'location_id': self.supplier_location.id,
             'location_dest_id': self.env.company.subcontracting_location_id.id,
             'product_id': self.comp1.id,
@@ -66,6 +66,7 @@ class TestAccountSubcontractingFlows(TestMrpSubcontractingCommon):
         move1.picked = True
         move1._action_done()
         move2 = self.env['stock.move'].create({
+            'name': 'IN 10 units @ 20.00 per unit',
             'location_id': self.supplier_location.id,
             'location_dest_id': self.env.company.subcontracting_location_id.id,
             'product_id': self.comp2.id,
@@ -172,7 +173,7 @@ class TestAccountSubcontractingFlows(TestMrpSubcontractingCommon):
         all_amls_ids += amls.ids
         self.assertRecordValues(amls, [
             {'account_id': stock_valu_acc_id, 'product_id': self.finished.id, 'debit': 0.0, 'credit': 60.0},
-            {'account_id': expense_acc_id, 'product_id': self.finished.id, 'debit': 60.0, 'credit': 0.0},
+            {'account_id': stock_out_acc_id, 'product_id': self.finished.id, 'debit': 60.0, 'credit': 0.0},
         ])
 
     def test_subcontracting_account_flow_2(self):
@@ -184,7 +185,7 @@ class TestAccountSubcontractingFlows(TestMrpSubcontractingCommon):
         self.customer_location = self.env.ref('stock.stock_location_customers')
         self.supplier_location = self.env.ref('stock.stock_location_suppliers')
         self.uom_unit = self.env.ref('uom.product_uom_unit')
-        product_category_all = self.product_category
+        product_category_all = self.env.ref('product.product_category_all')
         product_category_all.property_cost_method = 'fifo'
         product_category_all.property_valuation = 'real_time'
         in_account = self.env['account.account'].create({
@@ -229,6 +230,7 @@ class TestAccountSubcontractingFlows(TestMrpSubcontractingCommon):
 
         # IN 10@10 comp1 10@20 comp2
         move1 = self.env['stock.move'].create({
+            'name': 'IN 10 units @ 10.00 per unit',
             'location_id': self.supplier_location.id,
             'location_dest_id': self.env.company.subcontracting_location_id.id,
             'product_id': self.comp1.id,
@@ -242,6 +244,7 @@ class TestAccountSubcontractingFlows(TestMrpSubcontractingCommon):
         move1.picked = True
         move1._action_done()
         move2 = self.env['stock.move'].create({
+            'name': 'IN 10 units @ 20.00 per unit',
             'location_id': self.supplier_location.id,
             'location_dest_id': self.env.company.subcontracting_location_id.id,
             'product_id': self.comp2.id,
@@ -299,7 +302,7 @@ class TestAccountSubcontractingFlows(TestMrpSubcontractingCommon):
         self.comp1.tracking = 'serial'
         self.comp2.standard_price = 100
         self.finished.tracking = 'serial'
-        self.product_category.property_cost_method = 'fifo'
+        self.env.ref('product.product_category_all').property_cost_method = 'fifo'
 
         # Create a receipt picking from the subcontractor
         picking_form = Form(self.env['stock.picking'])
@@ -362,7 +365,7 @@ class TestAccountSubcontractingFlows(TestMrpSubcontractingCommon):
         Suppose a subcontracted product P with two tracked components, P is FIFO
         Create a receipt for 10 x P, receive 5, then 3 and then 2
         """
-        self.product_category.property_cost_method = 'fifo'
+        self.env.ref('product.product_category_all').property_cost_method = 'fifo'
         self.comp1.tracking = 'lot'
         self.comp1.standard_price = 10
         self.comp2.tracking = 'lot'
@@ -418,7 +421,7 @@ class TestAccountSubcontractingFlows(TestMrpSubcontractingCommon):
         self.customer_location = self.env.ref('stock.stock_location_customers')
         self.supplier_location = self.env.ref('stock.stock_location_suppliers')
         self.uom_unit = self.env.ref('uom.product_uom_unit')
-        product_category_all = self.product_category
+        product_category_all = self.env.ref('product.product_category_all')
         product_category_all.property_cost_method = 'standard'
         product_category_all.property_valuation = 'real_time'
 
@@ -488,7 +491,7 @@ class TestAccountSubcontractingFlows(TestMrpSubcontractingCommon):
         """
         Test that the production stock account is optional, and we will fallback on input/output accounts.
         """
-        product_category_all = self.product_category
+        product_category_all = self.env.ref('product.product_category_all')
         product_category_all.property_cost_method = 'fifo'
         product_category_all.property_valuation = 'real_time'
         self._setup_category_stock_journals()
@@ -531,6 +534,7 @@ class TestBomPriceSubcontracting(TestBomPriceCommon):
 
     def test_01_compute_price_subcontracting_cost(self):
         """Test calculation of bom cost with subcontracting."""
+        self.table_head.uom_po_id = self.dozen
         partner = self.env['res.partner'].create({
             'name': 'A name can be a Many2one...'
         })
@@ -546,8 +550,7 @@ class TestBomPriceSubcontracting(TestBomPriceCommon):
             }, {
                 'partner_id': partner.id,
                 'product_tmpl_id': self.table_head.product_tmpl_id.id,
-                'price': 120.0,
-                'product_uom_id': self.dozen.id,
+                'price': 120.0,  # 10 by Unit because uom_po_id is in dozen
             }
         ])
         self.assertEqual(suppliers.mapped('is_subcontractor'), [True, True])

@@ -1,5 +1,7 @@
+/** @odoo-module **/
+
 import {
-    changeOptionInPopover,
+    changeOption,
     clickOnEditAndWaitEditMode,
     clickOnSave,
     clickOnSnippet,
@@ -15,12 +17,14 @@ registerWebsitePreviewTour("test_parallax", {
 }, () => [
     ...insertSnippet(coverSnippet),
     ...clickOnSnippet(coverSnippet),
-...changeOptionInPopover("Cover", "Filter", "Blur"),
+    changeOption("BackgroundOptimize", "we-toggler"),
+    changeOption("BackgroundOptimize", 'we-button[data-gl-filter="blur"]'),
 {
     content: "Check that the Cover snippet has the Blur filter on its background image",
     trigger: ":iframe .s_cover span[data-gl-filter='blur']",
 },
-...changeOptionInPopover("Cover", "Scroll Effect", "None"),
+    changeOption("Parallax", "we-toggler"),
+    changeOption("Parallax", 'we-button[data-select-data-attribute="0"]'),
 {
     content: "Check that the data related to the filter have been transferred to the new target",
     trigger: ":iframe .s_cover[data-gl-filter='blur']",
@@ -29,7 +33,8 @@ registerWebsitePreviewTour("test_parallax", {
     content: "Check that the 'o_modified_image_to_save' class has been transferred to the new target",
     trigger: ":iframe .s_cover.o_modified_image_to_save",
 },
-...changeOptionInPopover("Cover", "Scroll Effect", "Fixed"),
+    changeOption("Parallax", "we-toggler"),
+    changeOption("Parallax", 'we-button[data-select-data-attribute="1"]'),
 {
     content: "Check that the 'o_modified_image_to_save' class has been deleted from the old target",
     trigger: ":iframe .s_cover:not(.o_modified_image_to_save)",
@@ -42,15 +47,11 @@ registerWebsitePreviewTour("test_parallax", {
     content: "Check that the data related to the filter have been transferred to the new target",
     trigger: ":iframe span.s_parallax_bg[data-gl-filter='blur']",
 },
-...changeOptionInPopover("Cover", "Scroll Effect", "Parallax to Top"),
+    changeOption("Parallax", "we-toggler"),
+    changeOption("Parallax", 'we-button[data-select-data-attribute="1.5"]'),
 {
     content: "Check that the option was correctly applied",
     trigger: ':iframe span.s_parallax_bg[style*=top][style*=bottom][style*=transform]',
-},
-...changeOptionInPopover("Cover", "Scroll Effect", "Zoom In"),
-{
-    content: "Check that the option was correctly applied",
-    trigger: ':iframe span.s_parallax_bg[style*="transform: scale("]',
 },
     ...clickOnSave(),
     ...clickOnEditAndWaitEditMode(),

@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 /**
  * Speed up fade-in fade-out to avoid useless delay in tests.
  */
@@ -104,10 +106,6 @@ registry.category("web_tour.tours").add('test_certification_success', {
     }, {
         content: "Finish Survey",
         trigger: 'button[type="submit"]',
-        run: "click",
-    }, {
-        content: "Click on Submit",
-        trigger: 'button.btn-primary:contains("Submit")',
         run: "click",
     }, {
         content: "You scored",

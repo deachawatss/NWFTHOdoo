@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 import logging
-import requests
 import threading
-
-from odoo.http import route, Controller, request
-from odoo.tests.common import HttpCase, tagged, ChromeBrowser, TEST_CURSOR_COOKIE_NAME, Like
-from odoo.tools import config
 from unittest.mock import patch
+
+from odoo.http import Controller, request, route
+from odoo.tests.common import ChromeBrowser, HttpCase, tagged
+from odoo.tools import config
 
 _logger = logging.getLogger(__name__)
 
@@ -85,21 +84,20 @@ class TestChromeBrowser(HttpCase):
         self.addCleanup(self.browser.stop)
 
     def test_screencasts(self):
-        self.browser.screencaster.start()
+        self.browser.start_screencast()
         self.browser.navigate_to('about:blank')
         self.browser._wait_ready()
         code = "setTimeout(() => console.log('test successful'), 2000); setInterval(() => document.body.innerText = (new Date()).getTime(), 100);"
         self.browser._wait_code_ok(code, 10)
-        self.browser.screencaster.save()
+        self.browser._save_screencast()
 
 
 @tagged('-at_install', 'post_install')
 class TestChromeBrowserOddDimensions(TestChromeBrowser):
-    allow_inherited_tests_method = True
     browser_size = "1215x768"
 
 
-class TestRequestRemainingCommon(HttpCase):
+class TestRequestRemaining(HttpCase):
     # This test case tries to reproduce the case where a request is lost between two test and is execute during the secone one.
     #
     # - Test A browser js finishes with a pending request
@@ -118,126 +116,36 @@ class TestRequestRemainingCommon(HttpCase):
         cls.main_lock = threading.Lock()
         cls.main_lock.acquire()
 
+    def test_requests_a(self):
         class Dummycontroller(Controller):
             @route('/web/concurrent', type='http', auth='public', sitemap=False)
             def wait(c, **params):
-                assert request.env.cr.__class__.__name__ == 'TestCursor'
+                self.assertEqual(request.env.cr.__class__.__name__, 'TestCursor')
                 request.env.cr.execute('SELECT 1')
                 request.env.cr.fetchall()
                 # not that the previous queries are not really needed since the http stack will check the registry
                 # but this makes the test more clear and robust
                 _logger.info('B finish')
 
-        cls.env.registry.clear_cache('routing')
-        cls.addClassCleanup(cls.env.registry.clear_cache, 'routing')
-
-    def _test_requests_a(self, cookie=False):
+        self.env.registry.clear_cache('routing')
+        self.addCleanup(self.env.registry.clear_cache, 'routing')
 
         def late_request_thread():
             # In some rare case the request may arrive after _wait_remaining_requests.
             # this thread is trying to reproduce this case.
             _logger.info('Waiting for B to start')
             if self.main_lock.acquire(timeout=10):
-                _logger.info('Opening url')
-                # don't use url_open since it simulates a lost request from chrome and url_open would wait to aquire the lock
-                s = requests.Session()
-                if cookie:
-                    s.cookies.set(TEST_CURSOR_COOKIE_NAME, self.canonical_tag)
-                s.get(self.base_url() + "/web/concurrent", timeout=10)
+                self.url_open("/web/concurrent", timeout=10)
             else:
                 _logger.error('Something went wrong and thread was not able to aquire lock')
-
-        type(self).thread_a = threading.Thread(target=late_request_thread)
+        TestRequestRemaining.thread_a = threading.Thread(target=late_request_thread)
         self.thread_a.start()
 
-    def _test_requests_b(self):
+    def test_requests_b(self):
         self.env.cr.execute('SELECT 1')
-        self.main_lock.release()
-        _logger.info('B started, waiting for A to finish')
-        self.thread_a.join()
-        self.env.cr.fetchall()
-
-
-class TestRequestRemainingNoCookie(TestRequestRemainingCommon):
-    def test_requests_a(self):
-        self._test_requests_a()
-
-    def test_requests_b(self):
-        with self.assertLogs('odoo.tests.common') as log_catcher:
-            self._test_requests_b()
-        self.assertEqual(
-            log_catcher.output,
-            [Like('... odoo.tests.common:Request with path /web/concurrent has been ignored during test as it it does not contain the test_cursor cookie or it is expired. '
-             '(required "None (request are not enabled)", got "None")')],
-        )
-
-
-class TestRequestRemainingNotEnabled(TestRequestRemainingCommon):
-    def test_requests_a(self):
-        self._test_requests_a(cookie=True)
-
-    def test_requests_b(self):
-        with self.assertLogs('odoo.tests.common') as log_catcher:
-            self._test_requests_b()
-        self.assertEqual(
-            log_catcher.output,
-            [Like('... odoo.tests.common:Request with path /web/concurrent has been ignored during test as it it does not contain the test_cursor cookie or it is expired. '
-             '(required "None (request are not enabled)", got "/base/tests/test_http_case.py:TestRequestRemainingNotEnabled.test_requests_a")')],
-        )
-
-
-class TestRequestRemainingStartDuringNext(TestRequestRemainingCommon):
-    def test_requests_a(self):
-        self._test_requests_a(cookie=True)
-
-    def test_requests_b(self):
-        with self.assertLogs('odoo.tests.common') as log_catcher, self.allow_requests():
-            self._test_requests_b()
-        self.assertEqual(
-            log_catcher.output,
-            [Like('... odoo.tests.common:Request with path /web/concurrent has been ignored during test as it it does not contain the test_cursor cookie or it is expired. '
-             '(required "/base/tests/test_http_case.py:TestRequestRemainingStartDuringNext.test_requests_b__0", got "/base/tests/test_http_case.py:TestRequestRemainingStartDuringNext.test_requests_a")')],
-        )
-
-
-class TestRequestRemainingAfterFirstCheck(TestRequestRemainingCommon):
-    """
-    This test is more specific to the current implem and check what happens if the lock is aquired after the next thread
-    Scenario:
-        - test_requests_a closes browser js, aquire the lock
-        - a ghost request tries to open a test curso, makes the first check (assertCanOpenTestCursor)
-        - the next test enables resquest (here using url_open) releasing the lock
-        - the pending request is executed but detects the test change
-    """
-    def test_requests_a(self, cookie=False):
-        self.http_request_key = self.canonical_tag
-
-        def late_request_thread():
-            _logger.info('Opening url')
-            # don't use url_open since it simulates a lost request from chrome and url_open would wait to aquire the lock
-            s = requests.Session()
-            s.cookies.set(TEST_CURSOR_COOKIE_NAME, self.http_request_key)
-            # we exceptc the request to be stuck when aquiring the registry lock
-            s.get(self.base_url() + "/web/concurrent", timeout=10)
-
-        type(self).thread_a = threading.Thread(target=late_request_thread)
-        self.thread_a.start()
-        # we need to ensure that the first check is made and that we are aquiring the lock
-        self.main_lock.acquire()
-
-    def assertCanOpenTestCursor(self):
-        super().assertCanOpenTestCursor()
-        # the first time we check assertCanOpenTestCursor we need release the lock (lowks ensure we are still inside test_requests_a)
-        if self.main_lock:
+        with self.assertLogs('odoo.tests.common') as lc:
             self.main_lock.release()
-            self.main_lock = None
-
-    def test_requests_b(self):
-        _logger.info('B started, waiting for A to finish')
-        # url_open will simulate a enabled request
-        with self.assertLogs('odoo.tests.common') as log_catcher, self.allow_requests():
+            _logger.info('B started, waiting for A to finish')
             self.thread_a.join()
-        self.assertEqual(
-            log_catcher.output,
-            [Like('... Trying to open a test cursor for /base/tests/test_http_case.py:TestRequestRemainingAfterFirstCheck.test_requests_a while already in a test /base/tests/test_http_case.py:TestRequestRemainingAfterFirstCheck.test_requests_b')],
-        )
+        self.assertEqual(lc.output[0].split(':', 1)[1], 'odoo.tests.common:Request with path /web/concurrent has been ignored during test as it it does not contain the test_cursor cookie or it is expired. (required "/base/tests/test_http_case.py:TestRequestRemaining.test_requests_b", got "/base/tests/test_http_case.py:TestRequestRemaining.test_requests_a")')
+        self.env.cr.fetchall()

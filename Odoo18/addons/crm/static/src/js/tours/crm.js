@@ -1,6 +1,8 @@
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
-import { stepUtils } from "@web_tour/tour_utils";
+import { stepUtils } from "@web_tour/tour_service/tour_utils";
 
 import { markup } from "@odoo/owl";
 
@@ -20,7 +22,7 @@ registry.category("web_tour.tours").add('crm_tour', {
     run: "click",
 },
 {
-    trigger: ".o_opportunity_kanban .o_kanban_renderer",
+    trigger: ".o_opportunity_kanban",
 },
 {
     trigger: '.o_opportunity_kanban .o-kanban-button-new',
@@ -28,7 +30,7 @@ registry.category("web_tour.tours").add('crm_tour', {
     tooltipPosition: 'bottom',
     run: "click",
 }, {
-    trigger: ".o_kanban_quick_create .o_field_widget[name='commercial_partner_id'] input",
+    trigger: ".o_kanban_quick_create .o_field_widget[name='partner_id'] input",
     content: markup(_t('<b>Write a few letters</b> to look for a company, or create a new one.')),
     tooltipPosition: "top",
     run: "edit Brandon Freeman",
@@ -43,7 +45,7 @@ registry.category("web_tour.tours").add('crm_tour', {
     run: "click",
 },
 {
-    trigger: ".o_opportunity_kanban .o_kanban_renderer",
+    trigger: ".o_opportunity_kanban",
 },
 {
     trigger: ".o_opportunity_kanban:not(:has(.o_view_sample_data)) .o_kanban_group .o_kanban_record:last-of-type",
@@ -52,7 +54,7 @@ registry.category("web_tour.tours").add('crm_tour', {
     run: "drag_and_drop(.o_opportunity_kanban .o_kanban_group:eq(2))",
 },
 {
-    trigger: ".o_opportunity_kanban .o_kanban_renderer",
+    trigger: ".o_opportunity_kanban",
 },
 {
     // Choose the element that is not going to be moved by the previous step.
@@ -62,7 +64,7 @@ registry.category("web_tour.tours").add('crm_tour', {
     run: "click",
 },
 {
-    trigger: ".o_opportunity_kanban .o_kanban_renderer",
+    trigger: ".o_opportunity_kanban",
 },
 {
     trigger: ".o-mail-ActivityListPopover button:contains(Schedule an activity)",
@@ -80,6 +82,9 @@ registry.category("web_tour.tours").add('crm_tour', {
     content: markup(_t("Drag your opportunity to <b>Won</b> when you get the deal. Congrats!")),
     tooltipPosition: "right",
     run: "drag_and_drop(.o_opportunity_kanban .o_kanban_group:eq(3))",
+},
+{
+    trigger: ".o_opportunity_kanban",
 },
 {
     trigger: ".o_kanban_record",

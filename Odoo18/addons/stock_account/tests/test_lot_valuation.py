@@ -84,7 +84,7 @@ class TestLotValuation(TestStockValuationCommon):
 
     def test_real_time_valuation(self):
         """ Test account move lines contains lot """
-        self.stock_input_account, self.stock_output_account, self.stock_valuation_account, self.expense_account, self.income_account, self.stock_journal = _create_accounting_data(self.env)
+        self.stock_input_account, self.stock_output_account, self.stock_valuation_account, self.expense_account, self.stock_journal = _create_accounting_data(self.env)
         self.product1.categ_id.write({
             'property_stock_account_input_categ_id': self.stock_input_account.id,
             'property_stock_account_output_categ_id': self.stock_output_account.id,
@@ -207,7 +207,7 @@ class TestLotValuation(TestStockValuationCommon):
             'tracking': 'lot',
             'is_storable': True,
             'uom_id': self.uom_unit.id,
-            'categ_id': self.env.ref('product.product_category_goods').id,
+            'uom_po_id': self.uom_unit.id,
             'attribute_line_ids': [
                 Command.create({
                     'attribute_id': self.size_attribute.id,
@@ -272,7 +272,14 @@ class TestLotValuation(TestStockValuationCommon):
             'inventory_quantity': 10
         })
         with self.assertRaises(UserError):
-            inventory_quant.action_apply_inventory()
+            stock_confirmation_action = inventory_quant.action_apply_inventory()
+            stock_confirmation_wizard_form = Form(
+                self.env['stock.track.confirmation'].with_context(
+                    **stock_confirmation_action['context'])
+            )
+
+            stock_confirmation_wizard = stock_confirmation_wizard_form.save()
+            stock_confirmation_wizard.action_confirm()
 
     def test_inventory_adjustment_existing_lot(self):
         """ If a lot exist, inventory takes its cost, if not, takes standard price """
@@ -352,6 +359,7 @@ class TestLotValuation(TestStockValuationCommon):
         # c2 move
         c2_stock_loc = self.env['stock.warehouse'].search([('company_id', '=', c2.id)], limit=1).lot_stock_id
         move1 = self.env['stock.move'].with_company(c2).create({
+            'name': 'IN 10 units @ 10.00 per unit',
             'location_id': self.supplier_location.id,
             'location_dest_id': c2_stock_loc.id,
             'product_id': self.product1.id,
@@ -429,8 +437,7 @@ class TestLotValuation(TestStockValuationCommon):
             'default_product_id': self.product1.id,
             'default_company_id': self.env.company.id,
             'default_added_value': 8.0,
-            'active_ids': self.lot1.ids,
-            'active_model': 'stock.lot',
+            'default_lot_id': self.lot1.id,
         })).save().action_validate_revaluation()
 
         layers = self.lot1.stock_valuation_layer_ids
@@ -440,6 +447,32 @@ class TestLotValuation(TestStockValuationCommon):
         self.assertEqual(self.lot1.value_svl, 70, "lot1 value changed")
         self.assertEqual(self.lot2.standard_price, 5, "lot2 cost remains unchanged")
         self.assertEqual(self.product1.standard_price, 6.43, "product cost changed too")
+
+    def test_average_manual_product_revaluation_with_lots(self):
+        self.product1.categ_id.property_cost_method = 'average'
+
+        self._make_in_move(self.product1, 8, 5, lot_ids=[self.lot1, self.lot2])
+        self._make_in_move(self.product1, 6, 7, lot_ids=[self.lot1])
+        self.assertEqual(self.lot1.standard_price, 6.2)
+        self.assertEqual(self.lot1.value_svl, 62)
+        self.assertEqual(self.lot2.standard_price, 5)
+        self.assertEqual(self.lot2.value_svl, 20)
+        self.assertEqual(self.product1.standard_price, 5.86)
+
+        Form(self.env['stock.valuation.layer.revaluation'].with_context({
+            'default_product_id': self.product1.id,
+            'default_company_id': self.env.company.id,
+            'default_added_value': 11.2,
+        })).save().action_validate_revaluation()
+
+        layers = self.lot1.stock_valuation_layer_ids
+        self.assertEqual(len(layers), 3)
+        self.assertEqual(layers.lot_id, self.lot1)
+        self.assertEqual(self.lot1.standard_price, 7, "lot1 cost changed")
+        self.assertEqual(self.lot1.value_svl, 70, "lot1 value changed")
+        self.assertEqual(self.lot2.standard_price, 5.8, "lot2 cost changed")
+        self.assertEqual(self.lot2.value_svl, 23.2, "lot2 value changed")
+        self.assertEqual(self.product1.standard_price, 6.66, "product cost changed too")
 
     def test_lot_move_update_after_done(self):
         """validate a stock move. Edit the move line in done state."""
@@ -503,7 +536,7 @@ class TestLotValuation(TestStockValuationCommon):
             {'value': -13.5, 'lot_id': self.lot3.id, 'quantity': -3},
         ])
 
-    def test_lot_fifo_vacuum(self):
+    def test_lot_fifo_vaccum(self):
         """ Test lot fifo vacuum"""
         self.product1.standard_price = 9
         self._make_out_move(self.product1, 2, lot_ids=[self.lot1])
@@ -739,7 +772,7 @@ class TestLotValuation(TestStockValuationCommon):
             'name': 'Inventory user',
             'login': 'inventory_user',
             'email': 'inventory_user@gmail.com',
-            'group_ids': [Command.set(self.env.ref('stock.group_stock_user').ids)],
+            'groups_id': [Command.set(self.env.ref('stock.group_stock_user').ids)],
         })
         customer = self.env['res.partner'].create({
             'name': 'Lovely customer'
@@ -751,6 +784,7 @@ class TestLotValuation(TestStockValuationCommon):
             'location_dest_id': self.env.ref('stock.stock_location_customers').id,
             'picking_type_id': self.env.ref('stock.warehouse0').out_type_id.id,
             'move_ids': [Command.create({
+                'name': 'lovely move',
                 'product_id': product_lot.id,
                 'product_uom_qty': 5.0,
                 'location_id': self.env.ref('stock.warehouse0').lot_stock_id.id,
@@ -764,3 +798,16 @@ class TestLotValuation(TestStockValuationCommon):
         self.assertRecordValues(delivery.move_ids, [
             {'quantity': 5.0, 'state': 'done', 'lot_ids': self.lot1.ids}
         ])
+
+    def test_adjustment_post_validation(self):
+        """
+        On a picking order test the behavior of changing the quantity on a stock.move
+        """
+        in_move = self._make_in_move(self.product1, 2, 2, create_picking=True, lot_ids=[self.lot1])
+        picking = in_move.picking_id
+        picking.action_toggle_is_locked()
+        with self.assertRaises(UserError):
+            with Form(picking) as picking_form:
+                with picking_form.move_ids_without_package.edit(0) as mv:
+                    mv.quantity = 5.0
+        self.assertEqual(in_move.quantity, 2)

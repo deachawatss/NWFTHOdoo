@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { useService } from "@web/core/utils/hooks";
 import { Component, onWillStart, useState } from "@odoo/owl";
 import { Dialog } from "@web/core/dialog/dialog";

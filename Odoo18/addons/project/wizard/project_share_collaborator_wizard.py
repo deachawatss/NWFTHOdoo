@@ -3,7 +3,7 @@
 from odoo import api, fields, models
 
 
-class ProjectShareCollaboratorWizard(models.TransientModel):
+class ProjectSharingCollaboratorWizard(models.TransientModel):
     _name = 'project.share.collaborator.wizard'
     _description = 'Project Sharing Collaborator Wizard'
 

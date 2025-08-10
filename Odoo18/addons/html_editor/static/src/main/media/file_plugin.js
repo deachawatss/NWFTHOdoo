@@ -5,14 +5,10 @@ import {
 import { Plugin } from "@html_editor/plugin";
 import { withSequence } from "@html_editor/utils/resource";
 import { _t } from "@web/core/l10n/translation";
-import { isHtmlContentSupported } from "@html_editor/core/selection_plugin";
 
 export class FilePlugin extends Plugin {
     static id = "file";
     static dependencies = ["dom", "history"];
-    static defaultConfig = {
-        allowFile: true,
-    };
     resources = {
         user_commands: {
             id: "uploadFile",
@@ -20,20 +16,16 @@ export class FilePlugin extends Plugin {
             description: _t("Add a download box"),
             icon: "fa-upload",
             run: this.uploadAndInsertFiles.bind(this),
-            isAvailable: (selection) =>
-                this.isUploadCommandAvailable(selection) && isHtmlContentSupported(selection),
+            isAvailable: this.isUploadCommandAvailable.bind(this),
         },
         powerbox_items: {
             categoryId: "media",
             commandId: "uploadFile",
             keywords: [_t("file"), _t("document")],
         },
-        power_buttons: withSequence(5, {
-            commandId: "uploadFile",
-            description: _t("Upload a file"),
-        }),
+        power_buttons: withSequence(5, { commandId: "uploadFile" }),
         unsplittable_node_predicates: (node) => node.classList?.contains("o_file_box"),
-        ...(this.config.allowFile && {
+        ...(!this.config.disableFile && {
             media_dialog_extra_tabs: {
                 id: "DOCUMENTS",
                 title: _t("Documents"),
@@ -42,6 +34,8 @@ export class FilePlugin extends Plugin {
             },
         }),
         selectors_for_feff_providers: () => ".o_file_box",
+        functional_empty_node_predicates: (node) =>
+            node?.nodeName === "SPAN" && node.classList.contains("o_file_box"),
     };
 
     get recordInfo() {
@@ -49,7 +43,7 @@ export class FilePlugin extends Plugin {
     }
 
     isUploadCommandAvailable() {
-        return this.config.allowFile;
+        return !this.config.disableFile;
     }
 
     get componentForMediaDialog() {

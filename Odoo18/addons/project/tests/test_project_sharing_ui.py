@@ -16,7 +16,7 @@ class TestProjectSharingUi(HttpCase):
             'email': 'georges@project.portal',
             'signature': 'SignGeorges',
             'notification_type': 'email',
-            'group_ids': [Command.set([cls.env.ref('base.group_portal').id])],
+            'groups_id': [Command.set([cls.env.ref('base.group_portal').id])],
         })
 
         cls.partner_portal = cls.env['res.partner'].with_context({'mail_create_nolog': True}).create({
@@ -84,9 +84,6 @@ class TestProjectSharingUi(HttpCase):
 
     def test_01_project_sharing(self):
         """ Test Project Sharing UI with an internal user """
-        self.env.ref('base.user_admin').write({
-            'email': 'mitchell.admin@example.com',
-        })
         self.start_tour("/odoo", 'project_sharing_tour', login="admin")
 
     def test_02_project_sharing(self):
@@ -145,7 +142,7 @@ class TestProjectSharingUi(HttpCase):
             'login': 'john',
             'password': 'john1234',
             'email': 'john@example.com',
-            'group_ids': [Command.set([
+            'groups_id': [Command.set([
                 self.env.ref('base.group_user').id,
                 self.env.ref('project.group_project_user').id
             ])]
@@ -167,21 +164,3 @@ class TestProjectSharingUi(HttpCase):
             params={"action": "add", "content": "👀", "message_id": message.id},
         )
         self.start_tour("/my/projects", 'test_04_project_sharing_chatter_message_reactions', login='georges1')
-
-    def test_05_project_sharing_chatter_mention_users(self):
-        self.env["project.share.wizard"].create(
-            {
-                "res_model": "project.project",
-                "res_id": self.project_portal.id,
-                "collaborator_ids": [
-                    Command.create({"partner_id": self.partner_portal.id, "access_mode": "edit"}),
-                ],
-            }
-        )
-        self.env["project.task"].with_context({"mail_create_nolog": True}).create(
-            {
-                "name": "Test Task",
-                "project_id": self.project_portal.id,
-            }
-        )
-        self.start_tour("/my/projects", "portal_project_sharing_chatter_mention_users", login="georges1")

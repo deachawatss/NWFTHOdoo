@@ -1,11 +1,13 @@
-import { AND, fields, Record } from "@mail/core/common/record";
+import { AND, Record } from "@mail/core/common/record";
 import { prettifyMessageContent } from "@mail/utils/common/format";
-import { assignDefined } from "@mail/utils/common/misc";
+import { assignDefined, compareDatetime, nearestGreaterThanOrEqual } from "@mail/utils/common/misc";
 import { rpc } from "@web/core/network/rpc";
 
 import { _t } from "@web/core/l10n/translation";
+import { formatList } from "@web/core/l10n/utils";
 import { user } from "@web/core/user";
 import { Deferred } from "@web/core/utils/concurrency";
+import { isMobileOS } from "@web/core/browser/feature_detection";
 
 /**
  * @typedef SuggestedRecipient
@@ -13,10 +15,17 @@ import { Deferred } from "@web/core/utils/concurrency";
  * @property {import("models").Persona|false} persona
  * @property {string} lang
  * @property {string} reason
+ * @property {boolean} checked
  */
 
 export class Thread extends Record {
     static id = AND("model", "id");
+    /** @type {Object.<string, import("models").Thread>} */
+    static records = {};
+    /** @returns {import("models").Thread} */
+    static get(data) {
+        return super.get(data);
+    }
     /**
      * @param {string} localId
      * @returns {string}
@@ -28,98 +37,135 @@ export class Thread extends Record {
         // Transform "Thread,<model> AND <id>" to "<model>_<id>""
         return localId.split(",").slice(1).join("_").replace(" AND ", "_");
     }
-    static async getOrFetch(data, fieldNames = []) {
-        let thread = this.get(data);
-        if (
-            data.id > 0 &&
-            (!thread || fieldNames.some((fieldName) => thread[fieldName] === undefined))
-        ) {
-            await this.store.fetchStoreData("mail.thread", {
-                thread_model: data.model,
-                thread_id: data.id,
-                request_list: fieldNames,
-            });
-            thread = this.get(data);
-            if (!thread.exists() || !thread.hasReadAccess) {
-                return;
+    /** @returns {import("models").Thread|import("models").Thread[]} */
+    static insert(data) {
+        return super.insert(...arguments);
+    }
+    static new() {
+        const thread = super.new(...arguments);
+        Record.onChange(thread, ["state"], () => {
+            if (
+                thread.state === "folded" ||
+                (thread.state === "open" &&
+                    this.store.env.services.ui.isSmall &&
+                    this.store.env.services["im_livechat.livechat"])
+            ) {
+                const cw = this.store.ChatWindow?.insert({ thread });
+                thread.store.chatHub.folded.delete(cw);
+                thread.store.chatHub.folded.unshift(cw);
             }
-        }
+            if (thread.state === "open" && !this.store.env.services.ui.isSmall) {
+                const cw = this.store.ChatWindow?.insert({ thread });
+                thread.store.chatHub.opened.delete(cw);
+                thread.store.chatHub.opened.unshift(cw);
+            }
+        });
         return thread;
     }
+    static async getOrFetch(data) {
+        return this.get(data);
+    }
 
-    autofocus = 0;
-    create_uid = fields.One("res.users");
     /** @type {number} */
     id;
     /** @type {string} */
     uuid;
     /** @type {string} */
     model;
-    allMessages = fields.Many("mail.message", {
+    allMessages = Record.many("Message", {
         inverse: "thread",
-    });
-    storeAsAllChannels = fields.One("Store", {
-        compute() {
-            if (this.model === "discuss.channel") {
-                return this.store;
-            }
-        },
-        eager: true,
     });
     /** @type {boolean} */
     areAttachmentsLoaded = false;
-    group_public_id = fields.One("res.groups");
-    attachments = fields.Many("ir.attachment", {
+    group_public_id = Record.one("res.groups");
+    attachments = Record.many("Attachment", {
         /**
          * @param {import("models").Attachment} a1
          * @param {import("models").Attachment} a2
          */
         sort: (a1, a2) => (a1.id < a2.id ? 1 : -1),
     });
-    get allowedToLeaveChannelTypes() {
-        return ["channel", "group"];
-    }
     get canLeave() {
         return (
-            this.allowedToLeaveChannelTypes.includes(this.channel_type) &&
-            this.group_ids.length === 0 &&
+            ["channel", "group"].includes(this.channel_type) &&
+            !this.message_needaction_counter &&
+            !this.group_based_subscription &&
             this.store.self?.type === "partner"
         );
     }
-    get allowedToUnpinChannelTypes() {
-        return ["chat"];
-    }
     get canUnpin() {
-        return (
-            this.parent_channel_id || this.allowedToUnpinChannelTypes.includes(this.channel_type)
-        );
+        return this.channel_type === "chat" && this.importantCounter === 0;
     }
     /** @type {boolean} */
     can_react = true;
-    chat_window = fields.One("ChatWindow", {
+    channelMembers = Record.many("ChannelMember", {
         inverse: "thread",
+        onDelete: (r) => r.delete(),
+        sort: (m1, m2) => m1.id - m2.id,
     });
-    close_chat_window = fields.Attr(undefined, {
+    /**
+     * To be overridden.
+     * The purpose is to exclude technical channelMembers like bots and avoid
+     * "wrong" seen message indicator
+     */
+    get membersThatCanSeen() {
+        return this.channelMembers;
+    }
+    typingMembers = Record.many("ChannelMember", { inverse: "threadAsTyping" });
+    otherTypingMembers = Record.many("ChannelMember", {
         /** @this {import("models").Thread} */
-        onUpdate() {
-            if (this.close_chat_window) {
-                this.close_chat_window = undefined;
-                this.closeChatWindow({ force: true });
-            }
+        compute() {
+            return this.typingMembers.filter((member) => !member.persona?.eq(this.store.self));
         },
     });
-    composer = fields.One("Composer", {
+    hasOtherMembersTyping = Record.attr(false, {
+        /** @this {import("models").Thread} */
+        compute() {
+            return this.otherTypingMembers.length > 0;
+        },
+    });
+    toggleBusSubscription = Record.attr(false, {
+        compute() {
+            return (
+                this.model === "discuss.channel" &&
+                this.selfMember?.memberSince >= this.store.env.services.bus_service.startedAt
+            );
+        },
+        onUpdate() {
+            this.store.updateBusSubscription();
+        },
+    });
+    invitedMembers = Record.many("ChannelMember");
+    composer = Record.one("Composer", {
         compute: () => ({}),
         inverse: "thread",
         onDelete: (r) => r.delete(),
     });
+    correspondent = Record.one("ChannelMember", {
+        compute() {
+            return this.computeCorrespondent();
+        },
+    });
+    correspondentCountry = Record.one("Country", {
+        /** @this {import("models").Thread} */
+        compute() {
+            return this.correspondent?.persona?.country ?? this.anonymous_country;
+        },
+    });
+    get showCorrespondentCountry() {
+        return (
+            this.channel_type === "livechat" &&
+            this.operator?.eq(this.store.self) &&
+            Boolean(this.correspondentCountry)
+        );
+    }
     counter = 0;
     counter_bus_id = 0;
     /** @type {string} */
-    description;
+    custom_channel_name;
     /** @type {string} */
-    display_name;
-    displayToSelf = fields.Attr(false, {
+    description;
+    displayToSelf = Record.attr(false, {
         compute() {
             return (
                 this.is_pinned ||
@@ -132,14 +178,14 @@ export class Thread extends Record {
             this.onPinStateUpdated();
         },
     });
-    followers = fields.Many("mail.followers", {
+    followers = Record.many("Follower", {
         /** @this {import("models").Thread} */
         onAdd(r) {
             r.thread = this;
         },
         onDelete: (r) => r.delete(),
     });
-    selfFollower = fields.One("mail.followers", {
+    selfFollower = Record.one("Follower", {
         /** @this {import("models").Thread} */
         onAdd(r) {
             r.thread = this;
@@ -154,30 +200,29 @@ export class Thread extends Record {
         if (this.model === "mail.box") {
             return this.counter;
         }
+        if (this.isChatChannel && this.selfMember?.message_unread_counter) {
+            return this.selfMember.totalUnreadMessageCounter;
+        }
         return this.message_needaction_counter;
     }
-    isDisplayed = fields.Attr(false, {
+    isCorrespondentOdooBot = Record.attr(undefined, {
+        compute() {
+            return this.correspondent?.persona.eq(this.store.odoobot);
+        },
+    });
+    isDisplayed = Record.attr(false, {
         compute() {
             return this.computeIsDisplayed();
         },
         onUpdate() {
-            this.isDisplayedOnUpdate();
-        },
-    });
-    isDisplayedOnUpdate() {}
-    get isFocused() {
-        return this.isFocusedCounter !== 0;
-    }
-    isFocusedCounter = fields.Attr(0, {
-        onUpdate() {
-            if (this.isFocusedCounter < 0) {
-                this.isFocusedCounter = 0;
+            if (this.selfMember && !this.isDisplayed) {
+                this.selfMember.syncUnread = true;
             }
         },
     });
     isLoadingAttachments = false;
     isLoadedDeferred = new Deferred();
-    isLoaded = fields.Attr(false, {
+    isLoaded = Record.attr(false, {
         /** @this {import("models").Thread} */
         onUpdate() {
             if (this.isLoaded) {
@@ -189,16 +234,16 @@ export class Thread extends Record {
             }
         },
     });
-    is_pinned = fields.Attr(undefined, {
+    is_pinned = Record.attr(undefined, {
         /** @this {import("models").Thread} */
         onUpdate() {
             this.onPinStateUpdated();
         },
     });
-    message_main_attachment_id = fields.One("ir.attachment");
+    mainAttachment = Record.one("Attachment");
+    memberCount = 0;
     message_needaction_counter = 0;
     message_needaction_counter_bus_id = 0;
-    messageInEdition = fields.One("mail.message", { inverse: "threadAsInEdition" });
     /**
      * Contains continuous sequence of messages to show in message list.
      * Messages are ordered from older to most recent.
@@ -208,13 +253,7 @@ export class Thread extends Record {
      *
      * Content should be fetched and inserted in a controlled way.
      */
-    messages = fields.Many("mail.message");
-    /**
-     * Phantom messages is a snapshot of `messages` while the thread is being loaded.
-     * In other words: when thread is not loaded or loading, phantom messages are the
-     * messages before thread loading.
-     */
-    phantomMessages = fields.Many("mail.message");
+    messages = Record.many("Message");
     /** @type {string} */
     modelName;
     /** @type {string} */
@@ -224,14 +263,21 @@ export class Thread extends Record {
      * `messages` list. This is a temporary storage to ensure nothing is lost
      * when fetching newer messages.
      */
-    pendingNewMessages = fields.Many("mail.message");
-    needactionMessages = fields.Many("mail.message", {
+    pendingNewMessages = Record.many("Message");
+    needactionMessages = Record.many("Message", {
         inverse: "threadAsNeedaction",
         sort: (message1, message2) => message1.id - message2.id,
     });
+    /** @type {string} */
+    name;
     // FIXME: should be in the portal/frontend bundle but live chat can be loaded
     // before portal resulting in the field not being properly initialized.
-    portal_partner = fields.One("Persona");
+    portal_partner = Record.one("Persona");
+    selfMember = Record.one("ChannelMember", {
+        inverse: "threadAsSelf",
+    });
+    /** @type {'open' | 'folded' | 'closed'} */
+    state;
     status = "new";
     /**
      * Stored scoll position of thread from top in ASC order.
@@ -239,24 +285,16 @@ export class Thread extends Record {
      * @type {number|'bottom'}
      */
     scrollTop = "bottom";
-    transientMessages = fields.Many("mail.message");
-    /* The additional recipients are the recipients that are manually added
-     * by the user by using the "To" field of the Chatter. */
-    additionalRecipients = fields.Attr([], {
-        onUpdate() {
-            for (const recipient of this.additionalRecipients) {
-                recipient.persona = recipient.partner_id
-                    ? { type: "partner", id: recipient.partner_id }
-                    : false;
-            }
-        },
-    });
-    /* The suggested recipients are the recipients that are suggested by the
-     * current model and includes the recipients of the last message. (e.g: for
-     * a crm lead, the model will suggest the customer associated to the lead). */
-    suggestedRecipients = fields.Attr([], {
+    transientMessages = Record.many("Message");
+    /** @type {string} */
+    defaultDisplayMode;
+    scrollUnread = true;
+    suggestedRecipients = Record.attr([], {
         onUpdate() {
             for (const recipient of this.suggestedRecipients) {
+                if (recipient.checked === undefined) {
+                    recipient.checked = true;
+                }
                 recipient.persona = recipient.partner_id
                     ? { type: "partner", id: recipient.partner_id }
                     : false;
@@ -265,10 +303,32 @@ export class Thread extends Record {
     });
     hasLoadingFailed = false;
     canPostOnReadonly;
+    /** @type {luxon.DateTime} */
+    last_interest_dt = Record.attr(undefined, { type: "datetime" });
+    /** @type {luxon.DateTime} */
+    lastInterestDt = Record.attr(undefined, {
+        type: "datetime",
+        compute() {
+            const selfMemberLastInterestDt = this.selfMember?.last_interest_dt;
+            const lastInterestDt = this.last_interest_dt;
+            return compareDatetime(selfMemberLastInterestDt, lastInterestDt) > 0
+                ? selfMemberLastInterestDt
+                : lastInterestDt;
+        },
+    });
     /** @type {Boolean} */
     is_editable;
+    /**
+     * This field is used for channels only.
+     * false means using the custom_notifications from user settings.
+     *
+     * @type {false|"all"|"mentions"|"no_notif"}
+     */
+    custom_notifications = false;
+    /** @type {luxon.DateTime} */
+    mute_until_dt = Record.attr(undefined, { type: "datetime" });
     /** @type {Boolean} */
-    isLocallyPinned = fields.Attr(false, {
+    isLocallyPinned = Record.attr(false, {
         onUpdate() {
             this.onPinStateUpdated();
         },
@@ -276,7 +336,7 @@ export class Thread extends Record {
     /** @type {"not_fetched"|"pending"|"fetched"} */
     fetchMembersState = "not_fetched";
     /** @type {integer|null} */
-    highlightMessage = fields.One("mail.message", {
+    highlightMessage = Record.one("Message", {
         onAdd(msg) {
             msg.thread = this;
         },
@@ -292,12 +352,16 @@ export class Thread extends Record {
     pid;
 
     get accessRestrictedToGroupText() {
-        if (!this.group_public_id?.full_name) {
+        if (!this.authorizedGroupFullName) {
             return false;
         }
         return _t('Access restricted to group "%(groupFullName)s"', {
-            groupFullName: this.group_public_id.full_name,
+            groupFullName: this.authorizedGroupFullName,
         });
+    }
+
+    get areAllMembersLoaded() {
+        return this.memberCount === this.channelMembers.length;
     }
 
     get busChannel() {
@@ -320,7 +384,11 @@ export class Thread extends Record {
     }
 
     get isUnread() {
-        return this.needactionMessages.length > 0;
+        return this.selfMember?.message_unread_counter > 0 || this.needactionMessages.length > 0;
+    }
+
+    get isMuted() {
+        return this.mute_until_dt || this.store.settings.mute_until_dt;
     }
 
     get typesAllowingCalls() {
@@ -329,20 +397,9 @@ export class Thread extends Record {
 
     get allowCalls() {
         return (
-            !this.isTransient &&
             this.typesAllowingCalls.includes(this.channel_type) &&
             !this.correspondent?.persona.eq(this.store.odoobot)
         );
-    }
-
-    /**
-     * Return the name of the given persona to display in the context of this
-     * thread.
-     *
-     * @param {import("models").Persona} persona
-     */
-    getPersonaName(persona) {
-        return persona.displayName;
     }
 
     get hasAttachmentPanel() {
@@ -356,8 +413,40 @@ export class Thread extends Record {
     get supportsCustomChannelName() {
         return this.isChatChannel && this.channel_type !== "group";
     }
+
     get displayName() {
-        return this.display_name;
+        if (this.supportsCustomChannelName && this.custom_channel_name) {
+            return this.custom_channel_name;
+        }
+        if (this.channel_type === "chat" && this.correspondent) {
+            return this.correspondent.persona.name;
+        }
+        if (this.channel_type === "group" && !this.name) {
+            return formatList(
+                this.channelMembers.map((channelMember) => channelMember.persona.name)
+            );
+        }
+        return this.name;
+    }
+
+    get correspondents() {
+        return this.channelMembers.filter(({ persona }) => persona?.notEq(this.store.self));
+    }
+
+    computeCorrespondent() {
+        if (this.channel_type === "channel") {
+            return undefined;
+        }
+        const correspondents = this.correspondents;
+        if (correspondents.length === 1) {
+            // 2 members chat.
+            return correspondents[0];
+        }
+        if (correspondents.length === 0 && this.channelMembers.length === 1) {
+            // Self-chat.
+            return this.channelMembers[0];
+        }
+        return undefined;
     }
 
     computeIsDisplayed() {
@@ -387,13 +476,38 @@ export class Thread extends Record {
     }
 
     get needactionCounter() {
-        return this.message_needaction_counter;
+        return this.isChatChannel
+            ? this.selfMember?.message_unread_counter ?? 0
+            : this.message_needaction_counter;
     }
 
-    newestMessage = fields.One("mail.message", {
+    newestMessage = Record.one("Message", {
         inverse: "threadAsNewest",
         compute() {
-            return this.messages.at(-1);
+            return this.messages.findLast((msg) => !msg.isEmpty);
+        },
+    });
+
+    firstUnreadMessage = Record.one("Message", {
+        /** @this {import("models").Thread} */
+        compute() {
+            if (!this.selfMember) {
+                return null;
+            }
+            const messages = this.nonEmptyMessages;
+            const separator = this.selfMember.localNewMessageSeparator;
+            if (separator === 0 && !this.loadOlder) {
+                return messages[0];
+            }
+            if (!separator || messages.length === 0 || messages.at(-1).id < separator) {
+                return null;
+            }
+            // try to find a perfect match according to the member's separator
+            let message = this.store.Message.get({ id: separator });
+            if (!message || this.notEq(message.thread) || message.isEmpty) {
+                message = nearestGreaterThanOrEqual(messages, separator, (msg) => msg.id);
+            }
+            return message;
         },
     });
 
@@ -401,7 +515,7 @@ export class Thread extends Record {
         return this.messages.findLast((msg) => Number.isInteger(msg.id));
     }
 
-    newestPersistentAllMessages = fields.Many("mail.message", {
+    newestPersistentAllMessages = Record.many("Message", {
         compute() {
             const allPersistentMessages = this.allMessages.filter((message) =>
                 Number.isInteger(message.id)
@@ -411,9 +525,15 @@ export class Thread extends Record {
         },
     });
 
-    newestPersistentOfAllMessage = fields.One("mail.message", {
+    newestPersistentOfAllMessage = Record.one("Message", {
         compute() {
             return this.newestPersistentAllMessages[0];
+        },
+    });
+
+    newestPersistentNotEmptyOfAllMessage = Record.one("Message", {
+        compute() {
+            return this.newestPersistentAllMessages.find((message) => !message.isEmpty);
         },
     });
 
@@ -423,6 +543,17 @@ export class Thread extends Record {
 
     onPinStateUpdated() {}
 
+    get hasSelfAsMember() {
+        return Boolean(this.selfMember);
+    }
+
+    hasSeenFeature = Record.attr(false, {
+        /** @this {import("models").Thread} */
+        compute() {
+            return this.store.channel_types_with_seen_infos.includes(this.channel_type);
+        },
+    });
+
     get invitationLink() {
         if (!this.uuid || this.channel_type === "chat") {
             return undefined;
@@ -431,7 +562,7 @@ export class Thread extends Record {
     }
 
     get isEmpty() {
-        return this.messages.length === 0;
+        return !this.messages.some((message) => !message.isEmpty);
     }
 
     get nonEmptyMessages() {
@@ -439,15 +570,71 @@ export class Thread extends Record {
     }
 
     get persistentMessages() {
-        return this.messages.filter((message) => !message.is_transient && !message.isPending);
+        return this.messages.filter((message) => !message.is_transient);
     }
 
     get prefix() {
         return this.isChatChannel ? "@" : "#";
     }
 
+    get showUnreadBanner() {
+        return (
+            !this.selfMember?.hideUnreadBanner &&
+            this.selfMember?.localMessageUnreadCounter > 0 &&
+            this.firstUnreadMessage
+        );
+    }
+
     get rpcParams() {
         return {};
+    }
+
+    /** @type {undefined|number[]} */
+    lastMessageSeenByAllId = Record.attr(undefined, {
+        compute() {
+            if (!this.hasSeenFeature) {
+                return;
+            }
+            const otherMembers = this.channelMembers.filter((member) =>
+                member.persona.notEq(this.store.self)
+            );
+            if (otherMembers.length === 0) {
+                return;
+            }
+            const otherLastSeenMessageIds = otherMembers
+                .filter((member) => member.seen_message_id)
+                .map((member) => member.seen_message_id.id);
+            if (otherLastSeenMessageIds.length === 0) {
+                return;
+            }
+            return Math.min(...otherLastSeenMessageIds);
+        },
+    });
+
+    lastSelfMessageSeenByEveryone = Record.one("Message", {
+        compute() {
+            if (!this.lastMessageSeenByAllId) {
+                return false;
+            }
+            let res;
+            // starts from most recent persistent messages to find early
+            for (let i = this.persistentMessages.length - 1; i >= 0; i--) {
+                const message = this.persistentMessages[i];
+                if (!message.isSelfAuthored) {
+                    continue;
+                }
+                if (message.id > this.lastMessageSeenByAllId) {
+                    continue;
+                }
+                res = message;
+                break;
+            }
+            return res;
+        },
+    });
+
+    get unknownMembersCount() {
+        return this.memberCount - this.channelMembers.length;
     }
 
     executeCommand(command, body = "") {
@@ -459,6 +646,27 @@ export class Thread extends Record {
         );
     }
 
+    async fetchChannelMembers() {
+        if (this.fetchMembersState === "pending") {
+            return;
+        }
+        const previousState = this.fetchMembersState;
+        this.fetchMembersState = "pending";
+        const known_member_ids = this.channelMembers.map((channelMember) => channelMember.id);
+        let data;
+        try {
+            data = await rpc("/discuss/channel/members", {
+                channel_id: this.id,
+                known_member_ids: known_member_ids,
+            });
+        } catch (e) {
+            this.fetchMembersState = previousState;
+            throw e;
+        }
+        this.fetchMembersState = "fetched";
+        this.store.insert(data);
+    }
+
     /** @param {{after: Number, before: Number}} */
     async fetchMessages({ after, around, before } = {}) {
         this.status = "loading";
@@ -466,20 +674,17 @@ export class Thread extends Record {
             this.isLoaded = true;
             return [];
         }
-        let res;
         try {
-            res = await this.fetchMessagesData({ after, around, before });
+            const { data, messages } = await this.fetchMessagesData({ after, around, before });
+            this.store.insert(data, { html: true });
+            return this.store.Message.insert(messages.reverse());
         } catch (e) {
             this.hasLoadingFailed = true;
+            throw e;
+        } finally {
             this.isLoaded = true;
             this.status = "ready";
-            throw e;
         }
-        this.store.insert(res.data);
-        const msgs = this.store["mail.message"].insert(res.messages.reverse());
-        this.isLoaded = true;
-        this.status = "ready";
-        return msgs;
     }
 
     /** @param {{after: Number, before: Number}} */
@@ -487,13 +692,10 @@ export class Thread extends Record {
         // ordered messages received: newest to oldest
         return await rpc(this.getFetchRoute(), {
             ...this.getFetchParams(),
-            fetch_params: {
-                limit:
-                    !around && around !== 0 ? this.store.FETCH_LIMIT : this.store.FETCH_LIMIT * 2,
-                after,
-                around,
-                before,
-            },
+            limit: !around && around !== 0 ? this.store.FETCH_LIMIT : this.store.FETCH_LIMIT * 2,
+            after,
+            around,
+            before,
         });
     }
 
@@ -508,42 +710,43 @@ export class Thread extends Record {
         }
         const before = epoch === "older" ? this.oldestPersistentMessage?.id : undefined;
         const after = epoch === "newer" ? this.newestPersistentMessage?.id : undefined;
-        let fetched = [];
         try {
-            fetched = await this.fetchMessages({ after, before });
-        } catch {
-            return;
-        }
-        if (
-            (after !== undefined && !this.messages.some((message) => message.id === after)) ||
-            (before !== undefined && !this.messages.some((message) => message.id === before))
-        ) {
-            // there might have been a jump to message during RPC fetch.
-            // Abort feeding messages as to not put holes in message list.
-            return;
-        }
-        const alreadyKnownMessages = new Set(this.messages.map(({ id }) => id));
-        const messagesToAdd = fetched.filter((message) => !alreadyKnownMessages.has(message.id));
-        if (epoch === "older") {
-            this.messages.unshift(...messagesToAdd);
-        } else {
-            this.messages.push(...messagesToAdd);
-        }
-        if (fetched.length < this.store.FETCH_LIMIT) {
+            const fetched = await this.fetchMessages({ after, before });
+            if (
+                (after !== undefined && !this.messages.some((message) => message.id === after)) ||
+                (before !== undefined && !this.messages.some((message) => message.id === before))
+            ) {
+                // there might have been a jump to message during RPC fetch.
+                // Abort feeding messages as to not put holes in message list.
+                return;
+            }
+            const alreadyKnownMessages = new Set(this.messages.map(({ id }) => id));
+            const messagesToAdd = fetched.filter(
+                (message) => !alreadyKnownMessages.has(message.id)
+            );
             if (epoch === "older") {
-                this.loadOlder = false;
-            } else if (epoch === "newer") {
-                this.loadNewer = false;
-                const missingMessages = this.pendingNewMessages.filter(
-                    ({ id }) => !alreadyKnownMessages.has(id)
-                );
-                if (missingMessages.length > 0) {
-                    this.messages.push(...missingMessages);
-                    this.messages.sort((m1, m2) => m1.id - m2.id);
+                this.messages.unshift(...messagesToAdd);
+            } else {
+                this.messages.push(...messagesToAdd);
+            }
+            if (fetched.length < this.store.FETCH_LIMIT) {
+                if (epoch === "older") {
+                    this.loadOlder = false;
+                } else if (epoch === "newer") {
+                    this.loadNewer = false;
+                    const missingMessages = this.pendingNewMessages.filter(
+                        ({ id }) => !alreadyKnownMessages.has(id)
+                    );
+                    if (missingMessages.length > 0) {
+                        this.messages.push(...missingMessages);
+                        this.messages.sort((m1, m2) => m1.id - m2.id);
+                    }
                 }
             }
+            this._enrichMessagesWithTransient();
+        } catch {
+            // handled in fetchMessages
         }
-        this._enrichMessagesWithTransient();
         this.pendingNewMessages = [];
     }
 
@@ -557,6 +760,18 @@ export class Thread extends Record {
         return this.store.self;
     }
 
+    /**
+     * Get the current user's active identities.These identities include both
+     * the cookie-authenticated persona and the partner authenticated with the
+     * portal token in the context of this thread.
+     *
+     * @deprecated
+     * @returns {import("models").Persona[]}
+     */
+    get selves() {
+        return [this.store.self];
+    }
+
     async fetchNewMessages() {
         if (
             this.status === "loading" ||
@@ -565,45 +780,44 @@ export class Thread extends Record {
             return;
         }
         const after = this.isLoaded ? this.newestPersistentMessage?.id : undefined;
-        let fetched = [];
         try {
-            fetched = await this.fetchMessages({ after });
-        } catch {
-            return;
-        }
-        // feed messages
-        // could have received a new message as notification during fetch
-        // filter out already fetched (e.g. received as notification in the meantime)
-        let startIndex;
-        if (after === undefined) {
-            startIndex = 0;
-        } else {
-            const afterIndex = this.messages.findIndex((message) => message.id === after);
-            if (afterIndex === -1) {
-                // there might have been a jump to message during RPC fetch.
-                // Abort feeding messages as to not put holes in message list.
-                return;
+            const fetched = await this.fetchMessages({ after });
+            // feed messages
+            // could have received a new message as notification during fetch
+            // filter out already fetched (e.g. received as notification in the meantime)
+            let startIndex;
+            if (after === undefined) {
+                startIndex = 0;
             } else {
-                startIndex = afterIndex + 1;
+                const afterIndex = this.messages.findIndex((message) => message.id === after);
+                if (afterIndex === -1) {
+                    // there might have been a jump to message during RPC fetch.
+                    // Abort feeding messages as to not put holes in message list.
+                    return;
+                } else {
+                    startIndex = afterIndex + 1;
+                }
             }
+            const alreadyKnownMessages = new Set(this.messages.map((m) => m.id));
+            const filtered = fetched.filter(
+                (message) =>
+                    !alreadyKnownMessages.has(message.id) &&
+                    (this.persistentMessages.length === 0 ||
+                        message.id < this.oldestPersistentMessage.id ||
+                        message.id > this.newestPersistentMessage.id)
+            );
+            this.messages.splice(startIndex, 0, ...filtered);
+            Object.assign(this, {
+                loadOlder:
+                    after === undefined && fetched.length === this.store.FETCH_LIMIT
+                        ? true
+                        : after === undefined && fetched.length !== this.store.FETCH_LIMIT
+                        ? false
+                        : this.loadOlder,
+            });
+        } catch {
+            // handled in fetchMessages
         }
-        const alreadyKnownMessages = new Set(this.messages.map((m) => m.id));
-        const filtered = fetched.filter(
-            (message) =>
-                !alreadyKnownMessages.has(message.id) &&
-                (this.persistentMessages.length === 0 ||
-                    message.id < this.oldestPersistentMessage.id ||
-                    message.id > this.newestPersistentMessage.id)
-        );
-        this.messages.splice(startIndex, 0, ...filtered);
-        Object.assign(this, {
-            loadOlder:
-                after === undefined && fetched.length === this.store.FETCH_LIMIT
-                    ? true
-                    : after === undefined && fetched.length !== this.store.FETCH_LIMIT
-                    ? false
-                    : this.loadOlder,
-        });
     }
 
     getFetchParams() {
@@ -641,9 +855,7 @@ export class Thread extends Record {
     }
 
     async leave() {
-        await this.store.env.services.orm.silent.call("discuss.channel", "action_unfollow", [
-            this.id,
-        ]);
+        await this.store.env.services.orm.call("discuss.channel", "action_unfollow", [this.id]);
     }
 
     /**
@@ -660,32 +872,29 @@ export class Thread extends Record {
         ) {
             return;
         }
-        this.isLoaded = false;
-        this.scrollTop = undefined;
         try {
-            this.phantomMessages = this.messages;
+            this.isLoaded = false;
+            this.scrollTop = undefined;
             this.messages = await this.fetchMessages({ around: messageId });
-            this.phantomMessages = [];
-        } catch {
             this.isLoaded = true;
-            return;
-        }
-        this.isLoaded = true;
-        this.loadNewer = messageId !== undefined ? true : false;
-        this.loadOlder = true;
-        const limit =
-            !messageId && messageId !== 0 ? this.store.FETCH_LIMIT : this.store.FETCH_LIMIT * 2;
-        if (this.messages.length < limit) {
-            const olderMessagesCount = this.messages.filter(({ id }) => id < messageId).length;
-            const newerMessagesCount = this.messages.filter(({ id }) => id > messageId).length;
-            if (olderMessagesCount < limit / 2 - 1) {
-                this.loadOlder = false;
+            this.loadNewer = messageId !== undefined ? true : false;
+            this.loadOlder = true;
+            const limit =
+                !messageId && messageId !== 0 ? this.store.FETCH_LIMIT : this.store.FETCH_LIMIT * 2;
+            if (this.messages.length < limit) {
+                const olderMessagesCount = this.messages.filter(({ id }) => id < messageId).length;
+                const newerMessagesCount = this.messages.filter(({ id }) => id > messageId).length;
+                if (olderMessagesCount < limit / 2 - 1) {
+                    this.loadOlder = false;
+                }
+                if (newerMessagesCount < limit / 2) {
+                    this.loadNewer = false;
+                }
             }
-            if (newerMessagesCount < limit / 2) {
-                this.loadNewer = false;
-            }
+            this._enrichMessagesWithTransient();
+        } catch {
+            // handled in fetchMessages
         }
-        this._enrichMessagesWithTransient();
     }
 
     async markAllMessagesAsRead() {
@@ -705,15 +914,30 @@ export class Thread extends Record {
     }
 
     /**
-     * @param {Object} [options] used in overrides
+     * @param {Object} [options]
+     * @param {boolean} [options.sync] Whether to sync the unread message
+     * state with the server values.
      */
-    markAsRead(options) {
+    markAsRead({ sync } = {}) {
         const newestPersistentMessage = this.newestPersistentOfAllMessage;
         if (!newestPersistentMessage && !this.isLoaded) {
-            this.isLoadedDeferred
-                .then(() => new Promise(setTimeout))
-                .then(() => this.markAsRead(options));
-            return;
+            this.isLoadedDeferred.then(() => new Promise(setTimeout)).then(() => this.markAsRead());
+        }
+        const alreadyReadBySelf = newestPersistentMessage?.isReadBySelf;
+        if (this.selfMember) {
+            this.selfMember.syncUnread = sync ?? this.selfMember.syncUnread;
+            this.selfMember.seen_message_id = newestPersistentMessage;
+        }
+        if (newestPersistentMessage && this.selfMember && !alreadyReadBySelf) {
+            rpc("/discuss/channel/mark_as_read", {
+                channel_id: this.id,
+                last_message_id: newestPersistentMessage.id,
+                sync,
+            }).catch((e) => {
+                if (e.code !== 404) {
+                    throw e;
+                }
+            });
         }
         if (this.message_needaction_counter > 0) {
             this.markAllMessagesAsRead();
@@ -738,29 +962,23 @@ export class Thread extends Record {
         );
     }
 
-    /** @param {import("models").Message} message */
-    onNewSelfMessage(message) {}
-
     /** @param {Object} [options] */
     open(options) {}
 
-    async openChatWindow({ focus = false, fromMessagingMenu, bypassCompact } = {}) {
-        const thread = await this.store.Thread.getOrFetch(this);
-        if (!thread) {
-            return;
-        }
-        await this.store.chatHub.initPromise;
+    openChatWindow({ fromMessagingMenu } = {}) {
         const cw = this.store.ChatWindow.insert(
-            assignDefined({ thread: this }, { fromMessagingMenu, bypassCompact })
+            assignDefined({ thread: this }, { fromMessagingMenu })
         );
-        cw.open({ focus: focus });
+        this.store.chatHub.opened.delete(cw);
+        this.store.chatHub.opened.unshift(cw);
+        if (!isMobileOS()) {
+            cw.focus();
+        } else {
+            this.markAsRead();
+        }
+        this.state = "open";
+        cw.notifyState();
         return cw;
-    }
-
-    async closeChatWindow(options = {}) {
-        await this.store.chatHub.initPromise;
-        const chatWindow = this.store.ChatWindow.get({ thread: this });
-        await chatWindow?.close({ notifyState: false, ...options });
     }
 
     pin() {
@@ -792,9 +1010,7 @@ export class Thread extends Record {
                     { name: newName }
                 );
             } else if (this.supportsCustomChannelName) {
-                if (this.selfMember) {
-                    this.selfMember.custom_channel_name = newName;
-                }
+                this.custom_channel_name = newName;
                 await this.store.env.services.orm.call(
                     "discuss.channel",
                     "channel_set_custom_name",
@@ -820,8 +1036,7 @@ export class Thread extends Record {
     async post(body, postData = {}, extraData = {}) {
         let tmpMsg;
         postData.attachments = postData.attachments ? [...postData.attachments] : []; // to not lose them on composer clear
-        const { attachments, parentId, mentionedChannels, mentionedPartners, mentionedRoles } =
-            postData;
+        const { attachments, parentId, mentionedChannels, mentionedPartners } = postData;
         const params = await this.store.getMessagePostParams({ body, postData, thread: this });
         Object.assign(params, extraData);
         const tmpId = this.store.getNextTemporaryId();
@@ -835,44 +1050,48 @@ export class Thread extends Record {
         } else {
             const tmpData = {
                 id: tmpId,
-                attachment_ids: attachments,
+                attachments: attachments,
                 res_id: this.id,
                 model: "discuss.channel",
             };
-            if (this.store.self.type === "partner") {
-                tmpData.author_id = this.effectiveSelf;
-            }
-            if (this.store.self.type === "guest") {
-                tmpData.author_guest_id = this.effectiveSelf;
-            }
+            tmpData.author = this.effectiveSelf;
             if (parentId) {
-                tmpData.parent_id = this.store["mail.message"].get(parentId);
+                tmpData.parentMessage = this.store.Message.get(parentId);
             }
-            const prettyContent = await prettifyMessageContent(body, {
-                validMentions: this.store.getMentionsFromText(body, {
+            const prettyContent = await prettifyMessageContent(
+                body,
+                this.store.getMentionsFromText(body, {
                     mentionedChannels,
                     mentionedPartners,
-                    mentionedRoles,
-                }),
-            });
-            tmpMsg = this.store["mail.message"].insert({
-                ...tmpData,
-                body: prettyContent,
-                isPending: true,
-                thread: this,
-            });
+                })
+            );
+            tmpMsg = this.store.Message.insert(
+                {
+                    ...tmpData,
+                    body: prettyContent,
+                    isPending: true,
+                    thread: this,
+                },
+                { html: true }
+            );
             this.messages.push(tmpMsg);
-            this.onNewSelfMessage(tmpMsg);
+            if (this.selfMember) {
+                this.selfMember.syncUnread = true;
+                this.selfMember.seen_message_id = tmpMsg;
+                this.selfMember.new_message_separator = tmpMsg.id + 1;
+            }
         }
         const data = await this.store.doMessagePost(params, tmpMsg);
         if (!data) {
             return;
         }
-        const { "mail.message": messages = [] } = this.store.insert(data);
-        /** @type {import("models").Message} */
-        const message = messages[0];
+        const { Message: messages = [] } = this.store.insert(data, { html: true });
+        const [message] = messages;
         this.addOrReplaceMessage(message, tmpMsg);
-        this.onNewSelfMessage(message);
+        if (this.selfMember?.seen_message_id?.id < message.id) {
+            this.selfMember.seen_message_id = message;
+            this.selfMember.new_message_separator = message.id + 1;
+        }
         // Only delete the temporary message now that seen_message_id is updated
         // to avoid flickering.
         tmpMsg?.delete();
@@ -884,9 +1103,9 @@ export class Thread extends Record {
 
     /** @param {number} index */
     async setMainAttachmentFromIndex(index) {
-        this.message_main_attachment_id = this.attachmentsInWebClientView[index];
+        this.mainAttachment = this.attachmentsInWebClientView[index];
         await this.store.env.services.orm.call("ir.attachment", "register_as_main_attachment", [
-            this.message_main_attachment_id.id,
+            this.mainAttachment.id,
         ]);
     }
 
@@ -909,30 +1128,6 @@ export class Thread extends Record {
                 this.messages.splice(afterIndex - 1, 0, message);
             }
         }
-    }
-
-    async leaveChannel({ force = false } = {}) {
-        if (
-            this.channel_type !== "group" &&
-            this.create_uid?.eq(this.store.self.main_user_id) &&
-            !force
-        ) {
-            await this.askLeaveConfirmation(
-                _t("You are the administrator of this channel. Are you sure you want to leave?")
-            );
-        }
-        if (this.channel_type === "group" && !force) {
-            await this.askLeaveConfirmation(
-                _t(
-                    "You are about to leave this group conversation and will no longer have access to it unless you are invited again. Are you sure you want to continue?"
-                )
-            );
-        }
-        this.leave();
-    }
-
-    _getActualModelName() {
-        return this.model === "discuss.channel" ? "discuss.channel" : "mail.thread";
     }
 }
 

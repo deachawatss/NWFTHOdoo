@@ -1,37 +1,51 @@
-import { htmlEscape, markup } from "@odoo/owl";
-
-import { stateToUrl } from "@web/core/browser/router";
-import { loadEmoji, loader } from "@web/core/emoji_picker/emoji_picker";
-import { normalize } from "@web/core/l10n/utils";
 import {
     createDocumentFragmentFromContent,
-    createElementWithContent,
-    htmlFormatList,
     htmlJoin,
     htmlReplace,
-    htmlReplaceAll,
     htmlTrim,
-    setElementContent,
-} from "@web/core/utils/html";
-import { escapeRegExp } from "@web/core/utils/strings";
+} from "@mail/utils/common/html";
+
+import { markup } from "@odoo/owl";
+
+import { stateToUrl } from "@web/core/browser/router";
+import { loadEmoji } from "@web/core/emoji_picker/emoji_picker";
+import { htmlEscape, setElementContent } from "@web/core/utils/html";
+import { escapeRegExp, unaccent } from "@web/core/utils/strings";
 import { setAttributes } from "@web/core/utils/xml";
 
 const urlRegexp =
     /\b(?:https?:\/\/\d{1,3}(?:\.\d{1,3}){3}|(?:https?:\/\/|(?:www\.))[-a-z0-9@:%._+~#=\u00C0-\u024F\u1E00-\u1EFF]{1,256}\.[a-z]{2,13})\b(?:[-a-z0-9@:%_+~#?&[\]^|{}`\\'$//=\u00C0-\u024F\u1E00-\u1EFF]|[.]*[-a-z0-9@:%_+~#?&[\]^|{}`\\'$//=\u00C0-\u024F\u1E00-\u1EFF]|,(?!$| )|\.(?!$| |\.)|;(?!$| ))*/gi;
 
 /**
- * @param {string|ReturnType<markup>} rawBody
- * @param {Object} validMentions
- * @param {import("models").Persona[]} validMentions.partners
+ * Escape < > & as html entities
+ *
+ * @param {string}
+ * @return {string}
  */
-export async function prettifyMessageContent(
-    rawBody,
-    { validMentions = [], allowEmojiLoading = true } = {}
-) {
-    let body = htmlTrim(rawBody);
-    body = htmlReplace(body, /(\r|\n){2,}/g, () => markup`<br/><br/>`);
-    body = htmlReplace(body, /(\r|\n)/g, () => markup`<br/>`);
-    body = htmlReplace(body, /&nbsp;/g, () => " ");
+const _escapeEntities = (function () {
+    const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;" };
+    const escaper = function (match) {
+        return map[match];
+    };
+    const testRegexp = RegExp("(?:&|<|>)");
+    const replaceRegexp = RegExp("(?:&|<|>)", "g");
+    return function (string) {
+        string = string == null ? "" : "" + string;
+        return testRegexp.test(string) ? string.replace(replaceRegexp, escaper) : string;
+    };
+})();
+
+/**
+ * @param rawBody {string|ReturnType<markup>}
+ * @param validRecords {Object}
+ * @param validRecords.partners {Partner}
+ */
+export async function prettifyMessageContent(rawBody, validRecords = []) {
+    // Suggested URL Javascript regex of http://stackoverflow.com/questions/3809401/what-is-a-good-regular-expression-to-match-a-url
+    // Adapted to make http(s):// not required if (and only if) www. is given. So `should.notmatch` does not match.
+    // And further extended to include Latin-1 Supplement, Latin Extended-A, Latin Extended-B and Latin Extended Additional.
+    const escapedAndCompactContent = escapeAndCompactTextContent(rawBody);
+    let body = htmlReplace(escapedAndCompactContent, /&nbsp;/g, " ");
     body = htmlTrim(body);
     // This message will be received from the mail composer as html content
     // subtype but the urls will not be linkified. If the mail composer
@@ -39,10 +53,8 @@ export async function prettifyMessageContent(
     // linkification a bit everywhere. Ideally we want to keep the content
     // as text internally and only make html enrichment at display time but
     // the current design makes this quite hard to do.
-    body = generateMentionsLinks(body, validMentions);
-    if (allowEmojiLoading || odoo.loader.modules.get("@web/core/emoji_picker/emoji_data")) {
-        body = await _generateEmojisOnHtml(body);
-    }
+    body = generateMentionsLinks(body, validRecords);
+    body = await _generateEmojisOnHtml(body);
     body = parseAndTransform(body, addLink);
     return body;
 }
@@ -57,13 +69,19 @@ export async function prettifyMessageContent(
  * @returns {ReturnType<markup>}
  */
 export function parseAndTransform(htmlString, transformFunction) {
-    const div = document.createElement("div");
+    let children;
     try {
+        const div = document.createElement("div");
         setElementContent(div, htmlString);
+        children = Array.from(div.childNodes);
     } catch {
-        div.appendChild(createElementWithContent("pre", htmlString));
+        const div = document.createElement("div");
+        const pre = document.createElement("pre");
+        setElementContent(pre, htmlString);
+        div.appendChild(pre);
+        children = Array.from(div.childNodes);
     }
-    return _parseAndTransform(Array.from(div.childNodes), transformFunction);
+    return _parseAndTransform(children, transformFunction);
 }
 
 /**
@@ -79,7 +97,7 @@ function _parseAndTransform(nodes, transformFunction) {
         return;
     }
     return htmlJoin(
-        Object.values(nodes).map((node) =>
+        ...Object.values(nodes).map((node) =>
             transformFunction(node, function () {
                 return _parseAndTransform(node.childNodes, transformFunction);
             })
@@ -96,14 +114,21 @@ function linkify(text) {
     let result = "";
     let match;
     while ((match = urlRegexp.exec(text)) !== null) {
-        result = htmlJoin([result, text.slice(curIndex, match.index)]);
+        result = htmlJoin(result, text.slice(curIndex, match.index));
         // Decode the url first, in case it's already an encoded url
         const url = decodeURI(match[0]);
         const href = encodeURI(!/^https?:\/\//i.test(url) ? "http://" + url : url);
-        result = markup`${result}<a target="_blank" rel="noreferrer noopener" href="${href}">${url}</a>`;
+        result = htmlJoin(
+            result,
+            markup(
+                `<a target="_blank" rel="noreferrer noopener" href="${href}">${_escapeEntities(
+                    url
+                )}</a>`
+            )
+        );
         curIndex = match.index + match[0].length;
     }
-    return htmlJoin([result, text.slice(curIndex)]);
+    return htmlJoin(result, text.slice(curIndex));
 }
 
 /**
@@ -116,7 +141,8 @@ export function addLink(node, transformChildren) {
         // text node
         const linkified = linkify(node.textContent);
         if (linkified.toString() !== node.textContent) {
-            const div = createElementWithContent("div", linkified);
+            const div = document.createElement("div");
+            setElementContent(div, linkified);
             for (const childNode of [...div.childNodes]) {
                 node.parentNode.insertBefore(childNode, node);
             }
@@ -133,15 +159,30 @@ export function addLink(node, transformChildren) {
 }
 
 /**
+ * Returns an escaped conversion of a content.
+ *
+ * @param {string|ReturnType<markup>} content
+ * @returns {ReturnType<markup>}
+ */
+export function escapeAndCompactTextContent(content) {
+    //Removing unwanted extra spaces from message
+    let value = htmlTrim(content);
+    value = htmlReplace(value, /(\r|\n){2,}/g, markup("<br/><br/>"));
+    value = htmlReplace(value, /(\r|\n)/g, markup("<br/>"));
+
+    // prevent html space collapsing
+    value = htmlReplace(value, / /g, markup("&nbsp;"));
+    value = htmlReplace(value, /([^>])&nbsp;([^<])/g, markup("$1 $2"));
+    return value;
+}
+
+/**
  * @param body {string|ReturnType<markup>}
  * @param validRecords {Object}
  * @param validRecords.partners {Array}
  * @return {ReturnType<markup>}
  */
-function generateMentionsLinks(
-    body,
-    { partners = [], roles = [], threads = [], specialMentions = [] }
-) {
+function generateMentionsLinks(body, { partners = [], threads = [], specialMentions = [] }) {
     const mentions = [];
     for (const partner of partners) {
         const placeholder = `@-mention-partner-${partner.id}`;
@@ -178,20 +219,8 @@ function generateMentionsLinks(
         body = htmlReplace(
             body,
             `@${special}`,
-            markup`<a href="#" class="o-discuss-mention">@${special}</a>`
+            markup(`<a href="#" class="o-discuss-mention">@${htmlEscape(special)}</a>`)
         );
-    }
-    for (const role of roles) {
-        const placeholder = `@-mention-role-${role.id}`;
-        const text = `@${role.name}`;
-        mentions.push({
-            class: "o-discuss-mention",
-            id: role.id,
-            model: "res.role",
-            placeholder,
-            text,
-        });
-        body = htmlReplace(body, text, placeholder);
     }
     for (const mention of mentions) {
         const link = document.createElement("a");
@@ -218,32 +247,12 @@ async function _generateEmojisOnHtml(htmlString) {
     const { emojis } = await loadEmoji();
     for (const emoji of emojis) {
         for (const source of [...emoji.shortcodes, ...emoji.emoticons]) {
-            const escapedSource = htmlEscape(String(source));
+            const escapedSource = htmlJoin(String(source));
             const regexp = new RegExp("(\\s|^)(" + escapeRegExp(escapedSource) + ")(?=\\s|$)", "g");
-            htmlString = htmlReplace(htmlString, regexp, (_, group1) => group1 + emoji.codepoints);
+            htmlString = htmlReplace(htmlString, regexp, "$1" + emoji.codepoints);
         }
     }
     return htmlEscape(htmlString);
-}
-
-/**
- * @param {string|ReturnType<markup>} body
- * @returns {ReturnType<markup>}
- */
-export function getNonEditableMentions(body) {
-    const doc = createDocumentFragmentFromContent(body);
-    for (const block of doc.body.querySelectorAll(".o_mail_reply_hide")) {
-        block.classList.remove("o_mail_reply_hide");
-    }
-    // for mentioned partner
-    for (const mention of doc.body.querySelectorAll(".o_mail_redirect")) {
-        mention.setAttribute("contenteditable", false);
-    }
-    // for mentioned channel
-    for (const mention of doc.body.querySelectorAll(".o_channel_redirect")) {
-        mention.setAttribute("contenteditable", false);
-    }
-    return markup(doc.body.innerHTML);
 }
 
 /**
@@ -251,12 +260,14 @@ export function getNonEditableMentions(body) {
  * @returns {string}
  */
 export function htmlToTextContentInline(htmlString) {
-    htmlString = htmlReplace(htmlString, /<br\s*\/?>/gi, () => " ");
+    htmlString = htmlReplace(htmlString, /<br\s*\/?>/gi, " ");
     const div = document.createElement("div");
     try {
         setElementContent(div, htmlString);
     } catch {
-        div.appendChild(createElementWithContent("pre", htmlString));
+        const pre = document.createElement("pre");
+        setElementContent(pre, htmlString);
+        div.appendChild(pre);
     }
     return div.textContent
         .trim()
@@ -265,12 +276,12 @@ export function htmlToTextContentInline(htmlString) {
 }
 
 export function convertBrToLineBreak(str) {
-    str = htmlReplace(str, /<br\s*\/?>/gi, () => "\n");
+    str = htmlReplace(str, /<br\s*\/?>/gi, "\n");
     return createDocumentFragmentFromContent(str).body.textContent;
 }
 
 export function cleanTerm(term) {
-    return typeof term === "string" ? normalize(term) : "";
+    return unaccent((typeof term === "string" ? term : "").toLowerCase());
 }
 
 /**
@@ -296,41 +307,3 @@ export function parseEmail(text) {
 }
 
 export const EMOJI_REGEX = /\p{Emoji_Presentation}|\p{Emoji}\uFE0F|\u200d/gu;
-
-/**
- * Wrap emojis present in the given text with a title and return a safe HTML
- * string.
- *
- * @param {string|ReturnType<markup>} content
- * @returns {ReturnType<markup>}
- */
-export function decorateEmojis(content) {
-    if (!loader.loaded || !content) {
-        return content;
-    }
-    const doc = createDocumentFragmentFromContent(content);
-    const nodes = doc.evaluate(
-        ".//text()",
-        doc.body,
-        null,
-        XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE,
-        null
-    );
-    for (let i = 0; i < nodes.snapshotLength; i++) {
-        const node = nodes.snapshotItem(i);
-        const span = document.createElement("span");
-        setElementContent(
-            span,
-            htmlReplaceAll(node.textContent, loader.loaded.emojiRegex, (codepoints) =>
-                markup(
-                    `<span class="o-mail-emoji" title="${htmlFormatList(
-                        loader.loaded.emojiValueToShortcodes[codepoints],
-                        { style: "unit-narrow" }
-                    )}">${htmlEscape(codepoints)}</span>`
-                )
-            )
-        );
-        node.replaceWith(...span.childNodes);
-    }
-    return markup(doc.body.innerHTML);
-}

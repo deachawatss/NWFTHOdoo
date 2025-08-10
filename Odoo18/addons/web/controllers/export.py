@@ -7,14 +7,15 @@ import itertools
 import json
 import logging
 import operator
-from collections import defaultdict, OrderedDict
+from collections import OrderedDict
 
 from werkzeug.exceptions import InternalServerError
 
 from odoo import http
 from odoo.exceptions import UserError
 from odoo.http import content_disposition, request
-from odoo.tools import osutil
+from odoo.tools import lazy_property, osutil
+from odoo.tools.misc import xlsxwriter
 
 
 _logger = logging.getLogger(__name__)
@@ -55,16 +56,17 @@ OPERATOR_MAPPING = {
 
 class GroupsTreeNode:
     """
-    This class builds an ordered tree of groups from the result of a `formatted_read_group`.
-    The `formatted_read_group` returns a list of dictionnaries and each dictionnary is used to
+    This class builds an ordered tree of groups from the result of a `read_group(lazy=False)`.
+    The `read_group` returns a list of dictionnaries and each dictionnary is used to
     build a leaf. The entire tree is built by inserting all leaves.
     """
 
-    def __init__(self, model, fields, groupby, groupby_type):
+    def __init__(self, model, fields, groupby, groupby_type, read_context):
         self._model = model
         self._export_field_names = fields  # exported field names (e.g. 'journal_id', 'account_id/name', ...)
         self._groupby = groupby
         self._groupby_type = groupby_type
+        self._read_context = read_context
 
         self.count = 0  # Total number of records in the subtree
         self.children = OrderedDict()
@@ -111,7 +113,7 @@ class GroupsTreeNode:
         return aggregated_field_names
 
     # Lazy property to memoize aggregated values of children nodes to avoid useless recomputations
-    @functools.cached_property
+    @lazy_property
     def aggregated_values(self):
 
         aggregated_values = {}
@@ -131,21 +133,24 @@ class GroupsTreeNode:
         """
         Return the child identified by `key`.
         If it doesn't exists inserts a default node and returns it.
-        :param key: child key identifier (groupby value as returned by formatted_read_group,
+        :param key: child key identifier (groupby value as returned by read_group,
                     usually (id, display_name))
         :return: the child node
         """
         if key not in self.children:
-            self.children[key] = GroupsTreeNode(self._model, self._export_field_names, self._groupby, self._groupby_type)
+            self.children[key] = GroupsTreeNode(self._model, self._export_field_names, self._groupby, self._groupby_type, self._read_context)
         return self.children[key]
 
-    def insert_leaf(self, group, data):
+    def insert_leaf(self, group):
         """
         Build a leaf from `group` and insert it in the tree.
-        :param group: dict as returned by `formatted_read_group`
+        :param group: dict as returned by `read_group(lazy=False)`
         """
         leaf_path = [group.get(groupby_field) for groupby_field in self._groupby]
+        domain = group.pop('__domain')
         count = group.pop('__count')
+
+        records = self._model.search(domain, offset=0, limit=False, order=False)
 
         # Follow the path from the top level group to the deepest
         # group which actually contains the records' data.
@@ -157,13 +162,14 @@ class GroupsTreeNode:
             # Update count value and aggregated value.
             node.count += count
 
-        node.data = data
+        records = records.with_context(self._read_context)
+        node.data = records.export_data(self._export_field_names).get('datas', [])
+        return records
 
 
 class ExportXlsxWriter:
 
     def __init__(self, fields, columns_headers, row_count):
-        import xlsxwriter  # noqa: PLC0415
         self.fields = fields
         self.columns_headers = columns_headers
         self.output = io.BytesIO()
@@ -284,20 +290,15 @@ class GroupExportXlsxWriter(ExportXlsxWriter):
 
 class Export(http.Controller):
 
-    @http.route('/web/export/formats', type='jsonrpc', auth='user', readonly=True)
+    @http.route('/web/export/formats', type='json', auth='user', readonly=True)
     def formats(self):
         """ Returns all valid export formats
 
         :returns: for each export format, a pair of identifier and printable name
         :rtype: [(str, str)]
         """
-        try:
-            import xlsxwriter  # noqa: F401, PLC0415
-            xlsx_error = None
-        except ModuleNotFoundError:
-            xlsx_error = "XlsxWriter 0.9.3 required"
         return [
-            {'tag': 'xlsx', 'label': 'XLSX', 'error': xlsx_error},
+            {'tag': 'xlsx', 'label': 'XLSX', 'error': None if xlsxwriter else "XlsxWriter 0.9.3 required"},
             {'tag': 'csv', 'label': 'CSV'},
         ]
 
@@ -331,7 +332,7 @@ class Export(http.Controller):
                     #     'name': 'aa34746a6851ee4e',
                     #     'string': 'Partner',
                     #     'type': 'many2one',
-                    #     'comodel': 'test_orm.partner',
+                    #     'comodel': 'test_new_api.partner',
                     #     'default': [1337, 'Bob'],
                     # }
                     if (
@@ -356,7 +357,7 @@ class Export(http.Controller):
 
         return property_fields
 
-    @http.route('/web/export/get_fields', type='jsonrpc', auth='user', readonly=True)
+    @http.route('/web/export/get_fields', type='json', auth='user', readonly=True)
     def get_fields(self, model, domain, prefix='', parent_name='',
                    import_compat=True, parent_field_type=None,
                    parent_field=None, exclude=None):
@@ -432,7 +433,7 @@ class Export(http.Controller):
 
         return result
 
-    @http.route('/web/export/namelist', type='jsonrpc', auth='user', readonly=True)
+    @http.route('/web/export/namelist', type='json', auth='user', readonly=True)
     def namelist(self, model, export_id):
         export = request.env['ir.exports'].browse([export_id])
         return self.fields_info(model, export.export_fields.mapped('name'))
@@ -561,51 +562,26 @@ class ExportFormat(object):
         else:
             columns_headers = [val['label'].strip() for val in fields]
 
-        records = Model.browse(ids) if ids else Model.search(domain)
-
         groupby = params.get('groupby')
         if not import_compat and groupby:
-            export_data = records.export_data(['.id'] + field_names).get('datas', [])
             groupby_type = [Model._fields[x.split(':')[0]].type for x in groupby]
-            tree = GroupsTreeNode(Model, field_names, groupby, groupby_type)
+            domain = [('id', 'in', ids)] if ids else domain
+            read_context = Model.env.context
             if ids:
-                domain = [('id', 'in', ids)]
-                SearchModel = Model.with_context(active_test=False)
-            else:
-                SearchModel = Model
-            groups_data = SearchModel.formatted_read_group(domain, groupby, ['__count', 'id:array_agg'])
+                Model = Model.with_context(active_test=False)
+            groups_data = Model.read_group(domain, ['__count'], groupby, lazy=False)
 
-            # Build a map from record ID to its export rows
-            record_rows = {}
-            current_id = None
-            for row in export_data:
-                if row[0]:  # First column is the record ID
-                    current_id = int(row[0])
-                    record_rows[current_id] = []
-                record_rows[current_id].append(row[1:])
-
-            # To preserve the natural model order, base the data order on the result of `export_data`,
-            # which comes from a `Model.search`
-
-            # 1. Map each record ID to its group index
-            groups = [group['id:array_agg'] for group in groups_data]
-            record_to_group = defaultdict(list)
-            for group_index, ids in enumerate(groups):
-                for record_id in ids:
-                    record_to_group[record_id].append(group_index)
-
-            # 2. Iterate on the result of `export_data` and assign each data to its right group
-            grouped_rows = [[] for _ in groups]
-            for record_id, rows in record_rows.items():
-                for group_index in record_to_group[record_id]:
-                    grouped_rows[group_index].extend(rows)
-
-            # 3. Insert one leaf per group, providing the group information and its data
-            for group_info, group_rows in zip(groups_data, grouped_rows):
-                tree.insert_leaf(group_info, group_rows)
+            # read_group(lazy=False) returns a dict only for final groups (with actual data),
+            # not for intermediary groups. The full group tree must be re-constructed.
+            tree = GroupsTreeNode(Model, field_names, groupby, groupby_type, read_context)
+            records = Model.browse()
+            for leaf in groups_data:
+                records |= tree.insert_leaf(leaf)
 
             response_data = self.from_group_data(fields, columns_headers, tree)
         else:
+            records = Model.browse(ids) if ids else Model.search(domain, offset=0, limit=False, order=False)
+
             export_data = records.export_data(field_names).get('datas', [])
             response_data = self.from_data(fields, columns_headers, export_data)
 
@@ -634,7 +610,7 @@ class CSVExport(ExportFormat, http.Controller):
         except Exception as exc:
             _logger.exception("Exception during request handling.")
             payload = json.dumps({
-                'code': 0,
+                'code': 200,
                 'message': "Odoo Server Error",
                 'data': http.serialize_exception(exc)
             })
@@ -682,7 +658,7 @@ class ExcelExport(ExportFormat, http.Controller):
         except Exception as exc:
             _logger.exception("Exception during request handling.")
             payload = json.dumps({
-                'code': 0,
+                'code': 200,
                 'message': "Odoo Server Error",
                 'data': http.serialize_exception(exc)
             })

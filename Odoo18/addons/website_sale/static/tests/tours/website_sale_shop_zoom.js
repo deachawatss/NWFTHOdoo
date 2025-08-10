@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
 
 var imageSelector = '#o-carousel-product .carousel-item.active img';

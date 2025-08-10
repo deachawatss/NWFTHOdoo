@@ -1,9 +1,12 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 import uuid
 import base64
+import zipfile
+import qrcode
+from io import BytesIO
 from os.path import join as opj
 from typing import Optional, List, Dict
-from werkzeug.urls import url_quote
+from werkzeug.urls import url_quote, url_unquote
 from odoo.exceptions import UserError, ValidationError, AccessError
 
 from odoo import api, fields, models, _, service
@@ -29,6 +32,7 @@ class PosConfig(models.Model):
         store=False,
     )
     self_ordering_url = fields.Char(compute="_compute_self_ordering_url")
+    self_ordering_takeaway = fields.Boolean("Self Takeaway")
     self_ordering_mode = fields.Selection(
         [("nothing", "Disable"), ("consultation", "QR menu"), ("mobile", "QR menu + Ordering"), ("kiosk", "Kiosk")],
         string="Self Ordering Mode",
@@ -62,12 +66,6 @@ class PosConfig(models.Model):
         string="Add images",
         help="Image to display on the self order screen",
     )
-    self_ordering_image_background_ids = fields.Many2many(
-        'ir.attachment',
-        string="Set background image",
-        help="Image to be displayed in the background",
-        relation="pos_self_order_background_rels",
-    )
     self_ordering_default_user_id = fields.Many2one(
         "res.users",
         string="Default User",
@@ -99,17 +97,13 @@ class PosConfig(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        self._prepare_self_order_splash_screen(vals_list, is_new=True)
+        self._prepare_self_order_splash_screen(vals_list)
         pos_config_ids = super().create(vals_list)
-        pos_config_ids._ensure_public_attachments()
         pos_config_ids._prepare_self_order_custom_btn()
         return pos_config_ids
 
     @api.model
-    def _prepare_self_order_splash_screen(self, vals_list, is_new=False):
-        def read_image_datas(image_name):
-            with file_open(opj("pos_self_order/static/img", image_name), "rb") as f:
-                return base64.b64encode(f.read())
+    def _prepare_self_order_splash_screen(self, vals_list):
         for vals in vals_list:
             if not vals.get('self_ordering_mode'):
                 return True
@@ -117,18 +111,10 @@ class PosConfig(models.Model):
             if not vals.get('self_ordering_image_home_ids'):
                 vals['self_ordering_image_home_ids'] = [(0, 0, {
                     'name': image_name,
-                    'datas': read_image_datas(image_name),
+                    'datas': base64.b64encode(file_open(opj("pos_self_order/static/img", image_name), "rb").read()),
                     'res_model': 'pos.config',
                     'type': 'binary',
                 }) for image_name in ['landing_01.jpg', 'landing_02.jpg', 'landing_03.jpg']]
-
-            if is_new and not vals.get('self_ordering_image_background_ids'):
-                vals['self_ordering_image_background_ids'] = [(0, 0, {
-                    'name': "background.jpg",
-                    'datas': read_image_datas("kiosk_background.jpg"),
-                    'res_model': 'pos.config',
-                    'type': 'binary',
-                })]
 
         return True
 
@@ -148,6 +134,7 @@ class PosConfig(models.Model):
 
     def write(self, vals):
         self._prepare_self_order_splash_screen([vals])
+
         for record in self:
             if vals.get('self_ordering_mode') == 'kiosk' or (vals.get('pos_self_ordering_mode') == 'mobile' and vals.get('pos_self_ordering_service_mode') == 'counter'):
                 vals['self_ordering_pay_after'] = 'each'
@@ -162,13 +149,8 @@ class PosConfig(models.Model):
                 vals['self_ordering_service_mode'] = 'table'
 
         res = super().write(vals)
-        self._ensure_public_attachments()
         self._prepare_self_order_custom_btn()
         return res
-
-    def _ensure_public_attachments(self):
-        self.self_ordering_image_background_ids.write({"public": True})
-        self.self_ordering_image_home_ids.write({"public": True})
 
     @api.depends("module_pos_restaurant")
     def _compute_self_order(self):
@@ -254,11 +236,7 @@ class PosConfig(models.Model):
 
     def _get_self_order_url(self, table_id: Optional[int] = None) -> str:
         self.ensure_one()
-        long_url = self.get_base_url() + self._get_self_order_route(table_id)
-        return self.env['link.tracker'].search_or_create([{
-            'url': long_url,
-            'title': f"Self Order {self.name}" if not table_id else f"Self Order {self.name} - Table id {table_id}",
-        }]).short_url
+        return url_quote(self.get_base_url() + self._get_self_order_route(table_id))
 
     def preview_self_order_app(self):
         self.ensure_one()
@@ -278,59 +256,37 @@ class PosConfig(models.Model):
         return encoded_images
 
     def _load_self_data_models(self):
-        return ['pos.session', 'pos.preset', 'resource.calendar.attendance', 'pos.order', 'pos.order.line', 'pos.payment', 'pos.payment.method', 'res.partner',
-            'res.currency', 'pos.category', 'product.template', 'product.product', 'product.combo', 'product.combo.item', 'res.company', 'account.tax',
-            'account.tax.group', 'pos.printer', 'res.country', 'product.category', 'product.pricelist', 'product.pricelist.item', 'account.fiscal.position',
-            'res.lang', 'product.attribute', 'product.attribute.custom.value', 'product.template.attribute.line', 'product.template.attribute.value', 'product.tag',
-            'decimal.precision', 'uom.uom', 'pos.printer', 'pos_self_order.custom_link', 'restaurant.floor', 'restaurant.table', 'account.cash.rounding',
-            'res.country', 'res.country.state', 'mail.template']
-
-    @api.model
-    def _load_pos_self_data_domain(self, data, config):
-        return [('id', '=', config.id)]
-
-    @api.model
-    def _load_pos_self_data_read(self, records, config):
-        read_records = super()._load_pos_data_read(records, config)
-        if not read_records:
-            return read_records
-        record = read_records[0]
-        record['_self_ordering_image_home_ids'] = config.self_ordering_image_home_ids.ids
-        record['_self_ordering_image_background_ids'] = config.self_ordering_image_background_ids.ids
-        record['_pos_special_products_ids'] = config._get_special_products().ids
-        record['_self_ordering_style'] = {
-            'primaryBgColor': self.env.company.email_secondary_color,
-            'primaryTextColor': self.env.company.email_primary_color,
-        }
-        record['_self_order_pos'] = True
-        return read_records
+        return ['pos.session', 'pos.order', 'pos.order.line', 'pos.payment', 'pos.payment.method', 'res.currency', 'pos.category', 'product.product', 'product.combo', 'product.combo.item',
+            'res.company', 'account.tax', 'account.tax.group', 'pos.printer', 'res.country', 'product.pricelist', 'product.pricelist.item', 'account.fiscal.position', 'account.fiscal.position.tax',
+            'res.lang', 'product.template.attribute.line', 'product.attribute', 'product.attribute.custom.value', 'product.template.attribute.value',
+            'decimal.precision', 'uom.uom', 'pos.printer', 'pos_self_order.custom_link', 'restaurant.floor', 'restaurant.table', 'account.cash.rounding']
 
     def load_self_data(self):
-        response = {}
-        response['pos.config'] = self.env['pos.config']._load_pos_self_data_search_read(response, self)
+        # Init our first record, in case of self_order is pos_config
+        config_fields = self._load_pos_self_data_fields(self.id)
+        response = {
+            'pos.config': {
+                'data': self.env['pos.config'].search_read([('id', '=', self.id)], config_fields, load=False),
+                'fields': config_fields,
+            }
+        }
+        response['pos.config']['data'][0]['_self_ordering_image_home_ids'] = self._get_self_ordering_attachment(self.self_ordering_image_home_ids)
+        response['pos.config']['data'][0]['_pos_special_products_ids'] = self._get_special_products().ids
+        self.env['pos.session']._load_pos_data_relations('pos.config', response)
 
+        # Classic data loading
         for model in self._load_self_data_models():
             try:
-                response[model] = self.env[model]._load_pos_self_data_search_read(response, self)
-            except AccessError:
-                response[model] = []
+                response[model] = self.env[model]._load_pos_self_data(response)
+                self.env['pos.session']._load_pos_data_relations(model, response)
+            except AccessError as e:
+                response[model] = {
+                    'data': [],
+                    'fields': self.env[model]._load_pos_self_data_fields(self.id),
+                    'error': e.args[0]
+                }
 
-        return response
-
-    def load_data_params(self):
-        response = {}
-        fields = self._load_pos_self_data_fields(self)
-        response['pos.config'] = {
-            'fields': fields,
-            'relations': self.env['pos.session']._load_pos_data_relations('pos.config', fields)
-        }
-
-        for model in self._load_self_data_models():
-            fields = self.env[model]._load_pos_self_data_fields(self)
-            response[model] = {
-                'fields': fields,
-                'relations': self.env['pos.session']._load_pos_data_relations(model, fields)
-            }
+                self.env['pos.session']._load_pos_data_relations(model, response)
 
         return response
 
@@ -354,7 +310,7 @@ class PosConfig(models.Model):
 
     def action_close_kiosk_session(self):
         if self.current_session_id and self.current_session_id.order_ids:
-            self.current_session_id.order_ids.filtered(lambda o: o.state != 'paid').unlink()
+            self.current_session_id.order_ids.filtered(lambda o: o.state not in ['paid', 'invoiced']).unlink()
 
         self._notify('STATUS', {'status': 'closed'})
         return self.current_session_id.action_pos_session_closing_control()
@@ -367,18 +323,19 @@ class PosConfig(models.Model):
         self.ensure_one()
 
         if not self.current_session_id:
-            res = self._check_before_creating_new_session()
-            if res:
-                return res
+            self._check_before_creating_new_session()
             session = self.env['pos.session'].create({'user_id': self.env.uid, 'config_id': self.id})
             session.set_opening_control(0, "")
             self._notify('STATUS', {'status': 'open'})
 
+        ctx = dict(self._context, app_id='pos_self_order', footer=False)
+
         return {
-            'type': 'ir.actions.act_url',
-            'name': _('Self Order'),
+            'res_model': 'pos.config',
+            'type': 'ir.actions.client',
+            'tag': 'install_kiosk_pwa',
             'target': 'new',
-            'url': self.get_kiosk_url(),
+            'context': ctx
         }
 
     def get_kiosk_url(self):
@@ -390,7 +347,7 @@ class PosConfig(models.Model):
             return False
 
         journal, payment_methods_ids = self._create_journal_and_payment_methods()
-        restaurant_categories = self.get_record_by_ref([
+        restaurant_categories = self.get_categories([
             'pos_restaurant.food',
             'pos_restaurant.drinks',
         ])
@@ -409,3 +366,61 @@ class PosConfig(models.Model):
             'module_pos_restaurant': True,
             'self_ordering_mode': 'kiosk',
         })
+
+    def __generate_single_qr_code(self, url):
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(url)
+        qr.make(fit=True)
+        return qr.make_image(fill_color="black", back_color="transparent")
+
+    def get_pos_qr_order_data(self):
+
+        url_form = "https://www.odoo.com/app/point-of-sale-restaurant-qr-code"
+
+        table_data = []
+        if self.self_ordering_mode not in ['mobile', 'consultation']:
+            return {
+                'success': False,
+                'error': 'INVALID_SELF_ORDERING_MODE',
+            }
+
+        table_ids = None
+        if self.module_pos_restaurant:
+            table_ids = self.floor_ids.table_ids
+
+        if table_ids and self.self_ordering_mode == 'mobile':
+            for table in table_ids:
+                url = self._get_self_order_url(table.id)
+                table_data.append({
+                    'url': url,
+                    'name': f"{table.floor_id.name} - {table.table_number}",
+                    'image': self.__generate_single_qr_code(url_unquote(url)),
+                })
+        else:
+            url = self._get_self_order_url()
+            table_data.append({
+                'url': url,
+                'name': "generic",
+                'image': self.__generate_single_qr_code(url_unquote(url)),
+            })
+
+        zip_buffer = BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", 0) as zip_file:
+            for index, qr_data in enumerate(table_data):
+                with zip_file.open(f"{qr_data['name']} ({index + 1}).png", "w") as buf:
+                    qr_data['image'].save(buf, format="PNG")
+        zip_buffer.seek(0)
+
+        return {
+            'success': True,
+            'table_data': table_data,
+            'self_ordering_mode': self.self_ordering_mode,
+            'db_name': self.env.cr.dbname,
+            'redirect_url': url_form,
+            'zip_archive': base64.b64encode(zip_buffer.read()).decode('utf-8'),
+        }

@@ -21,11 +21,11 @@ class StockScrap(models.Model):
     product_id = fields.Many2one(
         'product.product', 'Product', domain="[('type', '=', 'consu')]",
         required=True, check_company=True)
-    allowed_uom_ids = fields.Many2many('uom.uom', compute='_compute_allowed_uom_ids')
     product_uom_id = fields.Many2one(
-        'uom.uom', 'Unit', domain="[('id', 'in', allowed_uom_ids)]",
+        'uom.uom', 'Unit of Measure',
         compute="_compute_product_uom_id", store=True, readonly=False, precompute=True,
-        required=True)
+        required=True, domain="[('category_id', '=', product_uom_category_id)]")
+    product_uom_category_id = fields.Many2one(related='product_id.uom_id.category_id')
     tracking = fields.Selection(string='Product Tracking', readonly=True, related="product_id.tracking")
     lot_id = fields.Many2one(
         'stock.lot', 'Lot/Serial',
@@ -45,7 +45,7 @@ class StockScrap(models.Model):
         compute='_compute_scrap_location_id', store=True, required=True, precompute=True,
         domain="[('scrap_location', '=', True)]", check_company=True, readonly=False)
     scrap_qty = fields.Float(
-        'Quantity', required=True, digits='Product Unit',
+        'Quantity', required=True, digits='Product Unit of Measure',
         compute='_compute_scrap_qty', default=1.0, readonly=False, store=True)
     state = fields.Selection([
         ('draft', 'Draft'),
@@ -57,11 +57,6 @@ class StockScrap(models.Model):
         comodel_name='stock.scrap.reason.tag',
         string='Scrap Reason',
     )
-
-    @api.depends('product_id', 'product_id.uom_id', 'product_id.uom_ids', 'product_id.seller_ids', 'product_id.seller_ids.product_uom_id')
-    def _compute_allowed_uom_ids(self):
-        for scrap in self:
-            scrap.allowed_uom_ids = scrap.product_id.uom_id | scrap.product_id.uom_ids | scrap.product_id.seller_ids.product_uom_id
 
     @api.depends('product_id')
     def _compute_product_uom_id(self):
@@ -125,6 +120,7 @@ class StockScrap(models.Model):
     def _prepare_move_values(self):
         self.ensure_one()
         return {
+            'name': self.name,
             'origin': self.origin or self.picking_id.name or self.name,
             'company_id': self.company_id.id,
             'product_id': self.product_id.id,
@@ -194,7 +190,7 @@ class StockScrap(models.Model):
         if not self._should_check_available_qty():
             return True
 
-        precision = self.env['decimal.precision'].precision_get('Product Unit')
+        precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
         available_qty = self.with_context(
             location=self.location_id.id,
             lot_id=self.lot_id.id,
@@ -207,7 +203,8 @@ class StockScrap(models.Model):
 
     def action_validate(self):
         self.ensure_one()
-        if self.product_uom_id.is_zero(self.scrap_qty):
+        if float_is_zero(self.scrap_qty,
+                         precision_rounding=self.product_uom_id.rounding):
             raise UserError(_('You can only enter positive quantities.'))
         if self.check_available_qty():
             return self.do_scrap()
@@ -240,7 +237,6 @@ class StockScrapReasonTag(models.Model):
     sequence = fields.Integer(default=10)
     color = fields.Char(string="Color", default='#3C3C3C')
 
-    _name_uniq = models.Constraint(
-        'unique (name)',
-        'Tag name already exists!',
-    )
+    _sql_constraints = [
+        ('name_uniq', 'unique (name)', "Tag name already exists!"),
+    ]

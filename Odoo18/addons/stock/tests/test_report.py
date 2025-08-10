@@ -3,7 +3,7 @@
 
 from datetime import date, datetime, timedelta
 
-from odoo.tests import Form, TransactionCase
+from odoo.tests import Form, tagged, TransactionCase
 from odoo import Command
 
 
@@ -21,7 +21,7 @@ class TestReportsCommon(TransactionCase):
         cls.product1 = cls.env['product.product'].create({
             'name': 'Mellohi"',
             'is_storable': True,
-            'categ_id': cls.env.ref('product.product_category_goods').id,
+            'categ_id': cls.env.ref('product.product_category_all').id,
             'tracking': 'lot',
             'default_code': 'C4181234""154654654654',
             'barcode': 'scan""me'
@@ -35,7 +35,6 @@ class TestReportsCommon(TransactionCase):
         product_form = Form(cls.env['product.product'])
         product_form.is_storable = True
         product_form.name = 'Product'
-        product_form.categ_id = cls.env.ref('product.product_category_goods')
         cls.product = product_form.save()
         cls.product_template = cls.product.product_tmpl_id
         cls.wh_2 = cls.env['stock.warehouse'].create({
@@ -65,16 +64,16 @@ class TestReports(TestReportsCommon):
             In this test we test that the double quote is rendered correctly.
         """
         report = self.env.ref('stock.label_product_product')
-        target = b'\n\n^XA^CI28\n\n^FT35,40^A0N,25^FD[C4181234""154654654654]Mellohi"^FS\n^FO35,77^BY2^BCN,100,Y,N,N^FDscan""me^FS\n^XZj\n\n\n^XA^CI28\n\n^FT35,40^A0N,25^FD[C4181234""154654654654]Mellohi"^FS\n^FO35,77^BY2^BCN,100,Y,N,N^FDscan""me^FS\n^XZj\n'
-        rendering, qweb_type = report._render_qweb_text('stock.label_product_product', self.product1.product_tmpl_id.id, {'quantity_by_product': {self.product1.product_tmpl_id.id: 2}, 'active_model': 'product.template', 'zpl_template': 'normal'})
+        target = b'\n\n^XA^CI28\n^FT100,80^A0N,40,30^FD[C4181234""154654654654]Mellohi"^FS\n^FT100,115^A0N,30,24^FDC4181234""15465^FS\n^FT100,150^A0N,30,24^FD4654654^FS\n^FO100,160^BY3\n^BCN,100,Y,N,N\n^FDscan""me^FS\n^XZ\n\n\n^XA^CI28\n^FT100,80^A0N,40,30^FD[C4181234""154654654654]Mellohi"^FS\n^FT100,115^A0N,30,24^FDC4181234""15465^FS\n^FT100,150^A0N,30,24^FD4654654^FS\n^FO100,160^BY3\n^BCN,100,Y,N,N\n^FDscan""me^FS\n^XZ\n'
+        rendering, qweb_type = report._render_qweb_text('stock.label_product_product', self.product1.product_tmpl_id.id, {'quantity_by_product': {self.product1.product_tmpl_id.id: 2}, 'active_model': 'product.template'})
         self.assertEqual(target, rendering.replace(b' ', b''), 'Product name, default code or barcode is not correctly rendered, make sure the quotes are escaped correctly')
         self.assertEqual(qweb_type, 'text', 'the report type is not good')
 
     def test_product_label_custom_barcode_reports(self):
         """ Test that the custom barcodes are correctly rendered with special characters."""
         report = self.env.ref('stock.label_product_product')
-        target = b'\n\n^XA^CI28\n\n^FT35,40^A0N,25^FD[C4181234""154654654654]Mellohi"^FS\n^FO35,77^BY2^BCN,100,Y,N,N^FD123"barcode^FS\n^XZj\n\n\n^XA^CI28\n\n^FT35,40^A0N,25^FD[C4181234""154654654654]Mellohi"^FS\n^FO35,77^BY2^BCN,100,Y,N,N^FD123"barcode^FS\n^XZj\n\n\n^XA^CI28\n\n^FT35,40^A0N,25^FD[C4181234""154654654654]Mellohi"^FS\n^FO35,77^BY2^BCN,100,Y,N,N^FDbarcode"456^FS\n^XZj\n\n\n^XA^CI28\n\n^FT35,40^A0N,25^FD[C4181234""154654654654]Mellohi"^FS\n^FO35,77^BY2^BCN,100,Y,N,N^FDbarcode"456^FS\n^XZj\n'
-        rendering, qweb_type = report._render_qweb_text('stock.label_product_product', self.product1.product_tmpl_id.id, {'custom_barcodes': {self.product1.product_tmpl_id.id: [('123"barcode', 2), ('barcode"456', 2)]}, 'quantity_by_product': {}, 'active_model': 'product.template', 'zpl_template': 'normal'})
+        target = b'\n\n^XA^CI28\n^FT100,80^A0N,40,30^FD[C4181234""154654654654]Mellohi"^FS\n^FT100,115^A0N,30,24^FDC4181234""15465^FS\n^FT100,150^A0N,30,24^FD4654654^FS\n^FO100,160^BY3\n^BCN,100,Y,N,N\n^FD123"barcode^FS\n^XZ\n\n\n^XA^CI28\n^FT100,80^A0N,40,30^FD[C4181234""154654654654]Mellohi"^FS\n^FT100,115^A0N,30,24^FDC4181234""15465^FS\n^FT100,150^A0N,30,24^FD4654654^FS\n^FO100,160^BY3\n^BCN,100,Y,N,N\n^FD123"barcode^FS\n^XZ\n\n\n^XA^CI28\n^FT100,80^A0N,40,30^FD[C4181234""154654654654]Mellohi"^FS\n^FT100,115^A0N,30,24^FDC4181234""15465^FS\n^FT100,150^A0N,30,24^FD4654654^FS\n^FO100,160^BY3\n^BCN,100,Y,N,N\n^FDbarcode"456^FS\n^XZ\n\n\n^XA^CI28\n^FT100,80^A0N,40,30^FD[C4181234""154654654654]Mellohi"^FS\n^FT100,115^A0N,30,24^FDC4181234""15465^FS\n^FT100,150^A0N,30,24^FD4654654^FS\n^FO100,160^BY3\n^BCN,100,Y,N,N\n^FDbarcode"456^FS\n^XZ\n'
+        rendering, qweb_type = report._render_qweb_text('stock.label_product_product', self.product1.product_tmpl_id.id, {'custom_barcodes': {self.product1.product_tmpl_id.id: [('123"barcode', 2), ('barcode"456', 2)]}, 'quantity_by_product': {}, 'active_model': 'product.template'})
         self.assertEqual(target, rendering.replace(b' ', b''), 'Custom barcodes are most likely not corretly rendered, make sure the quotes are escaped correctly')
         self.assertEqual(qweb_type, 'text', 'the report type is not good')
 
@@ -82,6 +81,7 @@ class TestReports(TestReportsCommon):
         product_test = self.env['product.product'].create({
             'name': 'Mellohi"',
             'is_storable': True,
+            'categ_id': self.env.ref('product.product_category_all').id,
             'tracking': 'lot',
             'default_code': 'C4181234""154654654654',
             'barcode': '9745213796142'
@@ -92,7 +92,7 @@ class TestReports(TestReportsCommon):
             'product_id': product_test.id,
         })
         #add group to the user
-        self.env.user.group_ids += self.env.ref('stock.group_stock_lot_print_gs1')
+        self.env.user.groups_id += self.env.ref('stock.group_stock_lot_print_gs1')
         report = self.env.ref('stock.label_lot_template')
         target = b'\n\n^XA^CI28\n^FO100,50\n^A0N,44,33^FD[C4181234""154654654654]Mellohi"^FS\n^FO100,100\n^A0N,44,33^FDLN/SN:Volume-Beta"^FS\n\n^FO425,150^BY3\n^BXN,8,200\n^FD010974521379614210Volume-Beta"^FS\n^XZ\n'
 
@@ -105,8 +105,8 @@ class TestReports(TestReportsCommon):
         """
         report = self.env.ref('stock.label_product_product')
         self.product1.barcode = False
-        target = b'\n\n^XA^CI28\n\n^FT35,40^A0N,25^FD[C4181234""154654654654]Mellohi"^FS\n^XZj\n'
-        rendering, qweb_type = report._render_qweb_text('stock.label_product_product', self.product1.product_tmpl_id.id, {'quantity_by_product': {self.product1.product_tmpl_id.id: 1}, 'active_model': 'product.template', 'zpl_template': 'normal'})
+        target = b'\n\n^XA^CI28\n^FT100,80^A0N,40,30^FD[C4181234""154654654654]Mellohi"^FS\n^FT100,115^A0N,30,24^FDC4181234""15465^FS\n^FT100,150^A0N,30,24^FD4654654^FS\n^XZ\n'
+        rendering, qweb_type = report._render_qweb_text('stock.label_product_product', self.product1.product_tmpl_id.id, {'quantity_by_product': {self.product1.product_tmpl_id.id: 1}, 'active_model': 'product.template'})
         self.assertEqual(target, rendering.replace(b' ', b''), 'Product name, default code or barcode is not correctly rendered, make sure the quotes are escaped correctly')
         self.assertEqual(qweb_type, 'text', 'the report type is not good')
 
@@ -145,6 +145,7 @@ class TestReports(TestReportsCommon):
 
         # Delivery of 20.0 units tomorrow
         move_out = self.env['stock.move'].create({
+            'name': 'Move Out 20',
             'date': datetime.now() + timedelta(days=1),
             'location_id': stock.id,
             'location_dest_id': self.env.ref('stock.stock_location_customers').id,
@@ -171,6 +172,7 @@ class TestReports(TestReportsCommon):
 
         # Receipt of 10.0 units tomorrow
         move_in = self.env['stock.move'].create({
+            'name': 'Move In 10',
             'date': datetime.now() + timedelta(days=1),
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': stock.id,
@@ -193,6 +195,7 @@ class TestReports(TestReportsCommon):
 
         # Delivery of 20.0 units tomorrow
         move_out = self.env['stock.move'].create({
+            'name': 'Move Out 30 - Day-1',
             'date': datetime.now() - timedelta(days=1),
             'location_id': stock.id,
             'location_dest_id': self.env.ref('stock.stock_location_customers').id,
@@ -254,6 +257,7 @@ class TestReports(TestReportsCommon):
             'inventory_quantity': 50
         }).action_apply_inventory()
         move = self.env['stock.move'].create({
+            'name': 'Move outside warehouse',
             'location_id': stock.id,
             'location_dest_id': stock_without_wh.id,
             'product_id': product.id,
@@ -271,6 +275,7 @@ class TestReports(TestReportsCommon):
             ['state'], ['product_qty:sum'])
         self.assertEqual(sum(product_qty for state, product_qty in report_records if state == 'forecast'), 40.0)
         move = self.env['stock.move'].create({
+            'name': 'Move outside warehouse',
             'location_id': stock_without_wh.id,
             'location_dest_id': self.env.ref('stock.stock_location_customers').id,
             'product_id': product.id,
@@ -310,6 +315,7 @@ class TestReports(TestReportsCommon):
 
         # Receipt of 20.0 units tomorrow
         move_in = self.env['stock.move'].create({
+            'name': 'Move In 20',
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': stock.id,
             'product_id': product.id,
@@ -329,6 +335,7 @@ class TestReports(TestReportsCommon):
 
         # Delivery of 10.0 units tomorrow
         move_out = self.env['stock.move'].create({
+            'name': 'Move Out 10',
             'location_id': stock.id,
             'location_dest_id': self.env.ref('stock.stock_location_customers').id,
             'product_id': product.id,
@@ -355,6 +362,7 @@ class TestReports(TestReportsCommon):
 
         # Pick move for delivery of 5 units in 2 days
         move_pick = self.env['stock.move'].create({
+            'name': 'Out',
             'picking_type_id': self.wh_2.pick_type_id.id,
             'location_id': self.wh_2.lot_stock_id.id,
             'location_final_id': customer_loc.id,
@@ -375,6 +383,7 @@ class TestReports(TestReportsCommon):
 
         # In move for receipt of 10 units tomorrow
         move_in = self.env['stock.move'].create({
+            'name': 'In',
             'picking_type_id': self.wh_2.in_type_id.id,
             'location_id': supplier_loc.id,
             'location_final_id': self.wh_2.lot_stock_id.id,
@@ -694,8 +703,8 @@ class TestReports(TestReportsCommon):
         """
         grp_multi_loc = self.env.ref('stock.group_stock_multi_locations')
         grp_multi_routes = self.env.ref('stock.group_adv_location')
-        self.env.user.write({'group_ids': [(4, grp_multi_loc.id)]})
-        self.env.user.write({'group_ids': [(4, grp_multi_routes.id)]})
+        self.env.user.write({'groups_id': [(4, grp_multi_loc.id)]})
+        self.env.user.write({'groups_id': [(4, grp_multi_routes.id)]})
         # Warehouse config.
         warehouse = self.env.ref('stock.warehouse0')
         warehouse.reception_steps = 'three_steps'
@@ -843,6 +852,7 @@ class TestReports(TestReportsCommon):
             'partner_id': self.partner.id,
             'picking_type_id': wh.out_type_id.id,
             'move_ids': [Command.create({
+                'name': 'Delivery',
                 'product_id': self.product.id,
                 'product_uom_qty': 5,
                 'product_uom': self.product.uom_id.id,
@@ -1321,8 +1331,8 @@ class TestReports(TestReportsCommon):
         """
         grp_multi_loc = self.env.ref('stock.group_stock_multi_locations')
         grp_multi_routes = self.env.ref('stock.group_adv_location')
-        self.env.user.write({'group_ids': [(4, grp_multi_loc.id)]})
-        self.env.user.write({'group_ids': [(4, grp_multi_routes.id)]})
+        self.env.user.write({'groups_id': [(4, grp_multi_loc.id)]})
+        self.env.user.write({'groups_id': [(4, grp_multi_routes.id)]})
         # Warehouse config.
         warehouse = self.env.ref('stock.warehouse0')
         warehouse.reception_steps = 'two_steps'
@@ -1355,6 +1365,7 @@ class TestReports(TestReportsCommon):
         stock_location = self.env.ref('stock.warehouse0').lot_stock_id
         sublocation = self.env['stock.location'].create({
             'name': 'Warehouse0 / Sublocation',
+            'posx': 0,
             'barcode': 'TEST_BARCODE_LOCATION',
             'location_id': stock_location.id
         })
@@ -1388,18 +1399,6 @@ class TestReports(TestReportsCommon):
                 'forecast_availability': 3.0,
             }
         ])
-        _, _, lines = self.get_report_forecast(product_template_ids=self.product.product_tmpl_id.ids)
-        self.assertEqual(len(lines), 2)
-        picking_line = next(filter(lambda line: line.get('document_out'), lines))
-        self.assertEqual(
-            (picking_line['quantity'], picking_line['replenishment_filled'], picking_line['document_out']['id']),
-            (3.0, True, delivery.id)
-        )
-        stock_line = next(filter(lambda line: not line.get('document_out'), lines))
-        self.assertEqual(
-            (stock_line['quantity'], stock_line['replenishment_filled']),
-            (7.0, True)
-        )
 
     def test_report_forecast_14_ongoing_multi_step_delivery(self):
         """ Check that an ongoing multi-step delivery is properly picked up by the forecast report.
@@ -1409,6 +1408,7 @@ class TestReports(TestReportsCommon):
 
         # Pick move for future delivery
         move_pick = self.env['stock.move'].create({
+            'name': 'Out',
             'picking_type_id': self.wh_2.pick_type_id.id,
             'location_id': self.wh_2.lot_stock_id.id,
             'location_final_id': customer_loc.id,
@@ -1429,11 +1429,13 @@ class TestReports(TestReportsCommon):
         product2 = self.env['product.product'].create({
             'name': 'Extra Product',
             'is_storable': True,
+            'categ_id': self.env.ref('product.product_category_all').id,
         })
 
         product3 = self.env['product.product'].create({
             'name': 'Unpopular Product',
             'is_storable': True,
+            'categ_id': self.env.ref('product.product_category_all').id,
         })
 
         # Creates some deliveries for reception report to match against
@@ -1483,7 +1485,7 @@ class TestReports(TestReportsCommon):
         sources_to_lines = report_values['sources_to_lines']
         self.assertEqual(len(sources_to_lines), 2, "The report has wrong number of outgoing pickings.")
         all_lines = []
-        for lines in sources_to_lines.values():
+        for dummy, lines in sources_to_lines.items():
             for line in lines:
                 self.assertFalse(line['is_qty_assignable'], "The receipt IS DRAFT => its move quantities ARE NOT available to assign.")
                 all_lines.append(line)
@@ -1509,7 +1511,7 @@ class TestReports(TestReportsCommon):
         move_ids = []
         qtys = []
         in_ids = []
-        for lines in sources_to_lines.values():
+        for dummy, lines in sources_to_lines.items():
             for line in lines:
                 self.assertTrue(line['is_qty_assignable'], "The receipt IS DONE => all of its move quantities ARE assignable")
                 all_lines.append(line)
@@ -1912,6 +1914,7 @@ class TestReports(TestReportsCommon):
             'location_id': self.stock_location.id,
             'location_dest_id': self.env.ref('stock.stock_location_customers').id,
             'move_ids': [(0, 0, {
+                'name': 'TRRIT move',
                 'location_id': self.stock_location.id,
                 'location_dest_id': self.env.ref('stock.stock_location_customers').id,
                 'product_id': self.product.id,
@@ -1934,7 +1937,7 @@ class TestReports(TestReportsCommon):
         })
 
         sources_to_lines = Report._get_report_values(docids=[immediate_receipt_transfer.id])['sources_to_lines']
-        for lines in sources_to_lines.values():
+        for _, lines in sources_to_lines.items():
             for line in lines:
                 self.assertFalse(line['is_qty_assignable'])
 
@@ -1954,38 +1957,39 @@ class TestReports(TestReportsCommon):
         Report.action_unassign(out_move.id, out_move.quantity, in_move.ids)
         self.assertEqual(out_move.procure_method, 'make_to_stock')
 
+
+@tagged('-at_install', 'post_install')
+class TestReportsPostInstall(TestReportsCommon):
+
     def test_report_stock_lot_customer_simple_delivery(self):
-        """
-        Deliver an SN product
-        The SN/Lot report should show the delivered SN
-        """
-        stock_location = self.env.ref('stock.stock_location_stock')
-        customer_location = self.env.ref('stock.stock_location_customers')
-        out_type = self.env.ref('stock.picking_type_out')
-
-        sn = self.env['stock.lot'].create({'name': 'supersn', 'product_id': self.serial_product.id})
-        self.env['stock.quant']._update_available_quantity(self.serial_product, stock_location, quantity=1, lot_id=sn)
-
+        serial_product = self.serial_product
         delivery = self.env['stock.picking'].create({
             'partner_id': self.partner.id,
-            'picking_type_id': out_type.id,
-            'location_id': stock_location.id,
-            'location_dest_id': customer_location.id,
+            'picking_type_id': self.ref('stock.picking_type_out'),
+            'location_id': self.ref('stock.stock_location_stock'),
+            'location_dest_id': self.ref('stock.stock_location_customers'),
             'move_ids': [Command.create({
-                'product_id': self.serial_product.id,
+                'name': f'out 1 units {serial_product.name}',
+                'product_id': serial_product.id,
                 'product_uom_qty': 1,
-                'location_id': stock_location.id,
-                'location_dest_id': customer_location.id,
+                'quantity': 1,
+                'location_id': self.ref('stock.stock_location_stock'),
+                'location_dest_id': self.ref('stock.stock_location_customers'),
             })],
         })
-        delivery.action_confirm()
+        delivery.move_ids.write({'lot_ids': [Command.create({'name': 'ad-hoc-sn', 'product_id': serial_product.id})]})
         delivery.button_validate()
+        customer_lots = self.env['stock.lot.report'].search([('partner_id', '=', self.partner.id)])
+        self.assertRecordValues(
+            customer_lots,
+            [{
+                'lot_id': delivery.move_line_ids.lot_id.id,
+                'picking_id': delivery.id,
+                'quantity': 1.0,
+            }]
+        )
 
-        action_view_stock_serial_domain = self.partner.action_view_stock_serial()['domain']
-        customer_lots = self.env['stock.lot'].search(action_view_stock_serial_domain)
-        self.assertEqual(customer_lots, sn)
-
-    def test_partner_lot_report_sml_without_picking(self):
+    def test_report_stock_lot_customer_sml_without_picking(self):
         """
         Deliver a classic product and a tracked one
         The SML of the SN is not directly linked to the picking
@@ -1995,15 +1999,16 @@ class TestReports(TestReportsCommon):
         customer_location = self.env.ref('stock.stock_location_customers')
         out_type = self.env.ref('stock.picking_type_out')
 
-        self.product.is_storable = False
         delivery = self.env['stock.picking'].create({
             'partner_id': self.partner.id,
             'picking_type_id': out_type.id,
             'location_id': stock_location.id,
             'location_dest_id': customer_location.id,
             'move_ids': [Command.create({
+                'name': f'out 1 units {self.product.name}',
                 'product_id': self.product.id,
                 'product_uom_qty': 1,
+                'quantity': 1,
                 'location_id': stock_location.id,
                 'location_dest_id': customer_location.id,
             })],
@@ -2012,6 +2017,7 @@ class TestReports(TestReportsCommon):
 
         sn = self.env['stock.lot'].create({'name': 'supersn', 'product_id': self.serial_product.id})
         delivery.move_ids = [Command.create({
+            'name': f'out 1 units {self.product.name}',
             'product_id': self.serial_product.id,
             'product_uom_qty': 1,
             'location_id': stock_location.id,
@@ -2022,8 +2028,10 @@ class TestReports(TestReportsCommon):
                 'lot_id': sn.id,
             })],
         })]
+
         delivery.button_validate()
 
-        action_view_stock_serial_domain = self.partner.action_view_stock_serial()['domain']
-        customer_lots = self.env['stock.lot'].search(action_view_stock_serial_domain)
-        self.assertEqual(customer_lots, sn)
+        customer_lots = self.env['stock.lot.report'].search([('partner_id', '=', self.partner.id)])
+        self.assertRecordValues(customer_lots, [
+            {'lot_id': sn.id, 'picking_id': delivery.id, 'quantity': 1.0},
+        ])

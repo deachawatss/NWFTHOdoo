@@ -7,9 +7,9 @@ export class PartnerAutoComplete extends AutoComplete {
     setup() {
         super.setup();
         this.shouldSearchWorldwide = false;
-	}
+    }
 
-	// Override of AutoComplete
+    // Override of AutoComplete
     loadOptions(options, request) {
         if (typeof options === "function") {
             return options(request, this.shouldSearchWorldwide);
@@ -18,10 +18,10 @@ export class PartnerAutoComplete extends AutoComplete {
         }
     }
 
-	async searchWorldwide(ev){
-		this.shouldSearchWorldwide = true;
-		ev.preventDefault();
-		super.close();
-		super.open(true);
-	}
+    async searchWorldwide(ev){
+        this.shouldSearchWorldwide = true;
+        ev.preventDefault();
+        super.close();
+        super.open(true);
+    }
 }

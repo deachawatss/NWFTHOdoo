@@ -3,7 +3,7 @@
 
 {
     'name': 'Mass mailing on sale orders',
-    'category': 'Marketing/Email Marketing',
+    'category': 'Hidden',
     'version': '1.0',
     'summary': 'Add sale order UTM info on mass mailing',
     'description': """UTM and mass mailing on sale orders""",
@@ -15,6 +15,5 @@
         'demo/mailing_mailing.xml',
     ],
     'auto_install': True,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

@@ -2,14 +2,13 @@
 
 from odoo import models, fields, api
 from odoo.tools import SQL
-from odoo.tools.query import Query
 from odoo.addons.account.models.account_move import PAYMENT_STATE_SELECTION
 
 from functools import lru_cache
 
 
 class AccountInvoiceReport(models.Model):
-    _name = 'account.invoice.report'
+    _name = "account.invoice.report"
     _description = "Invoices Statistics"
     _auto = False
     _rec_name = 'invoice_date'
@@ -42,14 +41,13 @@ class AccountInvoiceReport(models.Model):
     # ==== Invoice line fields ====
     quantity = fields.Float(string='Product Quantity', readonly=True)
     product_id = fields.Many2one('product.product', string='Product', readonly=True)
-    product_uom_id = fields.Many2one('uom.uom', string='Unit', readonly=True)
+    product_uom_id = fields.Many2one('uom.uom', string='Unit of Measure', readonly=True)
     product_categ_id = fields.Many2one('product.category', string='Product Category', readonly=True)
     invoice_date_due = fields.Date(string='Due Date', readonly=True)
-    account_id = fields.Many2one('account.account', string='Revenue/Expense Account', readonly=True)
+    account_id = fields.Many2one('account.account', string='Revenue/Expense Account', readonly=True, domain=[('deprecated', '=', False)])
     price_subtotal_currency = fields.Float(string='Untaxed Amount in Currency', readonly=True)
     price_subtotal = fields.Float(string='Untaxed Amount', readonly=True)
-    price_total = fields.Float(string='Total', readonly=True)
-    price_total_currency = fields.Float(string='Total in Currency', readonly=True)
+    price_total = fields.Float(string='Total in Currency', readonly=True)
     price_average = fields.Float(string='Average Price', readonly=True, aggregator="avg")
     price_margin = fields.Float(string='Margin', readonly=True)
     inventory_value = fields.Float(string='Inventory Value', readonly=True)
@@ -58,7 +56,7 @@ class AccountInvoiceReport(models.Model):
     _depends = {
         'account.move': [
             'name', 'state', 'move_type', 'partner_id', 'invoice_user_id', 'fiscal_position_id',
-            'invoice_date', 'invoice_date_due', 'invoice_payment_term_id', 'partner_bank_id', 'invoice_currency_rate',
+            'invoice_date', 'invoice_date_due', 'invoice_payment_term_id', 'partner_bank_id',
         ],
         'account.move.line': [
             'quantity', 'price_subtotal', 'price_total', 'amount_residual', 'balance', 'amount_currency',
@@ -67,7 +65,7 @@ class AccountInvoiceReport(models.Model):
         ],
         'product.product': ['product_tmpl_id', 'standard_price'],
         'product.template': ['categ_id'],
-        'uom.uom': ['factor', 'name'],
+        'uom.uom': ['category_id', 'factor', 'name', 'uom_type'],
         'res.currency.rate': ['currency_id', 'name'],
         'res.partner': ['country_id'],
     }
@@ -106,10 +104,7 @@ class AccountInvoiceReport(models.Model):
                                                                             AS price_subtotal_currency,
                 -line.balance * account_currency_table.rate                         AS price_subtotal,
                 line.price_total * (CASE WHEN move.move_type IN ('in_invoice','out_refund','in_receipt') THEN -1 ELSE 1 END)
-                / move.invoice_currency_rate
                                                                             AS price_total,
-                line.price_total * (CASE WHEN move.move_type IN ('in_invoice','out_refund','in_receipt') THEN -1 ELSE 1 END)
-                                                                            AS price_total_currency,
                 -COALESCE(
                    -- Average line price
                    (line.balance / NULLIF(line.quantity, 0.0)) * (CASE WHEN move.move_type IN ('in_invoice','out_refund','in_receipt') THEN -1 ELSE 1 END)
@@ -157,18 +152,32 @@ class AccountInvoiceReport(models.Model):
             ''',
         )
 
-    def _read_group_select(self, aggregate_spec: str, query: Query) -> SQL:
-        """ This override allows us to correctly calculate the average price of products. """
-        if aggregate_spec != 'price_average:avg':
-            return super()._read_group_select(aggregate_spec, query)
-        return SQL(
-            'COALESCE(SUM(%(f_price)s) / NULLIF(SUM(%(f_qty)s), 0.0), 0)',
-            f_qty=self._field_to_sql(self._table, 'quantity', query),
-            f_price=self._field_to_sql(self._table, 'price_subtotal', query),
-        )
+    @api.model
+    def read_group(self, domain, fields, groupby, offset=0, limit=None, orderby=False, lazy=True):
+        """
+        This is a hack to allow us to correctly calculate the average price.
+        """
+        set_fields = set(fields)
+
+        if 'price_average:avg' in fields:
+            set_fields.add('quantity')
+            set_fields.add('price_subtotal')
+
+        res = super().read_group(domain, list(set_fields), groupby, offset, limit, orderby, lazy)
+
+        if 'price_average:avg' in fields:
+            for data in res:
+                data['price_average'] = data['price_subtotal'] / data['quantity'] if data['quantity'] else 0
+
+                if 'quantity:sum' not in fields:
+                    del data['quantity']
+                if 'price_subtotal:sum' not in fields:
+                    del data['price_subtotal']
+
+        return res
 
 
-class ReportAccountReport_Invoice(models.AbstractModel):
+class ReportInvoiceWithoutPayment(models.AbstractModel):
     _name = 'report.account.report_invoice'
     _description = 'Account report without payment lines'
 
@@ -190,11 +199,10 @@ class ReportAccountReport_Invoice(models.AbstractModel):
             'qr_code_urls': qr_code_urls,
         }
 
-
-class ReportAccountReport_Invoice_With_Payments(models.AbstractModel):
+class ReportInvoiceWithPayment(models.AbstractModel):
     _name = 'report.account.report_invoice_with_payments'
     _description = 'Account report with payment lines'
-    _inherit = ['report.account.report_invoice']
+    _inherit = 'report.account.report_invoice'
 
     @api.model
     def _get_report_values(self, docids, data=None):

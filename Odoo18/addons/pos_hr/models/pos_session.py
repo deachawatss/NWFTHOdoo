@@ -14,9 +14,10 @@ class PosSession(models.Model):
     )
 
     @api.model
-    def _load_pos_data_models(self, config):
-        data = super()._load_pos_data_models(config)
-        if config.module_pos_hr:
+    def _load_pos_data_models(self, config_id):
+        data = super()._load_pos_data_models(config_id)
+        config_id = self.env['pos.config'].browse(config_id)
+        if config_id.module_pos_hr:
             data += ['hr.employee']
         return data
 
@@ -40,10 +41,10 @@ class PosSession(models.Model):
         
         return self.user_id.partner_id
 
-    def _aggregate_payments_amounts_by_employee(self, all_payments):
+    def _aggregate_payments_amounts_by_employee(self, payments):
         payments_by_employee = []
 
-        for employee, payments_group in all_payments.grouped('employee_id').items():
+        for employee, payments_group in payments.grouped('employee_id').items():
             payments_by_employee.append({
                 'id': employee.id if employee else 'others',
                 'name': employee.name if employee else _('Others'),
@@ -86,17 +87,8 @@ class PosSession(models.Model):
 
         return data
 
-    def _prepare_account_bank_statement_line_vals(self, session, sign, amount, reason, partner_id, extras):
-        vals = super()._prepare_account_bank_statement_line_vals(session, sign, amount, reason, partner_id, extras)
+    def _prepare_account_bank_statement_line_vals(self, session, sign, amount, reason, extras):
+        vals = super()._prepare_account_bank_statement_line_vals(session, sign, amount, reason, extras)
         if extras.get('employee_id'):
             vals['employee_id'] = extras['employee_id']
         return vals
-
-    def get_cash_in_out_list(self):
-        cash_in_out_list = super().get_cash_in_out_list()
-        if self.config_id.module_pos_hr:
-            for cash_in_out in cash_in_out_list:
-                cash_move = self.env['account.bank.statement.line'].browse(cash_in_out['id'])
-                if cash_move.employee_id:
-                    cash_in_out['cashier_name'] = cash_move.partner_id.name
-        return cash_in_out_list

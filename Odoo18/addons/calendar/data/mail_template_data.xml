@@ -6,9 +6,9 @@
             <field name="model_id" ref="calendar.model_calendar_attendee"/>
             <field name="subject">Invitation to {{ object.event_id.name }}</field>
             <field name="email_from">{{ (object.event_id.user_id.email_formatted or user.email_formatted or '') }}</field>
-            <field name="email_to" eval="False"/>
-            <field name="partner_to" eval="False"/>
-            <field name="use_default_to" eval="True"/>
+            <field name="email_to">{{ ('' if object.partner_id.email and object.partner_id.email == object.email else object.email) }}</field>
+            <field name="partner_to">{{ object.partner_id.id if object.partner_id.email and object.partner_id.email == object.email else False }}</field>
+            <field name="lang">{{ object.partner_id.lang }}</field>
             <field name="description">Invitation email to new attendees</field>
             <field name="body_html" type="html">
 <div>
@@ -36,27 +36,27 @@
     </p>
     <div style="text-align: center; padding: 16px 0px 16px 0px;">
         <a t-attf-href="/calendar/meeting/accept?token={{object.access_token}}&amp;id={{object.event_id.id}}"
-            t-attf-style="padding: 5px 10px; color: {{object.event_id.user_id.company_id.email_primary_color or '#FFFFFF'}}; text-decoration: none; background-color: {{object.event_id.user_id.company_id.email_secondary_color or '#875A7B'}}; border-radius: 3px;">
+            style="padding: 5px 10px; color: #FFFFFF; text-decoration: none; background-color: #875A7B; border: 1px solid #875A7B; border-radius: 3px">
             Accept</a>
         <a t-attf-href="/calendar/meeting/decline?token={{object.access_token}}&amp;id={{object.event_id.id}}"
-            t-attf-style="padding: 5px 10px; color: {{object.event_id.user_id.company_id.email_primary_color or '#FFFFFF'}}; text-decoration: none; background-color: {{object.event_id.user_id.company_id.email_secondary_color or '#875A7B'}}; border-radius: 3px;">
+            style="padding: 5px 10px; color: #FFFFFF; text-decoration: none; background-color: #875A7B; border: 1px solid #875A7B; border-radius: 3px">
             Decline</a>
         <a t-attf-href="/calendar/meeting/view?token={{object.access_token}}&amp;id={{object.event_id.id}}"
-            t-attf-style="padding: 5px 10px; color: {{object.event_id.user_id.company_id.email_primary_color or '#FFFFFF'}}; text-decoration: none; background-color: {{object.event_id.user_id.company_id.email_secondary_color or '#875A7B'}}; border-radius: 3px;">
-            View</a>
+            style="padding: 5px 10px; color: #FFFFFF; text-decoration: none; background-color: #875A7B; border: 1px solid #875A7B; border-radius: 3px"
+            >View</a>
     </div>
     <table border="0" cellpadding="0" cellspacing="0"><tr>
         <td width="130px;" style="min-width: 130px;">
-            <div t-attf-style="border-top-start-radius: 3px; border-top-end-radius: 3px; font-size: 12px; border-collapse: separate; text-align: center; font-weight: bold; color: {{object.event_id.user_id.company_id.email_primary_color or '#FFFFFF'}}; min-height: 18px; background-color: {{object.event_id.user_id.company_id.email_secondary_color or '#875A7B'}};">
+            <div style="border-top-start-radius: 3px; border-top-end-radius: 3px; font-size: 12px; border-collapse: separate; text-align: center; font-weight: bold; color: #ffffff; min-height: 18px; background-color: #875A7B; border: 1px solid #875A7B;">
                 <t t-out="format_datetime(dt=object.event_id.start, tz=object.mail_tz if not object.event_id.allday else None, dt_format='EEEE', lang_code=object.env.lang) or ''">Tuesday</t>
             </div>
-            <div t-attf-style="font-size: 48px; min-height: auto; font-weight: bold; text-align: center; color: #5F5F5F; background-color: #F8F8F8; border: 1px solid {{object.event_id.user_id.company_id.email_secondary_color or '#875A7B'}};">
+            <div style="font-size: 48px; min-height: auto; font-weight: bold; text-align: center; color: #5F5F5F; background-color: #F8F8F8; border: 1px solid #875A7B;">
                 <t t-out="format_datetime(dt=object.event_id.start, tz=object.mail_tz if not object.event_id.allday else None, dt_format='d', lang_code=object.env.lang) or ''">4</t>
             </div>
-            <div t-attf-style="font-size: 12px; text-align: center; font-weight: bold; color: {{object.event_id.user_id.company_id.email_primary_color or '#FFFFFF'}}; background-color: {{object.event_id.user_id.company_id.email_secondary_color or '#875A7B'}};">
+            <div style='font-size: 12px; text-align: center; font-weight: bold; color: #ffffff; background-color: #875A7B;'>
                 <t t-out="format_datetime(dt=object.event_id.start, tz=object.mail_tz if not object.event_id.allday else None, dt_format='MMMM y', lang_code=object.env.lang) or ''">May 2021</t>
             </div>
-            <div t-attf-style="border-collapse: separate; color: #5F5F5F; text-align: center; font-size: 12px; border-bottom-end-radius: 3px; font-weight: bold ; border: 1px solid {{object.event_id.user_id.company_id.email_secondary_color or '#875A7B'}}; border-bottom-start-radius: 3px;">
+            <div style="border-collapse: separate; color: #5F5F5F; text-align: center; font-size: 12px; border-bottom-end-radius: 3px; font-weight: bold ; border: 1px solid #875A7B; border-bottom-start-radius: 3px;">
                 <t t-if="not object.event_id.allday">
                     <div>
                         <t t-out="format_time(time=object.event_id.start, tz=object.mail_tz, time_format='short', lang_code=object.env.lang) or ''">11:00 AM</t>
@@ -115,10 +115,11 @@
     Thank you,
     <t t-if="object.event_id.user_id.signature">
         <br />
-        <div>--<br/><t t-out="object.event_id.user_id.signature or ''">Mitchell Admin</t></div>
+        <t t-out="object.event_id.user_id.signature or ''">--<br/>Mitchell Admin</t>
     </t>
 </div>
             </field>
+            <field name="lang">{{ object.partner_id.lang }}</field>
             <field name="auto_delete" eval="True"/>
         </record>
 
@@ -127,9 +128,9 @@
             <field name="model_id" ref="calendar.model_calendar_attendee"/>
             <field name="subject">{{ object.event_id.name }}: Date updated</field>
             <field name="email_from">{{ (object.event_id.user_id.email_formatted or user.email_formatted or '') }}</field>
-            <field name="email_to" eval="False"/>
-            <field name="partner_to" eval="False"/>
-            <field name="use_default_to" eval="True"/>
+            <field name="email_to">{{ ('' if object.partner_id.email and object.partner_id.email == object.email else object.email) }}</field>
+            <field name="partner_to">{{ object.partner_id.id if object.partner_id.email and object.partner_id.email == object.email else False }}</field>
+            <field name="lang">{{ object.partner_id.lang }}</field>
             <field name="description">Sent to all attendees if the schedule change</field>
             <field name="body_html" type="html">
 <div>
@@ -166,27 +167,27 @@
     </p>
     <div style="text-align: center; padding: 16px 0px 16px 0px;">
         <a t-attf-href="/calendar/meeting/accept?token={{ object.access_token }}&amp;id={{ object.event_id.id }}"
-            t-attf-style="padding: 5px 10px; color: {{object.event_id.user_id.company_id.email_primary_color or '#FFFFFF'}}; text-decoration: none; background-color: {{object.event_id.user_id.company_id.email_secondary_color or '#875A7B'}}; border-radius: 3px;">
+            style="padding: 5px 10px; color: #FFFFFF; text-decoration: none; background-color: #875A7B; border: 1px solid #875A7B; border-radius: 3px">
             Accept</a>
         <a t-attf-href="/calendar/meeting/decline?token={{ object.access_token }}&amp;id={{ object.event_id.id }}"
-            t-attf-style="padding: 5px 10px; color: {{object.event_id.user_id.company_id.email_primary_color or '#FFFFFF'}}; text-decoration: none; background-color: {{object.event_id.user_id.company_id.email_secondary_color or '#875A7B'}}; border-radius: 3px;">
+            style="padding: 5px 10px; color: #FFFFFF; text-decoration: none; background-color: #875A7B; border: 1px solid #875A7B; border-radius: 3px">
             Decline</a>
         <a t-attf-href="/calendar/meeting/view?token={{ object.access_token }}&amp;id={{ object.event_id.id }}"
-            t-attf-style="padding: 5px 10px; color: {{object.event_id.user_id.company_id.email_primary_color or '#FFFFFF'}}; text-decoration: none; background-color: {{object.event_id.user_id.company_id.email_secondary_color or '#875A7B'}}; border-radius: 3px;">
+            style="padding: 5px 10px; color: #FFFFFF; text-decoration: none; background-color: #875A7B; border: 1px solid #875A7B; border-radius: 3px">
             View</a>
     </div>
     <table border="0" cellpadding="0" cellspacing="0"><tr>
         <td width="130px;" style="min-width: 130px;">
-            <div t-attf-style="border-top-start-radius: 3px; border-top-end-radius: 3px; font-size: 12px; border-collapse: separate; text-align: center; font-weight: bold; color: {{object.event_id.user_id.company_id.email_primary_color or '#FFFFFF'}}; min-height: 18px; background-color: {{object.event_id.user_id.company_id.email_secondary_color or '#875A7B'}};">
+            <div style="border-top-start-radius: 3px; border-top-end-radius: 3px; font-size: 12px; border-collapse: separate; text-align: center; font-weight: bold; color: #ffffff; min-height: 18px; background-color: #875A7B; border: 1px solid #875A7B;">
                 <t t-out='format_datetime(dt=object.event_id.start, tz=object.mail_tz if not object.event_id.allday else None, dt_format="EEEE", lang_code=object.env.lang) or ""'>Tuesday</t>
             </div>
-            <div t-attf-style="font-size: 48px; min-height: auto; font-weight: bold; text-align: center; color: #5F5F5F; background-color: #F8F8F8; border: 1px solid {{object.event_id.user_id.company_id.email_secondary_color or '#875A7B'}};">
+            <div style="font-size: 48px; min-height: auto; font-weight: bold; text-align: center; color: #5F5F5F; background-color: #F8F8F8; border: 1px solid #875A7B;">
                 <t t-out="format_datetime(dt=object.event_id.start, tz=object.mail_tz if not object.event_id.allday else None, dt_format='d', lang_code=object.env.lang) or ''">4</t>
             </div>
-            <div t-attf-style="font-size: 12px; text-align: center; font-weight: bold; color: {{object.event_id.user_id.company_id.email_primary_color or '#FFFFFF'}}; background-color: {{object.event_id.user_id.company_id.email_secondary_color or '#875A7B'}};">
+            <div style='font-size: 12px; text-align: center; font-weight: bold; color: #ffffff; background-color: #875A7B;'>
                 <t t-out='format_datetime(dt=object.event_id.start, tz=object.mail_tz if not object.event_id.allday else None, dt_format="MMMM y", lang_code=object.env.lang) or ""'>May 2021</t>
             </div>
-            <div t-attf-style="border-collapse: separate; color: #5F5F5F; text-align: center; font-size: 12px; border-bottom-end-radius: 3px; font-weight: bold; border: 1px solid {{object.event_id.user_id.company_id.email_secondary_color or '#875A7B'}}; border-bottom-start-radius: 3px;">
+            <div style="border-collapse: separate; color: #5F5F5F; text-align: center; font-size: 12px; border-bottom-end-radius: 3px; font-weight: bold; border: 1px solid #875A7B; border-bottom-start-radius: 3px;">
                  <t t-if="not object.event_id.allday">
                     <div>
                         <t t-out='format_time(time=object.event_id.start, tz=object.mail_tz, time_format="short", lang_code=object.env.lang) or ""'>11:00 AM</t>
@@ -245,10 +246,11 @@
     Thank you,
     <t t-if="object.event_id.user_id.signature">
         <br />
-        <div>--<br/><t t-out="object.event_id.user_id.signature or ''">Mitchell Admin</t></div>
+        <t t-out="object.event_id.user_id.signature or ''">--<br/>Mitchell Admin</t>
     </t>
 </div>
             </field>
+            <field name="lang">{{ object.partner_id.lang }}</field>
             <field name="auto_delete" eval="True"/>
         </record>
 
@@ -257,9 +259,9 @@
             <field name="model_id" ref="calendar.model_calendar_attendee"/>
             <field name="subject">{{ object.event_id.name }} - Reminder</field>
             <field name="email_from">{{ (object.event_id.user_id.email_formatted or user.email_formatted or '') }}</field>
-            <field name="email_to" eval="False"/>
-            <field name="partner_to" eval="False"/>
-            <field name="use_default_to" eval="True"/>
+            <field name="email_to">{{ ('' if object.partner_id.email and object.partner_id.email == object.email else object.email) }}</field>
+            <field name="partner_to">{{ object.partner_id.id if object.partner_id.email and object.partner_id.email == object.email else False }}</field>
+            <field name="lang">{{ object.partner_id.lang }}</field>
             <field name="description">Sent to all attendees if a reminder is set</field>
             <field name="body_html" type="html">
 <div>
@@ -272,27 +274,27 @@
     </p>
     <div style="text-align: center; padding: 16px 0px 16px 0px;">
         <a t-attf-href="/calendar/{{ 'recurrence' if recurrent else 'meeting' }}/accept?token={{ object.access_token }}&amp;id={{ object.event_id.id }}"
-            t-attf-style="padding: 5px 10px; color: {{object.event_id.user_id.company_id.email_primary_color or '#FFFFFF'}}; text-decoration: none; background-color: {{object.event_id.user_id.company_id.email_secondary_color or '#875A7B'}}; border-radius: 3px;">
+            style="padding: 5px 10px; color: #FFFFFF; text-decoration: none; background-color: #875A7B; border: 1px solid #875A7B; border-radius: 3px">
             Accept</a>
         <a t-attf-href="/calendar/{{ 'recurrence' if recurrent else 'meeting' }}/decline?token={{ object.access_token }}&amp;id={{ object.event_id.id }}"
-            t-attf-style="padding: 5px 10px; color: {{object.event_id.user_id.company_id.email_primary_color or '#FFFFFF'}}; text-decoration: none; background-color: {{object.event_id.user_id.company_id.email_secondary_color or '#875A7B'}}; border-radius: 3px;">
+            style="padding: 5px 10px; color: #FFFFFF; text-decoration: none; background-color: #875A7B; border: 1px solid #875A7B; border-radius: 3px">
             Decline</a>
         <a t-attf-href="/calendar/meeting/view?token={{ object.access_token }}&amp;id={{ object.event_id.id }}" 
-            t-attf-style="padding: 5px 10px; color: {{object.event_id.user_id.company_id.email_primary_color or '#FFFFFF'}}; text-decoration: none; background-color: {{object.event_id.user_id.company_id.email_secondary_color or '#875A7B'}}; border-radius: 3px;">
+            style="padding: 5px 10px; color: #FFFFFF; text-decoration: none; background-color: #875A7B; border: 1px solid #875A7B; border-radius: 3px">
             View</a>
     </div>
     <table border="0" cellpadding="0" cellspacing="0"><tr>
         <td width="130px;" style="min-width: 130px;">
-            <div t-attf-style="border-top-start-radius: 3px; border-top-end-radius: 3px; font-size: 12px; border-collapse: separate; text-align: center; font-weight: bold; color: {{object.event_id.user_id.company_id.email_primary_color or '#FFFFFF'}}; min-height: 18px; background-color: {{object.event_id.user_id.company_id.email_secondary_color or '#875A7B'}};">
+            <div style="border-top-start-radius: 3px; border-top-end-radius: 3px; font-size: 12px; border-collapse: separate; text-align: center; font-weight: bold; color: #ffffff; min-height: 18px; background-color: #875A7B; border: 1px solid #875A7B;">
                 <t t-out='format_datetime(dt=object.event_id.start, tz=object.mail_tz if not object.event_id.allday else None, dt_format="EEEE", lang_code=object.env.lang) or ""'>Tuesday</t>
             </div>
-            <div t-attf-style="font-size: 48px; min-height: auto; font-weight: bold; text-align: center; color: #5F5F5F; background-color: #F8F8F8; border: 1px solid {{object.event_id.user_id.company_id.email_secondary_color or '#875A7B'}};">
+            <div style="font-size: 48px; min-height: auto; font-weight: bold; text-align: center; color: #5F5F5F; background-color: #F8F8F8; border: 1px solid #875A7B;">
                 <t t-out="format_datetime(dt=object.event_id.start, tz=object.mail_tz if not object.event_id.allday else None, dt_format='d', lang_code=object.env.lang) or ''">4</t>
             </div>
-            <div t-attf-style="font-size: 12px; text-align: center; font-weight: bold; color: {{object.event_id.user_id.company_id.email_primary_color or '#FFFFFF'}}; background-color: {{object.event_id.user_id.company_id.email_secondary_color or '#875A7B'}};">
+            <div style='font-size: 12px; text-align: center; font-weight: bold; color: #ffffff; background-color: #875A7B;'>
                 <t t-out='format_datetime(dt=object.event_id.start, tz=object.mail_tz if not object.event_id.allday else None, dt_format="MMMM y", lang_code=object.env.lang) or ""'>May 2021</t>
             </div>
-            <div t-attf-style="border-collapse: separate; color: #5F5F5F; text-align: center; font-size: 12px; border-bottom-end-radius: 3px; font-weight: bold; border: 1px solid {{object.event_id.user_id.company_id.email_secondary_color or '#875A7B'}}; border-bottom-start-radius: 3px;">
+            <div style="border-collapse: separate; color: #5F5F5F; text-align: center; font-size: 12px; border-bottom-end-radius: 3px; font-weight: bold; border: 1px solid #875A7B; border-bottom-start-radius: 3px;">
                 <t t-if="not object.event_id.allday">
                     <div>
                         <t t-out='format_time(time=object.event_id.start, tz=object.mail_tz, time_format="short", lang_code=object.env.lang) or ""'>11:00 AM</t>
@@ -351,10 +353,11 @@
     Thank you,
     <t t-if="object.event_id.user_id.signature">
         <br />
-        <div>--<br/><t t-out="object.event_id.user_id.signature or ''">Mitchell Admin</t></div>
+        <t t-out="object.event_id.user_id.signature or ''">--<br/>Mitchell Admin</t>
     </t>
 </div>
             </field>
+            <field name="lang">{{ object.partner_id.lang }}</field>
             <field name="auto_delete" eval="True"/>
         </record>
 
@@ -363,9 +366,9 @@
             <field name="model_id" ref="calendar.model_calendar_event"/>
             <field name="subject">{{object.name}}: Event update</field>
             <field name="email_from">{{ (object.user_id.email_formatted or user.email_formatted or '') }}</field>
-            <field name="email_to" eval="False"/>
-            <field name="use_default_to" eval="True"/>
-            <field name="description">Used to manually notify attendees</field>
+            <field name="email_to">{{ object._get_attendee_emails() }}</field>
+            <field name="lang">{{ object.partner_id.lang }}</field>
+            <field name="description">Used to manually notifiy attendees</field>
             <field name="body_html" type="html">
 <div>
     <t t-set="colors" t-value="{'needsAction': 'grey', 'accepted': 'green', 'tentative': '#FFFF00', 'declined': 'red'}" />
@@ -378,16 +381,16 @@
         <table border="0" cellpadding="0" cellspacing="0">
             <tr>
                 <td width="130px;" style="min-width: 130px;">
-                    <div t-attf-style="border-top-start-radius: 3px; border-top-end-radius: 3px; font-size: 12px; border-collapse: separate; text-align: center; font-weight: bold; color: {{object.user_id.company_id.email_primary_color or '#FFFFFF'}}; min-height: 18px; background-color: {{object.user_id.company_id.email_secondary_color or '#875A7B'}};">
+                    <div style="border-top-start-radius: 3px; border-top-end-radius: 3px; font-size: 12px; border-collapse: separate; text-align: center; font-weight: bold; color: #ffffff; min-height: 18px; background-color: #875A7B; border: 1px solid #875A7B;">
                         <t t-out="format_datetime(dt=object.start, tz=mail_tz if not object.allday else None, dt_format='EEEE', lang_code=object.env.lang) ">Tuesday</t>
                     </div>
-                    <div t-attf-style="font-size: 48px; min-height: auto; font-weight: bold; text-align: center; color: #5F5F5F; background-color: #F8F8F8; border: 1px solid {{object.user_id.company_id.email_secondary_color or '#875A7B'}};">
+                    <div style="font-size: 48px; min-height: auto; font-weight: bold; text-align: center; color: #5F5F5F; background-color: #F8F8F8; border: 1px solid #875A7B;">
                         <t t-out="format_datetime(dt=object.start, tz=mail_tz if not object.allday else None, dt_format='d', lang_code=object.env.lang)">4</t>
                     </div>
-                    <div t-attf-style="font-size: 12px; text-align: center; font-weight: bold; color: {{object.user_id.company_id.email_primary_color or '#FFFFFF'}}; background-color: {{object.user_id.company_id.email_secondary_color or '#875A7B'}};">
+                    <div style='font-size: 12px; text-align: center; font-weight: bold; color: #ffffff; background-color: #875A7B;'>
                         <t t-out="format_datetime(dt=object.start, tz=mail_tz if not object.allday else None, dt_format='MMMM y', lang_code=object.env.lang)">May 2021</t>
                     </div>
-                    <div t-attf-style="border-collapse: separate; color: #5F5F5F; text-align: center; font-size: 12px; border-bottom-end-radius: 3px; font-weight: bold; border: 1px solid {{object.user_id.company_id.email_secondary_color or '#875A7B'}}; border-bottom-start-radius: 3px;">
+                    <div style="border-collapse: separate; color: #5F5F5F; text-align: center; font-size: 12px; border-bottom-end-radius: 3px; font-weight: bold; border: 1px solid #875A7B; border-bottom-start-radius: 3px;">
                         <t t-if="not object.allday">
                             <div>
                                 <t t-out="format_time(time=object.start, tz=mail_tz, time_format='short', lang_code=object.env.lang)">11:00 AM</t>
@@ -445,79 +448,9 @@
     </div>
     <t t-if="object.user_id.signature">
         <br />
-        <div>--<br/><t t-out="object.user_id.signature or ''">Mitchell Admin</t></div>
+        <t t-out="object.user_id.signature or ''">--<br/>Mitchell Admin</t>
     </t>
 </div>
-            </field>
-        </record>
-
-        <record id="calendar_template_delete_event" model="mail.template">
-            <field name="name">Calendar: Event Deleted</field>
-            <field name="model_id" ref="calendar.model_calendar_event"/>
-            <field name="subject">Deleted event: {{ object.name }}</field>
-            <field name="email_from">{{ (object.user_id.email_formatted or user.email_formatted or '') }}</field>
-            <field name="email_to" eval="False"/>
-            <field name="use_default_to" eval="True"/>
-            <field name="description">Used to manually notify attendees</field>
-            <field name="body_html" type="html">
-                <div>
-                    <t t-set="mail_tz" t-value="object._get_mail_tz() or ctx.get('mail_tz')" />
-                    <t t-set="event_name" t-value="object.name or ''"/>
-                    <t t-set="start_date" t-value="object.start or ''"/>
-                    <t t-set="end_date" t-value="object.stop or ''"/>
-                    <t t-set="event_organizer" t-value="object.user_id.name or ''"/>
-                    <div>
-                        <table border="0" cellpadding="0" cellspacing="0">
-                            <tr>
-                                <td width="130px;" style="min-width: 130px;">
-                                    <div t-attf-style="border-top-start-radius: 3px; border-top-end-radius: 3px; font-size: 12px; border-collapse: separate; text-align: center; font-weight: bold; color: {{object.user_id.company_id.email_primary_color or '#FFFFFF'}}; min-height: 18px; background-color: {{object.user_id.company_id.email_secondary_color or '#875A7B'}};">
-                                        <t t-out="format_datetime(dt=object.start, tz=mail_tz if not object.allday else None, dt_format='EEEE', lang_code=object.env.lang) ">Tuesday</t>
-                                    </div>
-                                    <div t-attf-style="font-size: 48px; min-height: auto; font-weight: bold; text-align: center; color: #5F5F5F; background-color: #F8F8F8; border: 1px solid {{object.user_id.company_id.email_secondary_color or '#875A7B'}};">
-                                        <t t-out="format_datetime(dt=object.start, tz=mail_tz if not object.allday else None, dt_format='d', lang_code=object.env.lang)">4</t>
-                                    </div>
-                                    <div t-attf-style="font-size: 12px; text-align: center; font-weight: bold; color: {{object.user_id.company_id.email_primary_color or '#FFFFFF'}}; background-color: {{object.user_id.company_id.email_secondary_color or '#875A7B'}};">
-                                        <t t-out="format_datetime(dt=object.start, tz=mail_tz if not object.allday else None, dt_format='MMMM y', lang_code=object.env.lang)">May 2021</t>
-                                    </div>
-                                    <div t-attf-style="border-collapse: separate; color: #5F5F5F; text-align: center; font-size: 12px; border-bottom-end-radius: 3px; font-weight: bold; border: 1px solid {{object.user_id.company_id.email_secondary_color or '#875A7B'}}; border-bottom-start-radius: 3px;">
-                                        <t t-if="not object.allday">
-                                            <div>
-                                                <t t-out="format_time(time=object.start, tz=mail_tz, time_format='short', lang_code=object.env.lang)">11:00 AM</t>
-                                            </div>
-                                            <t t-if="mail_tz">
-                                                <div style="font-size: 10px; font-weight: normal">
-                                                    (<t t-out="mail_tz"> Europe/Brussels</t>)
-                                                </div>
-                                            </t>
-                                        </t>
-                                    </div>
-                                </td>
-                                <td width="20px;"/>
-                                <td style="padding-top: 5px;">
-                                    <p>
-                                        <strong>This event has been canceled and removed from your calendar.</strong>
-                                    </p>
-                                    <p>
-                                        This is to inform you that the event <strong><t t-out="event_name"/></strong>
-                                        scheduled from <strong><t t-out="start_date or ''"/></strong>
-                                        to <strong><t t-out="end_date or ''"/></strong>
-                                        has been deleted.
-                                    </p>
-                                    <p>
-                                        Organizer: <strong><t t-out="event_organizer"/></strong>
-                                    </p>
-                                    <p>
-                                        If you have any questions or concerns, please feel free to contact us.
-                                    </p>
-                                    <p>
-                                        Best regards,<br/>
-                                        <strong>The Calendar Team</strong>
-                                    </p>
-                                </td>
-                            </tr>
-                        </table>
-                    </div>
-                </div>
             </field>
         </record>
     </data>

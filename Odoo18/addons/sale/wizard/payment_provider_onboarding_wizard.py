@@ -1,13 +1,14 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import fields, models
 
 
-class SalePaymentProviderOnboardingWizard(models.TransientModel):
+class PaymentWizard(models.TransientModel):
     """ Override for the sale quotation onboarding panel. """
 
+    _inherit = 'payment.provider.onboarding.wizard'
     _name = 'sale.payment.provider.onboarding.wizard'
-    _inherit = ['payment.provider.onboarding.wizard']
     _description = 'Sale Payment provider onboarding wizard'
 
     def _get_default_payment_method(self):

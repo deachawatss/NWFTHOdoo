@@ -1,10 +1,9 @@
 import { addBusMessageHandler, busModels } from "@bus/../tests/bus_test_helpers";
-import { after, before, expect, getFixture, registerDebugInfo } from "@odoo/hoot";
+import { after, before, expect, getFixture, registerDebugInfo, test } from "@odoo/hoot";
 import { hover as hootHover, queryFirst, resize } from "@odoo/hoot-dom";
-import { Deferred, microTick } from "@odoo/hoot-mock";
+import { Deferred } from "@odoo/hoot-mock";
 import {
     MockServer,
-    asyncStep,
     authenticate,
     defineModels,
     defineParams,
@@ -13,22 +12,17 @@ import {
     makeMockEnv,
     makeMockServer,
     mountWithCleanup,
-    onRpc,
     parseViewProps,
     patchWithCleanup,
     restoreRegistry,
     serverState,
-    waitForSteps,
     webModels,
 } from "@web/../tests/web_test_helpers";
-
-import { CHAT_HUB_KEY } from "@mail/core/common/chat_hub_model";
 import { contains } from "./mail_test_helpers_contains";
 
 import { mailGlobal } from "@mail/utils/common/misc";
 import { Component, onMounted, onPatched, onWillDestroy, status } from "@odoo/owl";
 import { browser } from "@web/core/browser/browser";
-import { loadEmoji } from "@web/core/emoji_picker/emoji_picker";
 import { registry } from "@web/core/registry";
 import { MEDIAS_BREAKPOINTS, utils as uiUtils } from "@web/core/ui/ui_service";
 import { useServiceProtectMethodHandling } from "@web/core/utils/hooks";
@@ -59,7 +53,6 @@ import { MailFollowers } from "./mock_server/mock_models/mail_followers";
 import { MailGuest } from "./mock_server/mock_models/mail_guest";
 import { MailLinkPreview } from "./mock_server/mock_models/mail_link_preview";
 import { MailMessage } from "./mock_server/mock_models/mail_message";
-import { MailMessageLinkPreview } from "./mock_server/mock_models/mail_message_link_preview";
 import { MailMessageReaction } from "./mock_server/mock_models/mail_message_reaction";
 import { MailMessageSubtype } from "./mock_server/mock_models/mail_message_subtype";
 import { MailNotification } from "./mock_server/mock_models/mail_notification";
@@ -68,11 +61,8 @@ import { MailScheduledMessage } from "./mock_server/mock_models/mail_scheduled_m
 import { MailTemplate } from "./mock_server/mock_models/mail_template";
 import { MailThread } from "./mock_server/mock_models/mail_thread";
 import { MailTrackingValue } from "./mock_server/mock_models/mail_tracking_value";
-import { ResCountry } from "./mock_server/mock_models/res_country";
 import { ResFake } from "./mock_server/mock_models/res_fake";
-import { ResLang } from "./mock_server/mock_models/res_lang";
 import { ResPartner } from "./mock_server/mock_models/res_partner";
-import { ResRole } from "./mock_server/mock_models/res_role";
 import { ResUsers } from "./mock_server/mock_models/res_users";
 import { ResUsersSettings } from "./mock_server/mock_models/res_users_settings";
 import { ResUsersSettingsVolumes } from "./mock_server/mock_models/res_users_settings_volumes";
@@ -125,7 +115,6 @@ export const mailModels = {
     MailGuest,
     MailLinkPreview,
     MailMessage,
-    MailMessageLinkPreview,
     MailMessageReaction,
     MailMessageSubtype,
     MailNotification,
@@ -134,11 +123,8 @@ export const mailModels = {
     MailTemplate,
     MailThread,
     MailTrackingValue,
-    ResCountry,
     ResFake,
-    ResLang,
     ResPartner,
-    ResRole,
     ResUsers,
     ResUsersSettings,
     ResUsersSettingsVolumes,
@@ -179,6 +165,14 @@ let archs = {};
 export function registerArchs(newArchs) {
     archs = newArchs;
     after(() => (archs = {}));
+}
+
+export function onlineTest(...args) {
+    if (navigator.onLine) {
+        return test(...args);
+    } else {
+        return test.skip(...args);
+    }
 }
 
 export async function openDiscuss(activeId, { target } = {}) {
@@ -344,14 +338,13 @@ export async function start(options) {
     }
     env.testEnv = true;
     await mountWithCleanup(WebClient, { env, target });
-    await loadEmoji();
     return Object.assign(env, { ...options?.env, target });
 }
 
 export async function startServer() {
     const { env: pyEnv } = await makeMockServer();
     pyEnv["res.users"].write([serverState.userId], {
-        group_ids: pyEnv["res.groups"]
+        groups_id: pyEnv["res.groups"]
             .search_read([["id", "=", serverState.groupId]])
             .map(({ id }) => id),
     });
@@ -622,7 +615,6 @@ export function observeRenders() {
  */
 export async function isInViewportOf(childSelector, parentSelector) {
     await contains(parentSelector);
-    await contains(childSelector);
     const inViewportDeferred = new Deferred();
     const failTimeout = setTimeout(() => check({ crashOnFail: true }), 3000);
     const check = ({ crashOnFail = false } = {}) => {
@@ -658,230 +650,4 @@ export async function isInViewportOf(childSelector, parentSelector) {
 export async function hover(selector) {
     await contains(selector);
     await hootHover(selector);
-}
-
-function toChatHubData(opened, folded) {
-    return JSON.stringify({
-        opened: opened.map((data) => convertChatHubParam(data)),
-        folded: folded.map((data) => convertChatHubParam(data)),
-    });
-}
-
-function convertChatHubParam(param) {
-    return typeof param === "number" ? { id: param, model: "discuss.channel" } : param;
-}
-
-export function setupChatHub({ opened = [], folded = [] } = {}) {
-    browser.localStorage.setItem(CHAT_HUB_KEY, toChatHubData(opened, folded));
-}
-
-export function assertChatHub({ opened = [], folded = [] }) {
-    expect(browser.localStorage.getItem(CHAT_HUB_KEY)).toEqual(toChatHubData(opened, folded));
-}
-
-export const STORE_FETCH_ROUTES = ["/mail/action", "/mail/data"];
-
-/**
- * Prepares listeners for the various ways a store fetch could be triggered. It is important to call
- * this method before the RPC are done (typically before the start() of the test) to not miss any of
- * them. Each intercepted fetch should have a corresponding waitStoreFetch in the test.
- *
- * @param {string|string[]} [nameOrNames=[]] name or names of the store fetch params to intercept
- * (such as init_messaging or channels_as_member). If empty all params are intercepted.
- * @param {Object} [options={}]
- * @param {function} [options.onRpc] entry point to override the onRpc of the intercepted calls.
- * @param {string[]} [options.logParams=[]] names of the store fetch params for which both the name
- *  and the specific params should be logged in asyncStep. By default only the name is logged.
- */
-export function listenStoreFetch(nameOrNames = [], { logParams = [], onRpc: onRpcOverride } = {}) {
-    async function registerStep(request, name, params) {
-        const res = await onRpcOverride?.(request);
-        if (logParams.includes(name)) {
-            asyncStep(`store fetch: ${name} - ${JSON.stringify(params)}`);
-        } else {
-            asyncStep(`store fetch: ${name}`);
-        }
-        return res;
-    }
-    async function registerSteps(request, fetchParams) {
-        const namesToRegister = typeof nameOrNames === "string" ? [nameOrNames] : nameOrNames;
-        let res;
-        for (const fetchParam of fetchParams) {
-            const name = typeof fetchParam === "string" ? fetchParam : fetchParam[0];
-            const params = typeof fetchParam === "string" ? undefined : fetchParam[1];
-            if (namesToRegister.length > 0) {
-                if (namesToRegister.some((namesToRegister) => namesToRegister === name)) {
-                    res = await registerStep(request, name, params);
-                }
-            } else {
-                res = await registerStep(request, name, params);
-            }
-        }
-        return res;
-    }
-    /**
-     * The fetch could happen through any of those routes depending on various conditions.
-     * Most tests don't care about which route is used, so we just listen to all of them.
-     */
-    onRpc("/mail/action", async (request) => {
-        const { params } = await request.json();
-        return registerSteps(request, params.fetch_params);
-    });
-    onRpc("/mail/data", async (request) => {
-        const { params } = await request.json();
-        return registerSteps(request, params.fetch_params);
-    });
-}
-
-/**
- * Waits for the given name or names of store fetch parameters to have been fetched from the server,
- * in the given order. Expected names have to be registered with listenStoreFetch beforehand.
- * If other asyncStep are resolving in the same flow, they must be provided to stepsAfter (if they
- * are resolved after the fetch) or stepsBefore (if they are resolved before the fetch). The order
- * can be ignored with ignoreOrder option.
- *
- * @param {string|string[]} nameOrNames
- * @param {Object} [options={}]
- * @param {boolean} [options.ignoreOrder=false]
- * @param {string[]} [options.stepsAfter=[]]
- * @param {string[]} [options.stepsBefore=[]]
- */
-export async function waitStoreFetch(
-    nameOrNames = [],
-    { ignoreOrder = false, stepsAfter = [], stepsBefore = [] } = {}
-) {
-    await waitForSteps(
-        [
-            ...stepsBefore,
-            ...(typeof nameOrNames === "string" ? [nameOrNames] : nameOrNames).map(
-                (nameOrNameAndParams) => {
-                    if (typeof nameOrNameAndParams === "string") {
-                        return `store fetch: ${nameOrNameAndParams}`;
-                    }
-                    return `store fetch: ${nameOrNameAndParams[0]} - ${JSON.stringify(
-                        nameOrNameAndParams[1]
-                    )}`;
-                }
-            ),
-            ...stepsAfter,
-        ],
-        { ignoreOrder }
-    );
-    /**
-     * Extra tick necessary to ensure the RPC is fully processed before resolving.
-     * This is necessary because the asyncStep in onRpc is not synchronous with the moment
-     * the RPC result is resolved and processed in the business code. Removing this tick
-     * won't make everything fail, but it might create subtle race conditions.
-     */
-    await microTick();
-}
-
-export function userContext() {
-    return { lang: "en", tz: "taht", uid: serverState.userId, allowed_company_ids: [1] };
-}
-
-/**
- * @typedef VoiceMessagePatchResources
- * @property {AudioProcessor}
- */
-
-/** @returns {VoiceMessagePatchResources} */
-export function patchVoiceMessageAudio() {
-    const res = { audioProcessor: undefined };
-    const {
-        AnalyserNode,
-        AudioBufferSourceNode,
-        AudioContext,
-        AudioWorkletNode,
-        GainNode,
-        MediaStreamAudioSourceNode,
-    } = browser;
-    Object.assign(browser, {
-        AnalyserNode: class {
-            connect() {}
-            disconnect() {}
-        },
-        AudioBufferSourceNode: class {
-            buffer;
-            constructor() {}
-            connect() {}
-            disconnect() {}
-            start() {}
-            stop() {}
-        },
-        AudioContext: class {
-            audioWorklet;
-            currentTime;
-            destination;
-            sampleRate;
-            state;
-            constructor() {
-                this.audioWorklet = {
-                    addModule(url) {},
-                };
-            }
-            close() {}
-            /** @returns {AnalyserNode} */
-            createAnalyser() {
-                return new browser.AnalyserNode();
-            }
-            /** @returns {AudioBufferSourceNode} */
-            createBufferSource() {
-                return new browser.AudioBufferSourceNode();
-            }
-            /** @returns {GainNode} */
-            createGain() {
-                return new browser.GainNode();
-            }
-            /** @returns {MediaStreamAudioSourceNode} */
-            createMediaStreamSource(microphone) {
-                return new browser.MediaStreamAudioSourceNode();
-            }
-            /** @returns {AudioBuffer} */
-            decodeAudioData(...args) {
-                return new AudioContext().decodeAudioData(...args);
-            }
-        },
-        AudioWorkletNode: class {
-            port;
-            constructor(audioContext, processorName) {
-                this.port = {
-                    onmessage(e) {},
-                    postMessage(data) {
-                        this.onmessage({ data, timeStamp: new Date().getTime() });
-                    },
-                };
-                res.audioProcessor = this;
-            }
-            connect() {
-                this.port.postMessage();
-            }
-            disconnect() {}
-            process(allInputs) {
-                const inputs = allInputs[0][0];
-                this.port.postMessage(inputs);
-                return true;
-            }
-        },
-        GainNode: class {
-            connect() {}
-            close() {}
-            disconnect() {}
-        },
-        MediaStreamAudioSourceNode: class {
-            connect(processor) {}
-            disconnect() {}
-        },
-    });
-    after(() => {
-        Object.assign(browser, {
-            AnalyserNode,
-            AudioBufferSourceNode,
-            AudioContext,
-            AudioWorkletNode,
-            GainNode,
-            MediaStreamAudioSourceNode,
-        });
-    });
-    return res;
 }

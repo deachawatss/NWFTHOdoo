@@ -5,7 +5,7 @@ import { registry } from "@web/core/registry";
 export class MailCoreWeb {
     /**
      * @param {import("@web/env").OdooEnv} env
-     * @param {import("services").ServiceFactories} services
+     * @param {Partial<import("services").Services>} services
      */
     constructor(env, services) {
         this.env = env;
@@ -15,12 +15,18 @@ export class MailCoreWeb {
 
     setup() {
         this.busService.subscribe("mail.activity/updated", (payload, { id: notifId }) => {
-            if (payload.activity_created && notifId > this.store.activity_counter_bus_id) {
-                this.store.activityCounter++;
+            if (notifId <= this.store.activity_counter_bus_id) {
+                return;
             }
-            if (payload.activity_deleted && notifId > this.store.activity_counter_bus_id) {
-                this.store.activityCounter--;
+            let countDiff = 0;
+            if ("count_diff" in payload) {
+                countDiff = payload.count_diff;
+            } else if (payload.activity_created) {
+                countDiff = 1;
+            } else if (payload.activity_deleted) {
+                countDiff = -1;
             }
+            this.store.activityCounter += countDiff;
         });
         this.env.bus.addEventListener("mail.message/delete", ({ detail: { message, notifId } }) => {
             if (message.needaction && notifId > this.store.inbox.counter_bus_id) {
@@ -31,9 +37,8 @@ export class MailCoreWeb {
             }
         });
         this.busService.subscribe("mail.message/inbox", (payload, { id: notifId }) => {
-            const { "mail.message": messages = [] } = this.store.insert(payload);
-            /** @type {import("models").Message} */
-            const message = messages[0];
+            const { Message: messages = [] } = this.store.insert(payload, { html: true });
+            const [message] = messages;
             const inbox = this.store.inbox;
             if (notifId > inbox.counter_bus_id) {
                 inbox.counter++;
@@ -53,7 +58,7 @@ export class MailCoreWeb {
                 // Furthermore, server should not send back all messageIds marked as read
                 // but something like last read messageId or something like that.
                 // (just imagine you mark 1000 messages as read ... )
-                const message = this.store["mail.message"].get(messageId);
+                const message = this.store.Message.get(messageId);
                 if (!message) {
                     continue;
                 }
@@ -80,6 +85,7 @@ export class MailCoreWeb {
                 inbox.fetchMoreMessages();
             }
         });
+        this.busService.start();
     }
 }
 
@@ -87,7 +93,7 @@ export const mailCoreWeb = {
     dependencies: ["bus_service", "mail.store"],
     /**
      * @param {import("@web/env").OdooEnv} env
-     * @param {import("services").ServiceFactories} services
+     * @param {Partial<import("services").Services>} services
      */
     start(env, services) {
         const mailCoreWeb = reactive(new MailCoreWeb(env, services));

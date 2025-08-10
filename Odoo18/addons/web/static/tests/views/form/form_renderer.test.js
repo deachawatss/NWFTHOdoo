@@ -1,5 +1,5 @@
 import { expect, test } from "@odoo/hoot";
-import { queryAllTexts, queryOne } from "@odoo/hoot-dom";
+import { queryAllTexts } from "@odoo/hoot-dom";
 import { Component, xml } from "@odoo/owl";
 import { defineModels, fields, models, mountView, contains } from "@web/../tests/web_test_helpers";
 
@@ -55,7 +55,8 @@ test("compile notebook with modifiers", async () => {
     expect(queryAllTexts`.o_notebook_headers .nav-item`).toEqual(["p1", "p2"]);
 });
 
-test("compile header and buttons", async () => {
+test.tags("desktop");
+test("compile header and buttons on desktop", async () => {
     Partner._views = {
         form: /*xml*/ `
             <form>
@@ -72,6 +73,29 @@ test("compile header and buttons", async () => {
         resId: 1,
     });
     expect(`.o_statusbar_buttons button[name=action_button]:contains(ActionButton)`).toHaveCount(1);
+});
+
+test.tags("mobile");
+test("compile header and buttons on mobile", async () => {
+    Partner._views = {
+        form: /*xml*/ `
+            <form>
+                <header>
+                    <button string="ActionButton" class="oe_highlight" name="action_button" type="object"/>
+                </header>
+            </form>
+        `,
+    };
+
+    await mountView({
+        resModel: "partner",
+        type: "form",
+        resId: 1,
+    });
+    await contains(`.o_cp_action_menus button:has(.fa-cog)`).click();
+    expect(
+        `.o-dropdown-item-unstyled-button button[name=action_button]:contains(ActionButton)`
+    ).toHaveCount(1);
 });
 
 test("render field with placeholder", async () => {
@@ -162,67 +186,5 @@ test("compile a button with disabled", async () => {
         type: "form",
         resId: 1,
     });
-    expect(`button[id=action_button]`).toHaveAttribute("disabled");
-});
-
-test.tags("desktop");
-test("statusbar stay visible when scrolling (sticky)", async () => {
-    Partner._views = {
-        form: /*xml*/ `
-            <form>
-                <header>
-                    <button id="action_button" string="ActionButton"/>
-                </header>
-                <sheet>
-                    <h2>My Sheet</h2>
-                    <div class="position-relative" style="height: 200vh"></div>
-                </sheet>
-            </form>
-        `,
-    };
-
-    await mountView({
-        resModel: "partner",
-        type: "form",
-        resId: 1,
-    });
-
-    const statusBar = queryOne(".o_form_view .o_form_statusbar");
-
-    const scrollTarget = queryOne(".o_form_view .o_content");
-    const scrollRect = scrollTarget.getBoundingClientRect();
-    expect(statusBar.getBoundingClientRect().top).toBeWithin(scrollRect.top, scrollRect.bottom);
-    scrollTarget.scrollTop = scrollTarget.scrollHeight; // scroll to bottom
-    expect(statusBar.getBoundingClientRect().top).toBeWithin(scrollRect.top, scrollRect.bottom);
-});
-
-test.tags("mobile");
-test("statusbar is non-sticky on mobile", async () => {
-    Partner._views = {
-        form: /*xml*/ `
-            <form>
-                <header>
-                    <button id="action_button" string="ActionButton"/>
-                </header>
-                <sheet>
-                    <h2>My Sheet</h2>
-                    <div class="position-relative" style="height: 200vh"></div>
-                </sheet>
-            </form>
-        `,
-    };
-
-    await mountView({
-        resModel: "partner",
-        type: "form",
-        resId: 1,
-    });
-
-    const statusBar = queryOne(".o_form_view .o_form_statusbar");
-
-    const scrollTarget = queryOne(".o_form_view .o_form_view_container");
-    const scrollRect = scrollTarget.getBoundingClientRect();
-    expect(statusBar.getBoundingClientRect().top).toBeWithin(scrollRect.top, scrollRect.bottom);
-    scrollTarget.scrollTop = scrollTarget.scrollHeight; // scroll to bottom
-    expect(statusBar.getBoundingClientRect().top).not.toBeWithin(scrollRect.top, scrollRect.bottom);
+    expect(`button[id=action_button]`).toHaveAttribute("disabled")
 });

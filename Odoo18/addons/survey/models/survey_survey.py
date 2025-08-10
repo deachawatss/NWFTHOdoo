@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import random
@@ -8,11 +9,11 @@ import werkzeug
 
 from odoo import api, exceptions, fields, models, _
 from odoo.exceptions import AccessError, UserError, ValidationError
-from odoo.fields import Domain
+from odoo.osv import expression
 from odoo.tools import is_html_empty
 
 
-class SurveySurvey(models.Model):
+class Survey(models.Model):
     """ Settings for a multi-page/multi-question survey. Each survey can have one or more attached pages
     and each page can display one or more questions. """
     _name = 'survey.survey'
@@ -26,11 +27,11 @@ class SurveySurvey(models.Model):
         return str(uuid.uuid4())
 
     @api.model
-    def default_get(self, fields):
-        result = super().default_get(fields)
+    def default_get(self, fields_list):
+        result = super().default_get(fields_list)
         # allows to propagate the text one write in a many2one widget after
         # clicking on 'Create and Edit...' to the popup form.
-        if 'title' in fields and not result.get('title') and self.env.context.get('default_name'):
+        if 'title' in fields_list and not result.get('title') and self.env.context.get('default_name'):
             result['title'] = self.env.context.get('default_name')
         return result
 
@@ -42,13 +43,6 @@ class SurveySurvey(models.Model):
         ('custom', 'Custom'),
     ],
         string='Survey Type', required=True, default='custom')
-    lang_ids = fields.Many2many(
-        'res.lang', string='Languages',
-        default=lambda self: self.env['res.lang']._lang_get(
-            self.env.context.get('lang') or self.env['res.lang'].get_installed()[0][0]),
-        domain=lambda self: [('id', 'in', [lang.id for lang in self.env['res.lang']._get_active_by('code').values()])],
-        help="Leave the field empty to support all installed languages."
-    )
     allowed_survey_types = fields.Json(string='Allowed survey types', compute="_compute_allowed_survey_types")
     title = fields.Char('Survey Title', required=True, translate=True)
     color = fields.Integer('Color Index', default=0)
@@ -140,7 +134,7 @@ class SurveySurvey(models.Model):
     #       So it can be edited but not removed or replaced.
     certification_give_badge = fields.Boolean('Give Badge', compute='_compute_certification_give_badge',
                                               readonly=False, store=True, copy=False)
-    certification_badge_id = fields.Many2one('gamification.badge', 'Certification Badge', copy=False, index='btree_not_null')
+    certification_badge_id = fields.Many2one('gamification.badge', 'Certification Badge', copy=False)
     certification_badge_id_dummy = fields.Many2one(related='certification_badge_id', string='Certification Badge ')
     # live sessions
     session_available = fields.Boolean('Live session available', compute='_compute_session_available')
@@ -169,38 +163,22 @@ class SurveySurvey(models.Model):
     # conditional questions management
     has_conditional_questions = fields.Boolean("Contains conditional questions", compute="_compute_has_conditional_questions")
 
-    _access_token_unique = models.Constraint(
-        'unique(access_token)',
-        'Access token should be unique',
-    )
-    _session_code_unique = models.Constraint(
-        'unique(session_code)',
-        'Session code should be unique',
-    )
-    _certification_check = models.Constraint(
-        "CHECK( scoring_type!='no_scoring' OR certification=False )",
-        'You can only create certifications for surveys that have a scoring mechanism.',
-    )
-    _scoring_success_min_check = models.Constraint(
-        'CHECK( scoring_success_min IS NULL OR (scoring_success_min>=0 AND scoring_success_min<=100) )',
-        'The percentage of success has to be defined between 0 and 100.',
-    )
-    _time_limit_check = models.Constraint(
-        'CHECK( (is_time_limited=False) OR (time_limit is not null AND time_limit > 0) )',
-        'The time limit needs to be a positive number if the survey is time limited.',
-    )
-    _attempts_limit_check = models.Constraint(
-        'CHECK( (is_attempts_limited=False) OR (attempts_limit is not null AND attempts_limit > 0) )',
-        'The attempts limit needs to be a positive number if the survey has a limited number of attempts.',
-    )
-    _badge_uniq = models.Constraint(
-        'unique (certification_badge_id)',
-        'The badge for each survey should be unique!',
-    )
-    _session_speed_rating_has_time_limit = models.Constraint(
-        'CHECK (session_speed_rating != TRUE OR session_speed_rating_time_limit IS NOT NULL AND session_speed_rating_time_limit > 0)',
-        'A positive default time limit is required when the session rewards quick answers.',
-    )
+    _sql_constraints = [
+        ('access_token_unique', 'unique(access_token)', 'Access token should be unique'),
+        ('session_code_unique', 'unique(session_code)', 'Session code should be unique'),
+        ('certification_check', "CHECK( scoring_type!='no_scoring' OR certification=False )",
+            'You can only create certifications for surveys that have a scoring mechanism.'),
+        ('scoring_success_min_check', "CHECK( scoring_success_min IS NULL OR (scoring_success_min>=0 AND scoring_success_min<=100) )",
+            'The percentage of success has to be defined between 0 and 100.'),
+        ('time_limit_check', "CHECK( (is_time_limited=False) OR (time_limit is not null AND time_limit > 0) )",
+            'The time limit needs to be a positive number if the survey is time limited.'),
+        ('attempts_limit_check', "CHECK( (is_attempts_limited=False) OR (attempts_limit is not null AND attempts_limit > 0) )",
+            'The attempts limit needs to be a positive number if the survey has a limited number of attempts.'),
+        ('badge_uniq', 'unique (certification_badge_id)', "The badge for each survey should be unique!"),
+        ('session_speed_rating_has_time_limit',
+         "CHECK (session_speed_rating != TRUE OR session_speed_rating_time_limit IS NOT NULL AND session_speed_rating_time_limit > 0)",
+         'A positive default time limit is required when the session rewards quick answers.'),
+    ]
 
     @api.depends('background_image', 'access_token')
     def _compute_background_image_url(self):
@@ -449,10 +427,11 @@ class SurveySurvey(models.Model):
                 - and there is a survey responsible,
                 - and this responsible is not survey manager (just survey officer),
             check the responsible is part of the list."""
-        for user_id, surveys in self.filtered(lambda s: bool(s.user_id - s.restrict_user_ids)).grouped('user_id').items():
-            accessible = surveys.with_user(user_id)._filtered_access("write")
-            if len(accessible) < len(surveys):
-                failing_surveys_sudo = (self - accessible).sudo()
+        surveys_to_check = self.filtered(lambda s: bool(s.user_id - s.restrict_user_ids))
+        if surveys_to_check:
+            valid_surveys = surveys_to_check._filtered_access("write")
+            failing_surveys_sudo = (self - valid_surveys).sudo()
+            if failing_surveys_sudo:
                 raise ValidationError(
                     _('The access of the following surveys is restricted. Make sure their responsible still has access to it: \n%(survey_names)s\n',
                         survey_names='\n'.join(f'- {survey.title}: {survey.user_id.name}' for survey in failing_surveys_sudo)))
@@ -463,7 +442,7 @@ class SurveySurvey(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        surveys = super().create(vals_list)
+        surveys = super(Survey, self).create(vals_list)
         for survey_sudo in surveys.filtered(lambda survey: survey.certification_give_badge).sudo():
             survey_sudo._create_certification_badge_trigger()
         return surveys
@@ -476,7 +455,7 @@ class SurveySurvey(models.Model):
             or speed_limit is not None and s.session_speed_rating_time_limit != speed_limit
         ))
 
-        result = super().write(vals)
+        result = super(Survey, self).write(vals)
         if 'certification_give_badge' in vals:
             return self.sudo()._handle_certification_badges(vals)
 
@@ -519,13 +498,11 @@ class SurveySurvey(models.Model):
         vals_list = super().copy_data(default=default)
         return [dict(vals, title=self.env._("%s (copy)", survey.title)) for survey, vals in zip(self, vals_list)]
 
-    def action_archive(self):
-        super().action_archive()
-        self.certification_badge_id.action_archive()
-
-    def action_unarchive(self):
-        super().action_unarchive()
-        self.certification_badge_id.action_unarchive()
+    def toggle_active(self):
+        super(Survey, self).toggle_active()
+        activated = self.filtered(lambda survey: survey.active)
+        activated.certification_badge_id.action_unarchive()
+        (self - activated).certification_badge_id.action_archive()
 
     # ------------------------------------------------------------
     # ANSWER MANAGEMENT
@@ -674,19 +651,19 @@ class SurveySurvey(models.Model):
         """ Returns the number of attempts left. """
         self.ensure_one()
 
-        domain = Domain([
+        domain = [
             ('survey_id', '=', self.id),
             ('test_entry', '=', False),
             ('state', '=', 'done')
-        ])
+        ]
 
         if partner:
-            domain &= Domain('partner_id', '=', partner.id)
+            domain = expression.AND([domain, [('partner_id', '=', partner.id)]])
         else:
-            domain &= Domain('email', '=', email)
+            domain = expression.AND([domain, [('email', '=', email)]])
 
         if invite_token:
-            domain &= Domain('invite_token', '=', invite_token)
+            domain = expression.AND([domain, [('invite_token', '=', invite_token)]])
 
         return self.attempts_limit - self.env['survey.user_input'].search_count(domain)
 
@@ -780,6 +757,7 @@ class SurveySurvey(models.Model):
             return Question
 
         # Conditional Questions Management
+        triggering_answers_by_question, _, selected_answers = user_input._get_conditional_values()
         inactive_questions = user_input._get_inactive_conditional_questions()
         if survey.questions_layout == 'page_per_question':
             question_candidates = pages_or_questions[0:current_page_index] if go_back \
@@ -792,7 +770,8 @@ class SurveySurvey(models.Model):
                     if contains_active_question or is_description_section:
                         return question
                 else:
-                    if question not in inactive_questions:
+                    triggering_answers = triggering_answers_by_question.get(question)
+                    if not triggering_answers or triggering_answers & selected_answers:
                         # question is visible because not conditioned or conditioned by a selected answer
                         return question
         elif survey.questions_layout == 'page_per_section':
@@ -822,8 +801,8 @@ class SurveySurvey(models.Model):
         A question/page will be determined as the last one if any of the following is true:
           - The survey layout is "one_page",
           - There are no more questions/page after `page_or_question` in `user_input`,
-          - All the following questions are conditional AND were not triggered by previous answers.
-            Not accounting for the question/page own conditionals.
+          - All the following questions are conditional AND were not triggered by previous answers,
+            AND cannot be triggered by any answer given on the current page/question.
         """
         if self.questions_layout == "one_page":
             return True
@@ -833,11 +812,16 @@ class SurveySurvey(models.Model):
         if not next_page_or_question_candidates:
             return True
         inactive_questions = user_input._get_inactive_conditional_questions()
+        __, triggered_questions_by_answer, __ = user_input._get_conditional_values()
         if self.questions_layout == 'page_per_question':
             return not (
                 any(next_question not in inactive_questions for next_question in next_page_or_question_candidates)
+                or any(answer in triggered_questions_by_answer for answer in page_or_question.suggested_answer_ids)
             )
         elif self.questions_layout == 'page_per_section':
+            for question in page_or_question.question_ids:
+                if any(answer in triggered_questions_by_answer for answer in question.suggested_answer_ids):
+                    return False
             for section in next_page_or_question_candidates:
                 if any(next_question not in inactive_questions for next_question in section.question_ids):
                     return False
@@ -866,7 +850,7 @@ class SurveySurvey(models.Model):
                 raise ValueError("Page id is needed for question layout 'page_per_section'")
             page_or_question_id = int(page_id)
             questions = self.env['survey.question'].sudo().search(
-                Domain('survey_id', '=', self.id) & Domain('page_id', '=', page_or_question_id))
+                expression.AND([[('survey_id', '=', self.id)], [('page_id', '=', page_or_question_id)]]))
         elif self.questions_layout == 'page_per_question':
             if not question_id:
                 raise ValueError("Question id is needed for question layout 'page_per_question'")
@@ -1305,7 +1289,3 @@ class SurveySurvey(models.Model):
 
         # could not generate enough codes, fill with False for remainder
         return session_codes + [False] * (code_count - len(session_codes))
-
-    def _get_supported_lang_codes(self):
-        self.ensure_one()
-        return self.lang_ids.mapped('code') or [lg[0] for lg in self.env['res.lang'].get_installed()]

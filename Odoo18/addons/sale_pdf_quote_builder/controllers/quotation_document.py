@@ -9,7 +9,6 @@ from odoo.http import Controller, request, route
 
 from odoo.addons.sale_pdf_quote_builder import utils
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -21,8 +20,9 @@ class QuotationDocumentController(Controller):
         methods=['POST'],
         auth='user',
     )
-    def upload_document(self, ufile, sale_order_template_id=False, allowed_company_ids=False):
-        if allowed_company_ids:
+    def upload_document(self, ufile, sale_order_template_id=False):
+        # TODO: add `allowed_company_ids` as method param in master
+        if allowed_company_ids := request.params.get('allowed_company_ids'):
             request.update_context(allowed_company_ids=json.loads(allowed_company_ids))
         sale_order_template = request.env['sale.order.template'].browse(
             int(sale_order_template_id)

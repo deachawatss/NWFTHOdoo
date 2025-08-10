@@ -1,11 +1,7 @@
 import { markup } from "@odoo/owl";
 
-import { formatList } from "@web/core/l10n/utils";
-import { isIterable } from "@web/core/utils/arrays";
 import { Deferred } from "@web/core/utils/concurrency";
-import { htmlSprintf } from "@web/core/utils/html";
-import { isObject } from "@web/core/utils/objects";
-import { sprintf } from "@web/core/utils/strings";
+import { escape, sprintf } from "@web/core/utils/strings";
 
 export const translationLoaded = Symbol("translationLoaded");
 export const translatedTerms = {
@@ -25,10 +21,6 @@ const Markup = markup().constructor;
  * map its entries to keyworded placeholders (%(kw_placeholder)s) for
  * replacement.
  *
- * If one or more of the extra arguments are iterables, they will be turned
- * into language-specific formatted strings representing the elements of the
- * list.
- *
  * If at least one of the extra arguments is a markup, the translation and
  * non-markup content are escaped, and the result is wrapped in a markup.
  *
@@ -36,8 +28,7 @@ const Markup = markup().constructor;
  * _t("Good morning"); // "Bonjour"
  * _t("Good morning %s", user.name); // "Bonjour Marc"
  * _t("Good morning %(newcomer)s, goodbye %(departer)s", { newcomer: Marc, departer: Mitchel }); // Bonjour Marc, au revoir Mitchel
- * _t("I love %s", markup`<blink>Minecraft</blink>`); // Markup {"J'adore <blink>Minecraft</blink>"}
- * _t("Good morning %s!", ["Mitchell", "Marc", "Louis"]); // Bonjour Mitchell, Marc et Louis !
+ * _t("I love %s", markup("<blink>Minecraft</blink>")); // Markup {"J'adore <blink>Minecraft</blink>"}
  *
  * @param {string} term
  * @returns {string|Markup|LazyTranslatedString}
@@ -48,7 +39,7 @@ export function _t(term, ...values) {
         if (values.length === 0) {
             return translation;
         }
-        return _safeFormatAndSprintf(translation, ...values);
+        return _safeSprintf(translation, ...values);
     } else {
         return new LazyTranslatedString(term, values);
     }
@@ -66,7 +57,7 @@ class LazyTranslatedString extends String {
             if (this.values.length === 0) {
                 return translation;
             }
-            return _safeFormatAndSprintf(translation, ...this.values);
+            return _safeSprintf(translation, ...this.values);
         } else {
             throw new Error(`translation error`);
         }
@@ -110,34 +101,41 @@ export async function loadLanguages(orm) {
 }
 
 /**
- * Same behavior as sprintf, but doing two additional things:
- * - If any of the provided values is an iterable, it will format its items
- *   as a language-specific formatted string representing the elements of the
- *   list.
- * - If any of the provided values is a markup, it will escape all non-markup
- *   content before performing the interpolation, then wraps the result in a
- *   markup.
+ * Same behavior as sprintf, but if any of the provided values is a markup,
+ * escapes all non-markup content before performing the interpolation, then
+ * wraps the result in a markup.
  *
  * @param {string} str The string with placeholders (%s) to insert values into.
  * @param  {...any} values Primitive values to insert in place of placeholders.
  * @returns {string|Markup}
  */
-function _safeFormatAndSprintf(str, ...values) {
-    let hasMarkup = false;
-    let valuesObject = values;
-    if (values.length === 1 && isObject(values[0])) {
-        valuesObject = values[0];
-    }
-    for (const [key, value] of Object.entries(valuesObject)) {
-        // The `!(value instanceof String)` check is to prevent interpreting `Markup` and `LazyTranslatedString`
-        // objects as iterables, since they are both subclasses of `String`.
-        if (isIterable(value) && !(value instanceof String)) {
-            valuesObject[key] = formatList(value);
-        }
-        hasMarkup ||= value instanceof Markup;
+function _safeSprintf(str, ...values) {
+    let hasMarkup;
+    if (values.length === 1 && Object.prototype.toString.call(values[0]) === "[object Object]") {
+        hasMarkup = Object.values(values[0]).some((v) => v instanceof Markup);
+    } else {
+        hasMarkup = values.some((v) => v instanceof Markup);
     }
     if (hasMarkup) {
-        return htmlSprintf(str, ...values);
+        return markup(sprintf(escape(str), ..._escapeNonMarkup(values)));
     }
     return sprintf(str, ...values);
+}
+
+/**
+ * Go through each value to be passed to sprintf and escape anything that isn't
+ * a markup.
+ *
+ * @param {any[]|[Object]} values Values for use with sprintf.
+ * @returns {any[]|[Object]}
+ */
+function _escapeNonMarkup(values) {
+    if (Object.prototype.toString.call(values[0]) === "[object Object]") {
+        const sanitized = {};
+        for (const [key, value] of Object.entries(values[0])) {
+            sanitized[key] = value instanceof Markup ? value : escape(value);
+        }
+        return [sanitized];
+    }
+    return values.map((x) => (x instanceof Markup ? x : escape(x)));
 }

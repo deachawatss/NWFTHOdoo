@@ -335,7 +335,7 @@ class TestAccountAccount(TestAccountMergeCommon):
         move.line_ids.filtered(lambda line: line.account_id == account).reconcile()
 
         # Try to set the account as a not-reconcile one.
-        with self.assertRaises(UserError):
+        with self.assertRaises(UserError), self.cr.savepoint():
             account.reconcile = False
 
     def test_remove_account_from_account_group(self):
@@ -593,7 +593,7 @@ class TestAccountAccount(TestAccountMergeCommon):
 
             - Creates: partner and a account move of that partner.
             - Checks if the most frequent account for the partner matches created account (with recent move).
-            - Sets the account as archived and checks that it no longer appears in the suggestions.
+            - Sets the account as deprecated and checks that it no longer appears in the suggestions.
 
             * since tested function takes into account last 2 years, we use freeze_time
         """
@@ -613,14 +613,14 @@ class TestAccountAccount(TestAccountMergeCommon):
         )
         self.assertEqual(account.id, results_1[0], "Account with most account_moves should be listed first")
 
-        account.active = False
-        account.flush_recordset(['active'])
+        account.deprecated = True
+        account.flush_recordset(['deprecated'])
         results_2 = self.env['account.account']._get_most_frequent_accounts_for_partner(
             company_id=self.env.company.id,
             partner_id=partner.id,
             move_type="out_invoice"
         )
-        self.assertFalse(account.id in results_2, "Archived account should NOT appear in account suggestions")
+        self.assertFalse(account.id in results_2, "Deprecated account should NOT appear in account suggestions")
 
     def test_placeholder_code(self):
         """ Test that the placeholder code is '{code_in_company} ({company})'
@@ -642,7 +642,7 @@ class TestAccountAccount(TestAccountMergeCommon):
             login='user_that_cannot_access_company_2',
             password='user_that_cannot_access_company_2',
             email='user_that_cannot_access_company_2@test.com',
-            group_ids=self.get_default_groups().ids,
+            groups_id=self.get_default_groups().ids,
             company_id=self.env.company.id,
         )
 
@@ -677,14 +677,14 @@ class TestAccountAccount(TestAccountMergeCommon):
             login='user_that_cannot_access_company_2',
             password='user_that_cannot_access_company_2',
             email='user_that_cannot_access_company_2@test.com',
-            group_ids=self.get_default_groups().ids,
+            groups_id=self.get_default_groups().ids,
             company_id=self.env.company.id,
         )
 
         searched_account = self.env['account.account'].with_user(user_that_cannot_access_company_2).sudo().search([('id', '=', account.id)])
         self.assertEqual(searched_account, account)
 
-    @freeze_time('2018-01-01')
+    @freeze_time('2017-01-01')
     def test_account_opening_balance(self):
         company = self.env.company
         account = self.company_data['default_account_revenue']

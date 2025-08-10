@@ -11,6 +11,10 @@ from odoo.tools import mute_logger, email_normalize
 @tagged('mass_mailing')
 class TestMassMailing(TestMassMailCommon):
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestMassMailing, cls).setUpClass()
+
     @users('user_marketing')
     @mute_logger('odoo.addons.mail.models.mail_thread')
     def test_mailing_gateway_reply(self):
@@ -82,10 +86,8 @@ class TestMassMailing(TestMassMailCommon):
             mailing.action_send_mail()
 
         self.assertMailTraces(
-            [{
-                'email': record.email_normalized,
-                'email_to_mail': record.email_from,
-             } for record in recipients],
+            [{'email': record.email_normalized}
+             for record in recipients],
             mailing, recipients,
             mail_links_info=[[
                 ('url0', 'https://www.odoo.tz/my/%s' % record.name, True, {}),
@@ -117,7 +119,6 @@ class TestMassMailing(TestMassMailCommon):
         self.assertEqual(recipients[1].message_bounce, 1)
         self.assertMailTraces([{
             'email': 'test.record.01@test.example.com',
-            'email_to_mail': recipients[1].email_from,
             'failure_reason': 'This is the bounce email',
             'failure_type': 'mail_bounce',
             'trace_status': 'bounce',
@@ -214,57 +215,57 @@ class TestMassMailing(TestMassMailCommon):
                 # -> email_to_recipients: email_to for outgoing emails, list means several recipients
                 self.assertMailTraces(
                     [
-                        {'email': 'customer.multi.1@example.com',
-                         'email_to_mail': '',  # using recipient_ids, not email_to
+                        {'email': 'customer.multi.1@example.com, "Test Multi 2" <customer.multi.2@example.com>',
+                         'email_to_mail': False,  # using recipient_ids, not email_to
                          'email_to_recipients': [[f'"{customer_mult.name}" <customer.multi.1@example.com>', f'"{customer_mult.name}" <customer.multi.2@example.com>']],
                          'failure_type': False,
                          'partner': customer_mult,
                          'trace_status': 'sent'},
-                        {'email': 'test.customer.format@example.com',
-                         'email_to_mail': '',  # using recipient_ids, not email_to
+                        {'email': '"Formatted Customer" <test.customer.format@example.com>',
+                         'email_to_mail': False,  # using recipient_ids, not email_to
                          # mail to avoids double encapsulation
                          'email_to_recipients': [[f'"{customer_fmt.name}" <test.customer.format@example.com>']],
                          'failure_type': False,
                          'partner': customer_fmt,
                          'trace_status': 'sent'},
-                        {'email': 'test.customer.😊@example.com',
-                         'email_to_mail': '',  # using recipient_ids, not email_to
+                        {'email': '"Unicode Customer" <test.customer.😊@example.com>',
+                         'email_to_mail': False,  # using recipient_ids, not email_to
                          # mail to avoids double encapsulation
                          'email_to_recipients': [[f'"{customer_unic.name}" <test.customer.😊@example.com>']],
                          'failure_type': False,
                          'partner': customer_unic,
                          'trace_status': 'sent'},
-                        {'email': 'test.customer.case@example.com',
-                         'email_to_mail': '',  # using recipient_ids, not email_to
+                        {'email': 'TEST.CUSTOMER.CASE@EXAMPLE.COM',
+                         'email_to_mail': False,  # using recipient_ids, not email_to
                          'email_to_recipients': [[f'"{customer_case.name}" <test.customer.case@example.com>']],
                          'failure_type': False,
                          'partner': customer_case,
                          'trace_status': 'sent'},  # lower cased
-                        {'email': 'test.customer.weird@example.comweirdformat',
-                         'email_to_mail': '',  # using recipient_ids, not email_to
+                        {'email': 'test.customer.weird@example.com Weird Format',
+                         'email_to_mail': False,  # using recipient_ids, not email_to
                          'email_to_recipients': [[f'"{customer_weird.name}" <test.customer.weird@example.comweirdformat>']],
                          'failure_type': False,
                          'partner': customer_weird,
                          'trace_status': 'sent'},  # concatenates everything after domain
-                        {'email': 'test.customer.weird.2@example.com',
-                         'email_to_mail': '',  # using recipient_ids, not email_to
+                        {'email': 'Weird Format2 test.customer.weird.2@example.com',
+                         'email_to_mail': False,  # using recipient_ids, not email_to
                          'email_to_recipients': [[f'"{customer_weird_2.name}" <test.customer.weird.2@example.com>']],
                          'failure_type': False,
                          'partner': customer_weird_2,
                          'trace_status': 'sent'},
                         {'email': 'record.multi.1@example.com',
-                         'email_to_mail': 'record.multi.1@example.com,"Record Multi 2" <record.multi.2@example.com>',
-                         'email_to_recipients': [['record.multi.1@example.com', '"Record Multi 2" <record.multi.2@example.com>']],
+                         'email_to_mail': 'record.multi.1@example.com,record.multi.2@example.com',
+                         'email_to_recipients': [['record.multi.1@example.com', 'record.multi.2@example.com']],
                          'failure_type': False,
                          'trace_status': 'sent'},
                         {'email': 'record.format@example.com',
-                         'email_to_mail': '"Formatted Record" <record.format@example.com>',
-                         'email_to_recipients': [['"Formatted Record" <record.format@example.com>']],
+                         'email_to_mail': 'record.format@example.com',
+                         'email_to_recipients': [['record.format@example.com']],
                          'failure_type': False,
                          'trace_status': 'sent'},
                         {'email': 'record.😊@example.com',
-                         'email_to_mail': '"Unicode Record" <record.😊@example.com>',
-                         'email_to_recipients': [['"Unicode Record" <record.😊@example.com>']],
+                         'email_to_mail': 'record.😊@example.com',
+                         'email_to_recipients': [['record.😊@example.com']],
                          'failure_type': False,
                          'trace_status': 'sent'},
                         {'email': 'test.record.case@example.com',
@@ -278,8 +279,8 @@ class TestMassMailing(TestMassMailCommon):
                          'failure_type': False,
                          'trace_status': 'sent'},
                         {'email': 'test.record.weird.2@example.com',
-                         'email_to_mail': '"Weird Format2" <test.record.weird.2@example.com>',
-                         'email_to_recipients': [['"Weird Format2" <test.record.weird.2@example.com>']],
+                         'email_to_mail': 'test.record.weird.2@example.com',
+                         'email_to_recipients': [['test.record.weird.2@example.com']],
                          'failure_type': False,
                          'trace_status': 'sent'},
                     ],
@@ -305,11 +306,7 @@ class TestMassMailing(TestMassMailCommon):
         with self.mock_mail_gateway(mail_unlink_sent=True):
             mailing.action_send_mail()
 
-        answer_rec = self.gateway_mail_reply_wemail(
-            MAIL_TEMPLATE,
-            recipients[0].email_from,
-            target_model=self.test_alias.alias_model_id.model,
-        )
+        answer_rec = self.gateway_mail_reply_wemail(MAIL_TEMPLATE, recipients[0].email_normalized, target_model=self.test_alias.alias_model_id.model)
         self.assertTrue(bool(answer_rec))
         self.assertEqual(answer_rec.name, 'Re: %s' % mailing.subject)
         self.assertEqual(
@@ -335,11 +332,7 @@ class TestMassMailing(TestMassMailCommon):
         with self.mock_mail_gateway(mail_unlink_sent=True):
             mailing.action_send_mail()
 
-        answer_rec = self.gateway_mail_reply_wemail(
-            MAIL_TEMPLATE,
-            recipients[0].email_from,
-            target_model=self.test_alias.alias_model_id.model,
-        )
+        answer_rec = self.gateway_mail_reply_wemail(MAIL_TEMPLATE, recipients[0].email_normalized, target_model=self.test_alias.alias_model_id.model)
         self.assertFalse(bool(answer_rec))
         self.assertEqual(
             recipients[0].message_ids[1].subject, mailing.subject,
@@ -417,20 +410,14 @@ class TestMassMailing(TestMassMailCommon):
             mailing.action_send_mail()
 
         self.assertMailTraces(
-            [{
-                'email': record.email_normalized,
-                'email_to_mail': record.email_from,
-            } for record in recipients[:3]] + [{
-                'email': record.email_normalized,
-                'email_to_mail': record.email_from,
-                'failure_type': 'mail_bl',
-                'trace_status': 'cancel',
-            } for record in recipients[3:]],
-            mailing, recipients
+            [{'email': 'test.record.00@test.example.com'},
+             {'email': 'test.record.01@test.example.com'},
+             {'email': 'test.record.02@test.example.com'},
+             {'email': 'test.record.03@test.example.com', 'trace_status': 'cancel', 'failure_type': 'mail_bl'},
+             {'email': 'test.record.04@test.example.com', 'trace_status': 'cancel', 'failure_type': 'mail_bl'}],
+            mailing, recipients, check_mail=True
         )
         self.assertEqual(mailing.canceled, 2)
-        self.assertEqual(len(self.env['mail.mail'].sudo().search([('mailing_id', '=', mailing.id)])), 3,
-                         "Only the 3 sent mails have been created, the canceled ones have not been created")
 
     @users('user_marketing')
     @mute_logger('odoo.addons.mail.models.mail_mail')
@@ -454,10 +441,6 @@ class TestMassMailing(TestMassMailCommon):
             {'email': email_normalize(test_records[1].email_from), 'trace_status': 'sent'},
         ], self.mailing_bl, test_records, check_mail=False)
 
-        self.assertEqual(self.mailing_bl.canceled, 1)
-        self.assertEqual(len(self.env['mail.mail'].sudo().search([('mailing_id', '=', self.mailing_bl.id)])), 1,
-                         "Only the sent mail has been created, the canceled one has not been created")
-
     @users('user_marketing')
     @mute_logger('odoo.addons.mail.models.mail_mail')
     def test_mailing_w_opt_out(self):
@@ -477,23 +460,14 @@ class TestMassMailing(TestMassMailCommon):
             mailing.action_send_mail()
 
         self.assertMailTraces(
-            [{
-                'email': record.email_normalized,
-                'email_to_mail': record.email_from,
-                'failure_type': 'mail_optout',
-                'trace_status': 'cancel',
-            } for record in recipients[:2]] + [{
-                'email': record.email_normalized,
-                'email_to_mail': record.email_from,
-            } for record in recipients[2:4]] + [{
-                'email': record.email_normalized,
-                'email_to_mail': record.email_from,
-                'failure_type': 'mail_bl',
-                'trace_status': 'cancel'
-            } for record in recipients[4:]], mailing, recipients)
+            [{'email': 'test.record.00@test.example.com', 'trace_status': 'cancel', 'failure_type': 'mail_optout'},
+             {'email': 'test.record.01@test.example.com', 'trace_status': 'cancel', 'failure_type': 'mail_optout'},
+             {'email': 'test.record.02@test.example.com'},
+             {'email': 'test.record.03@test.example.com'},
+             {'email': 'test.record.04@test.example.com', 'trace_status': 'cancel', 'failure_type': 'mail_bl'}],
+            mailing, recipients, check_mail=True
+        )
         self.assertEqual(mailing.canceled, 3)
-        self.assertEqual(len(self.env['mail.mail'].sudo().search([('mailing_id', '=', self.mailing_bl.id)])), 2,
-                         "Only the 2 sent mails have been created, the canceled ones have not been created")
 
     @users('user_marketing')
     def test_mailing_w_seenlist(self):
@@ -519,7 +493,7 @@ class TestMassMailing(TestMassMailCommon):
 
         with self.mock_mail_gateway():
             for i in range(0, 20, BATCH_SIZE):
-                mailing.action_send_mail(records[i:i + BATCH_SIZE].ids)
+                mailing.action_send_mail(records[i:i + BATCH_SIZE].mapped('id'))
             self.assertEqual(len(self._mails), BATCH_SIZE)
             self.assertEqual(mailing.canceled, 15)
             mails_sent = [email_normalize(mail['email_to'][0]) for mail in self._mails]
@@ -576,7 +550,6 @@ class TestMassMailing(TestMassMailCommon):
         mailing_contact_3 = self.env['mailing.contact'].create({'name': 'test 3', 'email': 'test3@test.example.com'})
         mailing_contact_4 = self.env['mailing.contact'].create({'name': 'test 4', 'email': 'test4@test.example.com'})
         mailing_contact_5 = self.env['mailing.contact'].create({'name': 'test 5', 'email': 'test5@test.example.com'})
-        records = mailing_contact_1 + mailing_contact_2 + mailing_contact_3 + mailing_contact_4 + mailing_contact_5
 
         # create mailing list record
         mailing_list_1 = self.env['mailing.list'].create({
@@ -618,12 +591,14 @@ class TestMassMailing(TestMassMailCommon):
             mailing.action_send_mail()
 
         self.assertMailTraces(
-            [{'email': 'test@test.example.com', 'trace_status': 'cancel', 'failure_type': 'mail_dup'},
-             {'email': 'test@test.example.com', 'trace_status': 'sent'},
+            [{'email': 'test@test.example.com', 'trace_status': 'sent'},
+             {'email': 'test@test.example.com', 'trace_status': 'cancel', 'failure_type': 'mail_dup'},
              {'email': 'test3@test.example.com'},
              {'email': 'test4@test.example.com'},
              {'email': 'test5@test.example.com', 'trace_status': 'cancel', 'failure_type': 'mail_optout'}],
             mailing,
-            mailing_contact_1 + mailing_contact_2 + mailing_contact_3 + mailing_contact_4 + mailing_contact_5,
+            # mailing_contact_1 + mailing_contact_2 + mailing_contact_3 + mailing_contact_4 + mailing_contact_5,
+            mailing_contact_2 + mailing_contact_1 + mailing_contact_3 + mailing_contact_4 + mailing_contact_5,
+            check_mail=True
         )
         self.assertEqual(mailing.canceled, 2)

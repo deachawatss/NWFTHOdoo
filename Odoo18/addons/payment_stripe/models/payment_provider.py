@@ -11,8 +11,8 @@ from odoo import _, api, fields, models
 from odoo.exceptions import RedirectWarning, UserError, ValidationError
 
 from odoo.addons.payment import utils as payment_utils
-from odoo.addons.payment_stripe import const
-from odoo.addons.payment_stripe import utils as stripe_utils
+from odoo.addons.payment.controllers.portal import PaymentPortal
+from odoo.addons.payment_stripe import const, utils as stripe_utils
 from odoo.addons.payment_stripe.controllers.main import StripeController
 from odoo.addons.payment_stripe.controllers.onboarding import OnboardingController
 
@@ -223,8 +223,7 @@ class PaymentProvider(models.Model):
         valid, it is registered to use with Apple Pay.
         See https://stripe.com/docs/stripe-js/elements/payment-request-button#verifying-your-domain-with-apple-pay.
 
-        :returns: A client action with a success message.
-        :rtype: dict
+        :return dict: A client action with a success message.
         :raise UserError: If test keys are used to make the request.
         """
         self.ensure_one()

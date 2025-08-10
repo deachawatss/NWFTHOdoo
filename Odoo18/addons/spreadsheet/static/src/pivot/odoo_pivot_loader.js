@@ -96,17 +96,19 @@ export class OdooPivotLoader {
      * @returns {Promise<OdooFields>} Fields of the model
      */
     async getFields(model) {
-        return getFields(this.odooDataProvider.fieldService, model);
+        return getFields(this.odooDataProvider.serverData, model);
     }
     /**
      * @param {string} model Technical name of the model
      * @returns {Promise<string>} Display name of the model
      */
     async getModelLabel(model) {
-        const result = await this.odooDataProvider.orm
-            .cached()
-            .call("ir.model", "display_name_for", [[model]]);
-        return result[0]?.display_name || "";
+        const result = await this.odooDataProvider.serverData.fetch(
+            "ir.model",
+            "display_name_for",
+            [[model]]
+        );
+        return (result[0] && result[0].display_name) || "";
     }
 
     isModelValid() {

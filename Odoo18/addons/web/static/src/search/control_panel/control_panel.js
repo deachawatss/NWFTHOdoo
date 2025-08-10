@@ -17,7 +17,7 @@ import { Transition } from "@web/core/transition";
 import { Breadcrumbs } from "../breadcrumbs/breadcrumbs";
 import { SearchBar } from "../search_bar/search_bar";
 
-import { Component, useState, onMounted, useRef, useEffect } from "@odoo/owl";
+import { Component, useState, onMounted, useExternalListener, useRef, useEffect } from "@odoo/owl";
 
 const STICKY_CLASS = "o_mobile_sticky";
 
@@ -111,6 +111,9 @@ export class ControlPanel extends Component {
         }+${user.userId}`;
 
         this.state = useState({
+            showSearchBar: false,
+            showMobileSearch: false,
+            showViewSwitcher: false,
             embeddedInfos: {
                 showEmbedded:
                     this.env.config.embeddedActions?.length > 0 &&
@@ -153,6 +156,7 @@ export class ControlPanel extends Component {
             );
         }
 
+        useExternalListener(window, "click", this.onWindowClick);
         useEffect(() => {
             if (
                 !this.env.isSmall ||
@@ -283,6 +287,17 @@ export class ControlPanel extends Component {
     }
 
     /**
+     * Reset mobile search state
+     */
+    resetSearchState() {
+        Object.assign(this.state, {
+            showSearchBar: false,
+            showMobileSearch: false,
+            showViewSwitcher: false,
+        });
+    }
+
+    /**
      * @returns {Object}
      */
     get display() {
@@ -347,8 +362,9 @@ export class ControlPanel extends Component {
      *
      * @param {import("@web/views/view").ViewType} viewType
      */
-    switchView(viewType, newWindow) {
-        this.actionService.switchView(viewType, {}, { newWindow });
+    switchView(viewType) {
+        this.resetSearchState();
+        this.actionService.switchView(viewType);
     }
 
     cycleThroughViews() {
@@ -359,6 +375,16 @@ export class ControlPanel extends Component {
         );
         const nextIndex = (currentIndex + 1) % viewSwitcherEntries.length;
         this.switchView(viewSwitcherEntries[nextIndex].type);
+    }
+
+    /**
+     * @private
+     * @param {MouseEvent} ev
+     */
+    onWindowClick(ev) {
+        if (this.state.showViewSwitcher && !ev.target.closest(".o_cp_switch_buttons")) {
+            this.state.showViewSwitcher = false;
+        }
     }
 
     /**
@@ -561,7 +587,7 @@ export class ControlPanel extends Component {
                 name: action.python_method || action.action_id[0] || action.action_id,
                 resModel: action.parent_res_model,
                 context,
-                stackPosition: this.env.config.parentActionId ? "replaceCurrentAction" : "",
+                stackPosition: "replaceCurrentAction",
                 viewType: action.default_view_mode,
             },
             { isEmbeddedAction: true }

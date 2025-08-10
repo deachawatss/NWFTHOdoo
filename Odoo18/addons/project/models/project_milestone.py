@@ -8,19 +8,17 @@ from odoo.tools import format_date
 
 from .project_task import CLOSED_STATES
 
-
 class ProjectMilestone(models.Model):
     _name = 'project.milestone'
     _description = "Project Milestone"
     _inherit = ['mail.thread']
-    _order = 'sequence, deadline, is_reached desc, name'
+    _order = 'deadline, is_reached desc, name'
 
     def _get_default_project_id(self):
         return self.env.context.get('default_project_id') or self.env.context.get('active_id')
 
     name = fields.Char(required=True)
-    sequence = fields.Integer('Sequence', default=10)
-    project_id = fields.Many2one('project.project', required=True, default=_get_default_project_id, domain=[('is_template', '=', False)], index=True, ondelete='cascade')
+    project_id = fields.Many2one('project.project', required=True, default=_get_default_project_id, ondelete='cascade')
     deadline = fields.Date(tracking=True, copy=False)
     is_reached = fields.Boolean(string="Reached", default=False, copy=False)
     reached_date = fields.Date(compute='_compute_reached_date', store=True, export_string_translation=False)
@@ -104,7 +102,7 @@ class ProjectMilestone(models.Model):
 
     @api.model
     def _get_fields_to_export(self):
-        return ['id', 'name', 'deadline', 'is_reached', 'reached_date', 'is_deadline_exceeded', 'is_deadline_future', 'can_be_marked_as_done', 'sequence']
+        return ['id', 'name', 'deadline', 'is_reached', 'reached_date', 'is_deadline_exceeded', 'is_deadline_future', 'can_be_marked_as_done']
 
     def _get_data(self):
         self.ensure_one()
@@ -124,7 +122,7 @@ class ProjectMilestone(models.Model):
 
     def _compute_display_name(self):
         super()._compute_display_name()
-        if not self.env.context.get('display_milestone_deadline'):
+        if not self._context.get('display_milestone_deadline'):
             return
         for milestone in self:
             if milestone.deadline:

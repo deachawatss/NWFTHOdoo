@@ -27,5 +27,3 @@ class TestSnippets(HttpCaseWithUserPortal):
 
         self.start_tour("/?enable_editor=1", "donation_snippet_edition", login='admin')
         self.start_tour("/", "donation_snippet_use", login="portal")
-        self.start_tour("/?enable_editor=1", "donation_snippet_edition_2", login='admin')
-        self.start_tour("/", "donation_snippet_use_2", login="portal")

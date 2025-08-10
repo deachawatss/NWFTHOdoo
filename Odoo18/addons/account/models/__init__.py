@@ -1,5 +1,4 @@
 from . import sequence_mixin
-from . import account_document_import_mixin
 from . import partner
 from . import res_partner_bank
 from . import account_account_tag
@@ -30,7 +29,6 @@ from . import account_journal_dashboard
 from . import product
 from . import company
 from . import res_config_settings
-from . import res_country_group
 from . import account_cash_rounding
 from . import account_incoterms
 from . import decimal_precision
@@ -38,8 +36,8 @@ from . import digest
 from . import res_users
 from . import ir_attachment
 from . import ir_actions_report
-from . import ir_http
 from . import ir_module
+from . import ir_ui_menu
 from . import mail_message
 from . import mail_template
 from . import mail_tracking_value

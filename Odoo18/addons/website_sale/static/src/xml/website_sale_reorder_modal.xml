@@ -2,12 +2,7 @@
 <templates>
     <t t-name="website_sale.ReorderModal">
         <Dialog title.translate="Re-Order">
-            <!--
-                TODO: `.oe_website_sale` is used as a selector in `tracking.js`. This
-                is a temporary solution to load the tracking utilities and will be removed once
-                tracking utilities will be fully integrated into a service.
-            -->
-            <table id="o_wsale_reorder_table" class="table table-sm oe_website_sale">
+            <table id="o_wsale_reorder_table" class="table table-sm">
                 <thead class="bg-100">
                     <tr id="o_wsale_reorder_header">
                         <!-- Product Image -->
@@ -39,7 +34,7 @@
                                         t-key="comboItem.combo_item_id"
                                     >
                                         <li>
-                                            <t t-esc="product.quantity"/> x <t t-esc="comboItem.combinationInfo.display_name"/>
+                                            <t t-esc="product.qty"/> x <t t-esc="comboItem.combinationInfo.display_name"/>
                                         </li>
                                     </t>
                                 </ul>
@@ -47,12 +42,12 @@
                             <t t-if="product.add_to_cart_allowed">
                                 <td class="text-center td-qty">
                                     <div class="css_quantity input-group input-group-sm justify-content-center">
-                                        <a href="#" class="btn btn-link d-none d-md-inline-block" aria-label="Remove one" title="Remove one" t-on-click.stop.prevent="() => this.changeProductQty(product, product.quantity - 1)">
+                                        <a href="#" class="btn btn-link d-none d-md-inline-block" aria-label="Remove one" title="Remove one" t-on-click.stop.prevent="() => this.changeProductQty(product, product.qty - 1)">
                                             <i class="fa fa-minus"/>
                                         </a>
                                         <input type="text" class="js_quantity text-center form-control quantity" t-on-change="(ev) => this.onChangeProductQtyInput(ev, product)"
-                                            t-att-value="product.quantity"/>
-                                        <a href="#" class="btn btn-link d-none d-md-inline-block" aria-label="Add one" title="Add one" t-on-click.stop.prevent="() => this.changeProductQty(product, product.quantity + 1)">
+                                            t-att-value="product.qty"/>
+                                        <a href="#" class="btn btn-link d-none d-md-inline-block" aria-label="Add one" title="Add one" t-on-click.stop.prevent="() => this.changeProductQty(product, product.qty + 1)">
                                             <i class="fa fa-plus"/>
                                         </a>
                                     </div>

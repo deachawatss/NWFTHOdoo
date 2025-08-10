@@ -1,13 +1,12 @@
 import { Store, storeService } from "@mail/core/common/store_service";
-import { fields } from "@mail/core/common/record";
+import { Record } from "@mail/core/common/record";
 import { router } from "@web/core/browser/router";
 import { patch } from "@web/core/utils/patch";
 
 patch(Store.prototype, {
     setup() {
         super.setup(...arguments);
-        this.discuss = fields.One("DiscussApp");
-        /** @type {number|undefined} */
+        this.discuss = Record.one("DiscussApp");
         this.action_discuss_id;
     },
     onStarted() {
@@ -22,6 +21,15 @@ patch(Store.prototype, {
                 channel.notifyMessageToUser(message);
             }
         );
+    },
+    getDiscussSidebarCategoryCounter(categoryId) {
+        return this.DiscussAppCategory.get({ id: categoryId }).threads.reduce((acc, channel) => {
+            if (categoryId === "channels") {
+                return channel.message_needaction_counter > 0 ? acc + 1 : acc;
+            } else {
+                return channel.selfMember?.message_unread_counter > 0 ? acc + 1 : acc;
+            }
+        }, 0);
     },
 });
 

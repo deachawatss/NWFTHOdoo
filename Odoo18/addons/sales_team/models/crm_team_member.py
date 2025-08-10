@@ -1,6 +1,7 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import _, api, exceptions, fields, models
+from odoo import api, exceptions, fields, models, _
 
 
 class CrmTeamMember(models.Model):
@@ -37,6 +38,7 @@ class CrmTeamMember(models.Model):
     name = fields.Char(string='Name', related='user_id.display_name', readonly=False)
     email = fields.Char(string='Email', related='user_id.email')
     phone = fields.Char(string='Phone', related='user_id.phone')
+    mobile = fields.Char(string='Mobile', related='user_id.mobile')
     company_id = fields.Many2one('res.company', string='Company', related='user_id.company_id')
 
     @api.constrains('crm_team_id', 'user_id', 'active')
@@ -129,7 +131,8 @@ class CrmTeamMember(models.Model):
                 teams = user_mapping.get(member.user_id, self.env['crm.team'])
                 remaining = teams - (member.crm_team_id | member._origin.crm_team_id)
                 if remaining:
-                    member.member_warning = _("%(user_name)s already in other teams (%(team_names)s).",
+                    member.member_warning = _("Adding %(user_name)s in this team will remove them from %(team_names)s. "
+                                              "Working in multiple teams? Activate the option under Configuration>Settings.",
                                               user_name=member.user_id.name,
                                               team_names=", ".join(remaining.mapped('name'))
                                              )
@@ -141,7 +144,7 @@ class CrmTeamMember(models.Model):
     # ------------------------------------------------------------
 
     @api.model_create_multi
-    def create(self, vals_list):
+    def create(self, values_list):
         """ Specific behavior implemented on create
 
           * mono membership mode: other user memberships are automatically
@@ -155,12 +158,12 @@ class CrmTeamMember(models.Model):
         """
         is_membership_multi = self.env['ir.config_parameter'].sudo().get_param('sales_team.membership_multi', False)
         if not is_membership_multi:
-            self._synchronize_memberships(vals_list)
+            self._synchronize_memberships(values_list)
         return super(CrmTeamMember, self.with_context(
             mail_create_nosubscribe=True
-        )).create(vals_list)
+        )).create(values_list)
 
-    def write(self, vals):
+    def write(self, values):
         """ Specific behavior about active. If you change user_id / team_id user
         get warnings in form view and a raise in constraint check. We support
         archive / activation of memberships that toggles other memberships. But
@@ -171,12 +174,12 @@ class CrmTeamMember(models.Model):
         modifying user_id or team_id is advanced and does not benefit from our
         support. """
         is_membership_multi = self.env['ir.config_parameter'].sudo().get_param('sales_team.membership_multi', False)
-        if not is_membership_multi and vals.get('active'):
+        if not is_membership_multi and values.get('active'):
             self._synchronize_memberships([
                 dict(user_id=membership.user_id.id, crm_team_id=membership.crm_team_id.id)
                 for membership in self
             ])
-        return super().write(vals)
+        return super(CrmTeamMember, self).write(values)
 
     def _synchronize_memberships(self, user_team_ids):
         """ Synchronize memberships: archive other memberships.

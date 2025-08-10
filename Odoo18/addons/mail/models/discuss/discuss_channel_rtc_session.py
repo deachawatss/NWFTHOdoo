@@ -5,7 +5,6 @@ import requests
 
 from collections import defaultdict
 from dateutil.relativedelta import relativedelta
-from markupsafe import Markup
 
 from odoo import api, fields, models
 from odoo.addons.mail.tools import discuss, jwt
@@ -14,15 +13,15 @@ from odoo.addons.mail.tools.discuss import Store
 _logger = logging.getLogger(__name__)
 
 
-class DiscussChannelRtcSession(models.Model):
+class MailRtcSession(models.Model):
     _name = 'discuss.channel.rtc.session'
     _inherit = ["bus.listener.mixin"]
     _description = 'Mail RTC session'
     _rec_name = 'channel_member_id'
 
     channel_member_id = fields.Many2one('discuss.channel.member', required=True, ondelete='cascade')
-    channel_id = fields.Many2one('discuss.channel', related='channel_member_id.channel_id', store=True, readonly=True, index='btree_not_null')
-    partner_id = fields.Many2one('res.partner', related='channel_member_id.partner_id', string="Partner", store=True, index=True)
+    channel_id = fields.Many2one('discuss.channel', related='channel_member_id.channel_id', store=True, readonly=True)
+    partner_id = fields.Many2one('res.partner', related='channel_member_id.partner_id', string="Partner")
     guest_id = fields.Many2one('mail.guest', related='channel_member_id.guest_id')
 
     write_date = fields.Datetime("Last Updated On", index=True)
@@ -32,10 +31,10 @@ class DiscussChannelRtcSession(models.Model):
     is_muted = fields.Boolean(string="Is microphone muted")
     is_deaf = fields.Boolean(string="Has disabled incoming sound")
 
-    _channel_member_unique = models.Constraint(
-        'UNIQUE(channel_member_id)',
-        'There can only be one rtc session per channel member',
-    )
+    _sql_constraints = [
+        ('channel_member_unique', 'UNIQUE(channel_member_id)',
+         'There can only be one rtc session per channel member')
+    ]
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -44,59 +43,33 @@ class DiscussChannelRtcSession(models.Model):
         for rtc_session in rtc_sessions:
             rtc_sessions_by_channel[rtc_session.channel_id] += rtc_session
         for channel, rtc_sessions in rtc_sessions_by_channel.items():
-            Store(
-                channel,
-                {"rtc_session_ids": Store.Many(rtc_sessions, mode="ADD")},
-                bus_channel=channel,
-            ).bus_send()
-        for channel in rtc_sessions.channel_id.filtered(lambda c: len(c.rtc_session_ids) == 1):
-            body = Markup('<div data-oe-type="call" class="o_mail_notification"></div>')
-            message = channel.message_post(body=body, message_type="notification")
-            # sudo - discuss.call.history: can create call history when call is created.
-            self.env["discuss.call.history"].sudo().create(
-                {
-                    "channel_id": channel.id,
-                    "start_dt": fields.Datetime.now(),
-                    "start_call_message_id": message.id,
-                },
-            )
-            Store(message, [Store.Many("call_history_ids", [])], bus_channel=channel).bus_send()
+            channel._bus_send_store(channel, {"rtcSessions": Store.many(rtc_sessions, "ADD")})
         return rtc_sessions
 
     def unlink(self):
-        call_ended_channels = self.channel_id.filtered(lambda c: not (c.rtc_session_ids - self))
-        for channel in call_ended_channels:
-            # If there is no member left in the RTC call, all invitations are cancelled.
-            # Note: invitation depends on field `rtc_inviting_session_id` so the cancel must be
-            # done before the delete to be able to know who was invited.
-            channel._rtc_cancel_invitations()
-            # If there is no member left in the RTC call, we remove the SFU channel uuid as the SFU
-            # server will timeout the channel. It is better to obtain a new channel from the SFU server
-            # than to attempt recycling a possibly stale channel uuid.
-            channel.sfu_channel_uuid = False
-            channel.sfu_server_url = False
+        channels = self.channel_id
+        for channel in channels:
+            if channel.rtc_session_ids and len(channel.rtc_session_ids - self) == 0:
+                # If there is no member left in the RTC call, all invitations are cancelled.
+                # Note: invitation depends on field `rtc_inviting_session_id` so the cancel must be
+                # done before the delete to be able to know who was invited.
+                channel._rtc_cancel_invitations()
+                # If there is no member left in the RTC call, we remove the SFU channel uuid as the SFU
+                # server will timeout the channel. It is better to obtain a new channel from the SFU server
+                # than to attempt recycling a possibly stale channel uuid.
+                channel.sfu_channel_uuid = False
+                channel.sfu_server_url = False
         rtc_sessions_by_channel = defaultdict(lambda: self.env["discuss.channel.rtc.session"])
         for rtc_session in self:
             rtc_sessions_by_channel[rtc_session.channel_id] += rtc_session
         for channel, rtc_sessions in rtc_sessions_by_channel.items():
-            Store(
-                channel,
-                {"rtc_session_ids": Store.Many(rtc_sessions, [], mode="DELETE")},
-                bus_channel=channel,
-            ).bus_send()
+            channel._bus_send_store(
+                channel, {"rtcSessions": Store.many(rtc_sessions, "DELETE", only_id=True)}
+            )
         for rtc_session in self:
             rtc_session._bus_send(
                 "discuss.channel.rtc.session/ended", {"sessionId": rtc_session.id}
             )
-        # sudo - dicuss.rtc.call.history: setting the end date of the call
-        # after it ends is allowed.
-        for history in (
-            self.env["discuss.call.history"]
-            .sudo()
-            .search([("channel_id", "in", call_ended_channels.ids), ("end_dt", "=", False)])
-        ):
-            history.end_dt = fields.Datetime.now()
-            Store(history, ["duration_hour", "end_dt"], bus_channel=history.channel_id).bus_send()
         return super().unlink()
 
     def _bus_channel(self):
@@ -163,19 +136,23 @@ class DiscussChannelRtcSession(models.Model):
         for target, payload in payload_by_target.items():
             target._bus_send("discuss.channel.rtc.session/peer_notification", payload)
 
-    def _to_store_defaults(self, target):
-        return Store.One(
-            "channel_member_id",
-            [
-                Store.One("channel_id", [], as_thread=True),
-                *self.env["discuss.channel.member"]._to_store_persona("avatar_card"),
-            ],
-        )
-
-    def _to_store(self, store: Store, fields, *, extra=False):
-        if extra:
-            fields += ["is_camera_on", "is_deaf", "is_muted", "is_screen_sharing_on"]
-        store.add_records_fields(self, fields)
+    def _to_store(self, store: Store, extra=False):
+        for rtc_session in self:
+            data = rtc_session._read_format([], load=False)[0]
+            data["channelMember"] = Store.one(
+                rtc_session.channel_member_id,
+                fields={"channel": [], "persona": ["name", "im_status"]},
+            )
+            if extra:
+                data.update(
+                    {
+                        "isCameraOn": rtc_session.is_camera_on,
+                        "isDeaf": rtc_session.is_deaf,
+                        "isSelfMuted": rtc_session.is_muted,
+                        "isScreenSharingOn": rtc_session.is_screen_sharing_on,
+                    }
+                )
+            store.add(rtc_session, data)
 
     @api.model
     def _inactive_rtc_session_domain(self):

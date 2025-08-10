@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import {
     clickOnEditAndWaitEditMode,
     clickOnSave,
@@ -11,12 +13,12 @@ registerWebsitePreviewTour('snippet_cache_across_websites', {
 }, () => [
     {
         content: "Click on the Custom category block",
-        trigger: ".o-website-builder_sidebar .o_snippet[name='Custom'].o_draggable .o_snippet_thumbnail_area",
+        trigger: "#oe_snippets .oe_snippet[name='Custom'].o_we_draggable .oe_snippet_thumbnail",
         run: "click",
     },
     {
         content: "Ensure custom snippet preview appeared in the dialog",
-        trigger: ":iframe .o_snippet_preview_wrap[data-snippet-id^='s_text_block_'] section[data-name='custom_snippet_test']",
+        trigger: ":iframe .o_snippet_preview_wrap[data-snippet-id='s_text_block'] section[data-name='custom_snippet_test']",
     },
     {
         content: "Close the 'add snippet' dialog",
@@ -29,6 +31,6 @@ registerWebsitePreviewTour('snippet_cache_across_websites', {
     ...clickOnEditAndWaitEditMode(),
     {
         content: "Check that the custom snippet category is not here",
-        trigger: ".o-website-builder_sidebar:not(:has(.o_snippet[name='Custom']))",
+        trigger: "#oe_snippets:not(:has(.oe_snippet[name='Custom']))",
     },
 ]);

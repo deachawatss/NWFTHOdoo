@@ -75,11 +75,10 @@ class TestPaymentTransaction(RazorpayCommon):
         for state in all_states:
             tx1.state = state
             for other_tx in other_txs:
-                converted_amount = payment_utils.to_minor_currency_units(other_tx.amount, other_tx.currency_id)
                 with patch(
                     'odoo.addons.payment_razorpay.models.payment_provider.PaymentProvider'
                     '._razorpay_make_request',
-                    return_value={'status': 'created', 'id': '12345', 'amount': converted_amount, 'currency': other_tx.currency_id.name}
+                    return_value={'status': 'created', 'id': '12345', 'amount': other_tx.amount}
                 ):
                     self._assert_does_not_raise(UserError, other_tx._send_payment_request)
                 other_tx.state = 'draft'

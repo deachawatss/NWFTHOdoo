@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
 
 registry.category("web_tour.tours").add('back_in_stock_notification_product', {

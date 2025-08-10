@@ -9,9 +9,9 @@ from odoo import fields
 from odoo.addons.base.tests.test_format_address_mixin import FormatAddressCase
 from odoo.addons.crm.models.crm_lead import PARTNER_FIELDS_TO_SYNC, PARTNER_ADDRESS_FIELDS_TO_SYNC
 from odoo.addons.crm.tests.common import TestCrmCommon, INCOMING_EMAIL
-from odoo.addons.mail.tests.common_tracking import MailTrackingDurationMixinCase
+from odoo.addons.mail.tests.mail_tracking_duration_mixin_case import MailTrackingDurationMixinCase
 from odoo.addons.phone_validation.tools.phone_validation import phone_format
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import UserError
 from odoo.tests import Form, tagged, users
 from odoo.tools import mute_logger
 
@@ -77,37 +77,6 @@ class TestCRMLead(TestCrmCommon):
             self.assertEqual(lead[fname], self.contact_company_1[fname])
             self.assertEqual(self.contact_company_1.lang, self.lang_en.code)
             self.assertEqual(lead.lang_id, self.lang_en)
-
-    @users('user_sales_leads')
-    def test_crm_lead_compute_commercial_partner(self):
-        company_partner, child_partner, orphan_partner = self.env['res.partner'].create([
-            {
-                'name': 'test_crm_lead_compute_commercial_partner',
-                'is_company': True,
-                'email': 'test_crm_lead_compute_commercial_partner@test.lan',
-            },
-            {'name': 'Test Child'},
-            {'name': 'Test Orphan'},
-        ])
-        child_partner.parent_id = company_partner
-        lead = self.env['crm.lead'].create({
-            'name': 'Test Lead',
-            'partner_name': 'test_crm_lead_compute_commercial_partner',
-        })
-        self.assertEqual(lead.commercial_partner_id, company_partner)
-        lead.partner_id = orphan_partner
-        self.assertFalse(lead.commercial_partner_id)
-        lead.partner_id = child_partner
-        self.assertEqual(lead.commercial_partner_id, company_partner)
-        lead.write({
-            'partner_id': False,
-            'partner_name': False,
-        })
-        self.assertFalse(lead.commercial_partner_id)
-        lead.partner_id = company_partner
-        # this is mostly because we use it to set "parent_id" in most flows
-        # and it doesn't really make sense to have it be its own parent
-        self.assertFalse(lead.commercial_partner_id, "If a partner is its own commercial_partner_id, the lead is considered to have none.")
 
     @users('user_sales_leads')
     def test_crm_lead_creation_no_partner(self):
@@ -217,7 +186,8 @@ class TestCRMLead(TestCrmCommon):
             'name': 'Empty partner',
             'is_company': True,
             'lang': 'en_US',
-            'phone': '0485112233',
+            'mobile': '123456789',
+            'title': self.env.ref('base.res_partner_title_mister').id,
             'function': 'My function',
         })
         lead_data = {
@@ -227,6 +197,7 @@ class TestCRMLead(TestCrmCommon):
             'country_id': self.country_ref.id,
             'email_from': self.test_email,
             'phone': self.test_phone,
+            'mobile': '987654321',
             'website': 'http://mywebsite.org',
         }
         lead = self.env['crm.lead'].create(lead_data)
@@ -245,6 +216,8 @@ class TestCRMLead(TestCrmCommon):
         # PARTNER_FIELDS_TO_SYNC
         self.assertEqual(lead.lang_id, self.lang_en)
         self.assertEqual(lead.phone, lead_data['phone'], "Phone should keep its initial value")
+        self.assertEqual(lead.mobile, empty_partner.mobile, "Mobile from partner should be set on the lead")
+        self.assertEqual(lead.title, empty_partner.title, "Title from partner should be set on the lead")
         self.assertEqual(lead.function, empty_partner.function, "Function from partner should be set on the lead")
         self.assertEqual(lead.website, lead_data['website'], "Website should keep its initial value")
 
@@ -408,14 +381,19 @@ class TestCRMLead(TestCrmCommon):
             lead_form = Form(lead)
 
             # reset partner phone to a local number and prepare formatted / sanitized values
-            partner_phone = self.test_phone_data[2]
+            partner_phone, partner_mobile = self.test_phone_data[2], self.test_phone_data[1]
             partner_phone_formatted = phone_format(partner_phone, 'US', '1', force_format='INTERNATIONAL')
             partner_phone_sanitized = phone_format(partner_phone, 'US', '1', force_format='E164')
+            partner_mobile_formatted = phone_format(partner_mobile, 'US', '1', force_format='INTERNATIONAL')
+            partner_mobile_sanitized = phone_format(partner_mobile, 'US', '1', force_format='E164')
             partner_email, partner_email_normalized = self.test_email_data[2], self.test_email_data_normalized[2]
             self.assertEqual(partner_phone_formatted, '+1 202-555-0888')
             self.assertEqual(partner_phone_sanitized, self.test_phone_data_sanitized[2])
+            self.assertEqual(partner_mobile_formatted, '+1 202-555-0999')
+            self.assertEqual(partner_mobile_sanitized, self.test_phone_data_sanitized[1])
             # ensure initial data
             self.assertEqual(partner.phone, partner_phone)
+            self.assertEqual(partner.mobile, partner_mobile)
             self.assertEqual(partner.email, partner_email)
 
             # LEAD/PARTNER SYNC: email and phone are propagated to lead
@@ -423,6 +401,8 @@ class TestCRMLead(TestCrmCommon):
             lead_form.partner_id = partner
             self.assertEqual(lead_form.email_from, partner_email)
             self.assertEqual(lead_form.phone, partner_phone_formatted,
+                            'Lead: form automatically formats numbers')
+            self.assertEqual(lead_form.mobile, partner_mobile_formatted,
                             'Lead: form automatically formats numbers')
             self.assertFalse(lead_form.partner_email_update)
             self.assertFalse(lead_form.partner_phone_update)
@@ -436,7 +416,9 @@ class TestCRMLead(TestCrmCommon):
                             'Lead / Partner: equal emails should lead to equal normalized emails')
             self.assertEqual(lead.phone, partner_phone_formatted,
                             'Lead / Partner: partner values (formatted) sent to lead')
-            self.assertEqual(lead.phone_sanitized, partner_phone_sanitized,
+            self.assertEqual(lead.mobile, partner_mobile_formatted,
+                            'Lead / Partner: partner values (formatted) sent to lead')
+            self.assertEqual(lead.phone_sanitized, partner_mobile_sanitized,
                             'Lead: phone_sanitized computed field on mobile')
 
             # for email_from, if only formatting differs, warning should not appear and
@@ -460,7 +442,6 @@ class TestCRMLead(TestCrmCommon):
             self.assertTrue(lead_form.partner_email_update)
             new_phone = '+1 202 555 7799'
             new_phone_formatted = phone_format(new_phone, 'US', '1', force_format="INTERNATIONAL")
-            new_phone_sanitized = phone_format(new_phone, 'US', '1', force_format="E164")
             lead_form.phone = new_phone
             self.assertEqual(lead_form.phone, new_phone_formatted)
             self.assertTrue(lead_form.partner_email_update)
@@ -471,10 +452,18 @@ class TestCRMLead(TestCrmCommon):
             self.assertEqual(partner.email_normalized, new_email_normalized)
             self.assertEqual(partner.phone, new_phone_formatted)
 
+            # LEAD/PARTNER SYNC: mobile does not update partner
+            new_mobile = '+1 202 555 6543'
+            new_mobile_formatted = phone_format(new_mobile, 'US', '1', force_format="INTERNATIONAL")
+            lead_form.mobile = new_mobile
+            lead_form.save()
+            self.assertEqual(lead.mobile, new_mobile_formatted)
+            self.assertEqual(partner.mobile, partner_mobile)
+
             # LEAD/PARTNER SYNC: resetting lead values should not reset partner
             # # voiding lead info (because of some reasons) should not prevent
             # # from using the contact in other records
-            lead_form.email_from, lead_form.phone = False, False
+            lead_form.email_from, lead_form.phone, lead.mobile = False, False, False
             self.assertFalse(lead_form.partner_email_update)
             self.assertFalse(lead_form.partner_phone_update)
             lead_form.save()
@@ -482,10 +471,12 @@ class TestCRMLead(TestCrmCommon):
             self.assertEqual(partner.email_normalized, new_email_normalized)
             self.assertEqual(partner.phone, new_phone_formatted)
             self.assertFalse(lead.phone)
+            self.assertFalse(lead.mobile)
             self.assertFalse(lead.phone_sanitized)
+            self.assertEqual(partner.mobile, partner_mobile)
             # if SMS is uninstalled, phone_sanitized is not available on partner
             if 'phone_sanitized' in partner:
-                self.assertEqual(partner.phone_sanitized, new_phone_sanitized,
+                self.assertEqual(partner.phone_sanitized, partner_mobile_sanitized,
                                 'Partner sanitized should be computed on mobile')
 
     @users('user_sales_manager')
@@ -499,6 +490,7 @@ class TestCRMLead(TestCrmCommon):
             'name': 'NoContact Partner',
             'phone': '',
             'email': '',
+            'mobile': '',
         })
 
         # This is a type == 'lead', not a type == 'opportunity'
@@ -881,9 +873,10 @@ class TestCRMLead(TestCrmCommon):
         })
 
         # search term containing less than 3 characters should throw an error (some currently not working)
-        self.env['crm.lead'].search([('phone_mobile_search', 'like', '')])  # no restriction, returns all
         with self.assertRaises(UserError):
-            self.env['crm.lead'].search([('phone_mobile_search', 'like', '7   ')])
+            self.env['crm.lead'].search([('phone_mobile_search', 'like', '')])
+        # with self.assertRaises(UserError):
+        #     self.env['crm.lead'].search([('phone_mobile_search', 'like', '7   ')])
         with self.assertRaises(UserError):
             self.env['crm.lead'].search([('phone_mobile_search', 'like', 'c')])
         with self.assertRaises(UserError):
@@ -970,19 +963,23 @@ class TestCRMLead(TestCrmCommon):
             'phone': self.test_phone_data[0],
         })
         self.assertEqual(lead.phone, self.test_phone_data[0])
+        self.assertFalse(lead.mobile)
         self.assertEqual(lead.phone_sanitized, self.test_phone_data_sanitized[0])
 
-        lead.write({'phone': False})
+        lead.write({'phone': False, 'mobile': self.test_phone_data[1]})
         self.assertFalse(lead.phone)
-        self.assertEqual(lead.phone_sanitized, False)
-
-        lead.write({'phone': self.test_phone_data[1]})
-        self.assertEqual(lead.phone, self.test_phone_data[1])
+        self.assertEqual(lead.mobile, self.test_phone_data[1])
         self.assertEqual(lead.phone_sanitized, self.test_phone_data_sanitized[1])
+
+        lead.write({'phone': self.test_phone_data[1], 'mobile': self.test_phone_data[2]})
+        self.assertEqual(lead.phone, self.test_phone_data[1])
+        self.assertEqual(lead.mobile, self.test_phone_data[2])
+        self.assertEqual(lead.phone_sanitized, self.test_phone_data_sanitized[2])
 
         # updating country should trigger sanitize computation
         lead.write({'country_id': self.env.ref('base.be').id})
         self.assertEqual(lead.phone, self.test_phone_data[1])
+        self.assertEqual(lead.mobile, self.test_phone_data[2])
         self.assertFalse(lead.phone_sanitized)
 
 
@@ -994,7 +991,7 @@ class TestLeadFormTools(FormatAddressCase):
         self.assertAddressView('crm.lead')
 
 
-@tagged('lead_internals')
+@tagged('lead_internals', 'is_query_count')
 class TestCrmLeadMailTrackingDuration(MailTrackingDurationMixinCase):
 
     @classmethod

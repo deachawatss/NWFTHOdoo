@@ -25,14 +25,14 @@ class TestMrpMulticompany(common.TransactionCase):
         cls.user_a = cls.env['res.users'].create({
             'name': 'user company a with access to company b',
             'login': 'user a',
-            'group_ids': [(6, 0, [group_user.id, group_mrp_manager.id])],
+            'groups_id': [(6, 0, [group_user.id, group_mrp_manager.id])],
             'company_id': cls.company_a.id,
             'company_ids': [(6, 0, [cls.company_a.id, cls.company_b.id])]
         })
         cls.user_b = cls.env['res.users'].create({
             'name': 'user company a with access to company b',
             'login': 'user b',
-            'group_ids': [(6, 0, [group_user.id, group_mrp_manager.id])],
+            'groups_id': [(6, 0, [group_user.id, group_mrp_manager.id])],
             'company_id': cls.company_b.id,
             'company_ids': [(6, 0, [cls.company_a.id, cls.company_b.id])]
         })
@@ -255,7 +255,7 @@ class TestMrpMulticompany(common.TransactionCase):
         """ Check that we are able to create a new warehouse when the generic manufacture route
         is in a different company. """
         group_stock_manager = self.env.ref('stock.group_stock_manager')
-        self.user_a.write({'group_ids': [(4, group_stock_manager.id)]})
+        self.user_a.write({'groups_id': [(4, group_stock_manager.id)]})
 
         manufacture_route = self.env.ref('mrp.route_warehouse0_manufacture')
         for rule in manufacture_route.rule_ids.sudo():
@@ -305,6 +305,7 @@ class TestMrpMulticompany(common.TransactionCase):
             'location_id': warehouse_b.lot_stock_id.id,
             'location_dest_id': self.ref('stock.stock_location_customers'),
             'move_ids': [Command.create({
+                'name': semi_kit_product.name,
                 'product_id': semi_kit_product.id,
                 'product_uom_qty': 1,
                 'location_id':  warehouse_b.lot_stock_id.id,

@@ -4,7 +4,6 @@
 from collections import defaultdict
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-from markupsafe import Markup
 from odoo.tools import float_compare
 
 from odoo import api, fields, models, SUPERUSER_ID, _
@@ -32,10 +31,13 @@ class StockRule(models.Model):
 
     @api.depends('action')
     def _compute_picking_type_code_domain(self):
-        super()._compute_picking_type_code_domain()
+        remaining = self.browse()
         for rule in self:
             if rule.action == 'buy':
-                rule.picking_type_code_domain = rule.picking_type_code_domain or [] + ['incoming']
+                rule.picking_type_code_domain = 'incoming'
+            else:
+                remaining |= rule
+        super(StockRule, remaining)._compute_picking_type_code_domain()
 
     @api.onchange('action')
     def _onchange_action(self):
@@ -70,17 +72,9 @@ class StockRule(models.Model):
                 lambda s: not s.company_id or s.company_id == company_id
             )[:1]
 
-            if not supplier and self.env.context.get('from_orderpoint'):
+            if not supplier:
                 msg = _('There is no matching vendor price to generate the purchase order for product %s (no vendor defined, minimum quantity not reached, dates not valid, ...). Go on the product form and complete the list of vendors.', procurement.product_id.display_name)
                 errors.append((procurement, msg))
-            elif not supplier:
-                # If the supplier is not set, we cannot create a PO.
-                moves = procurement.values.get('move_dest_ids') or self.env['stock.move']
-                if moves.propagate_cancel:
-                    moves._action_cancel()
-                moves.procure_method = 'make_to_stock'
-                self._notify_responsible(procurement)
-                return
 
             partner = supplier.partner_id
             # we put `supplier_info` in values for extensibility purposes
@@ -105,7 +99,7 @@ class StockRule(models.Model):
             po = self.env['purchase.order'].sudo().search([dom for dom in domain], limit=1)
             company_id = rules[0].company_id or procurements[0].company_id
             if not po:
-                positive_values = [p.values for p in procurements if p.product_uom.compare(p.product_qty, 0.0) >= 0]
+                positive_values = [p.values for p in procurements if float_compare(p.product_qty, 0.0, precision_rounding=p.product_uom.rounding) >= 0]
                 if positive_values:
                     # We need a rule to generate the PO. However the rule generated
                     # the same domain for PO and the _prepare_purchase_order method
@@ -129,7 +123,7 @@ class StockRule(models.Model):
             procurements = self._merge_procurements(procurements_to_merge)
 
             po_lines_by_product = {}
-            grouped_po_lines = groupby(po.order_line.filtered(lambda l: not l.display_type and l.product_uom_id == l.product_id.uom_id), key=lambda l: l.product_id.id)
+            grouped_po_lines = groupby(po.order_line.filtered(lambda l: not l.display_type and l.product_uom == l.product_id.uom_po_id), key=lambda l: l.product_id.id)
             for product, po_lines in grouped_po_lines:
                 po_lines_by_product[product] = self.env['purchase.order.line'].concat(*po_lines)
             po_line_values = []
@@ -145,7 +139,7 @@ class StockRule(models.Model):
                         procurement.values, po_line)
                     po_line.sudo().write(vals)
                 else:
-                    if procurement.product_uom.compare(procurement.product_qty, 0) <= 0:
+                    if float_compare(procurement.product_qty, 0, precision_rounding=procurement.product_uom.rounding) <= 0:
                         # If procurement contains negative quantity, don't create a new line that would contain negative qty
                         continue
                     # If it does not exist a PO line for current procurement.
@@ -160,14 +154,6 @@ class StockRule(models.Model):
                     if fields.Date.to_date(order_date_planned) < fields.Date.to_date(po.date_order):
                         po.date_order = order_date_planned
             self.env['purchase.order.line'].sudo().create(po_line_values)
-
-    def _post_vendor_notification(self, records_to_notify, users_to_notify, product):
-        notification_msg = Markup(" ").join(Markup("%s") % user._get_html_link(f'@{user.name}') for user in users_to_notify)
-        notification_msg += Markup("<br/>%s <strong>%s</strong>, %s") % (_("No supplier has been found to replenish"), product.display_name, _("this product should be manually replenished."))
-        records_to_notify.message_post(body=notification_msg, partner_ids=users_to_notify.ids)
-
-    def _notify_responsible(self, procurement):
-        pass  # Override in sale_purchase_stock and purchase_mrp to notify salesperson or MO responsible
 
     def _get_lead_days(self, product, **values):
         """Add the company security lead time and the supplier delay to the cumulative delay
@@ -257,15 +243,14 @@ class StockRule(models.Model):
 
     def _update_purchase_order_line(self, product_id, product_qty, product_uom, company_id, values, line):
         partner = values['supplier'].partner_id
-        uom = values['supplier'].product_uom_id or values['supplier'].product_id.uom_id
-        procurement_uom_po_qty = product_uom._compute_quantity(product_qty, uom, rounding_method='HALF-UP')
+        procurement_uom_po_qty = product_uom._compute_quantity(product_qty, product_id.uom_po_id, rounding_method='HALF-UP')
         seller = product_id.with_company(company_id)._select_seller(
             partner_id=partner,
             quantity=line.product_qty + procurement_uom_po_qty,
             date=line.order_id.date_order and line.order_id.date_order.date(),
-            uom_id=uom)
+            uom_id=product_id.uom_po_id)
 
-        price_unit = self.env['account.tax']._fix_tax_included_price_company(seller.price, line.product_id.supplier_taxes_id, line.sudo().tax_ids, company_id) if seller else 0.0
+        price_unit = self.env['account.tax']._fix_tax_included_price_company(seller.price, line.product_id.supplier_taxes_id, line.sudo().taxes_id, company_id) if seller else 0.0
         if price_unit and seller and line.order_id.currency_id and seller.currency_id != line.order_id.currency_id:
             price_unit = seller.currency_id._convert(
                 price_unit, line.order_id.currency_id, line.order_id.company_id, fields.Date.today())
@@ -339,6 +324,11 @@ class StockRule(models.Model):
             domain += (
                 ('date_order', '<=', datetime.combine(procurement_date + relativedelta(days=delta_days), datetime.max.time())),
                 ('date_order', '>=', datetime.combine(procurement_date - relativedelta(days=delta_days), datetime.min.time()))
+            )
+        strict_partner_dest = self.env['ir.config_parameter'].sudo().get_param('purchase_stock.split_po')
+        if strict_partner_dest:
+            domain += (
+                ('dest_address_id', '=', values.get('partner_id', False)),
             )
         if group:
             domain += (('group_id', '=', group.id),)

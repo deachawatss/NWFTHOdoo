@@ -8,9 +8,8 @@ from odoo.exceptions import UserError, ValidationError
 from odoo.tools import format_amount
 
 from odoo.addons.payment import utils as payment_utils
-from odoo.addons.payment_adyen import const
 from odoo.addons.payment_adyen import utils as adyen_utils
-
+from odoo.addons.payment_adyen import const
 
 _logger = logging.getLogger(__name__)
 
@@ -279,9 +278,7 @@ class PaymentTransaction(models.Model):
             if source_tx:
                 notification_data_amount = notification_data.get('amount', {}).get('value')
                 converted_notification_amount = payment_utils.to_major_currency_units(
-                    notification_data_amount,
-                    source_tx.currency_id,
-                    arbitrary_decimal_number=const.CURRENCY_DECIMALS.get(self.currency_id.name),
+                    notification_data_amount, source_tx.currency_id
                 )
                 if source_tx.amount == converted_notification_amount:  # Full capture/void.
                     tx = source_tx
@@ -356,39 +353,10 @@ class PaymentTransaction(models.Model):
                 "Adyen: " + _("Received data for child transaction with missing transaction values")
             )
 
-        converted_amount = payment_utils.to_major_currency_units(
-            amount,
-            source_tx.currency_id,
-            arbitrary_decimal_number=const.CURRENCY_DECIMALS.get(self.currency_id.name),
-        )
+        converted_amount = payment_utils.to_major_currency_units(amount, source_tx.currency_id)
         return source_tx._create_child_transaction(
             converted_amount, is_refund=is_refund, provider_reference=provider_reference
         )
-
-    def _compare_notification_data(self, notification_data):
-        """ Override of `payment` to compare the transaction based on Adyen data.
-
-        :param dict notification_data: The notification data sent by the provider.
-        :return: None
-        :raise ValidationError: If the transaction's amount and currency don't match the
-            notification data.
-        """
-        if self.provider_code != 'adyen':
-            return super()._compare_notification_data(notification_data)
-
-        # If the transaction is pending, the amount and currency aren't available yet, so we skip
-        # the comparison.
-        if notification_data.get('resultCode') in const.RESULT_CODES_MAPPING['pending']:
-            return
-
-        amount_data = notification_data.get('amount', {})
-        amount = payment_utils.to_major_currency_units(
-            amount_data.get('value', 0),
-            self.currency_id,
-            arbitrary_decimal_number=const.CURRENCY_DECIMALS.get(self.currency_id.name),
-        )
-        currency_code = amount_data.get('currency')
-        self._validate_amount_and_currency(amount, currency_code)
 
     def _process_notification_data(self, notification_data):
         """ Override of payment to process the transaction based on Adyen data.

@@ -4,15 +4,14 @@
 from odoo import models, api
 import json
 
-
 class PosSession(models.Model):
     _inherit = 'pos.session'
 
     @api.model
-    def _load_pos_data_models(self, config):
-        data = super()._load_pos_data_models(config)
+    def _load_pos_data_models(self, config_id):
+        data = super()._load_pos_data_models(config_id)
         if self.config_id.module_pos_restaurant:
-            data += ['restaurant.floor', 'restaurant.table', 'restaurant.order.course']
+            data += ['restaurant.floor', 'restaurant.table']
         return data
 
     @api.model
@@ -21,7 +20,7 @@ class PosSession(models.Model):
             order = self.env['pos.order'].browse(order_id)
             last_order_preparation_change = {
                 'lines': {},
-                'generalCustomerNote': '',
+                'generalNote': '',
             }
             for orderline in order['lines']:
                 last_order_preparation_change['lines'][orderline.uuid + " - "] = {

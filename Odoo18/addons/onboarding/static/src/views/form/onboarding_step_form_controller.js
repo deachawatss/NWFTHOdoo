@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { FormController } from "@web/views/form/form_controller";
 import { useService } from "@web/core/utils/hooks";
 

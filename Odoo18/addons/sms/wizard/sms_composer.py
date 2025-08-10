@@ -9,13 +9,13 @@ from odoo.addons.sms.tools.sms_tools import sms_content_to_rendered_html
 from odoo.exceptions import UserError
 
 
-class SmsComposer(models.TransientModel):
+class SendSMS(models.TransientModel):
     _name = 'sms.composer'
     _description = 'Send SMS Wizard'
 
     @api.model
     def default_get(self, fields):
-        result = super().default_get(fields)
+        result = super(SendSMS, self).default_get(fields)
 
         result['res_model'] = result.get('res_model') or self.env.context.get('active_model')
 
@@ -245,32 +245,20 @@ class SmsComposer(models.TransientModel):
     def _action_send_sms_mass(self, records=None):
         records = records if records is not None else self._get_records()
 
-        sms_record_values_filtered = self._filter_out_and_handle_revoked_sms_values(self._prepare_mass_sms_values(records))
-        records_filtered = records.filtered(lambda record: record.id in sms_record_values_filtered)
-        if self.mass_keep_log and sms_record_values_filtered and isinstance(records_filtered, self.pool['mail.thread']):
-            log_values = self._prepare_mass_log_values(records_filtered, sms_record_values_filtered)
-            mail_messages = records_filtered._message_log_batch(**log_values)
-            for idx, record in enumerate(records_filtered):
-                sms_record_values_filtered[record.id]['mail_message_id'] = mail_messages[idx].id
-        sms_all = self._prepare_mass_sms(records_filtered, sms_record_values_filtered)
+        sms_record_values = self._prepare_mass_sms_values(records)
+        sms_all = self._prepare_mass_sms(records, sms_record_values)
+        if sms_all and self.mass_keep_log and records and isinstance(records, self.pool['mail.thread']):
+            log_values = self._prepare_mass_log_values(records, sms_record_values)
+            records._message_log_batch(**log_values)
 
         if sms_all and self.mass_force_send:
-            sms_all.filtered(lambda sms: sms.state == 'outgoing').send(raise_exception=False)
+            sms_all.filtered(lambda sms: sms.state == 'outgoing').send(auto_commit=False, raise_exception=False)
             return self.env['sms.sms'].sudo().search([('id', 'in', sms_all.ids)])
         return sms_all
 
     # ------------------------------------------------------------
     # Mass mode specific
     # ------------------------------------------------------------
-
-    def _filter_out_and_handle_revoked_sms_values(self, sms_values_all):
-        """Meant to be overridden to filter out and handle sms that must not be sent.
-
-        :param dict sms_values_all: sms values by res_id
-        :returns: filtered sms_vals_all
-        :rtype: dict
-        """
-        return sms_values_all
 
     def _get_blacklist_record_ids(self, records, recipients_info):
         """ Get a list of blacklisted records. Those will be directly canceled

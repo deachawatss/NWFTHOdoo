@@ -1,6 +1,8 @@
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
-import { stepUtils } from "@web_tour/tour_utils";
+import { stepUtils } from "@web_tour/tour_service/tour_utils";
 
 import { markup } from "@odoo/owl";
 
@@ -127,13 +129,20 @@ registry.category("web_tour.tours").add('account_tour', {
         run: "edit Test Customer",
     },
     {
-        trigger: ".o-mail-RecipientsInputTagsListPopover input",
+        isActive: ["auto"],
+        trigger: ".ui-menu-item a:contains('Test Customer')",
+        content: _t("Select first partner"),
+        run: "click",
+    },
+    {
+        isActive: ["auto"],
+        trigger: ".o_field_widget[name=email] input, input[name=email]",
         content: markup(_t("Write here <b>your own email address</b> to test the flow.")),
         run: "edit customer@example.com",
     },
     {
         isActive: ["auto"],
-        trigger: ".o-mail-RecipientsInputTagsListPopover .btn-primary",
+        trigger: ".modal button.o_form_button_save",
         content: _t("Validate."),
         run: "click",
     },

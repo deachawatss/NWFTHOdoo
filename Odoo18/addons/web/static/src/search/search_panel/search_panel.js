@@ -11,8 +11,6 @@ import {
     useRef,
     useState,
 } from "@odoo/owl";
-import { browser } from "@web/core/browser/browser";
-import { exprToBoolean } from "@web/core/utils/strings";
 import { useSetupAction } from "@web/search/action_hook";
 
 //-------------------------------------------------------------------------
@@ -58,11 +56,11 @@ export class SearchPanel extends Component {
     };
 
     setup() {
-        this.keyExpandSidebar = `search_panel_expanded,${this.env.config.viewId},${this.env.config.actionId}`;
         this.state = useState({
             active: {},
             expanded: {},
-            sidebarExpanded: true,
+            showMobileSearch: false,
+            sidebarExpanded: !this.env.searchModel.searchPanelInfo.fold,
         });
         this.hasImportedState = false;
         this.root = useRef("root");
@@ -71,10 +69,6 @@ export class SearchPanel extends Component {
         this.width = "10px";
 
         this.importState(this.env.searchPanelState);
-        const sidebarExpandedPreference = browser.localStorage.getItem(this.keyExpandSidebar);
-        if (sidebarExpandedPreference !== null) {
-            this.state.sidebarExpanded = exprToBoolean(sidebarExpandedPreference);
-        }
 
         useBus(this.env.searchModel, "update", async () => {
             await this.env.searchModel.sectionsPromise;
@@ -93,15 +87,16 @@ export class SearchPanel extends Component {
         );
 
         useSetupAction({
-            getGlobalState: () => ({
-                searchPanel: this.exportState(),
-            }),
+            getGlobalState: () => {
+                return {
+                    searchPanel: this.exportState(),
+                };
+            },
         });
 
         onWillStart(async () => {
             await this.env.searchModel.sectionsPromise;
             this.expandDefaultValue();
-            this.expandValues();
             this.updateActiveValues();
         });
 
@@ -178,35 +173,6 @@ export class SearchPanel extends Component {
                 for (const ancestorId of ancestorIds) {
                     this.state.expanded[category.id][ancestorId] = true;
                 }
-            }
-        }
-    }
-
-    expandValues() {
-        if (this.hasImportedState) {
-            return;
-        }
-        const categories = this.env.searchModel.getSections((s) => s.type === "category");
-        for (const category of categories) {
-            if (category.depth === 0) {
-                continue;
-            }
-
-            this.state.expanded[category.id] ||= {};
-            const expand = (id, level) => {
-                if (!level) {
-                    return;
-                }
-                this.state.expanded[category.id][id] = true;
-                const { childrenIds } = category.values.get(id);
-                level -= 1;
-                for (const childId of childrenIds) {
-                    expand(childId, level);
-                }
-            };
-
-            for (const rootId of category.rootIds) {
-                expand(rootId, category.depth);
             }
         }
     }
@@ -318,7 +284,6 @@ export class SearchPanel extends Component {
 
     toggleSidebar() {
         this.state.sidebarExpanded = !this.state.sidebarExpanded;
-        browser.localStorage.setItem(this.keyExpandSidebar, this.state.sidebarExpanded);
     }
 
     /**
@@ -350,9 +315,6 @@ export class SearchPanel extends Component {
     }
 
     updateActiveValues() {
-        if (this.sections.length === 0) {
-            this.state.sidebarExpanded = false;
-        }
         for (const section of this.sections) {
             if (section.type === "category") {
                 this.state.active[section.id] = section.activeValueId;

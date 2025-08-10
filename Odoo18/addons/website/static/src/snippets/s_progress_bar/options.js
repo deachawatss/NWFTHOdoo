@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { clamp } from "@web/core/utils/numbers";
 import options from "@web_editor/js/editor/snippets.options";
 
@@ -40,7 +42,9 @@ options.registry.progress = options.Class.extend({
 
         // Temporary hide the label. It's effectively removed in cleanForSave
         // if the option is confirmed
-        progressLabel.classList.toggle('d-none', widgetValue === 'none');
+        if (progressLabel) {
+            progressLabel.classList.toggle('d-none', widgetValue === 'none');
+        }
     },
     /**
      * Sets the progress bar value.

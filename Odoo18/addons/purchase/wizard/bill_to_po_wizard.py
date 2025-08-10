@@ -3,7 +3,7 @@ from odoo import fields, models, Command, _
 from odoo.exceptions import UserError
 
 
-class BillToPoWizard(models.TransientModel):
+class BillToPO(models.TransientModel):
     _name = 'bill.to.po.wizard'
     _description = 'Bill to Purchase Order'
 
@@ -55,10 +55,10 @@ class BillToPoWizard(models.TransientModel):
             {
                 'name': _("Down Payment (ref: %(ref)s)", ref=aml.display_name),
                 'product_qty': 0.0,
-                'product_uom_id': aml.product_uom_id.id,
+                'product_uom': aml.product_uom_id.id,
                 'is_downpayment': True,
                 'price_unit': aml.currency_id._convert(aml.price_unit, po_currency, company, date) if aml.currency_id != po_currency else aml.price_unit,
-                'tax_ids': aml.tax_ids,
+                'taxes_id': aml.tax_ids,
                 'order_id': self.purchase_order_id.id,
             }
             for aml in lines_to_convert

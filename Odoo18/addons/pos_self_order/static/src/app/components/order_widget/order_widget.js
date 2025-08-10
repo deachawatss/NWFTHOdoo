@@ -1,5 +1,5 @@
 import { Component } from "@odoo/owl";
-import { useSelfOrder } from "@pos_self_order/app/services/self_order_service";
+import { useSelfOrder } from "@pos_self_order/app/self_order_service";
 import { useService } from "@web/core/utils/hooks";
 import { _t } from "@web/core/l10n/translation";
 import { CancelPopup } from "@pos_self_order/app/components/cancel_popup/cancel_popup";
@@ -37,16 +37,17 @@ export class OrderWidget extends Component {
     get buttonToShow() {
         const currentPage = this.router.activeSlot;
         const payAfter = this.selfOrder.config.self_ordering_pay_after;
-
+        const kioskPayment = this.selfOrder.models["pos.payment.method"].getAll();
         const isNoLine = this.selfOrder.currentOrder.lines.length === 0;
         const hasNotAllLinesSent = this.selfOrder.currentOrder.unsentLines;
+        const isMobilePayment = kioskPayment.find((p) => p.is_mobile_payment);
 
         let label = "";
         let disabled = false;
 
         if (currentPage === "product_list") {
-            label = _t("Checkout");
-            disabled = isNoLine || hasNotAllLinesSent.length === 0;
+            label = _t("Order");
+            disabled = isNoLine || hasNotAllLinesSent.length == 0;
         } else if (
             payAfter === "meal" &&
             Object.keys(this.selfOrder.currentOrder.changes).length > 0
@@ -54,7 +55,8 @@ export class OrderWidget extends Component {
             label = _t("Order");
             disabled = isNoLine;
         } else {
-            label = this.selfOrder.hasPaymentMethod() ? _t("Pay") : _t("Order");
+            label = kioskPayment ? _t("Pay") : _t("Order");
+            disabled = !kioskPayment && !isMobilePayment;
         }
 
         return { label, disabled };
@@ -66,10 +68,8 @@ export class OrderWidget extends Component {
             (acc, [key, value]) => {
                 if (value.qty && value.qty > 0) {
                     const line = this.selfOrder.models["pos.order.line"].getBy("uuid", key);
-                    if (!line.combo_parent_id) {
-                        acc.count += value.qty;
-                    }
-                    acc.price += line.getDisplayPrice();
+                    acc.count += value.qty;
+                    acc.price += line.get_display_price();
                 }
                 return acc;
             },
@@ -80,41 +80,37 @@ export class OrderWidget extends Component {
         );
     }
 
-    shouldGoBack() {
+    get leftButton() {
         const order = this.selfOrder.currentOrder;
-        return (
+        const back =
             Object.keys(order.changes).length === 0 ||
             this.router.activeSlot === "cart" ||
-            order.lines.length === 0
-        );
-    }
+            order.lines.length === 0;
 
-    get leftButton() {
-        const back = this.shouldGoBack();
         return {
             name: back ? _t("Back") : _t("Cancel"),
-            icon: back ? "oi oi-chevron-left btn-back" : "btn-close btn-cancel",
+            icon: back ? "fa fa-arrow-left btn-back" : "btn-close btn-cancel",
         };
     }
 
     onClickleftButton() {
-        const currentPage = this.router.activeSlot;
-        if (this.shouldGoBack()) {
-            if (currentPage === "product_list") {
-                const targetPage = this.selfOrder.hasPresets() ? "location" : "default";
-                this.router.navigate(targetPage);
-            } else {
-                this.router.back();
-            }
-            return;
-        }
+        const order = this.selfOrder.currentOrder;
 
-        this.dialog.add(CancelPopup, {
-            title: _t("Cancel order"),
-            confirm: () => {
-                this.selfOrder.cancelOrder();
-                this.router.navigate("default");
-            },
-        });
+        if (
+            order.lines.length === 0 ||
+            Object.keys(order.changes).length === 0 ||
+            this.router.activeSlot === "cart"
+        ) {
+            this.router.back();
+            return;
+        } else {
+            this.dialog.add(CancelPopup, {
+                title: _t("Cancel order"),
+                confirm: () => {
+                    this.selfOrder.cancelOrder();
+                    this.router.navigate("default");
+                },
+            });
+        }
     }
 }

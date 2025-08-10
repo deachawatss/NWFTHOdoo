@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import {websiteSlidesQuizNoFullscreen} from "@website_slides/js/slides_course_quiz";
 
 websiteSlidesQuizNoFullscreen.include({

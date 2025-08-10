@@ -1,10 +1,12 @@
+/** @odoo-module **/
+
 import { Component } from '@odoo/owl';
+import publicWidget from '@web/legacy/js/public/public_widget';
 import { browser } from '@web/core/browser/browser';
 import { ConfirmationDialog } from '@web/core/confirmation_dialog/confirmation_dialog';
 import { _t } from '@web/core/l10n/translation';
-import { rpc, RPCError } from '@web/core/network/rpc';
 import { renderToMarkup } from '@web/core/utils/render';
-import publicWidget from '@web/legacy/js/public/public_widget';
+import { rpc, RPCError } from '@web/core/network/rpc';
 
 publicWidget.registry.PaymentForm = publicWidget.Widget.extend({
     selector: '#o_payment_form',

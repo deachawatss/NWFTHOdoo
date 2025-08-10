@@ -3,16 +3,15 @@
 # 	* resource
 # 
 # Translators:
-# Martin Trigaux, 2025
 # Wil Odoo, 2025
 # Tony Ng, 2025
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~18.3\n"
+"Project-Id-Version: Odoo Server 18.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-05-09 20:37+0000\n"
-"PO-Revision-Date: 2025-05-06 12:04+0000\n"
+"POT-Creation-Date: 2025-05-14 20:48+0000\n"
+"PO-Revision-Date: 2024-09-25 09:41+0000\n"
 "Last-Translator: Tony Ng, 2025\n"
 "Language-Team: Chinese (Taiwan) (https://app.transifex.com/odoo/teams/41243/zh_TW/)\n"
 "MIME-Version: 1.0\n"
@@ -20,11 +19,6 @@ msgstr ""
 "Content-Transfer-Encoding: \n"
 "Language: zh_TW\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-
-#. module: resource
-#: model_terms:ir.ui.view,arch_db:resource.view_resource_calendar_tree
-msgid "# Work Resources"
-msgstr "# 工作資源"
 
 #. module: resource
 #. odoo-python
@@ -35,23 +29,18 @@ msgstr "%s (副本)"
 
 #. module: resource
 #: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
-msgid "<span class=\"ms-1\">%</span>"
-msgstr "<span class=\"ms-1\">%</span>"
-
-#. module: resource
-#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
-msgid "<span class=\"ms-2\">hours/week</span>"
-msgstr "<span class=\"ms-2\">小時/星期</span>"
-
-#. module: resource
-#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
 msgid "<span class=\"o_stat_text\">Time Off</span>"
 msgstr "<span class=\"o_stat_text\">休假</span>"
 
 #. module: resource
 #: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
-msgid "<span>hours/week</span>"
-msgstr "<span>小時/星期</span>"
+msgid "<span class=\"o_stat_text\">Work Resources</span>"
+msgstr "<span class=\"o_stat_text\">工作資源</span>"
+
+#. module: resource
+#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
+msgid "<span> hours/week</span>"
+msgstr "<span> 小時/星期</span>"
 
 #. module: resource
 #: model:ir.model.fields,field_description:resource.field_resource_calendar__active
@@ -198,12 +187,9 @@ msgid ""
 msgstr "定義您的專案成員可計劃的工時和時間表"
 
 #. module: resource
-#: model:ir.model.fields,field_description:resource.field_res_company__display_name
-#: model:ir.model.fields,field_description:resource.field_res_users__display_name
 #: model:ir.model.fields,field_description:resource.field_resource_calendar__display_name
 #: model:ir.model.fields,field_description:resource.field_resource_calendar_attendance__display_name
 #: model:ir.model.fields,field_description:resource.field_resource_calendar_leaves__display_name
-#: model:ir.model.fields,field_description:resource.field_resource_mixin__display_name
 #: model:ir.model.fields,field_description:resource.field_resource_resource__display_name
 msgid "Display Name"
 msgstr "顯示名稱"
@@ -263,11 +249,6 @@ msgid "First week"
 msgstr "第一週"
 
 #. module: resource
-#: model_terms:ir.ui.view,arch_db:resource.view_resource_calendar_search
-msgid "Flexible"
-msgstr "靈活"
-
-#. module: resource
 #: model:ir.model.fields,field_description:resource.field_resource_calendar__flexible_hours
 msgid "Flexible Hours"
 msgstr "靈活工時"
@@ -322,7 +303,6 @@ msgid "Hours"
 msgstr "小時"
 
 #. module: resource
-#: model:ir.model.fields,field_description:resource.field_resource_calendar__hours_per_week
 #: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
 msgid "Hours per Week"
 msgstr "每週工時"
@@ -334,12 +314,9 @@ msgid "Human"
 msgstr "人力資源"
 
 #. module: resource
-#: model:ir.model.fields,field_description:resource.field_res_company__id
-#: model:ir.model.fields,field_description:resource.field_res_users__id
 #: model:ir.model.fields,field_description:resource.field_resource_calendar__id
 #: model:ir.model.fields,field_description:resource.field_resource_calendar_attendance__id
 #: model:ir.model.fields,field_description:resource.field_resource_calendar_leaves__id
-#: model:ir.model.fields,field_description:resource.field_resource_mixin__id
 #: model:ir.model.fields,field_description:resource.field_resource_resource__id
 msgid "ID"
 msgstr "識別號"
@@ -371,11 +348,6 @@ msgstr "如果啟用欄位設定為未啟用，它將允許您隱藏工作時間
 msgid ""
 "In a calendar with 2 weeks mode, all periods need to be in the sections."
 msgstr "在雙週模式的日曆中，所有時期都需要在分區中."
-
-#. module: resource
-#: model:ir.model.fields,field_description:resource.field_resource_calendar__is_fulltime
-msgid "Is Full Time"
-msgstr "是全職的"
 
 #. module: resource
 #: model:ir.model.fields,field_description:resource.field_resource_calendar__write_uid
@@ -445,11 +417,6 @@ msgstr "視為全職工作所需要的公司時間表工作時數。"
 #: model:ir.model.fields.selection,name:resource.selection__resource_calendar_leaves__time_type__other
 msgid "Other"
 msgstr "其他"
-
-#. module: resource
-#: model_terms:ir.ui.view,arch_db:resource.view_resource_calendar_search
-msgid "Partial working schedules"
-msgstr "不完整工作時間表"
 
 #. module: resource
 #: model_terms:ir.ui.view,arch_db:resource.view_resource_calendar_leaves_search
@@ -539,11 +506,6 @@ msgstr "資源允許您建立和管理資源參與的特定的計劃階段. 您�
 #: model:ir.model.fields.selection,name:resource.selection__resource_calendar_attendance__dayofweek__5
 msgid "Saturday"
 msgstr "星期六"
-
-#. module: resource
-#: model_terms:ir.ui.view,arch_db:resource.view_resource_calendar_tree
-msgid "Schedule Total Time"
-msgstr "時間表總時間"
 
 #. module: resource
 #: model_terms:ir.ui.view,arch_db:resource.view_resource_resource_search
@@ -733,11 +695,6 @@ msgid "Timezone offset"
 msgstr "時區調整"
 
 #. module: resource
-#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
-msgid "Total"
-msgstr "總計"
-
-#. module: resource
 #: model:ir.model.fields.selection,name:resource.selection__resource_calendar_attendance__dayofweek__1
 msgid "Tuesday"
 msgstr "星期二"
@@ -772,12 +729,6 @@ msgstr "類型"
 #: model_terms:ir.ui.view,arch_db:resource.view_resource_resource_search
 msgid "User"
 msgstr "使用者"
-
-#. module: resource
-#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
-#: model_terms:ir.ui.view,arch_db:resource.resource_resource_form
-msgid "Visible to all"
-msgstr "向全部人顯示"
 
 #. module: resource
 #: model:ir.model.fields.selection,name:resource.selection__resource_calendar_attendance__dayofweek__2
@@ -827,32 +778,9 @@ msgid "Work Detail"
 msgstr "工作詳情"
 
 #. module: resource
-#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
-msgid "Work Resources"
-msgstr "工作資源"
-
-#. module: resource
-#: model:ir.model.fields,field_description:resource.field_resource_calendar__work_resources_count
-msgid "Work Resources count"
-msgstr "工作資源數目"
-
-#. module: resource
-#: model:ir.model.fields,field_description:resource.field_resource_calendar__work_time_rate
-#: model_terms:ir.ui.view,arch_db:resource.resource_calendar_form
-msgid "Work Time Rate"
-msgstr "工時對全職比率"
-
-#. module: resource
 #: model:ir.model.fields,field_description:resource.field_resource_calendar_attendance__hour_from
 msgid "Work from"
 msgstr "工作開始"
-
-#. module: resource
-#: model:ir.model.fields,help:resource.field_resource_calendar__work_time_rate
-msgid ""
-"Work time rate versus full time working schedule, should be between 0 and "
-"100 %."
-msgstr "工作時間工資率與全職工作時間表的比率，應介乎 0% 至 100％ 之間。"
 
 #. module: resource
 #: model:ir.model.fields,field_description:resource.field_resource_calendar_attendance__hour_to

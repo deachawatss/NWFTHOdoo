@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import logging
@@ -8,8 +9,8 @@ from dateutil.parser import parse
 from datetime import timedelta
 
 from odoo import api, fields, models
-from odoo.fields import Domain
 from odoo.modules.registry import Registry
+from odoo.osv import expression
 from odoo.sql_db import BaseCursor
 
 from odoo.addons.microsoft_calendar.utils.microsoft_event import MicrosoftEvent
@@ -52,8 +53,7 @@ def after_commit(func):
 def microsoft_calendar_token(user):
     yield user._get_microsoft_calendar_token()
 
-
-class MicrosoftCalendarSync(models.AbstractModel):
+class MicrosoftSync(models.AbstractModel):
     _name = 'microsoft.calendar.sync'
     _description = "Synchronize a record with Microsoft Calendar"
 
@@ -367,8 +367,8 @@ class MicrosoftCalendarSync(models.AbstractModel):
         'self' won't exist when this method will be really called due to @after_commit decorator.
         """
         microsoft_service = self._get_microsoft_service()
-        sender_user = self._get_event_user_m(user_id).sudo()
-        with microsoft_calendar_token(sender_user) as token:
+        sender_user = self._get_event_user_m(user_id)
+        with microsoft_calendar_token(sender_user.sudo()) as token:
             if token and not sender_user.microsoft_synchronization_stopped:
                 microsoft_service.delete(event_id, token=token, timeout=timeout)
 
@@ -453,7 +453,7 @@ class MicrosoftCalendarSync(models.AbstractModel):
         """
         raise NotImplementedError()
 
-    def _microsoft_values(self, fields_to_sync, initial_values=()):
+    def _microsoft_values(self, fields_to_sync):
         """
         Implements this method to return a dict with values formatted
         according to the Microsoft Calendar API
@@ -485,19 +485,23 @@ class MicrosoftCalendarSync(models.AbstractModel):
         """
         raise NotImplementedError()
 
-    def _extend_microsoft_domain(self, domain: Domain):
+    def _extend_microsoft_domain(self, domain):
         """ Extends the sync domain based on the full_sync_m context parameter.
         In case of full sync it shouldn't include already synced events.
         """
-        if self.env.context.get('full_sync_m', True):
-            domain &= Domain('ms_universal_event_id', '=', False)
+        if self._context.get('full_sync_m', True):
+            domain = expression.AND([domain, [('ms_universal_event_id', '=', False)]])
         else:
-            is_active_clause = Domain(self._active_name, '=', True) if self._active_name else Domain.TRUE
-            domain &= (Domain('ms_universal_event_id', '=', False) & is_active_clause) | Domain('need_sync_m', '=', True)
+            is_active_clause = (self._active_name, '=', True) if self._active_name else expression.TRUE_LEAF
+            domain = expression.AND([domain, [
+                '|',
+                '&', ('ms_universal_event_id', '=', False), is_active_clause,
+                ('need_sync_m', '=', True),
+            ]])
         # Sync only events created/updated after last sync date (with 5 min of time acceptance).
         if self.env.user.microsoft_last_sync_date:
             time_offset = timedelta(minutes=5)
-            domain &= Domain('write_date', '>=', self.env.user.microsoft_last_sync_date - time_offset)
+            domain = expression.AND([domain, [('write_date', '>=', self.env.user.microsoft_last_sync_date - time_offset)]])
         return domain
 
     def _get_event_user_m(self, user_id=None):

@@ -11,8 +11,9 @@ class TestUnbuild(TestMrpCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        cls.stock_location = cls.env.ref('stock.stock_location_stock')
         cls.env.ref('base.group_user').write({
-            'implied_ids': [Command.link(cls.env.ref('stock.group_production_lot').id)],
+            'implied_ids': [(4, cls.env.ref('stock.group_production_lot').id)]
         })
 
     def test_unbuild_standart(self):
@@ -462,21 +463,22 @@ class TestUnbuild(TestMrpCommon):
         StockQuant = self.env['stock.quant']
         ProductObj = self.env['product.product']
         # Create new QC/Unbuild location
+        warehouse = self.env.ref('stock.warehouse0')
         unbuild_location = self.env['stock.location'].create({
             'name': 'QC/Unbuild',
             'usage': 'internal',
-            'location_id': self.warehouse_1.view_location_id.id
+            'location_id': warehouse.view_location_id.id
         })
 
         # Create a product route containing a stock rule that will move product from QC/Unbuild location to stock
         self.env['stock.route'].create({
             'name': 'QC/Unbuild -> Stock',
             'warehouse_selectable': True,
-            'warehouse_ids': [Command.link(self.warehouse_1.id)],
-            'rule_ids': [Command.create({
+            'warehouse_ids': [(4, warehouse.id)],
+            'rule_ids': [(0, 0, {
                 'name': 'Send Matrial QC/Unbuild -> Stock',
                 'action': 'push',
-                'picking_type_id': self.picking_type_int.id,
+                'picking_type_id': self.ref('stock.picking_type_internal'),
                 'location_src_id': unbuild_location.id,
                 'location_dest_id': self.stock_location.id,
             })],
@@ -504,8 +506,8 @@ class TestUnbuild(TestMrpCommon):
             'product_qty': 1.0,
             'type': 'normal',
             'bom_line_ids': [
-                Command.create({'product_id': component1.id, 'product_qty': 1}),
-                Command.create({'product_id': component2.id, 'product_qty': 1}),
+                (0, 0, {'product_id': component1.id, 'product_qty': 1}),
+                (0, 0, {'product_id': component2.id, 'product_qty': 1})
             ]})
 
         # Set on hand quantity
@@ -576,7 +578,8 @@ class TestUnbuild(TestMrpCommon):
         - decimal accuracy of Product UoM > decimal accuracy of Units
         - unbuild a product with a decimal quantity of component
         """
-        self.env['decimal.precision'].search([('name', '=', 'Product Unit')]).digits = 4
+        self.env['decimal.precision'].search([('name', '=', 'Product Unit of Measure')]).digits = 4
+        self.uom_unit.rounding = 0.001
 
         self.bom_1.product_qty = 3
         self.bom_1.bom_line_ids.product_qty = 5
@@ -665,7 +668,7 @@ class TestUnbuild(TestMrpCommon):
         unbuild order are applied on the stock moves
         """
         grp_multi_loc = self.env.ref('stock.group_stock_multi_locations')
-        self.env.user.write({'group_ids': [Command.link(grp_multi_loc.id)]})
+        self.env.user.write({'groups_id': [(4, grp_multi_loc.id, 0)]})
         warehouse = self.env['stock.warehouse'].search([('company_id', '=', self.env.user.id)], limit=1)
         prod_location = self.env['stock.location'].search([('usage', '=', 'production'), ('company_id', '=', self.env.user.id)])
         subloc01, subloc02, = self.stock_location.child_ids[:2]
@@ -717,8 +720,9 @@ class TestUnbuild(TestMrpCommon):
         order = self.env['mrp.unbuild'].create({
             'product_id': self.product_4.id,
         })
-        self.assertEqual(order.location_id, self.stock_location)
-        self.assertEqual(order.location_dest_id, self.stock_location)
+        warehouse = self.env.ref('stock.warehouse0')
+        self.assertEqual(order.location_id, warehouse.lot_stock_id)
+        self.assertEqual(order.location_dest_id, warehouse.lot_stock_id)
 
     def test_use_unbuilt_sn_in_mo(self):
         """
@@ -745,7 +749,7 @@ class TestUnbuild(TestMrpCommon):
             'product_qty': 1.0,
             'type': 'normal',
             'bom_line_ids': [
-                Command.create({'product_id': component.id, 'product_qty': 1}),
+                (0, 0, {'product_id': component.id, 'product_qty': 1}),
             ],
         })
         product_2 = self.env['product.product'].create({
@@ -759,7 +763,7 @@ class TestUnbuild(TestMrpCommon):
             'product_qty': 1.0,
             'type': 'normal',
             'bom_line_ids': [
-                Command.create({'product_id': product_1.id, 'product_qty': 1}),
+                (0, 0, {'product_id': product_1.id, 'product_qty': 1}),
             ],
         })
         # mo1
@@ -820,11 +824,11 @@ class TestUnbuild(TestMrpCommon):
         bom_1 = self.env['mrp.bom'].create({
             'product_id': finished_product.id,
             'product_tmpl_id': finished_product.product_tmpl_id.id,
-            'product_uom_id': self.uom_unit.id,
+            'product_uom_id': self.env.ref('uom.product_uom_unit').id,
             'product_qty': 1.0,
             'type': 'normal',
             'bom_line_ids': [
-                Command.create({'product_id': component.id, 'product_qty': 1}),
+                (0, 0, {'product_id': component.id, 'product_qty': 1}),
             ],
         })
         # mo_1
@@ -989,9 +993,10 @@ class TestUnbuild(TestMrpCommon):
         # Create a putaway strategy for the component product
         putaway_strategy = self.env["stock.putaway.rule"].create({
             "location_in_id": self.stock_location.id,
-            "location_out_id": self.shelf_1.id,
+            "location_out_id": self.stock_location_14.id,
             'product_id': self.bom_4.bom_line_ids.product_id.id,
         })
+
         # Create a MO for the finished product
         mo = self.env['mrp.production'].create({
             'product_id': self.bom_4.product_id.id,
@@ -1000,6 +1005,7 @@ class TestUnbuild(TestMrpCommon):
             'product_uom_id': self.bom_4.product_uom_id.id,
         })
         mo.action_confirm()
+
         mo.qty_producing = 1.0
         mo.move_raw_ids.write({'quantity': 1, 'picked': True})
         mo.button_mark_done()

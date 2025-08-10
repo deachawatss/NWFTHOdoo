@@ -11,7 +11,7 @@ from odoo.tools import index_exists
 _logger = logging.getLogger(__name__)
 
 
-class L10n_LatamCheck(models.Model):
+class l10nLatamAccountPaymentCheck(models.Model):
     _name = 'l10n_latam.check'
     _description = 'Account payment check'
     _check_company_auto = True
@@ -61,8 +61,15 @@ class L10n_LatamCheck(models.Model):
         store=True,
     )
 
-    # issue_state is used to know that is an own check and also that is posted
-    _unique = models.UniqueIndex("(name, payment_method_line_id) WHERE outstanding_line_id IS NOT NULL")
+    def _auto_init(self):
+        super()._auto_init()
+        if not index_exists(self.env.cr, 'l10n_latam_check_unique'):
+            # issue_state is used to know that is an own check and also that is posted
+            self.env.cr.execute("""
+                CREATE UNIQUE INDEX l10n_latam_check_unique
+                    ON l10n_latam_check(name, payment_method_line_id)
+                WHERE outstanding_line_id IS NOT NULL
+            """)
 
     @api.onchange('name')
     def _onchange_name(self):
@@ -202,9 +209,13 @@ class L10n_LatamCheck(models.Model):
     @api.constrains('issuer_vat')
     def _check_issuer_vat(self):
         for rec in self.filtered(lambda x: x.issuer_vat and x.company_id.country_id):
-            self.env['res.partner']._run_vat_checks(rec.company_id.country_id, rec.issuer_vat, partner_name='Check Issuer VAT')
+            if not self.env['res.partner']._run_vat_test(rec.issuer_vat, rec.company_id.country_id):
+                error_message = self.env['res.partner']._build_vat_error_message(
+                    rec.company_id.country_id.code.lower(), rec.issuer_vat, 'Check Issuer VAT'
+                )
+                raise ValidationError(error_message)
 
     @api.ondelete(at_uninstall=False)
     def _unlink_if_payment_is_draft(self):
         if any(check.payment_id.state != 'draft' for check in self):
-            raise UserError(self.env._("Can't delete a check if payment is In Process!"))
+            raise UserError("Can't delete a check if payment is In Process!")

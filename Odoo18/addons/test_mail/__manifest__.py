@@ -11,7 +11,7 @@ present in a separate module as it contains models used only to perform
 tests independently to functional aspects of other models. """,
     'depends': [
         'mail',
-        'test_orm',
+        'test_performance',
     ],
     'data': [
         'security/ir.model.access.csv',
@@ -29,6 +29,5 @@ tests independently to functional aspects of other models. """,
         ],
     },
     'installable': True,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

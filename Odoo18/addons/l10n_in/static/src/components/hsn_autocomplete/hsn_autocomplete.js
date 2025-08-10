@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { AutoComplete } from "@web/core/autocomplete/autocomplete";
 import { useChildRef } from "@web/core/utils/hooks";
 import { registry } from "@web/core/registry";
@@ -51,22 +53,22 @@ export class L10nInHsnAutoComplete extends CharField {
                         throw new Error(res.statusText);
                     }
                     const resData = await res.json();
-                    for (const item of resData.data || []) {
-                        if (item.c.length > 3) {
-                            suggestions.push({
-                                data: {
+                    if (resData.data) {
+                        suggestions.push(
+                            ...resData.data
+                                .filter((item) => item.c.length > 3)
+                                .map((item) => ({
+                                    label: item.c,
                                     description: item.n,
-                                },
-                                label: item.c,
-                                onSelect: () => this.selectSuggestion(item.c, item.n),
-                            });
-                        }
+                                }))
+                        );
                     }
                 })
             );
         } catch (e) {
             suggestions.push({
                 label: _t("Could not contact API"),
+                unselectable: false,
             });
             console.warn("HSN Autocomplete API error:", e);
         }
@@ -83,16 +85,16 @@ export class L10nInHsnAutoComplete extends CharField {
                         return [];
                     }
                 },
-                optionSlot: "option",
+                optionTemplate: "hsn_autocomplete.DropdownOption",
                 placeholder: _t("Searching..."),
             },
         ];
     }
 
-    selectSuggestion(label, description) {
-        const data = { [this.props.name]: label };
+    onSelect(option) {
+        const data = { [this.props.name]: option.label };
         if (this.props.l10nInHsnDescription) {
-            data[this.props.l10nInHsnDescription] = description;
+            data[this.props.l10nInHsnDescription] = option.description;
         }
         setTimeout(() => this.props.record.update(data));
     }

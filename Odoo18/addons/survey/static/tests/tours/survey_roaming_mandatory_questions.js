@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { registry } from '@web/core/registry';
 
 registry.category('web_tour.tours').add('test_survey_roaming_mandatory_questions', {
@@ -41,10 +43,6 @@ registry.category('web_tour.tours').add('test_survey_roaming_mandatory_questions
         trigger: 'button.btn:contains("Submit")',
         run: "click",
     }, {
-        content: "Click on Submit",
-        trigger: 'button.btn-primary:contains("Submit")',
-        run: "click",
-    }, {
         content: 'Check if question is Q1',
         trigger: 'div.js_question-wrapper:contains("Q1")',
     }, {
@@ -75,10 +73,6 @@ registry.category('web_tour.tours').add('test_survey_roaming_mandatory_questions
     }, {
         content: 'Click on Submit',
         trigger: 'button.btn:contains("Submit")',
-        run: "click",
-    }, {
-        content: "Click on Submit",
-        trigger: 'button.btn-primary:contains("Submit")',
         run: "click",
     }, {
         content: 'Check if the survey is done',

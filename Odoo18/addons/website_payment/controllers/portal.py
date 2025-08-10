@@ -6,6 +6,7 @@ from odoo.exceptions import ValidationError
 from odoo.http import request
 from odoo.tools.json import scriptsafe as json_safe
 
+from odoo.addons.account_payment.controllers import portal as account_payment_portal
 from odoo.addons.payment import utils as payment_utils
 from odoo.addons.payment.controllers import portal as payment_portal
 
@@ -33,7 +34,7 @@ class PaymentPortal(payment_portal.PaymentPortal):
 
         return self.payment_pay(**kwargs)
 
-    @http.route('/donation/transaction/<minimum_amount>', type='jsonrpc', auth='public', website=True, sitemap=False)
+    @http.route('/donation/transaction/<minimum_amount>', type='json', auth='public', website=True, sitemap=False)
     def donation_transaction(self, amount, currency_id, partner_id, access_token, minimum_amount=0, **kwargs):
         if float(amount) < float(minimum_amount):
             raise ValidationError(_('Donation amount must be at least %.2f.', float(minimum_amount)))
@@ -151,3 +152,9 @@ class PaymentPortal(payment_portal.PaymentPortal):
             for provider_sudo in providers_sudo:
                 res[provider_sudo.id] = False
         return res
+
+
+class PortalAccount(account_payment_portal.PortalAccount):
+    def _invoice_get_page_view_values(self, *args, **kwargs):
+        """Override of `account_payment` to make the providers filtering website-aware."""
+        return super()._invoice_get_page_view_values(*args, website_id=request.website.id, **kwargs)

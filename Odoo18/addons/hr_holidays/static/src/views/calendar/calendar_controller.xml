@@ -13,6 +13,7 @@
                 </span>
             </t>
         </xpath>
+        <DatePicker position="replace"/>
     </t>
 
 </templates>

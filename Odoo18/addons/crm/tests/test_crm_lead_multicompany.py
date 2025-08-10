@@ -307,7 +307,7 @@ class TestCRMLeadMultiCompany(TestCrmCommon):
         customer_company = self.env['res.partner'].create({
             'company_id': self.company_2.id,
             'email': 'customer.another.company@test.customer.com',
-            'phone': '+32455000000',
+            'mobile': '+32455000000',
             'name': 'InCompany Customer',
         })
 

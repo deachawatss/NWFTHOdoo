@@ -1,9 +1,11 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import logging
+import threading
+
 
 from odoo import api, fields, models
-from odoo.exceptions import LockError
 
 _logger = logging.getLogger(__name__)
 
@@ -17,6 +19,7 @@ class ResUsersDeletion(models.Model):
     indexed). This model just remove the users added in the deletion queue, remaining code
     must deal with other consideration (archiving, blacklist email...).
     """
+
     _name = 'res.users.deletion'
     _description = 'Users Deletion Request'
     _rec_name = 'user_id'
@@ -50,51 +53,47 @@ class ResUsersDeletion(models.Model):
         done_requests.state = "done"
 
         todo_requests = delete_requests - done_requests
-        commit_progress = self.env['ir.cron']._commit_progress
-        commit_progress(len(done_requests), remaining=len(todo_requests))
+        cron_done, cron_remaining = len(done_requests), len(todo_requests)
+        self.env['ir.cron']._notify_progress(done=cron_done, remaining=cron_remaining)
+        batch_requests = todo_requests[:batch_size]
 
-        for delete_request in todo_requests[:batch_size]:
-            delete_request = delete_request.try_lock_for_update().filtered(lambda d: d.state == 'todo')
-            if not delete_request:
-                continue
+        auto_commit = not getattr(threading.current_thread(), "testing", False)
+
+        for delete_request in batch_requests:
             user = delete_request.user_id
             user_name = user.name
             partner = user.partner_id
             requester_name = delete_request.create_uid.name
-
             # Step 1: Delete User
             try:
-                user.unlink()
-                _logger.info(
-                    "User #%i %r, deleted. Original request from %r.",
-                    user.id, user_name, requester_name)
+                with self.env.cr.savepoint():
+                    user.unlink()
+                _logger.info("User #%i %r, deleted. Original request from %r.",
+                             user.id, user_name, delete_request.create_uid.name)
                 delete_request.state = 'done'
-                commit_progress(1)
             except Exception as e:
-                self.env.cr.rollback()
-                _logger.error(
-                    "User #%i %r could not be deleted. Original request from %r. Related error: %s",
-                    user.id, user_name, requester_name, e)
+                _logger.error("User #%i %r could not be deleted. Original request from %r. Related error: %s",
+                              user.id, user_name, requester_name, e)
                 delete_request.state = "fail"
-                # commit and progress even when failed
-                if commit_progress(1):
-                    continue
-                else:
-                    break
+            # make sure we never rollback the work we've done, this can take a long time
+            cron_done, cron_remaining = cron_done + 1, cron_remaining - 1
+            if auto_commit:
+                self.env['ir.cron']._notify_progress(done=cron_done, remaining=cron_remaining)
+                self.env.cr.commit()
+            if delete_request.state == "fail":
+                continue
 
             # Step 2: Delete Linked Partner
             #         Could be impossible if the partner is linked to a SO for example
             try:
-                partner.unlink()
-                _logger.info(
-                    "Partner #%i %r, deleted. Original request from %r.",
-                    partner.id, user_name, requester_name)
-                if not commit_progress():
-                    break
+                with self.env.cr.savepoint():
+                    partner.unlink()
+                _logger.info("Partner #%i %r, deleted. Original request from %r.",
+                             partner.id, user_name, delete_request.create_uid.name)
             except Exception as e:
-                self.env.cr.rollback()
-                _logger.warning(
-                    "Partner #%i %r could not be deleted. Original request from %r. Related error: %s",
-                    partner.id, user_name, requester_name, e)
-                if not commit_progress():  # just check if we should stop
-                    break
+                _logger.warning("Partner #%i %r could not be deleted. Original request from %r. Related error: %s",
+                                partner.id, user_name, requester_name, e)
+            # make sure we never rollback the work we've done, this can take a long time
+            if auto_commit:
+                self.env.cr.commit()
+        self.env['ir.cron']._notify_progress(done=cron_done, remaining=cron_remaining)

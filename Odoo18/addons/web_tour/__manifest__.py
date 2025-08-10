@@ -22,10 +22,8 @@ Odoo Web tours.
             'web/static/lib/hoot-dom/**/*',
         ],
         'web.assets_frontend': [
-            'web_tour/static/src/tour_utils.js',
             'web_tour/static/src/tour_pointer/**/*',
             'web_tour/static/src/tour_service/**/*',
-            'web_tour/static/src/tour_utils.js',
             'web/static/lib/hoot-dom/**/*',
         ],
         'web.assets_unit_tests': [
@@ -33,6 +31,5 @@ Odoo Web tours.
         ],
     },
     'auto_install': True,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

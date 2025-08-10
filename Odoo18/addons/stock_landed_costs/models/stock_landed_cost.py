@@ -66,7 +66,7 @@ class StockLandedCost(models.Model):
     company_id = fields.Many2one('res.company', string="Company", required=True, default=lambda self: self.env.company)
     stock_valuation_layer_ids = fields.One2many('stock.valuation.layer', 'stock_landed_cost_id')
     vendor_bill_id = fields.Many2one(
-        'account.move', 'Vendor Bill', copy=False, domain=[('move_type', '=', 'in_invoice')], index='btree_not_null')
+        'account.move', 'Vendor Bill', copy=False, domain=[('move_type', '=', 'in_invoice')])
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id')
 
     @api.depends('cost_lines.price_unit')
@@ -188,11 +188,11 @@ class StockLandedCost(models.Model):
             # batch standard price computation avoid recompute quantity_svl at each iteration
             products = self.env['product.product'].browse(p.id for p in cost_to_add_byproduct.keys()).with_company(cost.company_id)
             for product in products:  # iterate on recordset to prefetch efficiently quantity_svl
-                if not product.uom_id.is_zero(product.quantity_svl):
+                if not float_is_zero(product.quantity_svl, precision_rounding=product.uom_id.rounding):
                     product.sudo().with_context(disable_auto_svl=True).standard_price += cost_to_add_byproduct[product] / product.quantity_svl
                 if product.lot_valuated:
                     for lot, value in cost_to_add_bylot[product].items():
-                        if product.uom_id.is_zero(lot.quantity_svl):
+                        if float_is_zero(lot.quantity_svl, precision_rounding=product.uom_id.rounding):
                             continue
                         lot.sudo().with_context(disable_auto_svl=True).standard_price += value / lot.quantity_svl
 
@@ -341,14 +341,14 @@ class StockLandedCost(models.Model):
         return True
 
 
-class StockLandedCostLines(models.Model):
+class StockLandedCostLine(models.Model):
     _name = 'stock.landed.cost.lines'
     _description = 'Stock Landed Cost Line'
 
     name = fields.Char('Description')
     cost_id = fields.Many2one(
         'stock.landed.cost', 'Landed Cost',
-        required=True, index=True, ondelete='cascade')
+        required=True, ondelete='cascade')
     product_id = fields.Many2one('product.product', 'Product', required=True)
     price_unit = fields.Monetary('Cost', required=True)
     split_method = fields.Selection(
@@ -360,7 +360,7 @@ class StockLandedCostLines(models.Model):
              "By Current cost: Cost will be divided according to product's current cost.\n"
              "By Weight: Cost will be divided depending on its weight.\n"
              "By Volume: Cost will be divided depending on its volume.")
-    account_id = fields.Many2one('account.account', 'Account')
+    account_id = fields.Many2one('account.account', 'Account', domain=[('deprecated', '=', False)])
     currency_id = fields.Many2one('res.currency', related='cost_id.currency_id')
 
     @api.onchange('product_id')
@@ -372,7 +372,7 @@ class StockLandedCostLines(models.Model):
         self.account_id = accounts_data['stock_input']
 
 
-class StockValuationAdjustmentLines(models.Model):
+class AdjustmentLines(models.Model):
     _name = 'stock.valuation.adjustment.lines'
     _description = 'Valuation Adjustment Lines'
 
@@ -380,7 +380,7 @@ class StockValuationAdjustmentLines(models.Model):
         'Description', compute='_compute_name', store=True)
     cost_id = fields.Many2one(
         'stock.landed.cost', 'Landed Cost',
-        ondelete='cascade', required=True, index=True)
+        ondelete='cascade', required=True)
     cost_line_id = fields.Many2one(
         'stock.landed.cost.lines', 'Cost Line', readonly=True)
     move_id = fields.Many2one('stock.move', 'Stock Move', readonly=True)
@@ -424,7 +424,7 @@ class StockValuationAdjustmentLines(models.Model):
         if self.move_id._is_dropshipped():
             debit_account_id = accounts.get('expense') and accounts['expense'].id or False
         already_out_account_id = accounts['stock_output'].id
-        credit_account_id = self.cost_line_id.account_id.id or cost_product._get_product_accounts()['stock_input'].id
+        credit_account_id = self.cost_line_id.account_id.id or cost_product.categ_id.property_stock_account_input_categ_id.id
 
         if not credit_account_id:
             raise UserError(_('Please configure Stock Expense Account for product: %s.', cost_product.name))

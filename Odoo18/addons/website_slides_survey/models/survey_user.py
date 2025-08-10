@@ -1,9 +1,11 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import fields, models, api
+from odoo.osv import expression
 
 
-class SurveyUser_Input(models.Model):
+class SurveyUserInput(models.Model):
     _inherit = 'survey.user_input'
 
     slide_id = fields.Many2one('slide.slide', 'Related course slide',
@@ -14,12 +16,12 @@ class SurveyUser_Input(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        records = super().create(vals_list)
+        records = super(SurveyUserInput, self).create(vals_list)
         records._check_for_failed_attempt()
         return records
 
     def write(self, vals):
-        res = super().write(vals)
+        res = super(SurveyUserInput, self).write(vals)
         if 'state' in vals:
             self._check_for_failed_attempt()
         return res

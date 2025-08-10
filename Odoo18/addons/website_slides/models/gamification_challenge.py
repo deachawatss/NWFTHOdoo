@@ -4,7 +4,7 @@
 from odoo import models, fields
 
 
-class GamificationChallenge(models.Model):
+class Challenge(models.Model):
     _inherit = 'gamification.challenge'
 
     challenge_category = fields.Selection(selection_add=[

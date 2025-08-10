@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
-from dateutil.relativedelta import relativedelta
 from markupsafe import Markup
 
 from odoo import api, Command, fields, models, SUPERUSER_ID, _
-from odoo.tools.float_utils import float_compare, float_repr
+from odoo.tools.float_utils import float_compare
 from odoo.exceptions import UserError
+from odoo.tools import format_list
 from odoo.tools.misc import OrderedSet
 
 
@@ -97,7 +97,7 @@ class PurchaseOrder(models.Model):
             for order in self:
                 to_log = {}
                 for order_line in order.order_line:
-                    if pre_order_line_qty.get(order_line) and order_line.product_uom_id.compare(pre_order_line_qty[order_line], order_line.product_qty) > 0:
+                    if pre_order_line_qty.get(order_line, False) and float_compare(pre_order_line_qty[order_line], order_line.product_qty, precision_rounding=order_line.product_uom.rounding) > 0:
                         to_log[order_line] = (order_line.product_qty, pre_order_line_qty[order_line])
                 if to_log:
                     order._log_decrease_ordered_quantity(to_log)
@@ -111,7 +111,7 @@ class PurchaseOrder(models.Model):
         # Replaces the product's kanban view by the purchase specific one.
         action = super().action_add_from_catalog()
         kanban_view_id = self.env.ref('purchase_stock.product_view_kanban_catalog_purchase_only').id
-        action['views'][0] = (kanban_view_id, 'kanban')
+        action['views'] = [(kanban_view_id, view_type) if view_type == 'kanban' else (view_id, view_type) for (view_id, view_type) in action['views']]
         return action
 
     def button_approve(self, force=False):
@@ -129,7 +129,7 @@ class PurchaseOrder(models.Model):
 
         purchase_orders_with_receipt = self.filtered(lambda po: any(move.state == 'done' for move in po.order_line.move_ids))
         if purchase_orders_with_receipt:
-            raise UserError(_("Unable to cancel purchase order(s): %s since they have receipts that are already done.", purchase_orders_with_receipt.mapped('display_name')))
+            raise UserError(_("Unable to cancel purchase order(s): %s since they have receipts that are already done.", format_list(self.env, purchase_orders_with_receipt.mapped('display_name'))))
         for order in self:
             # If the product is MTO, change the procure_method of the closest move to purchase to MTS.
             # The purpose is to link the po that the user will manually generate to the existing moves's chain.
@@ -145,8 +145,10 @@ class PurchaseOrder(models.Model):
         for order_line in order_lines:
             moves_to_cancel_ids.update(order_line.move_ids.ids)
             if order_line.move_dest_ids:
-                move_dest_ids = order_line.move_dest_ids.filtered(lambda move: move.state != 'done' and not move.scrapped
-                                                                  and move.rule_id.route_id == move.location_dest_id.warehouse_id.reception_route_id)
+                move_dest_ids = order_line.move_dest_ids.filtered(lambda move: move.state != 'done' and not move.scrapped)
+                moves_to_mts = move_dest_ids.filtered(lambda move: move.rule_id.route_id != move.location_dest_id.warehouse_id.reception_route_id)
+                move_dest_ids -= moves_to_mts
+                moves_to_recompute_ids.update(moves_to_mts.ids)
                 moves_to_unlink = move_dest_ids.filtered(lambda m: len(m.created_purchase_line_ids.ids) > 1)
                 if moves_to_unlink:
                     moves_to_unlink.created_purchase_line_ids = [Command.unlink(order_line.id)]
@@ -179,32 +181,6 @@ class PurchaseOrder(models.Model):
     def action_view_picking(self):
         return self._get_action_view_picking(self.picking_ids)
 
-    @api.model
-    def retrieve_dashboard(self):
-        result = super().retrieve_dashboard()
-        three_months_ago = fields.Datetime.to_string(fields.Datetime.now() - relativedelta(months=3))
-
-        purchases = self.env['purchase.order'].search_fetch(
-            [('state', '=', 'purchase'), ('date_planned', '>=', three_months_ago)],
-            ['date_planned', 'effective_date', 'user_id'])
-
-        otd_purchase_count = 0
-        my_purchase_count = 0
-        my_otd_purchase_count = 0
-        for po in purchases:
-            if po.user_id == self.env.user:
-                my_purchase_count += 1
-            if not po.effective_date or po.effective_date > po.date_planned:
-                continue
-            otd_purchase_count += 1
-            if po.user_id == self.env.user:
-                my_otd_purchase_count += 1
-
-        result['global']['otd'] = _("%(otd)s %%", otd=float_repr(otd_purchase_count / len(purchases) * 100 if purchases else 100, precision_digits=0))
-        result['my']['otd'] = _("%(otd)s %%", otd=float_repr(my_otd_purchase_count / my_purchase_count * 100 if my_purchase_count else 100, precision_digits=0))
-        result['days_to_purchase'] = self.env.company.days_to_purchase
-        return result
-
     def _get_action_view_picking(self, pickings):
         """ This function returns an action that display existing picking orders of given purchase order ids. When only one found, show the picking immediately.
         """
@@ -226,29 +202,6 @@ class PurchaseOrder(models.Model):
         invoice_vals = super()._prepare_invoice()
         invoice_vals['invoice_incoterm_id'] = self.incoterm_id.id
         return invoice_vals
-
-    def action_display_suggest(self, product_domain=False):
-        self.ensure_one()
-        product_ids = self.order_line.product_id.ids
-        if product_domain:
-            product_ids = self.env['product.product'].with_context(order_id=self.id).search(product_domain).ids
-        context = {
-            'dialog_size': 'medium',
-            'default_purchase_order_id': self.id,
-            'default_warehouse_id': self.picking_type_id.warehouse_id.id,
-            'default_product_ids': product_ids,
-        }
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _("Suggest Quantities based on Sales & Demands"),
-            'target': 'new',
-            'view_mode': 'form',
-            'views': [[False, 'form']],
-            'res_id': False,
-            'view_id': self.env.ref('purchase_stock.purchase_order_suggest_view_form').id,
-            'res_model': 'purchase.order.suggest',
-            'context': context,
-        }
 
     # --------------------------------------------------
     # Business methods
@@ -302,9 +255,8 @@ class PurchaseOrder(models.Model):
         picking_type = self.env['stock.picking.type'].search([('code', '=', 'incoming'), ('warehouse_id.company_id', '=', company_id)])
         if not picking_type:
             picking_type = self.env['stock.picking.type'].search([('code', '=', 'incoming'), ('warehouse_id', '=', False)])
-        company_warehouse = self.env['stock.warehouse'].search([('company_id', '=', company_id)], limit=1)
-        if not company_warehouse:
-            self.env['stock.warehouse']._warehouse_redirect_warning()
+        if not picking_type:
+            picking_type = self.env['stock.picking.type'].with_context(active_test=False).search([('code', '=', 'incoming'), ('warehouse_id', '=', False)])
         return picking_type[:1]
 
     def _prepare_group_vals(self):
@@ -323,6 +275,7 @@ class PurchaseOrder(models.Model):
             'picking_type_id': self.picking_type_id.id,
             'partner_id': self.partner_id.id,
             'user_id': False,
+            'date': self.date_order,
             'origin': self.name,
             'location_dest_id': self._get_destination_location(),
             'location_id': self.partner_id.property_stock_supplier.id,
@@ -332,7 +285,7 @@ class PurchaseOrder(models.Model):
 
     def _create_picking(self):
         StockPicking = self.env['stock.picking']
-        for order in self.filtered(lambda po: po.state == 'purchase'):
+        for order in self.filtered(lambda po: po.state in ('purchase', 'done')):
             if any(product.type == 'consu' for product in order.order_line.product_id):
                 order = order.with_company(order.company_id)
                 pickings = order.picking_ids.filtered(lambda x: x.state not in ('done', 'cancel'))
@@ -389,6 +342,3 @@ class PurchaseOrder(models.Model):
         """When auto sending reminder mails, don't send for purchase order with
         validated receipts."""
         return super()._get_orders_to_remind().filtered(lambda p: not p.effective_date)
-
-    def _is_display_stock_in_catalog(self):
-        return True

@@ -4,7 +4,7 @@
 from odoo import api, models
 
 
-class ReportMrpReport_Bom_Structure(models.AbstractModel):
+class ReportBomStructure(models.AbstractModel):
     _inherit = 'report.mrp.report_bom_structure'
 
     @api.model

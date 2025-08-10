@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "HR Leave Description Label",
-    "version": "1.0",
+    "version": "18.0.1.0",
     "summary": "Customized description field for leave requests",
     "category": "Human Resources/Time Off",
     "author": "Custom Developer",

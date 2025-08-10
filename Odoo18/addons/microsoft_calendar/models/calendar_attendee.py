@@ -1,10 +1,12 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 
 from odoo import models
 
 
-class CalendarAttendee(models.Model):
+class Attendee(models.Model):
+    _name = 'calendar.attendee'
     _inherit = 'calendar.attendee'
 
     def do_tentative(self):

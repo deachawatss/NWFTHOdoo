@@ -1,3 +1,5 @@
+/* @odoo-module */
+
 import { TimeOffCard } from "./time_off_card";
 import { useNewAllocationRequest } from "@hr_holidays/views/hooks";
 import { useBus, useService } from "@web/core/utils/hooks";
@@ -24,14 +26,16 @@ export class TimeOffDashboard extends Component {
         });
 
         onWillStart(async () => {
-            const promises = [
-                this.orm.call("hr.leave.type", "has_accrual_allocation", [], {
-                    context: this.getContext(),
-                }),
-                this.loadDashboardData(),
-            ];
-            const [hasAccrualAllocation] = await Promise.all(promises);
-            this.hasAccrualAllocation = hasAccrualAllocation;
+            await this.loadDashboardData();
+            const context = this.getContext();
+            this.hasAccrualAllocation = await this.orm.call(
+                "hr.leave.type",
+                "has_accrual_allocation",
+                [],
+                {
+                    context: context,
+                }
+            );
         });
     }
 
@@ -48,18 +52,22 @@ export class TimeOffDashboard extends Component {
         if (date) {
             this.state.date = date;
         }
-        const promises = [
-            this.orm.call(
-                "hr.leave.type",
-                "get_allocation_data_request",
-                [this.state.date, false],
-                { context }
-            ),
-            this.orm.call("hr.employee", "get_allocation_requests_amount", [], { context }),
-        ];
-        const [holidays, allocationRequests] = await Promise.all(promises);
-        this.state.holidays = holidays;
-        this.state.allocationRequests = allocationRequests;
+        this.state.holidays = await this.orm.call(
+            "hr.leave.type",
+            "get_allocation_data_request",
+            [this.state.date, false],
+            {
+                context: context,
+            }
+        );
+        this.state.allocationRequests = await this.orm.call(
+            "hr.employee",
+            "get_allocation_requests_amount",
+            [],
+            {
+                context: context,
+            }
+        );
     }
 
     async newAllocationRequest() {

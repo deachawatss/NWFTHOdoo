@@ -1,10 +1,10 @@
-import { rgbToHex, rgbaToHex, blendColors } from "@web/core/utils/colors";
+import { rgbToHex, rgbaToHex, blendColors } from "@html_editor/utils/color";
 import { expect, getFixture, test } from "@odoo/hoot";
 
 test("should convert an rgb and rgba color to hexadecimal", async () => {
     expect(rgbToHex("rgb(0, 0, 255)")).toBe("#0000ff");
     expect(rgbToHex("rgb(0,0,255)")).toBe("#0000ff");
-    expect(rgbaToHex("rgba(0, 0, 255, 0.5)")).toBe("#0000FF80");
+    expect(rgbaToHex("rgba(0, 0, 255, 0.5)")).toBe("#0000ff80");
 });
 
 test("should convert an rgba color to hexadecimal (background is hexadecimal)", async () => {

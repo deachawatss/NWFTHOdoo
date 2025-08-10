@@ -5,8 +5,8 @@ from odoo import api, fields, models
 from .hr_homeworking import DAYS
 
 
-class HrEmployee(models.Model):
-    _inherit = "hr.employee"
+class HrEmployeeBase(models.AbstractModel):
+    _inherit = "hr.employee.base"
 
     monday_location_id = fields.Many2one('hr.work.location', string='Monday')
     tuesday_location_id = fields.Many2one('hr.work.location', string='Tuesday')
@@ -18,7 +18,7 @@ class HrEmployee(models.Model):
     exceptional_location_id = fields.Many2one(
         'hr.work.location', string='Current',
         compute='_compute_exceptional_location_id',
-        help='This is the exceptional, non-weekly, location set for today.', groups="hr.group_hr_user")
+        help='This is the exceptional, non-weekly, location set for today.')
     hr_icon_display = fields.Selection(selection_add=[('presence_home', 'At Home'),
                                                       ('presence_office', 'At Office'),
                                                       ('presence_other', 'At Other')])
@@ -40,7 +40,7 @@ class HrEmployee(models.Model):
             res['views']['list']['arch'] = res['views']['list']['arch'].replace('work_location_name', dayfield)
         return res
 
-    @api.depends("work_location_id.name", "work_location_id.location_type", "exceptional_location_id")
+    @api.depends("work_location_id.name", "work_location_id.location_type", "exceptional_location_id", *DAYS)
     def _compute_work_location_name_type(self):
         super()._compute_work_location_name_type()
         dayfield = self._get_current_day_location_field()

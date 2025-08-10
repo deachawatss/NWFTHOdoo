@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, fields, models
@@ -7,15 +8,13 @@ class SaleOrderLine(models.Model):
     _inherit = 'sale.order.line'
 
     is_reward_line = fields.Boolean(
-        string="Is a program reward line", compute='_compute_is_reward_line'
-    )
+        string="Is a program reward line", compute='_compute_is_reward_line')
     reward_id = fields.Many2one(
-        comodel_name='loyalty.reward', ondelete='restrict', readonly=True
-    )
-    coupon_id = fields.Many2one(comodel_name='loyalty.card', ondelete='restrict', readonly=True)
+        comodel_name='loyalty.reward', ondelete='restrict', readonly=True)
+    coupon_id = fields.Many2one(
+        comodel_name='loyalty.card', ondelete='restrict', readonly=True)
     reward_identifier_code = fields.Char(
-        help="Technical field used to link multiple reward lines from the same reward together."
-    )
+        help="Technical field used to link multiple reward lines from the same reward together.")
     points_cost = fields.Float(help="How much point this reward costs on the loyalty card.")
 
     def _compute_name(self):
@@ -28,9 +27,9 @@ class SaleOrderLine(models.Model):
         for line in self:
             line.is_reward_line = bool(line.reward_id)
 
-    def _compute_tax_ids(self):
+    def _compute_tax_id(self):
         reward_lines = self.filtered('is_reward_line')
-        super(SaleOrderLine, self - reward_lines)._compute_tax_ids()
+        super(SaleOrderLine, self - reward_lines)._compute_tax_id()
         # Discount reward line is split per tax, the discount is set on the line but not on the product
         # as the product is the generic discount line.
         # In case of a free product, retrieving the tax on the line instead of the product won't affect the behavior.
@@ -38,8 +37,8 @@ class SaleOrderLine(models.Model):
             line = line.with_company(line.company_id)
             fpos = line.order_id.fiscal_position_id or line.order_id.fiscal_position_id._get_fiscal_position(line.order_partner_id)
             # If company_id is set, always filter taxes by the company
-            taxes = line.tax_ids.filtered(lambda r: not line.company_id or r.company_id == line.company_id)
-            line.tax_ids = fpos.map_tax(taxes)
+            taxes = line.tax_id.filtered(lambda r: not line.company_id or r.company_id == line.company_id)
+            line.tax_id = fpos.map_tax(taxes)
 
     def _get_display_price(self):
         # A product created from a promotion does not have a list_price.
@@ -51,17 +50,8 @@ class SaleOrderLine(models.Model):
     def _can_be_invoiced_alone(self):
         return super()._can_be_invoiced_alone() and not self.is_reward_line
 
-    def _is_sellable(self):
-        """ Override of `sale` to flag reward lines as not sellable.
-
-        :return: Whether the line is sellable or not.
-        :rtype: bool
-        """
-        return super()._is_sellable() and (
-            not self.is_reward_line
-            # Sellable so the link is clickable in the cart.
-            or self.reward_id.reward_type == 'product'
-        )
+    def _is_not_sellable_line(self):
+        return self.is_reward_line or super()._is_not_sellable_line()
 
     def _reset_loyalty(self, complete=False):
         """

@@ -103,7 +103,7 @@ class ResourceCalendarLeaves(models.Model):
             for leave in cal_attendance_intervals_params_entry['leaves']:
                 work_hours_data = work_hours_intervals[leave.resource_id.id]
 
-                for date_from, date_to, _dummy in work_hours_data:
+                for date_from, date_to, dummy in work_hours_data:
                     if date_to > utc.localize(leave.date_from) and date_from < utc.localize(leave.date_to):
                         tmp_start = max(date_from, utc.localize(leave.date_from))
                         tmp_end = min(date_to, utc.localize(leave.date_to))
@@ -130,7 +130,7 @@ class ResourceCalendarLeaves(models.Model):
         min_date = max_date = None
         for values in work_hours_data.values():
             for vals in values.values():
-                for d, _dummy in vals:
+                for d, dummy in vals:
                     if not min_date and not max_date:
                         min_date = max_date = d
                     elif d < min_date:
@@ -235,7 +235,7 @@ class ResourceCalendarLeaves(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        results = super().create(vals_list)
+        results = super(ResourceCalendarLeaves, self).create(vals_list)
         results._generate_timesheeets()
         return results
 
@@ -248,6 +248,6 @@ class ResourceCalendarLeaves(models.Model):
             if timesheets:
                 timesheets.write({'global_leave_id': False})
                 timesheets.unlink()
-        result = super().write(vals)
+        result = super(ResourceCalendarLeaves, self).write(vals)
         global_time_off_updated and global_time_off_updated.sudo()._generate_timesheeets()
         return result

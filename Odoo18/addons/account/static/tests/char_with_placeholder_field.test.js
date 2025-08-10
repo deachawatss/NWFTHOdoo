@@ -1,3 +1,4 @@
+import { defineAccountModels } from "./account_test_helpers";
 import { expect, test } from "@odoo/hoot";
 import { queryFirst } from "@odoo/hoot-dom";
 import {
@@ -8,7 +9,6 @@ import {
     models,
     mountView,
 } from "@web/../tests/web_test_helpers";
-import { defineAccountModels } from "./account_test_helpers";
 
 class Account extends models.Model {
     _name = "account.account";

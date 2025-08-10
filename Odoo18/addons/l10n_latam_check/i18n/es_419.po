@@ -10,10 +10,9 @@ msgstr ""
 "PO-Revision-Date: 2025-02-11 15:22+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
-"Language: es\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
-"Content-Transfer-Encoding: 8bit\n"
+"Content-Transfer-Encoding: \n"
 "Plural-Forms: \n"
 
 #. module: l10n_latam_check
@@ -257,6 +256,12 @@ msgid "Display Name"
 msgstr "Nombre Mostrado"
 
 #. module: l10n_latam_check
+#: model:account.payment.method,name:l10n_latam_check.account_payment_method_in_third_party_checks
+#: model:account.payment.method,name:l10n_latam_check.account_payment_method_out_third_party_checks
+msgid "Existing Third Party Checks"
+msgstr "Cheque de Terceros Existente"
+
+#. module: l10n_latam_check
 #: model:ir.model.fields,field_description:l10n_latam_check.field_l10n_latam_check__message_follower_ids
 msgid "Followers"
 msgstr "Seguidores"
@@ -340,10 +345,6 @@ msgid ""
 "please double check it. By continue, the last operation on the check will "
 "remain being %(last_operation)s"
 msgstr ""
-"Parece que quieres mover un cheque con fecha (%s) previo a la última "
-"operación realizada con el cheque (%s). Esto puede ser incorrecto, por favor"
-" chequear. De continuar, la última operación en el cheque continuará siendo "
-"%s"
 
 #. module: l10n_latam_check
 #: model:ir.model,name:l10n_latam_check.model_account_journal
@@ -533,6 +534,7 @@ msgid "Outstanding Receipts"
 msgstr "Ingresos pendientes"
 
 #. module: l10n_latam_check
+#: model:account.payment.method,name:l10n_latam_check.account_payment_method_own_checks
 #: model:ir.actions.act_window,name:l10n_latam_check.action_own_check
 #: model:ir.ui.menu,name:l10n_latam_check.menu_own_check
 msgid "Own Checks"

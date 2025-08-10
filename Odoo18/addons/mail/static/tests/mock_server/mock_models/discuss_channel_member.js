@@ -8,6 +8,7 @@ const { DateTime } = luxon;
 export class DiscussChannelMember extends models.ServerModel {
     _name = "discuss.channel.member";
 
+    fold_state = fields.Generic({ default: "closed" });
     is_pinned = fields.Generic({ compute: "_compute_is_pinned" });
     unpin_dt = fields.Datetime({ string: "Unpin date" });
     message_unread_counter = fields.Generic({ default: 0 });
@@ -68,93 +69,144 @@ export class DiscussChannelMember extends models.ServerModel {
         ]);
     }
 
+    /**
+     * @param {number} id
+     * @param {string} [state]
+     * @param {number} [state_count]
+     */
+    _channel_fold(id, state, state_count) {
+        const kwargs = getKwArgs(arguments, "id", "state", "state_count");
+        id = kwargs.id;
+        delete kwargs.id;
+        state = kwargs.state;
+        state_count = kwargs.state_count;
+
+        /** @type {import("mock_models").BusBus} */
+        const BusBus = this.env["bus.bus"];
+        /** @type {import("mock_models").MailGuest} */
+        const MailGuest = this.env["mail.guest"];
+        /** @type {import("mock_models").ResPartner} */
+        const ResPartner = this.env["res.partner"];
+
+        const [member] = this.search_read([["id", "=", id]]);
+        if (member.fold_state === state) {
+            return;
+        }
+        this.write([id], { fold_state: state });
+        let target;
+        if (member.partner_id) {
+            [target] = ResPartner.search_read([["id", "=", member.partner_id[0]]]);
+        } else {
+            [target] = MailGuest.search_read([["id", "=", member.guest_id[0]]]);
+        }
+        BusBus._sendone(target, "discuss.Thread/fold_state", {
+            foldStateCount: state_count,
+            id: member.channel_id[0],
+            model: "discuss.channel",
+            fold_state: state,
+        });
+    }
+
     /** @param {number[]} ids */
-    _to_store(store, fields) {
-        const kwargs = getKwArgs(arguments, "store", "fields");
+    _to_store(ids, store, fields, extra_fields) {
+        const kwargs = getKwArgs(arguments, "ids", "store", "fields", "extra_fields");
+        ids = kwargs.ids;
         fields = kwargs.fields;
-        store._add_record_fields(
-            this,
-            fields.filter(
-                (field) => !["message_unread_counter", "persona", "channel"].includes(field)
-            )
-        );
-        for (const member of this) {
-            const data = {};
-            if (fields.includes("message_unread_counter")) {
-                data.message_unread_counter = this._compute_message_unread_counter([member.id]);
-                data.message_unread_counter_bus_id = this.env["bus.bus"].lastBusNotificationId;
-            }
-            if (fields.includes("channel")) {
-                data.channel_id = mailDataHelpers.Store.one(
+        extra_fields = kwargs.extra_fields;
+
+        if (!fields) {
+            fields = {
+                channel: [],
+                create_date: true,
+                fetched_message_id: true,
+                persona: null,
+                seen_message_id: true,
+                last_interest_dt: true,
+                last_seen_dt: true,
+                new_message_separator: true,
+            };
+        }
+        if (extra_fields) {
+            fields = { ...fields, ...extra_fields };
+        }
+
+        /** @type {import("mock_models").MailGuest} */
+        const MailGuest = this.env["mail.guest"];
+        /** @type {import("mock_models").ResPartner} */
+        const ResPartner = this.env["res.partner"];
+
+        for (const member of this.browse(ids)) {
+            const [data] = this._read_format(
+                member.id,
+                Object.keys(fields).filter(
+                    (field) =>
+                        ![
+                            "channel",
+                            "fetched_message_id",
+                            "message_unread_counter",
+                            "seen_message_id",
+                            "persona",
+                        ].includes(field)
+                ),
+                false
+            );
+            if ("channel" in fields) {
+                data.thread = mailDataHelpers.Store.one(
                     this.env["discuss.channel"].browse(member.channel_id),
                     makeKwArgs({ as_thread: true, only_id: true })
                 );
             }
-            if (fields.includes("persona")) {
-                store._add_record_fields(this.browse(member.id), this._to_store_persona());
+            if ("persona" in fields) {
+                if (member.partner_id) {
+                    data.persona = mailDataHelpers.Store.one(
+                        ResPartner.browse(member.partner_id),
+                        makeKwArgs({
+                            fields: this._get_store_partner_fields([member.id], fields["persona"]),
+                        })
+                    );
+                }
+                if (member.guest_id) {
+                    data.persona = mailDataHelpers.Store.one(
+                        MailGuest.browse(member.guest_id),
+                        makeKwArgs({ fields: fields["persona"] })
+                    );
+                }
             }
-
-            if (Object.keys(data).length) {
-                store._add_record_fields(this.browse(member.id), data);
+            if ("fetched_message_id" in fields) {
+                data.fetched_message_id = mailDataHelpers.Store.one(
+                    this.env["mail.message"].browse(member.fetched_message_id),
+                    makeKwArgs({ only_id: true })
+                );
             }
+            if ("seen_message_id" in fields) {
+                data.seen_message_id = mailDataHelpers.Store.one(
+                    this.env["mail.message"].browse(member.seen_message_id),
+                    makeKwArgs({ only_id: true })
+                );
+            }
+            if ("message_unread_counter" in fields) {
+                data.message_unread_counter = this._compute_message_unread_counter([member.id]);
+                data.message_unread_counter_bus_id = this.env["bus.bus"].lastBusNotificationId;
+            }
+            store.add(this.browse(member.id), data);
         }
     }
 
-    _to_store_persona(fields) {
-        return [
-            mailDataHelpers.Store.attr(
-                "partner_id",
-                (m) =>
-                    mailDataHelpers.Store.one(
-                        this.env["res.partner"].browse(m.partner_id),
-                        makeKwArgs({
-                            fields: this._get_store_partner_fields(fields),
-                        })
-                    ),
-                makeKwArgs({
-                    predicate: (m) =>
-                        m.partner_id !== null && m.partner_id !== undefined && m.partner_id,
-                })
-            ),
-            mailDataHelpers.Store.attr(
-                "guest_id",
-                (m) =>
-                    mailDataHelpers.Store.one(
-                        this.env["mail.guest"].browse(m.guest_id),
-                        makeKwArgs({ fields })
-                    ),
-                makeKwArgs({
-                    predicate: (m) => m.guest_id !== null && m.guest_id !== undefined && m.guest_id,
-                })
-            ),
-        ];
-    }
-
-    get _to_store_defaults() {
-        return [
-            mailDataHelpers.Store.one("channel_id", makeKwArgs({ as_thread: true, only_id: true })),
-            "create_date",
-            "fetched_message_id",
-            "seen_message_id",
-            "last_interest_dt",
-            "last_seen_dt",
-            "new_message_separator",
-        ].concat(this._to_store_persona());
-    }
-
-    _get_store_partner_fields(fields) {
+    _get_store_partner_fields(ids, fields) {
         return fields;
     }
 
     /**
      * @param {number[]} ids
      * @param {number} last_message_id
+     * @param {boolean} [sync]
      */
-    _mark_as_read(ids, last_message_id) {
+    _mark_as_read(ids, last_message_id, sync) {
         const kwargs = getKwArgs(arguments, "ids", "last_message_id", "sync");
         ids = kwargs.ids;
         delete kwargs.ids;
         last_message_id = kwargs.last_message_id;
+        sync = kwargs.sync ?? false;
         const [member] = this.browse(ids);
         if (!member) {
             return;
@@ -169,7 +221,8 @@ export class DiscussChannelMember extends models.ServerModel {
         this._set_last_seen_message([member.id], last_message_id);
         this.env["discuss.channel.member"]._set_new_message_separator(
             [member.id],
-            last_message_id + 1
+            last_message_id + 1,
+            sync
         );
     }
 
@@ -197,6 +250,7 @@ export class DiscussChannelMember extends models.ServerModel {
         if (!member) {
             return;
         }
+        DiscussChannelMember._set_new_message_separator([member.id], message_id + 1);
         DiscussChannelMember.write([member.id], {
             fetched_message_id: message_id,
             seen_message_id: message_id,
@@ -216,14 +270,9 @@ export class DiscussChannelMember extends models.ServerModel {
                 "mail.record/insert",
                 new mailDataHelpers.Store(
                     DiscussChannelMember.browse(member.id),
-                    [
-                        mailDataHelpers.Store.one(
-                            "channel_id",
-                            makeKwArgs({ as_thread: true, only_id: true })
-                        ),
-
-                        "seen_message_id",
-                    ].concat(this._to_store_persona())
+                    makeKwArgs({
+                        fields: { channel: [], persona: ["name"], seen_message_id: true },
+                    })
                 ).get_result()
             );
         }
@@ -232,12 +281,14 @@ export class DiscussChannelMember extends models.ServerModel {
     /**
      * @param {number[]} ids
      * @param {number} message_id
+     * @param {boolean} sync
      */
-    _set_new_message_separator(ids, message_id) {
+    _set_new_message_separator(ids, message_id, sync) {
         const kwargs = getKwArgs(arguments, "ids", "message_id", "sync");
         ids = kwargs.ids;
         delete kwargs.ids;
         message_id = kwargs.message_id;
+        sync = kwargs.sync ?? false;
 
         /** @type {import("mock_models").DiscussChannelMember} */
         const DiscussChannelMember = this.env["discuss.channel.member"];
@@ -257,17 +308,16 @@ export class DiscussChannelMember extends models.ServerModel {
             "mail.record/insert",
             new mailDataHelpers.Store(
                 DiscussChannelMember.browse(member.id),
-                [
-                    mailDataHelpers.Store.one(
-                        "channel_id",
-                        makeKwArgs({ as_thread: true, only_id: true })
-                    ),
-
-                    "message_unread_counter",
-                    "new_message_separator",
-                ].concat(this._to_store_persona())
+                makeKwArgs({
+                    fields: {
+                        channel: [],
+                        persona: ["name"],
+                        message_unread_counter: true,
+                        new_message_separator: true,
+                    },
+                })
             )
-                .add("discuss.channel.member", { id: member.id })
+                .add("discuss.channel.member", { id: member.id, syncUnread: sync })
                 .get_result()
         );
     }

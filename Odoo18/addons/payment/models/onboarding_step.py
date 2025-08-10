@@ -3,7 +3,7 @@
 from odoo import api, models
 
 
-class OnboardingOnboardingStep(models.Model):
+class OnboardingStep(models.Model):
     _inherit = 'onboarding.onboarding.step'
 
     @api.model

@@ -1,6 +1,6 @@
 import { registry } from "@web/core/registry";
 import { Component } from "@odoo/owl";
-import { useTime } from "@point_of_sale/app/hooks/time_hook";
+import { useTime } from "@point_of_sale/app/utils/time_hook";
 import { useService } from "@web/core/utils/hooks";
 
 export class SaverScreen extends Component {
@@ -16,9 +16,4 @@ export class SaverScreen extends Component {
     }
 }
 
-registry.category("pos_pages").add("SaverScreen", {
-    name: "SaverScreen",
-    component: SaverScreen,
-    route: `/pos/ui/${odoo.pos_config_id}/saver`,
-    params: {},
-});
+registry.category("pos_screens").add("SaverScreen", SaverScreen);

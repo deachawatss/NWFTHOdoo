@@ -1,10 +1,11 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from datetime import date
 from dateutil.relativedelta import relativedelta
 from freezegun import freeze_time
 
-from odoo.exceptions import ValidationError, UserError
+from odoo.exceptions import UserError, ValidationError
 
 from .common import TestHrHolidaysCommon
 
@@ -19,7 +20,7 @@ class TestHrHolidaysCancelLeave(TestHrHolidaysCommon):
 
         cls.hr_leave_type = cls.env['hr.leave.type'].with_user(cls.user_hrmanager).create({
             'name': 'Time Off Type',
-            'requires_allocation': False,
+            'requires_allocation': 'no',
         })
         cls.holiday = cls.env['hr.leave'].with_context(mail_create_nolog=True, mail_notrack=True).with_user(cls.user_employee).create({
             'name': 'Time Off 1',
@@ -28,7 +29,7 @@ class TestHrHolidaysCancelLeave(TestHrHolidaysCommon):
             'request_date_from': leave_start_date,
             'request_date_to': leave_end_date,
         })
-        cls.holiday.with_user(cls.user_hrmanager).action_approve()
+        cls.holiday.with_user(cls.user_hrmanager).action_validate()
 
     @freeze_time('2018-02-05')  # useful to be able to cancel the validated time off
     def test_action_cancel_leave(self):
@@ -59,5 +60,5 @@ class TestHrHolidaysCancelLeave(TestHrHolidaysCommon):
         self.env['hr.holidays.cancel.leave'].with_user(self.user_employee).with_context(default_leave_id=self.holiday.id) \
             .new({'reason': 'Test remove holiday'}) \
             .action_cancel_leave()
-        with self.assertRaises(UserError, msg='Only a manager can modify a canceled leave.'):
+        with self.assertRaises(UserError, msg='The user should not be able to manually unarchive the leave.'):
             self.holiday.with_user(self.user_employee).write({'state': 'cancel'})

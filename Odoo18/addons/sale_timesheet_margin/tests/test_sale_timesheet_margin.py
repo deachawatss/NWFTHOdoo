@@ -10,7 +10,7 @@ from odoo.tests import tagged
 class TestSaleTimesheetMargin(TestCommonSaleTimesheet):
 
     def setUp(self):
-        super().setUp()
+        super(TestSaleTimesheetMargin, self).setUp()
         uom_day_id = self.ref('uom.product_uom_day')
         self.uom_day = self.env['uom.uom'].browse(uom_day_id)
         self.product_1 = self.env['product.product'].create({
@@ -19,6 +19,7 @@ class TestSaleTimesheetMargin(TestCommonSaleTimesheet):
             'type': 'service',
             'invoice_policy': 'order',
             'uom_id': uom_day_id,
+            'uom_po_id': uom_day_id,
             'default_code': 'SERV-ORDERED-DAY',
             'service_type': 'timesheet',
             'service_tracking': 'task_in_project',
@@ -35,7 +36,7 @@ class TestSaleTimesheetMargin(TestCommonSaleTimesheet):
                 Command.create({
                     'product_id': self.product_1.id,
                     'price_unit': 1.0,
-                    'product_uom_id': self.uom_day.id,
+                    'product_uom': self.uom_day.id,
                     'product_uom_qty': 1.0,
             })],
             'partner_id': self.partner_b.id,
@@ -69,6 +70,7 @@ class TestSaleTimesheetMargin(TestCommonSaleTimesheet):
         })
         self.product_1.write({
             'uom_id': self.ref('uom.product_uom_unit'),
+            'uom_po_id': self.ref('uom.product_uom_unit'),
             'service_type': 'timesheet',
             'service_policy': 'ordered_prepaid',
             'service_tracking': 'task_global_project',
@@ -81,6 +83,7 @@ class TestSaleTimesheetMargin(TestCommonSaleTimesheet):
                 Command.create({
                     'product_id': self.product_1.id,
                     'price_unit': 1.0,
+                    'product_uom': self.ref('uom.product_uom_unit'),
                     'product_uom_qty': 1.0,
             })],
             'partner_id': self.partner_b.id,

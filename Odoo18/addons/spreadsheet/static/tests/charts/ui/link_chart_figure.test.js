@@ -52,21 +52,21 @@ beforeEach(() => {
         1: {
             id: 1,
             name: "test menu 1",
-            xmlid: "spreadsheet.test.menu",
+            xmlid: "documents_spreadsheet.test.menu",
             appID: 1,
             actionID: "menuAction",
         },
         2: {
             id: 2,
             name: "test menu 2",
-            xmlid: "spreadsheet.test.menu2",
+            xmlid: "documents_spreadsheet.test.menu2",
             appID: 1,
             actionID: "menuAction2",
         },
         3: {
             id: 3,
             name: "test menu 2",
-            xmlid: "spreadsheet.test.menu_without_action",
+            xmlid: "documents_spreadsheet.test.menu_without_action",
             appID: 1,
         },
     };
@@ -92,8 +92,8 @@ beforeEach(() => {
         ...getBasicData(),
         "ir.ui.menu": {
             records: [
-                { id: 1, name: "test menu 1", action: "action1", group_ids: [10] },
-                { id: 2, name: "test menu 2", action: "action2", group_ids: [10] },
+                { id: 1, name: "test menu 1", action: "action1", groups_id: [10] },
+                { id: 2, name: "test menu 2", action: "action2", groups_id: [10] },
             ],
         },
         "res.group": { records: [{ id: 10, name: "test group" }] },
@@ -106,7 +106,7 @@ beforeEach(() => {
 });
 
 test("icon external link isn't on the chart when its not linked to an odoo menu", async function () {
-    const { model } = await createModelWithDataSource({
+    const model = await createModelWithDataSource({
         serverData,
     });
     const fixture = await mountSpreadsheet(model);
@@ -120,7 +120,7 @@ test("icon external link isn't on the chart when its not linked to an odoo menu"
 });
 
 test("icon external link is on the chart when its linked to an odoo menu", async function () {
-    const { model } = await createModelWithDataSource({
+    const model = await createModelWithDataSource({
         serverData,
     });
     await mountSpreadsheet(model);
@@ -137,7 +137,7 @@ test("icon external link is on the chart when its linked to an odoo menu", async
 });
 
 test("icon external link is not on the chart when its linked to a wrong odoo menu", async function () {
-    const { model } = await createModelWithDataSource({
+    const model = await createModelWithDataSource({
         serverData,
     });
     await mountSpreadsheet(model);
@@ -153,7 +153,7 @@ test("icon external link is not on the chart when its linked to a wrong odoo men
 });
 
 test("icon external link isn't on the chart in dashboard mode", async function () {
-    const { model } = await createModelWithDataSource({
+    const model = await createModelWithDataSource({
         serverData,
     });
     await mountSpreadsheet(model);
@@ -173,7 +173,7 @@ test("click on icon external link on chart redirect to the odoo menu", async fun
     const doActionStep = "doAction";
     mockActionService(doActionStep);
 
-    const { model } = await createModelWithDataSource({
+    const model = await createModelWithDataSource({
         serverData,
     });
     const fixture = await mountSpreadsheet(model);
@@ -192,9 +192,10 @@ test("click on icon external link on chart redirect to the odoo menu", async fun
     expect.verifySteps([doActionStep]);
 });
 
-test("can use menus xmlIds instead of menu ids", async function () {
-    mockActionService("doAction");
-    const { model } = await createModelWithDataSource({
+test("Click on chart in dashboard mode redirect to the odoo menu", async function () {
+    const doActionStep = "doAction";
+    mockActionService(doActionStep);
+    const model = await createModelWithDataSource({
         serverData,
     });
     const fixture = await mountSpreadsheet(model);
@@ -202,7 +203,36 @@ test("can use menus xmlIds instead of menu ids", async function () {
     createBasicChart(model, chartId);
     model.dispatch("LINK_ODOO_MENU_TO_CHART", {
         chartId,
-        odooMenuId: "spreadsheet.test.menu2",
+        odooMenuId: 2,
+    });
+    const chartMenu = model.getters.getChartOdooMenu(chartId);
+    expect(chartMenu.id).toBe(2, { message: "Odoo menu is linked to chart" });
+    await animationFrame();
+
+    await click(fixture.querySelector(".o-chart-container"));
+    await animationFrame();
+    // Clicking on a chart while not dashboard mode do nothing
+    expect.verifySteps([]);
+
+    model.updateMode("dashboard");
+    await animationFrame();
+    await click(fixture.querySelector(".o-chart-container"));
+    await animationFrame();
+    // Clicking on a chart while on dashboard mode redirect to the odoo menu
+    expect.verifySteps([doActionStep]);
+});
+
+test("can use menus xmlIds instead of menu ids", async function () {
+    mockActionService("doAction");
+    const model = await createModelWithDataSource({
+        serverData,
+    });
+    const fixture = await mountSpreadsheet(model);
+
+    createBasicChart(model, chartId);
+    model.dispatch("LINK_ODOO_MENU_TO_CHART", {
+        chartId,
+        odooMenuId: "documents_spreadsheet.test.menu2",
     });
     await animationFrame();
 
@@ -220,7 +250,7 @@ test("Trying to open a menu without an action sends a notification to the user",
         },
     });
 
-    const { model } = await createModelWithDataSource({
+    const model = await createModelWithDataSource({
         serverData,
     });
     const fixture = await mountSpreadsheet(model);
@@ -228,7 +258,7 @@ test("Trying to open a menu without an action sends a notification to the user",
     createBasicChart(model, chartId);
     model.dispatch("LINK_ODOO_MENU_TO_CHART", {
         chartId,
-        odooMenuId: "spreadsheet.test.menu_without_action",
+        odooMenuId: "documents_spreadsheet.test.menu_without_action",
     });
     await animationFrame();
 

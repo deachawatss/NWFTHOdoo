@@ -31,16 +31,6 @@ ENCRYPTION_HEADER_SIZE = 16 + 4 + 1 + (1 + 32 + 32)
 # 1 padding delimiter (continue or final block) + 16-bytes in-message authentication tag from AEAD_AES_128_GCM
 ENCRYPTION_BLOCK_OVERHEAD = 1 + 16
 
-class PUSH_NOTIFICATION_TYPE:
-    CALL = "CALL"
-    CANCEL = "CANCEL"
-
-
-class PUSH_NOTIFICATION_ACTION:
-    ACCEPT = "ACCEPT"
-    DECLINE = "DECLINE"
-
-
 _logger = logger.getLogger(__name__)
 
 

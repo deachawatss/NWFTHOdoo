@@ -4,7 +4,7 @@
         <field name="name">VAT Return</field>
         <field name="root_report_id" ref="account.generic_tax_report"/>
         <field name="country_id" ref="base.om"/>
-        <field name="allow_foreign_vat" eval="1"/>
+        <field name="filter_fiscal_position" eval="True"/>
         <field name="availability_condition">country</field>
         <field name="column_ids">
             <record id="l10n_om_tax_report_base" model="account.report.column">

@@ -22,6 +22,7 @@ class MaintenanceStage(models.Model):
 
 class MaintenanceEquipmentCategory(models.Model):
     _name = 'maintenance.equipment.category'
+    _inherit = ['mail.alias.mixin', 'mail.thread']
     _description = 'Maintenance Equipment Category'
 
     @api.depends('equipment_ids')
@@ -35,7 +36,7 @@ class MaintenanceEquipmentCategory(models.Model):
     name = fields.Char('Category Name', required=True, translate=True)
     company_id = fields.Many2one('res.company', string='Company',
         default=lambda self: self.env.company)
-    technician_user_id = fields.Many2one('res.users', 'Responsible', default=lambda self: self.env.uid)
+    technician_user_id = fields.Many2one('res.users', 'Responsible', tracking=True, default=lambda self: self.env.uid)
     color = fields.Integer('Color Index')
     note = fields.Html('Comments', translate=True)
     equipment_ids = fields.One2many('maintenance.equipment', 'category_id', string='Equipment', copy=False)
@@ -43,6 +44,8 @@ class MaintenanceEquipmentCategory(models.Model):
     maintenance_ids = fields.One2many('maintenance.request', 'category_id', copy=False)
     maintenance_count = fields.Integer(string="Maintenance Count", compute='_compute_maintenance_count')
     maintenance_open_count = fields.Integer(string="Current Maintenance", compute='_compute_maintenance_count')
+    alias_id = fields.Many2one(help="Email alias for this equipment category. New emails will automatically "
+        "create a new equipment under this category.")
     fold = fields.Boolean(string='Folded in Maintenance Pipe', compute='_compute_fold', store=True)
     equipment_properties_definition = fields.PropertiesDefinition('Equipment Properties')
 
@@ -63,7 +66,15 @@ class MaintenanceEquipmentCategory(models.Model):
     def _unlink_except_contains_maintenance_requests(self):
         for category in self:
             if category.equipment_ids or category.maintenance_ids:
-                raise UserError(_("You can’t delete an equipment category if some equipment or maintenance requests are linked to it."))
+                raise UserError(_("You cannot delete an equipment category containing equipment or maintenance requests."))
+
+    def _alias_get_creation_values(self):
+        values = super(MaintenanceEquipmentCategory, self)._alias_get_creation_values()
+        values['alias_model_id'] = self.env['ir.model']._get('maintenance.request').id
+        if self.id:
+            values['alias_defaults'] = defaults = ast.literal_eval(self.alias_defaults or "{}")
+            defaults['category_id'] = self.id
+        return values
 
 
 class MaintenanceMixin(models.AbstractModel):
@@ -74,7 +85,7 @@ class MaintenanceMixin(models.AbstractModel):
     company_id = fields.Many2one('res.company', string='Company',
         default=lambda self: self.env.company)
     effective_date = fields.Date('Effective Date', default=fields.Date.context_today, required=True, help="This date will be used to compute the Mean Time Between Failure.")
-    maintenance_team_id = fields.Many2one('maintenance.team', string='Maintenance Team', compute='_compute_maintenance_team_id', store=True, readonly=False, check_company=True, index='btree_not_null')
+    maintenance_team_id = fields.Many2one('maintenance.team', string='Maintenance Team', compute='_compute_maintenance_team_id', store=True, readonly=False, check_company=True)
     technician_user_id = fields.Many2one('res.users', string='Technician', tracking=True)
     maintenance_ids = fields.One2many('maintenance.request')  # needs to be extended in order to specify inverse_name !
     maintenance_count = fields.Integer(compute='_compute_maintenance_count', string="Maintenance Count", store=True)
@@ -129,11 +140,12 @@ class MaintenanceEquipment(models.Model):
 
     name = fields.Char('Equipment Name', required=True, translate=True)
     active = fields.Boolean(default=True)
-    owner_user_id = fields.Many2one('res.users', string='Owner', tracking=True, index='btree_not_null')
+    owner_user_id = fields.Many2one('res.users', string='Owner', tracking=True)
     category_id = fields.Many2one('maintenance.equipment.category', string='Equipment Category',
-                                  tracking=True, group_expand='_read_group_category_ids', index='btree_not_null')
+                                  tracking=True, group_expand='_read_group_category_ids')
     partner_id = fields.Many2one('res.partner', string='Vendor', check_company=True)
     partner_ref = fields.Char('Vendor Reference')
+    location = fields.Char('Location')
     model = fields.Char('Model')
     serial_no = fields.Char('Serial Number', copy=False)
     assign_date = fields.Date('Assigned Date', tracking=True)
@@ -144,15 +156,29 @@ class MaintenanceEquipment(models.Model):
     scrap_date = fields.Date('Scrap Date')
     maintenance_ids = fields.One2many('maintenance.request', 'equipment_id')
     equipment_properties = fields.Properties('Properties', definition='category_id.equipment_properties_definition', copy=True)
+    match_serial = fields.Boolean(compute='_compute_match_serial')
+
+    @api.depends('serial_no')
+    def _compute_match_serial(self):
+        if 'stock.lot' not in self.env or not self.env['stock.lot'].has_access('read'):
+            self.match_serial = False
+            return
+        matched_serial_data = self.env['stock.lot']._read_group(
+            [('name', 'in', self.mapped('serial_no'))],
+            ['name'],
+            ['__count'],
+        )
+        matched_serial_count = dict(matched_serial_data)
+        for equipment in self:
+            equipment.match_serial = matched_serial_count.get(equipment.serial_no, 0)
 
     @api.onchange('category_id')
     def _onchange_category_id(self):
         self.technician_user_id = self.category_id.technician_user_id
 
-    _serial_no = models.Constraint(
-        'unique(serial_no)',
-        'Another asset already exists with this serial number!',
-    )
+    _sql_constraints = [
+        ('serial_no', 'unique(serial_no)', "Another asset already exists with this serial number!"),
+    ]
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -177,6 +203,15 @@ class MaintenanceEquipment(models.Model):
         category_ids = categories.sudo()._search(search_domain, order=categories._order)
         return categories.browse(category_ids)
 
+    def action_open_matched_serial(self):
+        self.ensure_one()
+        action = self.env.ref('stock.action_production_lot_form', raise_if_not_found=False)
+        if not action:
+            return True
+        action_dict = action._get_action_dict()
+        action_dict['context'] = {'search_default_name': self.serial_no}
+        return action_dict
+
 
 class MaintenanceRequest(models.Model):
     _name = 'maintenance.request'
@@ -185,6 +220,7 @@ class MaintenanceRequest(models.Model):
     _order = "id desc"
     _check_company_auto = True
 
+    @api.returns('self')
     def _default_stage(self):
         return self.env['maintenance.stage'].search([], limit=1)
 
@@ -211,7 +247,7 @@ class MaintenanceRequest(models.Model):
     request_date = fields.Date('Request Date', tracking=True, default=fields.Date.context_today,
                                help="Date requested for the maintenance to happen")
     owner_user_id = fields.Many2one('res.users', string='Created by User', default=lambda s: s.env.uid)
-    category_id = fields.Many2one('maintenance.equipment.category', related='equipment_id.category_id', string='Category', store=True, readonly=True, index='btree_not_null')
+    category_id = fields.Many2one('maintenance.equipment.category', related='equipment_id.category_id', string='Category', store=True, readonly=True)
     equipment_id = fields.Many2one('maintenance.equipment', string='Equipment',
                                    ondelete='restrict', index=True, check_company=True)
     user_id = fields.Many2one('res.users', string='Technician', compute='_compute_user_id', store=True, readonly=False, tracking=True)
@@ -226,7 +262,7 @@ class MaintenanceRequest(models.Model):
     archive = fields.Boolean(default=False, help="Set archive to true to hide the maintenance request without deleting it.")
     maintenance_type = fields.Selection([('corrective', 'Corrective'), ('preventive', 'Preventive')], string='Maintenance Type', default="corrective")
     schedule_date = fields.Datetime('Scheduled Date', help="Date the maintenance team plans the maintenance.  It should not differ much from the Request Date. ")
-    maintenance_team_id = fields.Many2one('maintenance.team', string='Team', required=True, index=True, default=_get_default_team_id,
+    maintenance_team_id = fields.Many2one('maintenance.team', string='Team', required=True, default=_get_default_team_id,
                                           compute='_compute_maintenance_team_id', store=True, readonly=False, check_company=True)
     duration = fields.Float(help="Duration in hours.")
     done = fields.Boolean(related='stage_id.done')
@@ -264,7 +300,7 @@ class MaintenanceRequest(models.Model):
     def _check_repeat_interval(self):
         for record in self:
             if record.repeat_interval < 1:
-                raise ValidationError(self.env._("The repeat interval cannot be less than 1."))
+                raise ValidationError("Repeat Interval cannot be less than 1.")
 
     @api.depends('company_id', 'equipment_id')
     def _compute_maintenance_team_id(self):
@@ -296,7 +332,7 @@ class MaintenanceRequest(models.Model):
             if request.owner_user_id or request.user_id:
                 request._add_followers()
             if request.equipment_id and not request.maintenance_team_id:
-                request.maintenance_team_id = request.maintenance_team_id
+                request.maintenance_team_id = request.equipment_id.maintenance_team_id
             if request.close_date and not request.stage_id.done:
                 request.close_date = False
             if not request.close_date and request.stage_id.done:
@@ -376,7 +412,6 @@ class MaintenanceRequest(models.Model):
 
 class MaintenanceTeam(models.Model):
     _name = 'maintenance.team'
-    _inherit = ['mail.alias.mixin', 'mail.thread']
     _description = 'Maintenance Teams'
 
     name = fields.Char('Team Name', required=True, translate=True)
@@ -397,7 +432,6 @@ class MaintenanceTeam(models.Model):
     todo_request_count_high_priority = fields.Integer(string="Number of Requests in High Priority", compute='_compute_todo_requests')
     todo_request_count_block = fields.Integer(string="Number of Requests Blocked", compute='_compute_todo_requests')
     todo_request_count_unscheduled = fields.Integer(string="Number of Requests Unscheduled", compute='_compute_todo_requests')
-    alias_id = fields.Many2one(help="Email alias for this maintenance team.")
 
     @api.depends('request_ids.stage_id.done')
     def _compute_todo_requests(self):
@@ -418,11 +452,3 @@ class MaintenanceTeam(models.Model):
     def _compute_equipment(self):
         for team in self:
             team.equipment_count = len(team.equipment_ids)
-
-    def _alias_get_creation_values(self):
-        values = super()._alias_get_creation_values()
-        values['alias_model_id'] = self.env['ir.model']._get('maintenance.request').id
-        if self.id:
-            values['alias_defaults'] = defaults = ast.literal_eval(self.alias_defaults or "{}")
-            defaults['maintenance_team_id'] = self.id
-        return values

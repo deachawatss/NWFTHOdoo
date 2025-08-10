@@ -4,7 +4,6 @@
 from operator import itemgetter
 from odoo import api, models
 
-
 class IrUiView(models.Model):
     _inherit = 'ir.ui.view'
 
@@ -13,7 +12,7 @@ class IrUiView(models.Model):
         # views from imported modules should be considered as custom views
         result = super(IrUiView, self)._validate_custom_views(model)
 
-        self.env.cr.execute("""
+        self._cr.execute("""
             SELECT max(v.id)
                FROM ir_ui_view v
           LEFT JOIN ir_model_data md ON (md.model = 'ir.ui.view' AND md.res_id = v.id)
@@ -24,6 +23,6 @@ class IrUiView(models.Model):
            GROUP BY coalesce(v.inherit_id, v.id)
         """, [model])
 
-        ids = (row[0] for row in self.env.cr.fetchall())
+        ids = (row[0] for row in self._cr.fetchall())
         views = self.with_context(load_all_views=True).browse(ids)
         return views._check_xml() and result

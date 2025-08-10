@@ -42,7 +42,12 @@ export class MailCannedResponse extends models.ServerModel {
         }
     }
 
-    get _to_store_defaults() {
-        return ["source", "substitution"];
+    _to_store(ids, store, fields) {
+        const kwargs = getKwArgs(arguments, "ids", "store", "fields");
+        fields = kwargs.fields;
+        if (!fields) {
+            fields = ["source", "substitution"];
+        }
+        store.add(this._name, this._read_format(ids, fields, false));
     }
 }

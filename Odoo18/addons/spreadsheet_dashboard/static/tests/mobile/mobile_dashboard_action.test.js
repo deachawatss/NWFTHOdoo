@@ -11,12 +11,70 @@ import { contains } from "@web/../tests/web_test_helpers";
 describe.current.tags("mobile");
 defineSpreadsheetDashboardModels();
 
+test("is empty with no figures", async () => {
+    await createSpreadsheetDashboard();
+    expect(".o_mobile_dashboard").toHaveCount(1);
+    expect(".o_mobile_dashboard").toHaveText(
+        "Dashboard CRM 1\n" +
+            "Only chart figures are displayed in small screens but this dashboard doesn't contain any"
+    );
+});
+
 test("with no available dashboard", async () => {
     const serverData = getDashboardServerData();
     serverData.models["spreadsheet.dashboard"].records = [];
     serverData.models["spreadsheet.dashboard.group"].records = [];
     await createSpreadsheetDashboard({ serverData });
-    expect(queryAllTexts`.o_mobile_dashboard`).toEqual(["No available dashboard"]);
+    expect(".o_mobile_dashboard").toHaveText("No available dashboard");
+});
+
+test("displays figures in first sheet", async () => {
+    const figure = {
+        tag: "chart",
+        height: 500,
+        width: 500,
+        x: 100,
+        y: 100,
+        data: {
+            type: "line",
+            dataSetsHaveTitle: false,
+            dataSets: [{ dataRange: "A1" }],
+            legendPosition: "top",
+            verticalAxisPosition: "left",
+            title: { text: "" },
+        },
+    };
+    const spreadsheetData = {
+        sheets: [
+            {
+                id: "sheet1",
+                figures: [{ ...figure, id: "figure1" }],
+            },
+            {
+                id: "sheet2",
+                figures: [{ ...figure, id: "figure2" }],
+            },
+        ],
+    };
+    const serverData = getDashboardServerData();
+    serverData.models["spreadsheet.dashboard.group"].records = [
+        {
+            published_dashboard_ids: [789],
+            id: 1,
+            name: "Chart",
+        },
+    ];
+    serverData.models["spreadsheet.dashboard"].records = [
+        {
+            id: 789,
+            name: "Spreadsheet with chart figure",
+            json_data: JSON.stringify(spreadsheetData),
+            spreadsheet_data: JSON.stringify(spreadsheetData),
+            dashboard_group_id: 1,
+        },
+    ];
+    await createSpreadsheetDashboard({ serverData });
+    expect(".o-chart-container").toHaveCount(1);
 });
 
 test("double clicking on a figure doesn't open the side panel", async () => {
@@ -24,12 +82,8 @@ test("double clicking on a figure doesn't open the side panel", async () => {
         tag: "chart",
         height: 500,
         width: 500,
-        col: 0,
-        row: 0,
-        offset: {
-            x: 100,
-            y: 100,
-        },
+        x: 100,
+        y: 100,
         data: {
             type: "line",
             dataSetsHaveTitle: false,

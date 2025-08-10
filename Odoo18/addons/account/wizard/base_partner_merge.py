@@ -1,7 +1,7 @@
 from odoo import models
 
 
-class BasePartnerMergeAutomaticWizard(models.TransientModel):
+class MergePartnerAutomatic(models.TransientModel):
     _inherit = 'base.partner.merge.automatic.wizard'
 
     def _get_summable_fields(self):

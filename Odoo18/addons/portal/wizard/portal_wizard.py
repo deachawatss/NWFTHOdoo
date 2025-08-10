@@ -113,7 +113,7 @@ class PortalWizardUser(models.TransientModel):
             user = portal_wizard_user.partner_id.with_context(active_test=False).user_ids
             portal_wizard_user.user_id = user[0] if user else False
 
-    @api.depends('user_id', 'user_id.group_ids')
+    @api.depends('user_id', 'user_id.groups_id')
     def _compute_group_details(self):
         for portal_wizard_user in self:
             user = portal_wizard_user.user_id
@@ -154,7 +154,7 @@ class PortalWizardUser(models.TransientModel):
             user_sudo = self.sudo().with_company(company.id)._create_user()
 
         if not user_sudo.active or not self.is_portal:
-            user_sudo.write({'active': True, 'group_ids': [(4, group_portal.id), (3, group_public.id)]})
+            user_sudo.write({'active': True, 'groups_id': [(4, group_portal.id), (3, group_public.id)]})
             # prepare for the signup process
             user_sudo.partner_id.signup_prepare()
 
@@ -183,7 +183,7 @@ class PortalWizardUser(models.TransientModel):
 
         # remove the user from the portal group
         if user_sudo and user_sudo._is_portal():
-            user_sudo.write({'group_ids': [(3, group_portal.id), (4, group_public.id)], 'active': False})
+            user_sudo.write({'groups_id': [(3, group_portal.id), (4, group_public.id)], 'active': False})
 
         return self.action_refresh_modal()
 
@@ -221,15 +221,18 @@ class PortalWizardUser(models.TransientModel):
         """ send notification email to a new portal user """
         self.ensure_one()
 
-        template = self.env.ref('auth_signup.portal_set_password_email')
+        # determine subject and body in the portal user's language
+        template = self.env.ref('portal.mail_template_data_portal_welcome')
         if not template:
             raise UserError(_('The template "Portal: new user" not found for sending email to the portal user.'))
 
         lang = self.user_id.sudo().lang
         partner = self.user_id.sudo().partner_id
+
+        portal_url = partner.with_context(signup_force_type_in_url='', lang=lang)._get_signup_url_for_action()[partner.id]
         partner.signup_prepare()
 
-        template.with_context(dbname=self.env.cr.dbname, lang=lang, welcome_message=self.wizard_id.welcome_message, medium='portalinvite').send_mail(self.user_id.id, force_send=True)
+        template.with_context(dbname=self._cr.dbname, portal_url=portal_url, lang=lang).send_mail(self.id, force_send=True)
 
         return True
 

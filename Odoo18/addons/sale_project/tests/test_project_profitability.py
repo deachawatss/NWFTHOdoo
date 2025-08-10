@@ -15,7 +15,6 @@ class TestProjectProfitabilityCommon(Common):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.env.user.group_ids += cls.env.ref('sales_team.group_sale_manager')
         uom_unit_id = cls.env.ref('uom.product_uom_unit').id
 
         # Create material product
@@ -26,6 +25,7 @@ class TestProjectProfitabilityCommon(Common):
             'list_price': 10,
             'invoice_policy': 'order',
             'uom_id': uom_unit_id,
+            'uom_po_id': uom_unit_id,
         })
 
         # Create service products
@@ -38,6 +38,7 @@ class TestProjectProfitabilityCommon(Common):
             'invoice_policy': 'delivery',
             'service_type': 'manual',
             'uom_id': cls.uom_hour.id,
+            'uom_po_id': cls.uom_hour.id,
             'default_code': 'SERV-ORDERED2',
             'service_tracking': 'task_global_project',
             'project_id': cls.project.id,
@@ -149,6 +150,7 @@ class TestSaleProjectProfitability(TestProjectProfitabilityCommon, TestSaleCommo
             'invoice_policy': 'delivery',
             'service_type': 'manual',
             'uom_id': self.uom_hour.id,
+            'uom_po_id': self.uom_hour.id,
             'default_code': 'SERV-ORDERED2',
             'service_tracking': 'task_global_project',
             'project_id': self.project.id,

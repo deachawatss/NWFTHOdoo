@@ -19,13 +19,10 @@ export class LocalOverlayContainer extends MainComponentsContainer {
 
     setup() {
         const overlayComponents = registry.category(this.props.identifier);
-        // todo: remove this somehow
-        if (!overlayComponents.validationSchema) {
-            overlayComponents.addValidation({
-                Component: { validate: (c) => c.prototype instanceof Component },
-                props: { type: Object, optional: true },
-            });
-        }
+        overlayComponents.addValidation({
+            Component: { validate: (c) => c.prototype instanceof Component },
+            props: { type: Object, optional: true },
+        });
         this.Components = useRegistry(overlayComponents);
         useForwardRefToParent("localOverlay");
     }

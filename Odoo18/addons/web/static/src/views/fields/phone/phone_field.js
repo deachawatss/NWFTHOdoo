@@ -23,17 +23,9 @@ export class PhoneField extends Component {
 export const phoneField = {
     component: PhoneField,
     displayName: _t("Phone"),
-    supportedOptions: [
-        {
-            label: _t("Dynamic Placeholder"),
-            name: "placeholder_field",
-            type: "field",
-            availableTypes: ["char"],
-        },
-    ],
     supportedTypes: ["char"],
-    extractProps: ({ placeholder }) => ({
-        placeholder,
+    extractProps: ({ attrs }) => ({
+        placeholder: attrs.placeholder,
     }),
 };
 

@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { MockServer } from "@web/../tests/helpers/mock_server";
 import testUtils from "@web/../tests/legacy_tests/helpers/test_utils";
 import { patch } from "@web/core/utils/patch";
@@ -52,7 +54,7 @@ const SNIPPETS_TEMPLATE = `
                     <div class="row">
                         <div class="col-lg-10 offset-lg-1 pt32 pb32">
                             <h2>Title</h2>
-                            <p class="lead">Content</p>
+                            <p class="lead o_default_snippet_text">Content</p>
                         </div>
                     </div>
                 </div>

@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import api, fields, models
+from odoo import api, fields, models, _
+from odoo.exceptions import AccessError
 
 
-class SlideChannel(models.Model):
+class Channel(models.Model):
     _inherit = 'slide.channel'
 
     def _get_default_product_id(self):
@@ -16,16 +17,15 @@ class SlideChannel(models.Model):
         ('payment', 'On payment')
     ], ondelete={'payment': lambda recs: recs.write({'enroll': 'invite'})})
     product_id = fields.Many2one('product.product', 'Product', domain=[('service_tracking', '=', 'course')],
-                                 index='btree_not_null', default=_get_default_product_id)
+                                 default=_get_default_product_id)
     product_sale_revenues = fields.Monetary(
         string='Total revenues', compute='_compute_product_sale_revenues',
         groups="sales_team.group_sale_salesman")
     currency_id = fields.Many2one(related='product_id.currency_id')
 
-    _product_id_check = models.Constraint(
-        "CHECK( enroll!='payment' OR product_id IS NOT NULL )",
-        'Product is required for on payment channels.',
-    )
+    _sql_constraints = [
+        ('product_id_check', "CHECK( enroll!='payment' OR product_id IS NOT NULL )", "Product is required for on payment channels.")
+    ]
 
     @api.depends('product_id')
     def _compute_product_sale_revenues(self):
@@ -42,12 +42,12 @@ class SlideChannel(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        channels = super().create(vals_list)
+        channels = super(Channel, self).create(vals_list)
         channels.filtered(lambda channel: channel.enroll == 'payment')._synchronize_product_publish()
         return channels
 
     def write(self, vals):
-        res = super().write(vals)
+        res = super(Channel, self).write(vals)
         if 'is_published' in vals:
             self.filtered(lambda channel: channel.enroll == 'payment')._synchronize_product_publish()
         return res
@@ -75,3 +75,15 @@ class SlideChannel(models.Model):
         action = self.env["ir.actions.actions"]._for_xml_id("website_sale_slides.sale_report_action_slides")
         action['domain'] = [('product_id', 'in', self.product_id.ids)]
         return action
+
+    def _filter_add_members(self, target_partners, raise_on_access=False):
+        """ Overridden to add 'payment' channels to the filtered channels. People
+        that can write on payment-based channels can add members. """
+        result = super(Channel, self)._filter_add_members(target_partners, raise_on_access=raise_on_access)
+        on_payment = self.filtered(lambda channel: channel.enroll == 'payment')
+        if on_payment:
+            if on_payment.has_access('write'):
+                result |= on_payment
+            elif raise_on_access:
+                raise AccessError(_('You are not allowed to add members to this course. Please contact the course responsible or an administrator.'))
+        return result

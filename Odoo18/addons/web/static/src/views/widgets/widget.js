@@ -130,6 +130,7 @@ export class Widget extends Component {
                 ? this.widget.extractProps(widgetInfo, dynamicInfo)
                 : {};
         }
+
         return {
             record,
             readonly: !record.isInEdition || readonlyFromModifiers || false,

@@ -25,7 +25,7 @@ registerWebsitePreviewTour("carousel_content_removal", {
     content: "Select the active carousel item.",
     run: "click",
 }, {
-    trigger: ".overlay .oe_snippet_remove",
+    trigger: ":iframe .oe_overlay.oe_active .oe_snippet_remove",
     content: "Remove the active carousel item.",
     run: "click",
 }, {
@@ -42,7 +42,7 @@ registerWebsitePreviewTour("carousel_content_removal", {
     content: "Select the blockquote.",
     run: "click",
 }, {
-    trigger: ".overlay .oe_snippet_remove",
+    trigger: ":iframe .oe_overlay.oe_active .oe_snippet_remove",
     content: "Remove the blockquote from the carousel item.",
     run: "click",
 }, {
@@ -75,13 +75,13 @@ registerWebsitePreviewTour(
         ...insertSnippet({ id: "s_carousel", name: "Carousel", groupName: "Intro" }),
         ...clickOnSnippet(".carousel .carousel-item.active"),
         // Slide to the right.
-        changeOption("Slide (1/3)", "[aria-label='Move Forward']"),
+        changeOption("CarouselItem", 'we-button[data-switch-to-slide="right"]'),
         checkSlides(3, 2),
         // Add a slide (with the "CarouselItem" option).
-        changeOption("Slide (2/3)", "button[aria-label='Add Slide']"),
+        changeOption("CarouselItem", "we-button[data-add-slide-item]"),
         checkSlides(4, 3),
         // Remove a slide.
-        changeOption("Slide (3/4)", "button[aria-label='Remove Slide']"),
+        changeOption("CarouselItem", "we-button[data-remove-slide]"),
         checkSlides(3, 2),
         {
             trigger: ":iframe .carousel .carousel-control-prev",
@@ -90,51 +90,50 @@ registerWebsitePreviewTour(
         },
         checkSlides(3, 1),
         // Add a slide (with the "Carousel" option).
-        changeOption("Carousel", "[data-action-id='addSlide']"),
+        changeOption("Carousel", "we-button[data-add-slide]"),
         checkSlides(4, 2),
         {
             content: "Check if the slide indicator was correctly updated",
-            trigger: ".options-container span:contains(' (2/4)')",
+            trigger: "we-customizeblock-options span:contains(' (2/4)')",
         },
         // Check if we can still remove a slide.
-        changeOption("Slide (2/4)", "button[aria-label='Remove Slide']"),
+        changeOption("CarouselItem", "we-button[data-remove-slide]"),
         checkSlides(3, 1),
         // Slide to the left.
-        changeOption("Slide (1/3)", "[aria-label='Move Backward']"),
+        changeOption("CarouselItem", 'we-button[data-switch-to-slide="left"]'),
         checkSlides(3, 3),
         // Reorder the slides and make it the second one.
-        changeOption("Slide (3/3)", "[data-action-value='prev']"),
+        changeOption("GalleryElement", 'we-button[data-position="prev"]'),
         checkSlides(3, 2),
+        // Ensure quickly adding/removing slides doesn’t give a traceback
+        // (Includes delays to better simulate real user interactions and
+        // expose potential race conditions.)
+        {
+            content: "Add a slide",
+            trigger: ".snippet-option-CarouselItem .o_we_bg_success",
+            async run(helpers) {
+                helpers.click();
+                await delay(360);
+            },
+        },
+        {
+            content: "Remove a slide",
+            trigger: ".snippet-option-CarouselItem .o_we_bg_danger",
+            async run(helpers) {
+                helpers.click();
+                await delay(360);
+            },
+        },
+        {
+            content: "Add a slide",
+            trigger: ".snippet-option-CarouselItem .o_we_bg_success",
+            async run(helpers) {
+                helpers.click();
+                await delay(360);
+            },
+        },
         ...clickOnSave(),
         // Check that saving always sets the first slide as active.
-        checkSlides(3, 1),
+        checkSlides(4, 1),
     ]
 );
-
-registerWebsitePreviewTour("snippet_carousel_autoplay", {
-    url: "/",
-    edition: true,
-}, () => [
-    ...insertSnippet({id: "s_carousel", name: "Carousel", groupName: "Intro"}),
-    ...clickOnSnippet(".carousel .carousel-item.active"),
-    {
-        content: "Decrease the interval between slides",
-        trigger: "div[data-label='Speed'] input",
-        run: 'edit 3',
-    },
-    {
-        content: "Enable the autoplay option",
-        trigger: "div[data-label='Autoplay'] input",
-        run: 'click',
-    },
-    ...clickOnSave(),
-    {
-        content: "Check if the first slide is active and wait for 3s",
-        trigger: `${carouselInnerSelector} > div.active:nth-child(1)`,
-        run: () => new Promise(resolve => setTimeout(resolve, 3000)),
-    },
-    {
-        content: "Check if the second slide is active",
-        trigger: `${carouselInnerSelector} > div.active:nth-child(2)`,
-    },
-]);

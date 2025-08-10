@@ -2,7 +2,7 @@
 
 {
     'name': 'Skills e-learning',
-    'category': 'Human Resources/Employees',
+    'category': 'Hidden',
     'version': '1.0',
     'summary': 'Add completed courses to resume of your employees',
     'description':
@@ -15,7 +15,6 @@ This module add completed courses to resume for employees.
     'depends': ['hr_skills', 'website_slides'],
     'data': [
         'views/hr_employee_views.xml',
-        'views/hr_employee_public_views.xml',
         'views/hr_templates.xml',
         'data/hr_resume_data.xml',
     ],
@@ -24,8 +23,8 @@ This module add completed courses to resume for employees.
         'web.assets_backend': [
             'hr_skills_slides/static/src/scss/**/*',
             'hr_skills_slides/static/src/fields/**/*',
+            'hr_skills_slides/static/src/xml/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

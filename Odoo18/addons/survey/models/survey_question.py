@@ -48,13 +48,13 @@ class SurveyQuestion(models.Model):
     _order = 'sequence,id'
 
     @api.model
-    def default_get(self, fields):
-        res = super().default_get(fields)
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
         if default_survey_id := self.env.context.get('default_survey_id'):
             survey = self.env['survey.survey'].browse(default_survey_id)
-            if 'is_time_limited' in fields and 'is_time_limited' not in res:
+            if 'is_time_limited' in fields_list and 'is_time_limited' not in res:
                 res['is_time_limited'] = survey.session_speed_rating
-            if 'time_limit' in fields and 'time_limit' not in res:
+            if 'time_limit' in fields_list and 'time_limit' not in res:
                 res['time_limit'] = survey.session_speed_rating_time_limit
         return res
 
@@ -66,13 +66,10 @@ class SurveyQuestion(models.Model):
     question_placeholder = fields.Char("Placeholder", translate=True, compute="_compute_question_placeholder", store=True, readonly=False)
     background_image = fields.Image("Background Image", compute="_compute_background_image", store=True, readonly=False)
     background_image_url = fields.Char("Background Url", compute="_compute_background_image_url")
-    survey_id = fields.Many2one('survey.survey', string='Survey', ondelete='cascade', index='btree_not_null')
+    survey_id = fields.Many2one('survey.survey', string='Survey', ondelete='cascade')
     scoring_type = fields.Selection(related='survey_id.scoring_type', string='Scoring Type', readonly=True)
     sequence = fields.Integer('Sequence', default=10)
     session_available = fields.Boolean(related='survey_id.session_available', string='Live Session available', readonly=True)
-    survey_session_speed_rating = fields.Boolean(related="survey_id.session_speed_rating")
-    survey_session_speed_rating_time_limit = fields.Integer(related="survey_id.session_speed_rating_time_limit", string="General Time limit (seconds)")
-
     # page specific
     is_page = fields.Boolean('Is a page?')
     question_ids = fields.One2many('survey.question', string='Questions', compute="_compute_question_ids")
@@ -181,50 +178,23 @@ class SurveyQuestion(models.Model):
         ]"""
     )
 
-    _positive_len_min = models.Constraint(
-        'CHECK (validation_length_min >= 0)',
-        'A length must be positive!',
-    )
-    _positive_len_max = models.Constraint(
-        'CHECK (validation_length_max >= 0)',
-        'A length must be positive!',
-    )
-    _validation_length = models.Constraint(
-        'CHECK (validation_length_min <= validation_length_max)',
-        'Max length cannot be smaller than min length!',
-    )
-    _validation_float = models.Constraint(
-        'CHECK (validation_min_float_value <= validation_max_float_value)',
-        'Max value cannot be smaller than min value!',
-    )
-    _validation_date = models.Constraint(
-        'CHECK (validation_min_date <= validation_max_date)',
-        'Max date cannot be smaller than min date!',
-    )
-    _validation_datetime = models.Constraint(
-        'CHECK (validation_min_datetime <= validation_max_datetime)',
-        'Max datetime cannot be smaller than min datetime!',
-    )
-    _positive_answer_score = models.Constraint(
-        'CHECK (answer_score >= 0)',
-        'An answer score for a non-multiple choice question cannot be negative!',
-    )
-    _scored_datetime_have_answers = models.Constraint(
-        "CHECK (is_scored_question != True OR question_type != 'datetime' OR answer_datetime is not null)",
-        'All "Is a scored question = True" and "Question Type: Datetime" questions need an answer',
-    )
-    _scored_date_have_answers = models.Constraint(
-        "CHECK (is_scored_question != True OR question_type != 'date' OR answer_date is not null)",
-        'All "Is a scored question = True" and "Question Type: Date" questions need an answer',
-    )
-    _scale = models.Constraint(
-        "CHECK (question_type != 'scale' OR (scale_min >= 0 AND scale_max <= 10 AND scale_min < scale_max))",
-        'The scale must be a growing non-empty range between 0 and 10 (inclusive)',
-    )
-    _is_time_limited_have_time_limit = models.Constraint(
-        'CHECK (is_time_limited != TRUE OR time_limit IS NOT NULL AND time_limit > 0)',
-        'All time-limited questions need a positive time limit',
-    )
+    _sql_constraints = [
+        ('positive_len_min', 'CHECK (validation_length_min >= 0)', 'A length must be positive!'),
+        ('positive_len_max', 'CHECK (validation_length_max >= 0)', 'A length must be positive!'),
+        ('validation_length', 'CHECK (validation_length_min <= validation_length_max)', 'Max length cannot be smaller than min length!'),
+        ('validation_float', 'CHECK (validation_min_float_value <= validation_max_float_value)', 'Max value cannot be smaller than min value!'),
+        ('validation_date', 'CHECK (validation_min_date <= validation_max_date)', 'Max date cannot be smaller than min date!'),
+        ('validation_datetime', 'CHECK (validation_min_datetime <= validation_max_datetime)', 'Max datetime cannot be smaller than min datetime!'),
+        ('positive_answer_score', 'CHECK (answer_score >= 0)', 'An answer score for a non-multiple choice question cannot be negative!'),
+        ('scored_datetime_have_answers', "CHECK (is_scored_question != True OR question_type != 'datetime' OR answer_datetime is not null)",
+            'All "Is a scored question = True" and "Question Type: Datetime" questions need an answer'),
+        ('scored_date_have_answers', "CHECK (is_scored_question != True OR question_type != 'date' OR answer_date is not null)",
+            'All "Is a scored question = True" and "Question Type: Date" questions need an answer'),
+        ('scale', "CHECK (question_type != 'scale' OR (scale_min >= 0 AND scale_max <= 10 AND scale_min < scale_max))",
+            'The scale must be a growing non-empty range between 0 and 10 (inclusive)'),
+        ('is_time_limited_have_time_limit', "CHECK (is_time_limited != TRUE OR time_limit IS NOT NULL AND time_limit > 0)",
+            'All time-limited questions need a positive time limit'),
+    ]
 
     # -------------------------------------------------------------------------
     # CONSTRAINT METHODS
@@ -424,7 +394,6 @@ class SurveyQuestion(models.Model):
                 new_question.triggering_answer_ids = old_question.triggering_answer_ids
         return new_questions
 
-    @api.model_create_multi
     def create(self, vals_list):
         questions = super().create(vals_list)
         questions.filtered(
@@ -632,12 +601,7 @@ class SurveyQuestion(models.Model):
             table_data, graph_data = question._get_stats_data(answer_lines)
             question_data['table_data'] = table_data
             question_data['graph_data'] = json.dumps(graph_data)
-            if question.question_type in ["text_box", "char_box", "numerical_box", "date", "datetime"]:
-                answers_data = [
-                    [input_line.id, input_line._get_answer_value(), input_line.user_input_id.get_print_url()]
-                    for input_line in table_data if not input_line.skipped
-                ]
-                question_data["answers_data"] = json.dumps(answers_data, default=str)
+
             all_questions_data.append(question_data)
         return all_questions_data
 
@@ -819,7 +783,6 @@ class SurveyQuestion(models.Model):
 
         return correct_answers
 
-
 class SurveyQuestionAnswer(models.Model):
     """ A preconfigured answer for a question. This model stores values used
     for
@@ -853,10 +816,10 @@ class SurveyQuestionAnswer(models.Model):
     is_correct = fields.Boolean('Correct')
     answer_score = fields.Float('Score', help="A positive score indicates a correct choice; a negative or null score indicates a wrong answer")
 
-    _value_not_empty = models.Constraint(
-        'CHECK (value IS NOT NULL OR value_image_filename IS NOT NULL)',
-        'Suggested answer value must not be empty (a text and/or an image must be provided).',
-    )
+    _sql_constraints = [
+        ('value_not_empty', "CHECK (value IS NOT NULL OR value_image_filename IS NOT NULL)",
+         'Suggested answer value must not be empty (a text and/or an image must be provided).'),
+    ]
 
     @api.depends('value_label', 'question_id.question_type', 'question_id.title', 'matrix_question_id')
     def _compute_display_name(self):

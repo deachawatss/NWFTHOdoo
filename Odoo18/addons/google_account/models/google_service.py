@@ -33,7 +33,6 @@ def _get_client_secret(ICP_sudo, service):
     """
     return ICP_sudo.get_param('google_%s_client_secret' % service)
 
-
 class GoogleService(models.AbstractModel):
     _name = 'google.service'
     _description = 'Google Service'

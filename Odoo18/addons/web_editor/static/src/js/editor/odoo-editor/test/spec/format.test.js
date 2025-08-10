@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { isSelectionFormat } from '../../src/utils/utils.js';
 import { BasicEditor, testEditor, setTestSelection, Direction, unformat, insertText, triggerEvent } from '../utils.js';
 
@@ -233,6 +235,14 @@ describe('Format', () => {
                 contentBefore: '<p>[a</p><p contenteditable="false">b</p><p>c]</p>',
                 stepFunction: bold,
                 contentAfter: `<p>${strong('[a')}</p><p contenteditable="false">b</p><p>${strong('c]')}</p>`,
+            });
+        });
+        it("should remove bold format when having newline character nodes in selection", async () => {
+            await testEditor(BasicEditor, {
+                contentBefore:
+                    "<p><strong>[abc</strong></p>\n<p><strong>def</strong></p>\n<p><strong>ghi]</strong></p>",
+                stepFunction: bold,
+                contentAfter: "<p>[abc</p>\n<p>def</p>\n<p>ghi]</p>",
             });
         });
 

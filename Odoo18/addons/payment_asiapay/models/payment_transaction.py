@@ -83,7 +83,7 @@ class PaymentTransaction(models.Model):
         base_url = self.provider_id.get_base_url()
         # The lang is taken from the context rather than from the partner because it is not required
         # to be logged in to make a payment, and because the lang is not always set on the partner.
-        lang = self.env.context.get('lang') or 'en_US'
+        lang = self._context.get('lang') or 'en_US'
         rendering_values = {
             'merchant_id': self.provider_id.asiapay_merchant_id,
             'amount': self.amount,
@@ -130,22 +130,6 @@ class PaymentTransaction(models.Model):
             )
 
         return tx
-
-    def _compare_notification_data(self, notification_data):
-        """ Override of `payment` to compare the transaction based on AsiaPay data.
-
-        :param dict notification_data: The notification data sent by the provider.
-        :return: None
-        :raise ValidationError: If the transaction's amount and currency don't match the
-            notification data.
-        """
-        if self.provider_code != 'asiapay':
-            return super()._compare_notification_data(notification_data)
-
-        amount = notification_data.get('Amt')
-        # AsiaPay supports only one currency per account.
-        currency_code = self.provider_id.available_currency_ids[0].name
-        self._validate_amount_and_currency(amount, currency_code)
 
     def _process_notification_data(self, notification_data):
         """ Override of `payment' to process the transaction based on AsiaPay data.

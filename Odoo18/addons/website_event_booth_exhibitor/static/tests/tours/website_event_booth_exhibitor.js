@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
     import { registry } from "@web/core/registry";
     import FinalSteps from "@website_event_booth_exhibitor/../tests/tours/website_event_booth_exhibitor_steps";
 
@@ -11,7 +13,7 @@
         expectUnloadPage: true,
     }, {
         content: 'Browse Booths',
-        trigger: 'a:contains("Become exhibitor")',
+        trigger: 'a:contains("Get A Booth")',
         run: "click",
         expectUnloadPage: true,
     }, {

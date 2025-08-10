@@ -1,4 +1,13 @@
-import { Component, onWillDestroy, useEffect, useExternalListener, useRef, xml } from "@odoo/owl";
+import {
+    Component,
+    onWillDestroy,
+    useEffect,
+    useExternalListener,
+    useRef,
+    useState,
+    useSubEnv,
+    xml,
+} from "@odoo/owl";
 import { usePosition } from "@web/core/position/position_hook";
 import { useActiveElement } from "@web/core/ui/ui_service";
 import { closestScrollableY } from "@web/core/utils/scrolling";
@@ -40,6 +49,9 @@ export class EditorOverlay extends Component {
         if (this.props.target) {
             getTarget = () => this.props.target;
         } else {
+            useExternalListener(this.props.bus, "updatePosition", () => {
+                position.unlock();
+            });
             const editable = this.props.editable;
             this.rangeElement = editable.ownerDocument.createElement("range-el");
             editable.after(this.rangeElement);
@@ -48,10 +60,6 @@ export class EditorOverlay extends Component {
             });
             getTarget = this.getSelectionTarget.bind(this);
         }
-
-        useExternalListener(this.props.bus, "updatePosition", () => {
-            position.unlock();
-        });
 
         const rootRef = useRef("root");
 
@@ -92,6 +100,9 @@ export class EditorOverlay extends Component {
             },
         };
         position = usePosition("root", getTarget, positionOptions);
+
+        this.overlayState = useState({ isOverlayVisible: true });
+        useSubEnv({ overlayState: this.overlayState });
     }
 
     getSelectionTarget() {
@@ -113,18 +124,18 @@ export class EditorOverlay extends Component {
         }
         let rect = range.getBoundingClientRect();
         if (rect.x === 0 && rect.width === 0 && rect.height === 0) {
-            // Attention, ignoring DOM mutations is always dangerous (when we add or remove nodes)
+            // Attention, using disableObserver and enableObserver is always dangerous (when we add or remove nodes)
             // because if another mutation uses the target that is not observed, that mutation can never be applied
             // again (when undo/redo and in collaboration).
-            this.props.history.ignoreDOMMutations(() => {
-                const clonedRange = range.cloneRange();
-                const shadowCaret = doc.createTextNode("|");
-                clonedRange.insertNode(shadowCaret);
-                clonedRange.selectNode(shadowCaret);
-                rect = clonedRange.getBoundingClientRect();
-                shadowCaret.remove();
-                clonedRange.detach();
-            });
+            this.props.history.disableObserver();
+            const clonedRange = range.cloneRange();
+            const shadowCaret = doc.createTextNode("|");
+            clonedRange.insertNode(shadowCaret);
+            clonedRange.selectNode(shadowCaret);
+            rect = clonedRange.getBoundingClientRect();
+            shadowCaret.remove();
+            clonedRange.detach();
+            this.props.history.enableObserver();
         }
         // Html element with a patched getBoundingClientRect method. It
         // represents the range as a (HTMLElement) target for the usePosition
@@ -141,6 +152,8 @@ export class EditorOverlay extends Component {
         }
         const container = closestScrollableY(this.props.editable) || this.props.getContainer();
         const containerRect = container.getBoundingClientRect();
-        overlayElement.style.visibility = solution.top > containerRect.top ? "visible" : "hidden";
+        const shouldBeVisible = solution.top > containerRect.top;
+        overlayElement.style.visibility = shouldBeVisible ? "visible" : "hidden";
+        this.overlayState.isOverlayVisible = shouldBeVisible;
     }
 }

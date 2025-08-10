@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { Location } from '@delivery/js/location_selector/location/location';
 import { Component, onMounted, useEffect } from '@odoo/owl';
 

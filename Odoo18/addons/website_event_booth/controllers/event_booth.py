@@ -20,7 +20,7 @@ class WebsiteEventBoothController(WebsiteEventController):
         booth_category_id = int(booth_category_id) if booth_category_id else False
         return request.render(
             'website_event_booth.event_booth_registration',
-            self._prepare_booth_main_values(event, booth_category_id=booth_category_id, booth_ids=booth_ids) | {'seo_object': event.booth_menu_ids}
+            self._prepare_booth_main_values(event, booth_category_id=booth_category_id, booth_ids=booth_ids)
         )
 
     @http.route('/event/<model("event.event"):event>/booth/register',
@@ -55,7 +55,8 @@ class WebsiteEventBoothController(WebsiteEventController):
             default_contact = {
                 'name': request.env.user.partner_id.name,
                 'email': request.env.user.partner_id.email,
-                'phone': request.env.user.partner_id.phone,
+                'phone': request.env.user.partner_id.phone or request.env.user.partner_id.mobile,
+                'mobile': request.env.user.partner_id.mobile,
             }
         else:
             visitor = request.env['website.visitor']._get_visitor_from_request()
@@ -137,24 +138,20 @@ class WebsiteEventBoothController(WebsiteEventController):
 
     def _prepare_booth_registration_partner_values(self, event, kwargs):
         if request.env.user._is_public():
-            contact_email_normalized = tools.email_normalize(kwargs['contact_email'])
-            if contact_email_normalized:
-                partner = event.sudo()._partner_find_from_emails_single(
-                    [contact_email_normalized],
-                    additional_values={contact_email_normalized: {
-                        'phone': kwargs.get('contact_phone'),
-                        'name': kwargs.get('contact_name'),
-                    }},
-                )
-            else:
-                partner = request.env['res.partner']
+            conctact_email_normalized = tools.email_normalize(kwargs['contact_email'])
+            contact_name_email = tools.formataddr((kwargs['contact_name'], conctact_email_normalized))
+            partner = request.env['res.partner'].sudo().find_or_create(contact_name_email)
+            if not partner.name and kwargs.get('contact_name'):
+                partner.name = kwargs['contact_name']
+            if not partner.phone and kwargs.get('contact_phone'):
+                partner.phone = kwargs['contact_phone']
         else:
             partner = request.env.user.partner_id
         return {
             'partner_id': partner.id,
             'contact_name': kwargs.get('contact_name') or partner.name,
             'contact_email': kwargs.get('contact_email') or partner.email,
-            'contact_phone': kwargs.get('contact_phone') or partner.phone,
+            'contact_phone': kwargs.get('contact_phone') or partner.phone or partner.mobile,
         }
 
     def _prepare_booth_registration_success_values(self, event_name, booth_values):
@@ -168,7 +165,7 @@ class WebsiteEventBoothController(WebsiteEventController):
             },
         })
 
-    @http.route('/event/booth/check_availability', type='jsonrpc', auth='public', methods=['POST'])
+    @http.route('/event/booth/check_availability', type='json', auth='public', methods=['POST'])
     def check_booths_availability(self, event_booth_ids=None):
         if not event_booth_ids:
             return {}
@@ -177,7 +174,7 @@ class WebsiteEventBoothController(WebsiteEventController):
             'unavailable_booths': booths.filtered(lambda booth: not booth.is_available).ids
         }
 
-    @http.route(['/event/booth_category/get_available_booths'], type='jsonrpc', auth='public')
+    @http.route(['/event/booth_category/get_available_booths'], type='json', auth='public')
     def get_booth_category_available_booths(self, event_id, booth_category_id):
         booth_ids = request.env['event.booth'].sudo().search([
             ('event_id', '=', int(event_id)),

@@ -225,12 +225,12 @@ class TestPoSBasicConfig(TestPoSCommon):
             invoiced_order = self.pos_session.order_ids.filtered(lambda order: order.account_move)
             self.assertEqual(1, len(invoiced_order), 'Only one order is invoiced in this test.')
 
-            # check account_move of orders before validating the session.
-            self.assertTrue(invoiced_order.account_move, msg="Invoiced orders must have account_move.")
+            # check state of orders before validating the session.
+            self.assertEqual('invoiced', invoiced_order.state, msg="state should be 'invoiced' for invoiced orders.")
             uninvoiced_orders = self.pos_session.order_ids - invoiced_order
             self.assertTrue(
-                all(not order.account_move for order in uninvoiced_orders),
-                msg="Uninvoiced orders do not have account_move."
+                all([order.state == 'paid' for order in uninvoiced_orders]),
+                msg="state should be 'paid' for uninvoiced orders before validating the session."
             )
 
         def _after_closing_cb():
@@ -1102,18 +1102,13 @@ class TestPoSBasicConfig(TestPoSCommon):
 
         # Make the service products that are available in the pos inactive.
         # We don't need them to test the loading of 'consu' products.
-        self.env['product.template'].search([('available_in_pos', '=', True), ('type', '=', 'service')]).write({'available_in_pos': False})
+        self.env['product.template'].search([('available_in_pos', '=', True), ('type', '=', 'service')]).write({'active': False})
 
         session = self.open_new_session(0)
-        self.product1.write({'company_id': False})
-        self.product2.write({'company_id': False})
-        self.product3.write({'company_id': False})
 
         def get_top_product_ids(count):
             data = session.load_data([])
-            special_product = session.config_id._get_special_products().ids
-            available_top_product = [product for product in data['product.template'] if product['product_variant_ids'][0] not in special_product]
-            return [p['product_variant_ids'][0] for p in available_top_product[:count]]
+            return [p['id'] for p in data['product.product']['data'][:count]]
 
         self.patch(self.env.cr, 'now', lambda: datetime.now() + timedelta(days=1))
         self.env['pos.order'].sync_from_ui([self.create_ui_order_data([(self.product1, 1)])])
@@ -1121,11 +1116,11 @@ class TestPoSBasicConfig(TestPoSCommon):
 
         self.patch(self.env.cr, 'now', lambda: datetime.now() + timedelta(days=2))
         self.env['pos.order'].sync_from_ui([self.create_ui_order_data([(self.product2, 1)])])
-        self.assertEqual(get_top_product_ids(2), [self.product1.id, self.product2.id])
+        self.assertEqual(get_top_product_ids(2), [self.product2.id, self.product1.id])
 
         self.patch(self.env.cr, 'now', lambda: datetime.now() + timedelta(days=3))
         self.env['pos.order'].sync_from_ui([self.create_ui_order_data([(self.product3, 1)])])
-        self.assertEqual(get_top_product_ids(3), [self.product1.id, self.product2.id, self.product3.id])
+        self.assertEqual(get_top_product_ids(3), [self.product3.id, self.product2.id, self.product1.id])
 
     def test_closing_entry_by_product(self):
         # set the Group by Product at Closing Entry
@@ -1223,80 +1218,26 @@ class TestPoSBasicConfig(TestPoSCommon):
         self.assertTrue(pm_4)
         self.assertEqual(pm_4.journal_id.type, "bank")
 
-    def test_single_config_global_invoice(self):
-        """For a single POS config, create multiple orders and consolidate them into a single invoice"""
-        self.open_new_session()
-        # create orders
-        orders = []
-        orders.append(self.create_ui_order_data(
-            [(self.product1, 2), (self.product4, 3)],
-            payments=[(self.bank_pm1, 49.88)]
-        ))
-        orders.append(self.create_ui_order_data(
-            [(self.product4, 1), (self.product2, 5)],
-            payments=[(self.bank_pm1, 109.96)]
-        ))
+    def test_loading_products_with_access_right_issue(self):
+        product = self.env['product.product'].create({
+            'name': 'Product with access right issue',
+            'available_in_pos': True,
+            'type': 'consu',
+        })
 
-        # sync orders
-        self.env['pos.order'].sync_from_ui(orders)
-        # close the session
-        self.pos_session.action_pos_session_validate()
+        self.env['ir.rule'].create({
+            'name': 'Test',
+            'model_id': self.env['ir.model']._get('product.product').id,
+            'domain_force': '[(\'id\', \'!=\', %s)]' % product.id,
+            'groups': [(4, self.env.ref('base.group_user').id)]
+        })
 
-        pos_orders = self.env['pos.order'].search([])
-        # set customer for the orders
-        pos_orders.write({'partner_id': self.customer.id})
+        session = self.open_new_session()
 
-        # create consolidated invoice
-        self.env['pos.make.invoice'].create({"consolidated_billing": True}).with_context({"active_ids": pos_orders.ids}).action_create_invoices()
-        # check if have single invoice
-        self.assertEqual(len(pos_orders), 2)
-        self.assertEqual(len(pos_orders.account_move), 1)
-        self.assertEqual(pos_orders.account_move.partner_id, self.customer)
-        self.assertEqual(pos_orders.account_move.amount_total, sum(pos_orders.mapped('amount_total')))
-        self.assertEqual(pos_orders.account_move.payment_state, 'paid')
-        self.assertEqual(pos_orders.account_move.state, 'posted')
+        data = session.load_data([])
 
-    def test_multi_config_global_invoice(self):
-        self.open_new_session()
-        orders = []
-        orders.append(self.create_ui_order_data(
-            [(self.product1, 3), (self.product2, 10)],
-            payments=[(self.bank_pm1, 230)]
-        ))
-        orders.append(self.create_ui_order_data(
-            [(self.product1, 5), (self.product0, 10)],
-            payments=[(self.bank_pm1, 50)]
-        ))
-        self.env['pos.order'].sync_from_ui(orders)
-        self.pos_session.action_pos_session_validate()
-
-        # open new session & create orders
-        self.open_new_session()
-        orders2 = []
-        orders2.append(self.create_ui_order_data(
-            [(self.product1, 2), (self.product4, 3)],
-            payments=[(self.bank_pm1, 49.88)]
-        ))
-        orders2.append(self.create_ui_order_data(
-            [(self.product4, 1), (self.product2, 5)],
-            payments=[(self.bank_pm1, 109.96)]
-        ))
-        self.env['pos.order'].sync_from_ui(orders2)
-        self.pos_session.action_pos_session_validate()
-
-        pos_orders = self.env['pos.order'].search([])
-        # set customer for the orders
-        pos_orders.write({'partner_id': self.customer.id})
-
-        # create consolidated invoice
-        self.env['pos.make.invoice'].create({"consolidated_billing": True}).with_context({"active_ids": pos_orders.ids}).action_create_invoices()
-        # check if have single invoice
-        self.assertEqual(len(pos_orders), 4)
-        self.assertEqual(len(pos_orders.account_move), 1)
-        self.assertEqual(pos_orders.account_move.partner_id, self.customer)
-        self.assertEqual(pos_orders.account_move.amount_total, round(sum(pos_orders.mapped('amount_total')), 2))
-        self.assertEqual(pos_orders.account_move.payment_state, 'paid')
-        self.assertEqual(pos_orders.account_move.state, 'posted')
+        self.assertNotIn(product.id, [p['id'] for p in data['product.product']['data']])
+        self.assertTrue(data['product.product']['data'])
 
     def test_double_syncing_same_order(self):
         """ Test that double syncing the same order doesn't create duplicates records
@@ -1316,4 +1257,4 @@ class TestPoSBasicConfig(TestPoSCommon):
         order = self.env['pos.order'].browse(order_id)
         self.assertEqual(order.picking_count, 1, 'Order should have one picking')
         self.assertEqual(len(order.payment_ids), 1, 'Order should have one payment')
-        self.assertEqual(self.env['account.move'].search_count([('pos_order_ids', 'in', order.ids)]), 1, 'Order should have one invoice')
+        self.assertEqual(self.env['account.move'].search_count([('ref', '=', order.name)]), 1, 'Order should have one invoice')

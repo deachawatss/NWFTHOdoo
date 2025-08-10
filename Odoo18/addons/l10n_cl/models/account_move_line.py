@@ -5,6 +5,7 @@ from odoo.tools.float_utils import float_repr
 
 
 class AccountMoveLine(models.Model):
+
     _inherit = 'account.move.line'
 
     def _l10n_cl_prices_and_taxes(self):

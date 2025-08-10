@@ -3,6 +3,7 @@
 from odoo import api, Command, fields, models, _
 from odoo.addons.mail.tools.discuss import Store
 from odoo.exceptions import UserError
+from odoo.http import request
 from odoo.tools import get_lang
 from odoo.tools.sql import column_exists, create_column
 
@@ -23,11 +24,11 @@ class WebsiteVisitor(models.Model):
             create_column(self.env.cr, "website_visitor", "livechat_operator_id", "int4")
         return super()._auto_init()
 
-    @api.depends('discuss_channel_ids.livechat_end_dt', 'discuss_channel_ids.livechat_operator_id')
+    @api.depends('discuss_channel_ids.livechat_active', 'discuss_channel_ids.livechat_operator_id')
     def _compute_livechat_operator_id(self):
-        results = self.env["discuss.channel"].search_read(
-            [("livechat_visitor_id", "in", self.ids), ("livechat_end_dt", "=", False)],
-            ["livechat_visitor_id", "livechat_operator_id"],
+        results = self.env['discuss.channel'].search_read(
+            [('livechat_visitor_id', 'in', self.ids), ('livechat_active', '=', True)],
+            ['livechat_visitor_id', 'livechat_operator_id']
         )
         visitor_operator_map = {int(result['livechat_visitor_id'][0]): int(result['livechat_operator_id'][0]) for result in results}
         for visitor in self:
@@ -49,9 +50,7 @@ class WebsiteVisitor(models.Model):
         The visitor will receive the chat request the next time he navigates to a website page.
         (see _handle_webpage_dispatch for next step)"""
         # check if visitor is available
-        unavailable_visitors_count = self.env["discuss.channel"].search_count(
-            [("livechat_visitor_id", "in", self.ids), ("livechat_end_dt", "=", False)]
-        )
+        unavailable_visitors_count = self.env['discuss.channel'].search_count([('livechat_visitor_id', 'in', self.ids), ('livechat_active', '=', True)])
         if unavailable_visitors_count:
             raise UserError(_('Recipients are not available. Please refresh the page to get latest visitors status.'))
         # check if user is available as operator
@@ -70,7 +69,6 @@ class WebsiteVisitor(models.Model):
                 members_to_add.append(Command.link(visitor.partner_id.id))
             discuss_channel_vals_list.append({
                 'channel_partner_ids': members_to_add,
-                "is_pending_chat_request": True,
                 'livechat_channel_id': visitor.website_id.channel_id.id,
                 'livechat_operator_id': self.env.user.partner_id.id,
                 'channel_type': 'livechat',
@@ -78,6 +76,7 @@ class WebsiteVisitor(models.Model):
                 'anonymous_name': visitor_name,
                 'name': ', '.join([visitor_name, operator.livechat_username if operator.livechat_username else operator.name]),
                 'livechat_visitor_id': visitor.id,
+                'livechat_active': True,
             })
         discuss_channels = self.env['discuss.channel'].create(discuss_channel_vals_list)
         for channel in discuss_channels:
@@ -91,13 +90,19 @@ class WebsiteVisitor(models.Model):
                         "timezone": visitor.timezone,
                     }
                 )
-                channel._add_members(guests=guest, post_joined_message=False)
-        # Open empty channel to allow the operator to start chatting with the visitor
-        Store(
-            discuss_channels,
-            extra_fields={"open_chat_window": True},
-            bus_channel=self.env.user,
-        ).bus_send()
+                channel.add_members(guest_ids=guest.ids, post_joined_message=False)
+        # Open empty chatter to allow the operator to start chatting with
+        # the visitor. Also open the visitor's chat window in order for it
+        # to be displayed at the next page load.
+        channel_members = self.env['discuss.channel.member'].sudo().search([
+            ('channel_id', 'in', discuss_channels.ids),
+        ])
+        channel_members.write({
+            'fold_state': 'open',
+        })
+        operator._bus_send(
+            "website_livechat.send_chat_request", Store(discuss_channels).get_result()
+        )
 
     def _merge_visitor(self, target):
         """ Copy sessions of the secondary visitors to the main partner visitor. """
@@ -112,33 +117,10 @@ class WebsiteVisitor(models.Model):
         visitor_id, upsert = super()._upsert_visitor(access_token, force_track_values=force_track_values)
         if upsert == 'inserted':
             visitor_sudo = self.sudo().browse(visitor_id)
-            if guest := self.env["mail.guest"]._get_guest_from_context():
-                guest_livechats = guest.channel_ids.filtered(lambda c: c.channel_type == "livechat")
-                guest_livechats.channel_ids.livechat_visitor_id = visitor_sudo.id
-                guest_livechats.channel_ids.anonymous_name = (
-                    "Visitor #%d (%s)" % (visitor_sudo.id, visitor_sudo.country_id.name)
-                    if visitor_sudo.country_id
-                    else f"Visitor #{visitor_sudo.id}"
-                )
+            if discuss_channel_uuid := request.cookies.get("im_livechat_uuid"):
+                discuss_channel = request.env["discuss.channel"].sudo().search([("uuid", "=", discuss_channel_uuid)])
+                discuss_channel.write({
+                    'livechat_visitor_id': visitor_sudo.id,
+                    'anonymous_name': "Visitor #%d (%s)" % (visitor_sudo.id, visitor_sudo.country_id.name) if visitor_sudo.country_id else f"Visitor #{visitor_sudo.id}"
+                })
         return visitor_id, upsert
-
-    def _field_store_repr(self, field_name):
-        if field_name == "history":
-            # sudo: website.track - reading the history of accessible visitor is acceptable
-            return [Store.Attr("history", lambda visitor: visitor.sudo()._get_visitor_history())]
-        return [field_name]
-
-    def _get_visitor_history(self):
-        """
-        Prepare history string to render it in the visitor info div on discuss livechat channel view.
-        :param visitor: website.visitor of the channel
-        :return: arrow separated string containing navigation history information
-        """
-        self.ensure_one()
-        recent_history = self.env["website.track"].search(
-            [("page_id", "!=", False), ("visitor_id", "=", self.id)], limit=3
-        )
-        return " → ".join(
-            f"{visit.page_id.name} ({visit.visit_datetime.strftime('%H:%M')})"
-            for visit in reversed(recent_history)
-        )

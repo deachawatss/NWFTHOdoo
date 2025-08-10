@@ -1,7 +1,7 @@
 import { Component } from "@odoo/owl";
 import { omit } from "../utils/objects";
+import { useDateTimePicker } from "./datetime_hook";
 import { DateTimePicker } from "./datetime_picker";
-import { useDateTimePicker } from "./datetime_picker_hook";
 
 /**
  * @typedef {import("./datetime_picker").DateTimePickerProps & {
@@ -16,7 +16,6 @@ import { useDateTimePicker } from "./datetime_picker_hook";
 const dateTimeInputOwnProps = {
     format: { type: String, optional: true },
     id: { type: String, optional: true },
-    class: { type: String, optional: true },
     onChange: { type: Function, optional: true },
     onApply: { type: Function, optional: true },
     placeholder: { type: String, optional: true },
@@ -36,7 +35,6 @@ export class DateTimeInput extends Component {
 
         useDateTimePicker({
             format: this.props.format,
-            showSeconds: this.props.rounding <= 0,
             get pickerProps() {
                 return getPickerProps();
             },

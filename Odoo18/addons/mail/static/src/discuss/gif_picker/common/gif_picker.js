@@ -1,16 +1,9 @@
-import { Gif } from "@mail/core/common/gif";
-import { useOnBottomScrolled, useSequential } from "@mail/utils/common/hooks";
-
 import { Component, onWillStart, useState, useEffect } from "@odoo/owl";
+import { useOnBottomScrolled, useSequential } from "@mail/utils/common/hooks";
 import { user } from "@web/core/user";
 import { useService, useAutofocus } from "@web/core/utils/hooks";
 import { useDebounced } from "@web/core/utils/timing";
 import { rpc } from "@web/core/network/rpc";
-import { PICKER_PROPS, usePicker } from "@web/core/emoji_picker/emoji_picker";
-
-export function useGifPicker(...args) {
-    return usePicker(GifPicker, ...args);
-}
 
 /**
  * @typedef {Object} TenorCategory
@@ -54,15 +47,14 @@ export function useGifPicker(...args) {
 
 export class GifPicker extends Component {
     static template = "discuss.GifPicker";
-    static props = PICKER_PROPS;
-    static components = { Gif };
+    static props = ["PICKERS?", "className?", "close?", "onSelect", "state?"];
 
     setup() {
         super.setup();
         this.orm = useService("orm");
-        this.store = useService("mail.store");
+        this.store = useState(useService("mail.store"));
         this.sequential = useSequential();
-        this.inputRef = useAutofocus();
+        useAutofocus();
         useOnBottomScrolled(
             "scroller",
             () => {
@@ -103,7 +95,6 @@ export class GifPicker extends Component {
                 /** Size, in pixel, of the column. */
                 columnSize: 0,
             },
-            focused: false,
         });
         this.loadFavoritesDebounced = useDebounced(this.loadFavorites, 200);
         onWillStart(() => {
@@ -148,9 +139,6 @@ export class GifPicker extends Component {
     }
 
     async loadCategories() {
-        if (!this.store.hasGifPickerFeature) {
-            return;
-        }
         try {
             let { language, region } = new Intl.Locale(user.lang);
             if (!region && language === "sr") {
@@ -254,8 +242,7 @@ export class GifPicker extends Component {
      */
     async onClickCategory(category) {
         this.clear();
-        this.searchTerm = category.searchterm;
-        this.inputRef.el?.focus();
+        this.props.state.searchTerm = category.searchterm;
         this.closeCategories();
     }
 
@@ -276,9 +263,6 @@ export class GifPicker extends Component {
     }
 
     async loadFavorites() {
-        if (!this.store.hasGifPickerFeature) {
-            return;
-        }
         this.state.loadingGif = true;
         try {
             const [results] = await rpc(

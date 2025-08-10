@@ -1,5 +1,6 @@
 /** @odoo-module **/
 
+import { useState } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
@@ -21,6 +22,13 @@ export class GoogleSlideViewer extends CharField {
         super.setup();
         this.notification = useService("notification");
         this.page = 1;
+        this.state = useState({
+            isValid: true,
+        });
+    }
+
+    get fileName() {
+        return this.state.fileName || this.props.record.data[this.props.name] || "";
     }
 
     _get_slide_page() {
@@ -41,6 +49,7 @@ export class GoogleSlideViewer extends CharField {
     }
 
     onLoadFailed() {
+        this.state.isValid = false;
         this.notification.add(_t("Could not display the selected spreadsheet"), { type: "danger" });
     }
 }
@@ -51,4 +60,4 @@ export const googleSlideViewer = {
     displayName: _t("Google Slide Viewer"),
 };
 
-registry.category("fields").add("google_slide_viewer", googleSlideViewer);
+registry.category("fields").add("embed_viewer", googleSlideViewer);

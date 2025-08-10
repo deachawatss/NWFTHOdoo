@@ -176,8 +176,9 @@ class TestCarrierPropagation(TransactionCase):
                 'name': 'Cable Management Box',
                 'product_id': self.super_product.id,
                 'product_uom_qty': 2,
+                'product_uom': self.product_uom_unit.id,
                 'price_unit': 750.00,
-                'route_ids': route1.ids,
+                'route_id' : route1.id,
             })],
         })
 
@@ -198,6 +199,7 @@ class TestCarrierPropagation(TransactionCase):
                 'name': 'Cable Management Box',
                 'product_id': self.super_product.id,
                 'product_uom_qty': 2,
+                'product_uom': self.product_uom_unit.id,
                 'price_unit': 750.00,
             })],
         })
@@ -225,7 +227,6 @@ class TestCarrierPropagation(TransactionCase):
             'login': 'Mars Man',
             'name': 'Spleton',
             'email': 'alien@mars.com',
-            'group_ids': self.env.ref('stock.group_stock_user'),
         })
         super_product_2 = self.ProductProduct.create({
             'name': 'Super Product 2',

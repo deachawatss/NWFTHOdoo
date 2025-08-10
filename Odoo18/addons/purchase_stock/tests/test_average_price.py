@@ -25,6 +25,7 @@ class TestAveragePrice(ValuationReconciliationTestCommon):
             'list_price': 100.0,
             'standard_price': 60.0,
             'uom_id': self.env.ref('uom.product_uom_kgm').id,
+            'uom_po_id': self.env.ref('uom.product_uom_kgm').id,
             'supplier_taxes_id': [],
             'description': 'FIFO Ice Cream',
         })
@@ -37,7 +38,7 @@ class TestAveragePrice(ValuationReconciliationTestCommon):
                 'name': 'Average Ice Cream',
                 'product_id': product_cable_management_box.id,
                 'product_qty': 10.0,
-                'product_uom_id': self.env.ref('uom.product_uom_kgm').id,
+                'product_uom': self.env.ref('uom.product_uom_kgm').id,
                 'price_unit': 60.0,
                 'date_planned': time.strftime('%Y-%m-%d'),
             })]
@@ -64,7 +65,7 @@ class TestAveragePrice(ValuationReconciliationTestCommon):
                 'name': product_cable_management_box.name,
                 'product_id': product_cable_management_box.id,
                 'product_qty': 30.0,
-                'product_uom_id': self.env.ref('uom.product_uom_kgm').id,
+                'product_uom': self.env.ref('uom.product_uom_kgm').id,
                 'price_unit': 80.0,
                 'date_planned': time.strftime('%Y-%m-%d'),
             })]
@@ -85,6 +86,7 @@ class TestAveragePrice(ValuationReconciliationTestCommon):
             'location_id': self.company_data['default_warehouse'].lot_stock_id.id,
             'location_dest_id': self.env.ref('stock.stock_location_customers').id,
             'move_ids': [(0, 0, {
+                'name': 'outgoing_shipment_avg_move',
                 'product_id': product_cable_management_box.id,
                 'product_uom_qty': 20.0,
                 'product_uom': self.env.ref('uom.product_uom_kgm').id,
@@ -107,7 +109,7 @@ class TestAveragePrice(ValuationReconciliationTestCommon):
                 'name': product_cable_management_box.name,
                 'product_id': product_cable_management_box.id,
                 'product_qty': 500.0,
-                'product_uom_id': self.ref('uom.product_uom_gram'),
+                'product_uom': self.ref('uom.product_uom_gram'),
                 'price_unit': 0.2,
                 'date_planned': time.strftime('%Y-%m-%d'),
             })]
@@ -276,7 +278,7 @@ class TestAveragePrice(ValuationReconciliationTestCommon):
             'order_line': [(0, 0, {
                 'product_id': avco_product.id,
                 'product_qty': 999,
-                'tax_ids': [(6, 0, [incl_tax.id])],
+                'taxes_id': [(6, 0, [incl_tax.id])],
             })],
         })
         po.button_confirm()

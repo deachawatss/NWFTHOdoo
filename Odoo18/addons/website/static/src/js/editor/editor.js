@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { LinkDialog } from "@web_editor/js/wysiwyg/widgets/link_dialog";
 import { patch } from "@web/core/utils/patch";
 import wUtils from "@website/js/utils";

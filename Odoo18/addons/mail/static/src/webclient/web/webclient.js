@@ -16,9 +16,7 @@ patch(WebClient.prototype, {
         this.orm = useService("orm");
         this.notification = useService("notification");
         if (this._canSendNativeNotification) {
-            this.env.bus.addEventListener("WEB_CLIENT_READY", () => this._subscribePush(), {
-                once: true,
-            });
+            this._subscribePush();
         }
         if (browser.navigator.permissions) {
             let notificationPerm;

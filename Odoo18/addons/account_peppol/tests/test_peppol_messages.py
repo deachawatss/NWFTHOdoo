@@ -5,7 +5,6 @@ from requests import Session, PreparedRequest, Response
 from unittest.mock import patch
 
 from odoo.addons.account.tests.test_account_move_send import TestAccountMoveSendCommon
-from odoo.addons.mail.tests.common import MailCommon
 from odoo.exceptions import UserError
 from odoo.tests.common import tagged, freeze_time
 from odoo.tools.misc import file_open
@@ -18,7 +17,7 @@ FILE_PATH = 'account_peppol/tests/assets'
 
 @freeze_time('2023-01-01')
 @tagged('-at_install', 'post_install')
-class TestPeppolMessage(TestAccountMoveSendCommon, MailCommon):
+class TestPeppolMessage(TestAccountMoveSendCommon):
 
     @classmethod
     def setUpClass(cls):
@@ -50,6 +49,7 @@ class TestPeppolMessage(TestAccountMoveSendCommon, MailCommon):
             'name': 'Wintermute',
             'city': 'Charleroi',
             'country_id': cls.env.ref('base.be').id,
+            'invoice_sending_method': 'peppol',
             'peppol_eas': '0208',
             'peppol_endpoint': '3141592654',
         }, {
@@ -57,6 +57,7 @@ class TestPeppolMessage(TestAccountMoveSendCommon, MailCommon):
             'city': 'Namur',
             'email': 'Namur@company.com',
             'country_id': cls.env.ref('base.be').id,
+            'invoice_sending_method': 'peppol',
             'peppol_eas': '0208',
             'peppol_endpoint': '2718281828',
         }])
@@ -133,10 +134,10 @@ class TestPeppolMessage(TestAccountMoveSendCommon, MailCommon):
 
     @contextmanager
     def _set_context(self, other_context):
-        cls = self.__class__
-        env = cls.env(context=dict(cls.env.context, **other_context))
-        with patch.object(cls, "env", env):
-            yield
+        previous_context = self.env.context
+        self.env.context = dict(previous_context, **other_context)
+        yield self
+        self.env.context = previous_context
 
     @classmethod
     def _request_handler(cls, s: Session, r: PreparedRequest, /, **kw):
@@ -182,7 +183,7 @@ class TestPeppolMessage(TestAccountMoveSendCommon, MailCommon):
         move = self.create_move(self.valid_partner)
         move.action_post()
 
-        wizard = self.create_send_and_print(move, default=True)
+        wizard = self.create_send_and_print(move, sending_methods=['email', 'peppol'])
         self.assertEqual(wizard.invoice_edi_format, 'ubl_bis3')
 
         # the ubl xml placeholder should be generated
@@ -201,17 +202,16 @@ class TestPeppolMessage(TestAccountMoveSendCommon, MailCommon):
 
         wizard.sending_methods = ['peppol']
         wizard.action_send_and_print()
-        self.assertEqual(self._get_mail_message(move).preview, 'The document has been sent to Peppol for processing')
+        self.assertEqual(self._get_mail_message(move).preview, 'The document has been sent to the Peppol Access Point for processing')
 
     def test_send_peppol_alerts_not_valid_partner(self):
         move = self.create_move(self.invalid_partner)
-        self.invalid_partner.invoice_edi_format = 'ubl_bis3'
         move.action_post()
-        wizard = self.create_send_and_print(move, default=True)
-
-        self.assertEqual(wizard.invoice_edi_format, 'ubl_bis3')
+        wizard = self.env['account.move.send.wizard'].create({
+            'move_id': move.id,
+        })
         self.assertEqual(self.invalid_partner.peppol_verification_state, 'not_valid')  # not on peppol at all
-        self.assertFalse(wizard.sending_methods and 'peppol' in wizard.sending_methods)  # peppol is not checked
+        self.assertFalse('peppol' in wizard.sending_methods)  # peppol is not checked by default
         self.assertTrue(wizard.sending_method_checkboxes['peppol']['readonly'])  # peppol is not possible to select
         self.assertFalse(wizard.alerts)  # there is no alerts
 
@@ -219,7 +219,7 @@ class TestPeppolMessage(TestAccountMoveSendCommon, MailCommon):
     def test_send_peppol_alerts_not_valid_format_partner(self, mocked_check):
         move = self.create_move(self.valid_partner)
         move.action_post()
-        wizard = self.create_send_and_print(move, sending_methods=['peppol'])
+        wizard = self.create_send_and_print(move, sending_methods=['peppol'])  # partner can't receive BIS3 so Peppol not checked by default, force it
 
         self.assertEqual(wizard.invoice_edi_format, 'ubl_bis3')
         self.assertEqual(self.valid_partner.peppol_verification_state, 'not_valid_format')  # on peppol but can't receive bis3
@@ -230,10 +230,10 @@ class TestPeppolMessage(TestAccountMoveSendCommon, MailCommon):
         move = self.create_move(self.invalid_partner)
         move.action_post()
         self.invalid_partner.peppol_endpoint = False
-        wizard = self.create_send_and_print(move, default=True)
-        self.assertFalse(wizard.sending_methods and 'peppol' in wizard.sending_methods)  # by default peppol is not selected for non-valid partners
+        wizard = self.create_send_and_print(move)
+        self.assertFalse('peppol' in wizard.sending_methods)  # by default peppol is not selected for non-valid partners
         wizard.sending_method_checkboxes = {**wizard.sending_method_checkboxes, 'peppol': {'checked': True}}
-        self.assertTrue(wizard.sending_methods and 'peppol' in wizard.sending_methods)
+        self.assertTrue('peppol' in wizard.sending_methods)
         self.assertTrue('account_edi_ubl_cii_configure_partner' in wizard.alerts)
         self.assertFalse('account_peppol_warning_partner' in wizard.alerts)
 
@@ -242,11 +242,11 @@ class TestPeppolMessage(TestAccountMoveSendCommon, MailCommon):
         move = self.create_move(self.valid_partner)
         move.action_post()
 
-        wizard = self.create_send_and_print(move, default=True)
+        wizard = self.create_send_and_print(move)
         self.assertEqual(wizard.invoice_edi_format, 'ubl_bis3')
-        self.assertTrue(wizard.sending_methods and 'peppol' in wizard.sending_methods)
+        self.assertTrue('peppol' in wizard.sending_methods)
         with self._set_context({'error': True}):
-            wizard.with_env(self.env).action_send_and_print()
+            wizard.action_send_and_print()
 
             self.env['account_edi_proxy_client.user']._cron_peppol_get_message_status()
             self.assertRecordValues(
@@ -257,9 +257,9 @@ class TestPeppolMessage(TestAccountMoveSendCommon, MailCommon):
 
         # we can't send the ubl document again unless we regenerate the pdf
         move.invoice_pdf_report_id.unlink()
-        wizard = self.create_send_and_print(move, default=True)
+        wizard = self.create_send_and_print(move)
         self.assertEqual(wizard.invoice_edi_format, 'ubl_bis3')
-        self.assertTrue(wizard.sending_methods and 'peppol' in wizard.sending_methods)
+        self.assertTrue('peppol' in wizard.sending_methods)
 
         wizard.action_send_and_print()
 
@@ -273,9 +273,9 @@ class TestPeppolMessage(TestAccountMoveSendCommon, MailCommon):
         move = self.create_move(self.valid_partner)
         move.action_post()
 
-        wizard = self.create_send_and_print(move, default=True)
+        wizard = self.create_send_and_print(move)
         self.assertEqual(wizard.invoice_edi_format, 'ubl_bis3')
-        self.assertTrue(wizard.sending_methods and 'peppol' in wizard.sending_methods)
+        self.assertTrue('peppol' in wizard.sending_methods)
 
         wizard.action_send_and_print()
 
@@ -294,7 +294,7 @@ class TestPeppolMessage(TestAccountMoveSendCommon, MailCommon):
         move = self.create_move(self.valid_partner)
         move.action_post()
 
-        wizard = self.create_send_and_print(move, default=True)
+        wizard = self.create_send_and_print(move)
         self.assertTrue('peppol' not in wizard.sending_method_checkboxes)
 
     def test_receive_error_peppol(self):
@@ -320,19 +320,6 @@ class TestPeppolMessage(TestAccountMoveSendCommon, MailCommon):
                 'move_type': 'in_invoice',
             }])
 
-    def test_received_bill_notification(self):
-        self.env.company.peppol_purchase_journal_id.incoming_einvoice_notification_email = 'oops_another_bill@example.com'
-        self.env.company.email = 'hq@example.com'
-
-        with self.mock_mail_gateway():
-            self.env['account_edi_proxy_client.user']._cron_peppol_get_new_documents()
-
-        self.assertSentEmail(
-            '"company_1_data" <hq@example.com>',
-            ['oops_another_bill@example.com'],
-            subject='New Electronic Invoices Received',
-        )
-
     def test_validate_partner(self):
         new_partner = self.env['res.partner'].create({
             'name': 'Deanna Troi',
@@ -347,16 +334,14 @@ class TestPeppolMessage(TestAccountMoveSendCommon, MailCommon):
             }])
 
         new_partner.peppol_endpoint = '0477472701'
-        new_partner.button_account_peppol_check_partner_endpoint()
         self.assertRecordValues(
             new_partner, [{
-                'peppol_verification_state': 'valid',
+                'peppol_verification_state': 'valid',  # should validate automatically
                 'peppol_eas': '0208',
                 'peppol_endpoint': '0477472701',
             }])
 
         new_partner.peppol_endpoint = '3141592654'
-        new_partner.button_account_peppol_check_partner_endpoint()
         self.assertRecordValues(
             new_partner, [{
                 'peppol_verification_state': 'not_valid',
@@ -369,7 +354,6 @@ class TestPeppolMessage(TestAccountMoveSendCommon, MailCommon):
             'invoice_edi_format': 'xrechnung',
             'peppol_endpoint': '0477472701',
         })
-        new_partner.button_account_peppol_check_partner_endpoint()
         self.assertRecordValues(
             new_partner, [{
                 'peppol_verification_state': 'not_valid_format',
@@ -397,15 +381,16 @@ class TestPeppolMessage(TestAccountMoveSendCommon, MailCommon):
             'peppol_eas': '0208',
             'peppol_endpoint': '0477472701',
             'invoice_edi_format': 'ubl_bis3',
+            'invoice_sending_method': 'peppol',
         }])
         # but not valid for company 2
         new_partner.with_company(company_2).invoice_edi_format = 'nlcius'
-        new_partner.button_account_peppol_check_partner_endpoint(company=company_2)
         self.assertRecordValues(new_partner.with_company(company_2), [{
             'peppol_verification_state': 'not_valid_format',
             'peppol_eas': '0208',
             'peppol_endpoint': '0477472701',
             'invoice_edi_format': 'nlcius',
+            'invoice_sending_method': 'peppol',
         }])
         move_1 = self.create_move(new_partner)
         move_2 = self.create_move(new_partner)
@@ -415,9 +400,8 @@ class TestPeppolMessage(TestAccountMoveSendCommon, MailCommon):
         wizard = self.create_send_and_print(move_1 + move_2 + move_3)
         wizard.action_send_and_print()
         self.assertEqual((move_1 + move_2 + move_3).mapped('is_being_sent'), [True, True, True])
-        # the cron is ran asynchronously and should be agnostic from the current self.env.company
-        with self.enter_registry_test_mode():
-            self.env.ref('account.ir_cron_account_move_send').with_company(company_2).method_direct_trigger()
+        # the cron is run asynchronously and should be agnostic from the current self.env.company
+        self.env.ref('account.ir_cron_account_move_send').with_company(company_2).method_direct_trigger()
         # only move 1 & 2 should be processed, move_3 is related to an invalid partner (with regard to company_2) thus should fail to send
         self.assertEqual((move_1 + move_2 + move_3).mapped('peppol_move_state'), ['processing', 'processing', 'error'])
 
@@ -437,12 +421,12 @@ class TestPeppolMessage(TestAccountMoveSendCommon, MailCommon):
         and has no specific e-invoice format, we should default on BIS3
         and generate invoices without errors.
         """
+        self.valid_partner.invoice_sending_method = 'peppol'
         self.valid_partner.invoice_edi_format = False
 
         move = self.create_move(self.valid_partner)
         move.action_post()
-        wizard = self.create_send_and_print(move, default=True)
-        self.assertTrue(wizard.sending_methods and 'peppol' in wizard.sending_methods)
+        wizard = self.create_send_and_print(move)
         self.assertEqual(wizard.invoice_edi_format, 'ubl_bis3')
         wizard.action_send_and_print()
         self.assertTrue(move.ubl_cii_xml_id)
@@ -453,20 +437,19 @@ class TestPeppolMessage(TestAccountMoveSendCommon, MailCommon):
         has no specific e-invoice format, we should default on BIS3
         and generate invoices without errors.
         """
+        self.valid_partner.invoice_sending_method = 'peppol'
         self.valid_partner.invoice_edi_format = False
 
         move_1 = self.create_move(self.valid_partner)
         move_2 = self.create_move(self.valid_partner)
         moves = (move_1 + move_2)
         moves.action_post()
-        wizard = self.create_send_and_print(moves, default=True)
+        wizard = self.create_send_and_print(moves)
         self.assertEqual(wizard.summary_data, {
-            'email': {'count': 2, 'label': 'by Email'},
             'peppol': {'count': 2, 'label': 'by Peppol'},
         })
         wizard.action_send_and_print()
-        with self.enter_registry_test_mode():
-            self.env.ref('account.ir_cron_account_move_send').method_direct_trigger()
+        self.env.ref('account.ir_cron_account_move_send').method_direct_trigger()
 
         self.assertEqual(len(moves.ubl_cii_xml_id), 2)
         self.assertEqual(moves.mapped('peppol_move_state'), ['processing', 'processing'])
@@ -485,9 +468,9 @@ class TestPeppolMessage(TestAccountMoveSendCommon, MailCommon):
 
         wizard = self.create_send_and_print(move_1 + move_2)
         with patch(
-            'odoo.addons.account_edi_ubl_cii.models.account_edi_xml_ubl_20.AccountEdiXmlUbl_20._export_invoice_constraints',
+            'odoo.addons.account_edi_ubl_cii.models.account_edi_xml_ubl_20.AccountEdiXmlUBL20._export_invoice_constraints',
             mocked_export_invoice_constraints
-        ), self.enter_registry_test_mode():
+        ):
             wizard.action_send_and_print()
             self.env.ref('account.ir_cron_account_move_send').method_direct_trigger()
         self.assertEqual(move_1.peppol_move_state, 'error')

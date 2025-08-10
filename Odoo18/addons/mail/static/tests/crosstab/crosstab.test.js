@@ -1,4 +1,5 @@
 import {
+    assertSteps,
     click,
     contains,
     defineMailModels,
@@ -6,18 +7,12 @@ import {
     openDiscuss,
     start,
     startServer,
+    step,
     triggerHotkey,
 } from "@mail/../tests/mail_test_helpers";
 import { describe, test } from "@odoo/hoot";
-import { press } from "@odoo/hoot-dom";
 import { mockDate } from "@odoo/hoot-mock";
-import {
-    asyncStep,
-    getService,
-    mockService,
-    serverState,
-    waitForSteps,
-} from "@web/../tests/web_test_helpers";
+import { getService, patchWithCleanup, serverState } from "@web/../tests/web_test_helpers";
 
 import { rpc } from "@web/core/network/rpc";
 
@@ -31,12 +26,33 @@ test("Messages are received cross-tab", async () => {
     const env2 = await start({ asTab: true });
     await openDiscuss(channelId, { target: env1 });
     await openDiscuss(channelId, { target: env2 });
-    await contains(".o-mail-Thread:contains('Welcome to #General!')", { target: env1 }); // wait for loaded and focus in input
-    await contains(".o-mail-Thread:contains('Welcome to #General!')", { target: env2 }); // wait for loaded and focus in input
     await insertText(".o-mail-Composer-input", "Hello World!", { target: env1 });
-    await press("Enter");
+    await click("button[aria-label='Send']:enabled", { target: env1 });
     await contains(".o-mail-Message-content", { target: env1, text: "Hello World!" });
     await contains(".o-mail-Message-content", { target: env2, text: "Hello World!" });
+});
+
+test("Delete starred message updates counter", async () => {
+    const pyEnv = await startServer();
+    const channelId = pyEnv["discuss.channel"].create({ name: "General" });
+    pyEnv["mail.message"].create({
+        body: "Hello World!",
+        model: "discuss.channel",
+        message_type: "comment",
+        res_id: channelId,
+        starred_partner_ids: [serverState.partnerId],
+    });
+    const env1 = await start({ asTab: true });
+    const env2 = await start({ asTab: true });
+    await openDiscuss(channelId, { target: env1 });
+    await openDiscuss(channelId, { target: env2 });
+    await contains(".o-mail-Message", { target: env1, text: "Hello World!" });
+    await contains(".o-mail-Message", { target: env2, text: "Hello World!" });
+    await contains("button", { target: env2, text: "Starred1" });
+    await click(":nth-child(1 of .o-mail-Message) [title='Expand']", { target: env2 });
+    await click(".o-mail-Message-moreMenu [title='Delete']", { target: env2 });
+    await click("button", { text: "Confirm" }, { target: env2 });
+    await contains("button", { count: 0, target: env2, text: "Starred1" });
 });
 
 test.tags("focus required");
@@ -95,9 +111,9 @@ test.skip("Channel subscription is renewed when channel is added from invite", a
         `${later.year}-${later.month}-${later.day} ${later.hour}:${later.minute}:${later.second}`
     );
     await start();
-    mockService("bus_service", {
+    patchWithCleanup(getService("bus_service"), {
         forceUpdateChannels() {
-            asyncStep("update-channels");
+            step("update-channels");
         },
     });
     await openDiscuss();
@@ -106,7 +122,7 @@ test.skip("Channel subscription is renewed when channel is added from invite", a
         partner_ids: [serverState.partnerId],
     });
     await contains(".o-mail-DiscussSidebarChannel", { count: 2 });
-    await waitForSteps(["update-channels"]); // FIXME: sometimes 1 or 2 update-channels
+    await assertSteps(["update-channels"]); // FIXME: sometimes 1 or 2 update-channels
 });
 
 test("Adding attachments", async () => {
@@ -131,7 +147,7 @@ test("Adding attachments", async () => {
         attachment_ids: [attachmentId],
         message_id: messageId,
     });
-    await contains(".o-mail-AttachmentContainer", { target: env2, text: "test.txt" });
+    await contains(".o-mail-AttachmentCard", { target: env2, text: "test.txt" });
 });
 
 test("Remove attachment from message", async () => {
@@ -153,14 +169,12 @@ test("Remove attachment from message", async () => {
     await openDiscuss(channelId, { target: env1 });
     await openDiscuss(channelId, { target: env2 });
     await contains(".o-mail-AttachmentCard", { target: env1, text: "test.txt" });
-    await click(".o-mail-Attachment-unlink", { target: env2 });
+    await click(".o-mail-AttachmentCard-unlink", { target: env2 });
     await click(".modal-footer .btn", { text: "Ok", target: env2 });
     await contains(".o-mail-AttachmentCard", { count: 0, target: env1, text: "test.txt" });
 });
 
-test("Message (hard) delete notification", async () => {
-    // Note: This isn't a notification from when user click on "Delete message" action:
-    // this happens when mail_message server record is effectively deleted (unlink)
+test("Message delete notification", async () => {
     const pyEnv = await startServer();
     const messageId = pyEnv["mail.message"].create({
         body: "Needaction message",

@@ -14,15 +14,8 @@
     'installable': True,
     'assets': {
         'point_of_sale._assets_pos': [
-            'pos_adyen/static/src/**/*',
-        ],
-        'web.assets_tests': [
-            'pos_adyen/static/tests/tours/**/*',
-        ],
-        'web.assets_unit_tests': [
-            'pos_adyen/static/tests/unit/data/**/*'
+            'pos_adyen/static/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

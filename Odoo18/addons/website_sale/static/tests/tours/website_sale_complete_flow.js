@@ -1,7 +1,9 @@
-import { rpc } from "@web/core/network/rpc";
-import { registry } from "@web/core/registry";
-import * as tourUtils from "@website_sale/js/tours/tour_utils";
-import { pay } from "@website_sale/js/tours/tour_utils";
+/** @odoo-module **/
+
+    import { rpc } from "@web/core/network/rpc";
+    import { registry } from "@web/core/registry";
+    import * as tourUtils from "@website_sale/js/tours/tour_utils";
+    import { pay } from "@website_sale/js/tours/tour_utils";
 
     registry.category("web_tour.tours").add('website_sale_tour_1', {
         url: '/shop?search=Storage Box Test',
@@ -69,8 +71,8 @@ import { pay } from "@website_sale/js/tours/tour_utils";
         run: "edit 10000",
     },
     {
-        content: "Click on Confirm button",
-        trigger: 'a[name="website_sale_main_button"]',
+        content: "Click on next button",
+        trigger: '.oe_cart .btn:contains("Continue checkout")',
         run: "click",
         expectUnloadPage: true,
     },
@@ -81,12 +83,12 @@ import { pay } from "@website_sale/js/tours/tour_utils";
     },
     {
         content: "Add a billing address",
-        trigger: '.o_portal_address_row a[href^="/shop/address?address_type=billing"]:contains("Add address")',
+        trigger: '.all_billing a[href^="/shop/address"]:contains("Add address")',
         run: "click",
         expectUnloadPage: true,
     },
     {
-        trigger: 'h4:contains("New address")',
+        trigger: 'h3:contains("Billing address")',
     },
     {
         content: "Fulfill billing address form",
@@ -118,8 +120,8 @@ import { pay } from "@website_sale/js/tours/tour_utils";
         run: "edit 10000",
     },
     {
-        content: "Click on Confirm button to save the address",
-        trigger: 'a[name="website_sale_main_button"]',
+        content: "Click on next button",
+        trigger: '.oe_cart .btn:contains("Save address")',
         run: "click",
         expectUnloadPage: true,
     },
@@ -133,12 +135,12 @@ import { pay } from "@website_sale/js/tours/tour_utils";
     },
     {
         content: "Click for edit billing address",
-        trigger: '#billing_container .o_portal_address_row a[href^="/shop/address?address_type=billing"].js_edit_address:first',
+        trigger: '.all_billing .js_edit_address:first',
         run: "click",
         expectUnloadPage: true,
     },
     {
-        trigger: 'h4:contains("Edit address")',
+        trigger: 'h3:contains("Billing address")',
     },
     {
         content: "Change billing address form",
@@ -161,21 +163,31 @@ import { pay } from "@website_sale/js/tours/tour_utils";
         run: "edit SO1BillingCityEdited",
     },
     {
-        content: "Click on Confirm button to save the address",
-        trigger: 'a[name="website_sale_main_button"]',
+        content: "Click on next button",
+        trigger: '.oe_cart .btn:contains("Save address")',
         run: "click",
         expectUnloadPage: true,
     },
         tourUtils.confirmOrder(),
     {
         content: "Check selected billing address is same as typed in previous step",
-        trigger: '#delivery_and_billing :contains(Billing):contains(SO1 Billing Street Edited, 33):contains(SO1BillingCityEdited):contains(Afghanistan)',
+        trigger: '#delivery_and_billing :contains(Billing:):contains(SO1 Billing Street Edited, 33):contains(SO1BillingCityEdited):contains(Afghanistan)',
     },
-    ...tourUtils.payWithTransfer({
-        redirect: false,
+    {
+        content: "Select `Wire Transfer` payment method",
+        trigger: 'input[name="o_payment_radio"][data-payment-method-code="wire_transfer"]',
+        run: "click",
+    },
+    {
+        trigger:
+            'input[name="o_payment_radio"][data-payment-method-code="wire_transfer"]:checked',
+    },
+    {
+        content: "Pay Now",
+        trigger: 'button[name="o_payment_submit_button"]:not(:disabled)',
+        run: "click",
         expectUnloadPage: true,
-        waitFinalizeYourPayment: true,
-    }),
+    },
     {
         content: "Sign up",
         trigger: '.oe_cart a:contains("Sign Up")',
@@ -333,7 +345,7 @@ import { pay } from "@website_sale/js/tours/tour_utils";
     },
     {
         content: "Add new delivery address",
-        trigger: '#delivery_address_row a[href^="/shop/address"]:contains("Add address")',
+        trigger: '.all_delivery a[href^="/shop/address"]:contains("Add address")',
         run: "click",
         expectUnloadPage: true,
     },
@@ -363,14 +375,9 @@ import { pay } from "@website_sale/js/tours/tour_utils";
         run: "edit 1200",
     },
     {
-        trigger: `input[name="email"]`,
-        run: "edit ghi@odoo.com",
-    },
-    {
-        content: "Click on Confirm button to save the address",
-        trigger: 'a[name="website_sale_main_button"]',
+        content: "Click on next button",
+        trigger: '.oe_cart .btn:contains("Save address")',
         run: "click",
-        expectUnloadPage: true,
     },
         tourUtils.confirmOrder(),
     {
@@ -383,7 +390,7 @@ import { pay } from "@website_sale/js/tours/tour_utils";
     },
         ...pay({ expectUnloadPage: true, waitFinalizeYourPayment: true }),
     {
-        trigger: '.oe_cart [name="order_confirmation"]',
+        trigger: '.oe_cart .oe_website_sale_tx_status',
     },
     {
         content: "Open Dropdown for See quotation",
@@ -513,5 +520,5 @@ import { pay } from "@website_sale/js/tours/tour_utils";
     ...tourUtils.payWithTransfer({ expectUnloadPage: true, waitFinalizeYourPayment: true }),
     {
         content: "Check payment status confirmation window",
-        trigger: '[name="order_confirmation"][data-order-tracking-info]',
+        trigger: ".oe_website_sale_tx_status[data-order-tracking-info]",
     }]});

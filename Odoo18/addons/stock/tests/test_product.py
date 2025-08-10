@@ -17,42 +17,44 @@ class TestVirtualAvailable(TestStockCommon):
         # Make `product3` a storable product for this test. Indeed, creating quants
         # and playing with owners is not possible for consumables.
         cls.product_3.is_storable = True
-        cls.picking_type_out.reservation_method = 'manual'
+        cls.env['stock.picking.type'].browse(cls.env.ref('stock.picking_type_out').id).reservation_method = 'manual'
 
         cls.env['stock.quant'].create({
             'product_id': cls.product_3.id,
-            'location_id': cls.stock_location.id,
+            'location_id': cls.env.ref('stock.stock_location_stock').id,
             'quantity': 30.0})
 
         cls.env['stock.quant'].create({
             'product_id': cls.product_3.id,
-            'location_id': cls.stock_location.id,
+            'location_id': cls.env.ref('stock.stock_location_stock').id,
             'quantity': 10.0,
             'owner_id': cls.user_stock_user.partner_id.id})
 
         cls.picking_out = cls.env['stock.picking'].create({
             'state': 'draft',
-            'picking_type_id': cls.picking_type_out.id
+            'picking_type_id': cls.env.ref('stock.picking_type_out').id
         })
         cls.env['stock.move'].create({
+            'name': 'a move',
             'product_id': cls.product_3.id,
             'product_uom_qty': 3.0,
             'product_uom': cls.product_3.uom_id.id,
             'picking_id': cls.picking_out.id,
-            'location_id': cls.stock_location.id,
-            'location_dest_id': cls.customer_location.id})
+            'location_id': cls.env.ref('stock.stock_location_stock').id,
+            'location_dest_id': cls.env.ref('stock.stock_location_customers').id})
 
         cls.picking_out_2 = cls.env['stock.picking'].create({
             'state': 'draft',
-            'picking_type_id': cls.picking_type_out.id})
+            'picking_type_id': cls.env.ref('stock.picking_type_out').id})
         cls.env['stock.move'].create({
             'restrict_partner_id': cls.user_stock_user.partner_id.id,
+            'name': 'another move',
             'product_id': cls.product_3.id,
             'product_uom_qty': 5.0,
             'product_uom': cls.product_3.uom_id.id,
             'picking_id': cls.picking_out_2.id,
-            'location_id': cls.stock_location.id,
-            'location_dest_id': cls.customer_location.id})
+            'location_id': cls.env.ref('stock.stock_location_stock').id,
+            'location_dest_id': cls.env.ref('stock.stock_location_customers').id})
 
     def test_without_owner(self):
         self.assertAlmostEqual(40.0, self.product_3.virtual_available)
@@ -97,7 +99,7 @@ class TestVirtualAvailable(TestStockCommon):
         self.assertTrue(self.product_3.active)
         orderpoint_form = Form(self.env['stock.warehouse.orderpoint'])
         orderpoint_form.product_id = self.product_3
-        orderpoint_form.location_id = self.stock_location
+        orderpoint_form.location_id = self.env.ref('stock.stock_location_stock')
         orderpoint_form.product_min_qty = 0.0
         orderpoint_form.product_max_qty = 5.0
         orderpoint = orderpoint_form.save()
@@ -118,7 +120,7 @@ class TestVirtualAvailable(TestStockCommon):
         self.env['stock.quant'].create({
             'product_id': product.id,
             'product_uom_id': self.uom_unit.id,
-            'location_id': self.shelf_1.id,
+            'location_id': self.location_1.id,
             'quantity': 7,
             'reserved_quantity': 0,
         })
@@ -142,14 +144,15 @@ class TestVirtualAvailable(TestStockCommon):
             'type': 'consu',
         })
         picking = self.env['stock.picking'].create({
-            'location_id': self.customer_location.id,
-            'location_dest_id': self.stock_location.id,
-            'picking_type_id': self.picking_type_in.id,
+            'location_id': self.env.ref('stock.stock_location_customers').id,
+            'location_dest_id': self.env.ref('stock.stock_location_stock').id,
+            'picking_type_id': self.ref('stock.picking_type_in'),
             'state': 'draft',
         })
         self.env['stock.move'].create({
-            'location_id': self.customer_location.id,
-            'location_dest_id': self.stock_location.id,
+            'name': 'test',
+            'location_id': self.env.ref('stock.stock_location_customers').id,
+            'location_dest_id': self.env.ref('stock.stock_location_stock').id,
             'product_id': product.id,
             'product_uom': product.uom_id.id,
             'product_uom_qty': 1,
@@ -166,6 +169,8 @@ class TestVirtualAvailable(TestStockCommon):
         """ Checks we can change product company where only exist single company
         and exist quant in vendor/customer location"""
         company1 = self.env.ref('base.main_company')
+        customer_location = self.env.ref('stock.stock_location_customers')
+        supplier_location = self.env.ref('stock.stock_location_suppliers')
         product = self.env['product.product'].create({
             'name': 'Product Single Company',
             'is_storable': True,
@@ -174,21 +179,21 @@ class TestVirtualAvailable(TestStockCommon):
         self.env['stock.quant'].create({
             'product_id': product.id,
             'product_uom_id': self.uom_unit.id,
-            'location_id': self.shelf_1.id,
+            'location_id': self.location_1.id,
             'quantity': 5,
         })
         # Creates a quant for vendor location.
         self.env['stock.quant'].create({
             'product_id': product.id,
             'product_uom_id': self.uom_unit.id,
-            'location_id': self.supplier_location.id,
+            'location_id': supplier_location.id,
             'quantity': -15,
         })
         # Creates a quant for customer location.
         self.env['stock.quant'].create({
             'product_id': product.id,
             'product_uom_id': self.uom_unit.id,
-            'location_id': self.customer_location.id,
+            'location_id': customer_location.id,
             'quantity': 10,
         })
         # Assigns a company: should be ok because only exist one company (exclude vendor and customer location)
@@ -222,7 +227,7 @@ class TestVirtualAvailable(TestStockCommon):
         calling `name_search` with a negative operator will exclude T from the
         result.
         """
-        self._enable_variants()
+        self.env.ref('base.group_user').write({'implied_ids': [(4, self.env.ref('product.group_product_variant').id)]})
         template = self.env['product.template'].create({
             'name': 'Super Product',
         })
@@ -363,6 +368,11 @@ class TestVirtualAvailable(TestStockCommon):
         # At this point product_3 should have the quantity reserved
         self.product_3.active = False
 
-        self.product_3.write({'is_storable': False})
+        # Should not be possible to change the product type when quantities are reserved
+        with self.assertRaises(UserError):
+            self.product_3.write({'is_storable': False})
 
+        # Should not be possible to change the product type when moves are done.
         self.picking_out.button_validate()
+        with self.assertRaises(UserError):
+            self.product_3.write({'is_storable': False})

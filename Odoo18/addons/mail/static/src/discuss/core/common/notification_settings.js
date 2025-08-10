@@ -1,4 +1,4 @@
-import { Component, xml } from "@odoo/owl";
+import { Component, useState, xml } from "@odoo/owl";
 import { ActionPanel } from "@mail/discuss/core/common/action_panel";
 import { Dropdown } from "@web/core/dropdown/dropdown";
 import { DropdownItem } from "@web/core/dropdown/dropdown_item";
@@ -22,9 +22,8 @@ export class NotificationSettings extends Component {
     static template = "discuss.NotificationSettings";
 
     setup() {
-        this.store = useService("mail.store");
+        this.store = useState(useService("mail.store"));
         this.dialog = useService("dialog");
-        this.ui = useService("ui");
     }
 
     setMute(minutes) {

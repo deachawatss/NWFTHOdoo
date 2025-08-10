@@ -1,17 +1,9 @@
-import {
-    after,
-    before,
-    createJobScopedGetter,
-    expect,
-    getCurrent,
-    registerDebugInfo,
-} from "@odoo/hoot";
+import { before, createJobScopedGetter, expect, getCurrent, registerDebugInfo } from "@odoo/hoot";
 import { mockFetch, mockWebSocket } from "@odoo/hoot-mock";
-import { rpc, RPCError } from "@web/core/network/rpc";
+import { RPCError } from "@web/core/network/rpc";
+import { registry } from "@web/core/registry";
 import { ensureArray, isIterable } from "@web/core/utils/arrays";
 import { isObject } from "@web/core/utils/objects";
-import { PersistentCache } from "@web/core/utils/persistent_cache";
-import { hashCode } from "@web/core/utils/strings";
 import { serverState } from "../mock_server_state.hoot";
 import { fetchModelDefinitions, globalCachedFetch, registerModelToFetch } from "../module_set.hoot";
 import { DEFAULT_FIELD_PROPERTIES, getFieldDisplayName, S_SERVER_FIELD } from "./mock_fields";
@@ -164,7 +156,7 @@ function deepCopy(object) {
 function getAssignAction(options) {
     const shouldAdd = options?.mode === "add";
     return function assign(target, key, value) {
-        if (shouldAdd && target[key] === Object(target[key])) {
+        if (shouldAdd && isObject(target[key])) {
             // Add value
             if (Array.isArray(target[key])) {
                 target[key].push(...value);
@@ -451,7 +443,7 @@ export class MockServer {
             assign(serverState, "lang", params.lang);
         }
         if (params.lang_parameters) {
-            // Never fully replace "lang_parameters"
+            // Never fully replace "_lang_parameters"
             Object.assign(this._lang_parameters, params.lang_parameters);
         }
         if (params.menus) {
@@ -510,10 +502,6 @@ export class MockServer {
 
         registerDebugInfo("mock server", this);
 
-        // Add RPC cache
-        rpc.setCache(new PersistentCache("mockRpc", 1, "23aeb0ff5d46cfa8aa44163720d871ac"));
-        after(() => rpc.setCache(null));
-
         // Intercept all server calls
         mockFetch(this._handleRequest.bind(this));
         mockWebSocket(this._handleWebSocket.bind(this));
@@ -536,12 +524,25 @@ export class MockServer {
         this._onRoute(["/web/image/<string:model>/<int:id>/<string:field>"], this.loadImage, {
             pure: true,
         });
-        this._onRoute(["/web/webclient/load_menus"], this.loadMenus, {
+        this._onRoute(["/web/webclient/load_menus/<string:unique>"], this.loadMenus, {
             pure: true,
         });
-        this._onRoute(["/web/webclient/translations"], this.loadTranslations, {
+        this._onRoute(["/web/webclient/translations/<string:unique>"], this.loadTranslations, {
             pure: true,
         });
+
+        // Add routes from "mock_rpc" registry
+        const mockRpcEntries = registry.category("mock_rpc").getEntries();
+        if (mockRpcEntries.length) {
+            console.warn(
+                "Warning: 'mock_rpc' registry is deprecated; use 'onRpc' with the same parameters instead."
+            );
+            for (const [route, callback] of mockRpcEntries) {
+                if (typeof callback === "function") {
+                    this._onRpc(route, callback);
+                }
+            }
+        }
 
         // Register ambiant parameters
         await this.configure(getCurrentParams());
@@ -708,7 +709,6 @@ export class MockServer {
                 action.target ??= "current";
                 action.view_ids ||= [];
                 action.view_mode ??= "list,form";
-                action.cache ??= true;
                 for (const embeddedAction of this.actions) {
                     if (
                         embeddedAction.type === ACTION_TYPES.embedded &&
@@ -1261,29 +1261,17 @@ export class MockServer {
     /**
      * @type {RouteCallback<"unique">}
      */
-    async loadTranslations(request) {
-        const requestHash = new URL(request.url).searchParams.get("hash");
+    async loadTranslations() {
         const langParameters = { ...this._lang_parameters };
         if (typeof langParameters.grouping !== "string") {
             langParameters.grouping = JSON.stringify(langParameters.grouping);
         }
-        const result = {
+        return {
             lang: serverState.lang,
             lang_parameters: langParameters,
             modules: this._modules,
             multi_lang: serverState.multiLang,
         };
-
-        const currentHash = hashCode(JSON.stringify(result)).toString(16);
-        if (currentHash === requestHash) {
-            return {
-                lang: serverState.lang,
-                hash: currentHash,
-                no_change: true,
-            };
-        }
-        result.hash = currentHash;
-        return result;
     }
 
     /**

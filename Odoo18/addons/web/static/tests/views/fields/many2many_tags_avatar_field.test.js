@@ -34,7 +34,9 @@ class Turtle extends models.Model {
     ];
 }
 
-onRpc("has_group", () => true);
+onRpc("has_group", () => {
+    return true;
+});
 
 defineModels([Partner, Turtle]);
 
@@ -169,7 +171,8 @@ test("widget many2many_tags_avatar in list view", async () => {
     await contains(".o_control_panel_main_buttons .o_list_button_save").click();
     expect(".o_data_row:eq(0) .o_field_many2many_tags_avatar .o_avatar img").toHaveCount(2);
 
-    // Edit first row
+    // Select the first row and enter edit mode on the x2many field.
+    await contains(".o_data_row:nth-child(1) .o_list_record_selector input").click();
     await contains(".o_data_row:nth-child(1) .o_data_cell").click();
 
     // Only the first row should have tags with delete buttons.
@@ -190,7 +193,8 @@ test("widget many2many_tags_avatar list view - don't crash on keyboard navigatio
             `,
     });
 
-    // Edit second row
+    // Select the 2nd row and enter edit mode on the x2many field.
+    await contains(".o_data_row:nth-child(2) .o_list_record_selector input").click();
     await contains(".o_data_row:nth-child(2) .o_data_cell").click();
 
     // Pressing left arrow should focus on the right-most (second) tag.
@@ -256,10 +260,10 @@ test("widget many2many_tags_avatar in kanban view", async () => {
         ".o_kanban_record:nth-child(3) .o_field_many2many_tags_avatar .o_avatar img"
     ).toHaveCount(2);
     expect(
-        `.o_kanban_record:nth-child(3) .o_field_many2many_tags_avatar .o_avatar:nth-child(1 of .o_tag) img.o_m2m_avatar[data-src='${getOrigin()}/web/image/partner/5/avatar_128']`
+        `.o_kanban_record:nth-child(3) .o_field_many2many_tags_avatar .o_avatar:nth-child(1) img.o_m2m_avatar[data-src='${getOrigin()}/web/image/partner/5/avatar_128']`
     ).toHaveCount(1);
     expect(
-        `.o_kanban_record:nth-child(3) .o_field_many2many_tags_avatar .o_avatar:nth-child(2 of .o_tag) img.o_m2m_avatar[data-src='${getOrigin()}/web/image/partner/4/avatar_128']`
+        `.o_kanban_record:nth-child(3) .o_field_many2many_tags_avatar .o_avatar:nth-child(2) img.o_m2m_avatar[data-src='${getOrigin()}/web/image/partner/4/avatar_128']`
     ).toHaveCount(1);
     expect(
         ".o_kanban_record:nth-child(3) .o_field_many2many_tags_avatar .o_m2m_avatar_empty"
@@ -278,7 +282,7 @@ test("widget many2many_tags_avatar in kanban view", async () => {
         ".o_kanban_record:nth-child(4) .o_field_many2many_tags_avatar .o_m2m_avatar_empty"
     ).toHaveText("9+");
     expect(".o_field_many2many_tags_avatar .o_field_many2many_selection").toHaveCount(0);
-    await contains(".o_kanban_record:nth-child(3) .o_quick_assign", { visible: false }).click();
+    await contains(".o_kanban_record:nth-child(3) .o_field_tags > .o_m2m_avatar_empty").click();
     await animationFrame();
     expect(".o-overlay-container input").toBeFocused();
     expect(".o-overlay-container .o_tag").toHaveCount(4);

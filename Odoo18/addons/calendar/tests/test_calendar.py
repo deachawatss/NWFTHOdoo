@@ -1,13 +1,18 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
+import datetime
 
-import base64
-import freezegun
-
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from odoo import fields, Command
-from odoo.tests import Form, new_test_user
+from odoo.addons.base.tests.common import HttpCaseWithUserDemo
+from odoo.tests import Form, tagged, new_test_user
 from odoo.addons.base.tests.common import SavepointCaseWithUserDemo
+
+import freezegun
+import pytz
+import re
+import base64
 
 
 class TestCalendar(SavepointCaseWithUserDemo):
@@ -73,6 +78,179 @@ class TestCalendar(SavepointCaseWithUserDemo):
         events = self.CalendarEvent.search(domain, order='start desc, name desc')
         self.assertEqual(list(events), [foo2, bar2, bar1, foo1])
 
+    def test_event_activity(self):
+        # ensure meeting activity type exists
+        meeting_act_type = self.env['mail.activity.type'].search([('category', '=', 'meeting')], limit=1)
+        if not meeting_act_type:
+            meeting_act_type = self.env['mail.activity.type'].create({
+                'name': 'Meeting Test',
+                'category': 'meeting',
+            })
+
+        # have a test model inheriting from activities
+        test_record = self.env['res.partner'].create({
+            'name': 'Test',
+        })
+        now = datetime.now()
+        test_user = self.user_demo
+        test_name, test_description, test_description2 = 'Test-Meeting', 'Test-Description', 'NotTest'
+        test_note, test_note2 = '<p>Test-Description</p>', '<p>NotTest</p>'
+
+        # create using default_* keys
+        test_event = self.env['calendar.event'].with_user(test_user).with_context(
+            default_res_model=test_record._name,
+            default_res_id=test_record.id,
+        ).create({
+            'name': test_name,
+            'description': test_description,
+            'start': fields.Datetime.to_string(now + timedelta(days=-1)),
+            'stop': fields.Datetime.to_string(now + timedelta(hours=2)),
+            'user_id': self.env.user.id,
+        })
+        self.assertEqual(test_event.res_model, test_record._name)
+        self.assertEqual(test_event.res_id, test_record.id)
+        self.assertEqual(len(test_record.activity_ids), 1)
+        self.assertEqual(test_record.activity_ids.summary, test_name)
+        self.assertEqual(test_record.activity_ids.note, test_note)
+        self.assertEqual(test_record.activity_ids.user_id, self.env.user)
+        self.assertEqual(test_record.activity_ids.date_deadline, (now + timedelta(days=-1)).date())
+
+        # updating event should update activity
+        test_event.write({
+            'name': '%s2' % test_name,
+            'description': test_description2,
+            'start': fields.Datetime.to_string(now + timedelta(days=-2)),
+            'user_id': test_user.id,
+        })
+        self.assertEqual(test_record.activity_ids.summary, '%s2' % test_name)
+        self.assertEqual(test_record.activity_ids.note, test_note2)
+        self.assertEqual(test_record.activity_ids.user_id, test_user)
+        self.assertEqual(test_record.activity_ids.date_deadline, (now + timedelta(days=-2)).date())
+
+        # update event with a description that have a special character and a new line
+        test_description3 = 'Test & <br> Description'
+        test_note3 = '<p>Test &amp; <br> Description</p>'
+        test_event.write({
+            'description': test_description3,
+        })
+
+        self.assertEqual(test_record.activity_ids.note, test_note3)
+
+        # deleting meeting should delete its activity
+        test_record.activity_ids.unlink()
+        self.assertEqual(self.env['calendar.event'], self.env['calendar.event'].search([('name', '=', test_name)]))
+
+        # create using active_model keys
+        test_event = self.env['calendar.event'].with_user(self.user_demo).with_context(
+            active_model=test_record._name,
+            active_id=test_record.id,
+        ).create({
+            'name': test_name,
+            'description': test_description,
+            'start': now + timedelta(days=-1),
+            'stop': now + timedelta(hours=2),
+            'user_id': self.env.user.id,
+        })
+        self.assertEqual(test_event.res_model, test_record._name)
+        self.assertEqual(test_event.res_id, test_record.id)
+        self.assertEqual(len(test_record.activity_ids), 1)
+
+    def test_event_activity_user_sync(self):
+        # ensure phonecall activity type exists
+        activty_type = self.env['mail.activity.type'].create({
+            'name': 'Call',
+            'category': 'phonecall'
+        })
+        activity = self.env['mail.activity'].create({
+            'summary': 'Call with Demo',
+            'activity_type_id': activty_type.id,
+            'note': 'Schedule call with Admin',
+            'res_model_id': self.env['ir.model']._get_id('res.partner'),
+            'res_id': self.env['res.partner'].create({'name': 'Test Partner'}).id,
+            'user_id': self.user_demo.id,
+        })
+        action_context = activity.action_create_calendar_event().get('context', {})
+        event_from_activity = self.env['calendar.event'].with_context(action_context).create({
+            'start': '2022-07-27 14:30:00',
+            'stop': '2022-07-27 16:30:00',
+        })
+        # Check that assignation of the activity hasn't changed, and event is having
+        # correct values set in attendee and organizer related fields
+        self.assertEqual(activity.user_id, self.user_demo)
+        self.assertEqual(event_from_activity.partner_ids, activity.user_id.partner_id)
+        self.assertEqual(event_from_activity.attendee_ids.partner_id, activity.user_id.partner_id)
+        self.assertEqual(event_from_activity.user_id, activity.user_id)
+
+    def test_activity_event_multiple_meetings(self):
+        # Creating multiple meetings from an activity creates additional activities
+        # ensure meeting activity type exists
+        meeting_act_type = self.env.ref('mail.mail_activity_data_meeting')
+
+        # have a test model inheriting from activities
+        test_record = self.env['res.partner'].create({
+            'name': 'Test',
+        })
+
+        activity_1 = self.env['mail.activity'].create({
+            'summary': 'Meeting 1 with partner',
+            'activity_type_id': meeting_act_type.id,
+            'res_model_id': self.env['ir.model']._get_id('res.partner'),
+            'res_id': test_record.id,
+        })
+
+        # default usage in successive create
+        event_1_1 = self.env['calendar.event'].with_context(default_activity_ids=[(6, 0, activity_1.ids)]).create({
+            'name': 'Meeting 1',
+            'start': datetime(2025, 3, 10, 17),
+            'stop': datetime(2025, 3, 10, 22),
+        })
+        self.assertEqual(event_1_1.activity_ids, activity_1)
+        self.assertEqual(activity_1.calendar_event_id, event_1_1)
+        self.assertEqual(activity_1.date_deadline, date(2025, 3, 10))
+        event_1_2 = self.env['calendar.event'].with_context(default_activity_ids=[(6, 0, activity_1.ids)]).create({
+            'name': 'Meeting 2',
+            'start': datetime(2025, 3, 12, 17),
+            'stop': datetime(2025, 3, 12, 22),
+        })
+        self.assertFalse(event_1_1.activity_ids, 'Changes activity ownership')
+        self.assertEqual(event_1_2.activity_ids, activity_1, 'Changes activity ownership')
+        self.assertEqual(activity_1.calendar_event_id, event_1_2)
+        self.assertEqual(activity_1.date_deadline, date(2025, 3, 12))
+
+        activity_2 = self.env['mail.activity'].create({
+            'summary': 'Meeting 2 with partner',
+            'activity_type_id': meeting_act_type.id,
+            'res_model_id': self.env['ir.model']._get_id('res.partner'),
+            'res_id': test_record.id,
+        })
+        existing_activities = self.env['mail.activity'].search([])
+
+        # specific action that creates activities instead of replacing
+        calendar_action = activity_2.with_context(default_res_model='res.partner', default_res_id=test_record.id).action_create_calendar_event()
+        event_2_1 = self.env['calendar.event'].with_context(calendar_action['context']).create({
+            'name': 'Meeting 1',
+            'start': datetime(2025, 4, 10, 17),
+            'stop': datetime(2025, 4, 10, 22),
+        })
+        self.assertEqual(event_2_1.activity_ids, activity_2)
+        self.assertEqual(activity_2.calendar_event_id, event_2_1)
+        self.assertEqual(activity_2.date_deadline, date(2025, 4, 10))
+
+        event_2_2 = self.env['calendar.event'].with_context(calendar_action['context']).create({
+            'name': 'Meeting 2',
+            'start': datetime(2025, 4, 11, 17),
+            'stop': datetime(2025, 4, 11, 22),
+        })
+        new_existing_activities = self.env['mail.activity'].search([])
+        new_activity = new_existing_activities - existing_activities
+        self.assertEqual(event_2_1.activity_ids, activity_2, "Event 1's activity should still be the first activity")
+        self.assertEqual(activity_2.calendar_event_id, event_2_1, "The first activity's event should still be event 1")
+
+        self.assertEqual(len(new_activity), 1, "1 more activity record should have been created (by event 2)")
+        self.assertEqual(event_2_2.activity_ids, new_activity, "Event 2's activity should not be the first activity")
+        self.assertEqual(event_2_2.activity_ids.activity_type_id, activity_2.activity_type_id, "Event 2's activity should be the same activity type as the first activity")
+        self.assertEqual(test_record.activity_ids, activity_1 + activity_2 + new_activity, "Resource record should now have all activities")
+
     def test_event_allday(self):
         self.env.user.tz = 'Pacific/Honolulu'
 
@@ -123,6 +301,74 @@ class TestCalendar(SavepointCaseWithUserDemo):
         self.assertEqual(f.month_by, "date", "The default value should be displayed")
         self.assertEqual(f.end_type, "count", "The default value should be displayed")
         self.assertEqual(f.rrule_type, "weekly", "The default value should be displayed")
+
+    def test_event_activity_timezone(self):
+        activty_type = self.env['mail.activity.type'].create({
+            'name': 'Meeting',
+            'category': 'meeting'
+        })
+
+        activity_id = self.env['mail.activity'].create({
+            'summary': 'Meeting with partner',
+            'activity_type_id': activty_type.id,
+            'res_model_id': self.env['ir.model']._get_id('res.partner'),
+            'res_id': self.env['res.partner'].create({'name': 'A Partner'}).id,
+        })
+
+        calendar_event = self.env['calendar.event'].create({
+            'name': 'Meeting with partner',
+            'activity_ids': [(6, False, activity_id.ids)],
+            'start': '2018-11-12 21:00:00',
+            'stop': '2018-11-13 00:00:00',
+        })
+
+        # Check output in UTC
+        self.assertEqual(str(activity_id.date_deadline), '2018-11-12')
+
+        # Check output in the user's tz
+        # write on the event to trigger sync of activities
+        calendar_event.with_context({'tz': 'Australia/Brisbane'}).write({
+            'start': '2018-11-12 21:00:00',
+        })
+
+        self.assertEqual(str(activity_id.date_deadline), '2018-11-13')
+
+    def test_event_allday_activity_timezone(self):
+        # Covers use case of commit eef4c3b48bcb4feac028bf640b545006dd0c9b91
+        # Also, read the comment in the code at calendar.event._inverse_dates
+        activty_type = self.env['mail.activity.type'].create({
+            'name': 'Meeting',
+            'category': 'meeting'
+        })
+
+        activity_id = self.env['mail.activity'].create({
+            'summary': 'Meeting with partner',
+            'activity_type_id': activty_type.id,
+            'res_model_id': self.env['ir.model']._get_id('res.partner'),
+            'res_id': self.env['res.partner'].create({'name': 'A Partner'}).id,
+        })
+
+        calendar_event = self.env['calendar.event'].create({
+            'name': 'All Day',
+            'start': "2018-10-16 00:00:00",
+            'start_date': "2018-10-16",
+            'stop': "2018-10-18 00:00:00",
+            'stop_date': "2018-10-18",
+            'allday': True,
+            'activity_ids': [(6, False, activity_id.ids)],
+        })
+
+        # Check output in UTC
+        self.assertEqual(str(activity_id.date_deadline), '2018-10-16')
+
+        # Check output in the user's tz
+        # write on the event to trigger sync of activities
+        calendar_event.with_context({'tz': 'Pacific/Honolulu'}).write({
+            'start': '2018-10-16 00:00:00',
+            'start_date': '2018-10-16',
+        })
+
+        self.assertEqual(str(activity_id.date_deadline), '2018-10-16')
 
     @freezegun.freeze_time('2023-10-06 10:00:00')
     def test_event_creation_mail(self):
@@ -307,6 +553,77 @@ class TestCalendar(SavepointCaseWithUserDemo):
         })
         self.assertTrue(set(new_partners) == set(self.event_tech_presentation.videocall_channel_id.channel_partner_ids.ids), 'new partners must be invited to the channel')
 
+    def test_search_current_attendee_status(self):
+        """ Test searching for events based on the current user's attendance status. """
+        # Create a second user to ensure the filter is specific to the current user
+        user_test = new_test_user(self.env, login='user_test_calendar_filter')
+
+        # Create events with different attendee statuses for both users
+        event_accepted = self.env['calendar.event'].create({
+            'name': 'Event Demo Accepted',
+            'start': datetime(2025, 1, 1, 10, 0),
+            'stop': datetime(2025, 1, 1, 11, 0),
+            'attendee_ids': [
+                Command.create({'partner_id': self.user_demo.partner_id.id, 'state': 'accepted'}),
+                Command.create({'partner_id': user_test.partner_id.id, 'state': 'needsAction'}),
+            ]
+        })
+        event_declined = self.env['calendar.event'].create({
+            'name': 'Event Demo Declined',
+            'start': datetime(2025, 1, 2, 10, 0),
+            'stop': datetime(2025, 1, 2, 11, 0),
+            'attendee_ids': [
+                Command.create({'partner_id': self.user_demo.partner_id.id, 'state': 'declined'}),
+                Command.create({'partner_id': user_test.partner_id.id, 'state': 'accepted'}),
+            ]
+        })
+        event_tentative = self.env['calendar.event'].create({
+            'name': 'Event Demo Tentative',
+            'start': datetime(2025, 1, 3, 10, 0),
+            'stop': datetime(2025, 1, 3, 11, 0),
+            'attendee_ids': [
+                Command.create({'partner_id': self.user_demo.partner_id.id, 'state': 'tentative'}),
+                Command.create({'partner_id': user_test.partner_id.id, 'state': 'declined'}),
+            ]
+        })
+        event_other_user = self.env['calendar.event'].create({
+            'name': 'Event Other User Only',
+            'start': datetime(2025, 1, 4, 10, 0),
+            'stop': datetime(2025, 1, 4, 11, 0),
+            'attendee_ids': [
+                Command.create({'partner_id': user_test.partner_id.id, 'state': 'accepted'}),
+            ]
+        })
+
+        # Perform searches as the demo user and assert the results
+        CalendarEvent_Demo = self.env['calendar.event'].with_user(self.user_demo)
+
+        # Search for 'Yes' (accepted)
+        accepted_events = CalendarEvent_Demo.search([('current_status', '=', 'accepted')])
+        self.assertEqual(accepted_events, event_accepted, "Should find only the event where the demo user has accepted.")
+
+        # Search for 'No' (declined)
+        declined_events = CalendarEvent_Demo.search([('current_status', '=', 'declined')])
+        self.assertEqual(declined_events, event_declined, "Should find only the event where the demo user has declined.")
+
+        # Search for 'Maybe' (tentative)
+        tentative_events = CalendarEvent_Demo.search([('current_status', '=', 'tentative')])
+        self.assertEqual(tentative_events, event_tentative, "Should find only the event where the demo user is tentative.")
+
+        # Search for events where status is not 'No' (declined)
+        not_declined_events = CalendarEvent_Demo.search([('current_status', '!=', 'declined')])
+        self.assertIn(event_accepted, not_declined_events, "Accepted events should be in the result.")
+        self.assertIn(event_tentative, not_declined_events, "Tentative events should be in the result.")
+        self.assertNotIn(event_declined, not_declined_events, "Declined events should NOT be in the result.")
+        self.assertNotIn(event_other_user, not_declined_events, "Events where the user is not an attendee should NOT be in the result.")
+
+        # Search using the 'in' operator
+        in_events = CalendarEvent_Demo.search([('current_status', 'in', ['accepted', 'tentative'])])
+        self.assertEqual(len(in_events), 2, "Should find two events for 'accepted' or 'tentative'.")
+        self.assertIn(event_accepted, in_events, "Should find the accepted event in the 'in' search.")
+        self.assertIn(event_tentative, in_events, "Should find the tentative event in the 'in' search.")
+
+
     def test_event_duplication_allday(self):
         """Test that a calendar event is successfully duplicated with dates."""
         # Create an event
@@ -324,6 +641,85 @@ class TestCalendar(SavepointCaseWithUserDemo):
         self.assertTrue(new_calendar_event, "Event should be duplicated.")
         self.assertEqual(new_calendar_event.start_date, calendar_event.start_date, "Start date should match the original.")
         self.assertEqual(new_calendar_event.stop_date, calendar_event.stop_date, "Stop date should match the original.")
+
+@tagged('post_install', '-at_install')
+class TestCalendarTours(HttpCaseWithUserDemo):
+    def test_calendar_month_view_start_hour_displayed(self):
+        """ Test that the time is displayed in the month view. """
+        self.start_tour("/odoo", 'calendar_appointments_hour_tour', login="demo")
+
+    def test_calendar_delete_tour(self):
+        """
+            Check that we can delete events with the "Everybody's calendars" filter.
+        """
+        user_admin = self.env.ref('base.user_admin')
+        start = datetime.combine(date.today(), datetime.min.time()).replace(hour=9)
+        stop = datetime.combine(date.today(), datetime.min.time()).replace(hour=12)
+        event = self.env['calendar.event'].with_user(user_admin).create({
+            'name': 'Test Event',
+            'description': 'Test Description',
+            'start': start.strftime("%Y-%m-%d %H:%M:%S"),
+            'stop': stop.strftime("%Y-%m-%d %H:%M:%S"),
+            'duration': 3,
+            'location': 'Odoo S.A.',
+            'privacy': 'public',
+            'show_as': 'busy',
+        })
+        action_id = self.env.ref('calendar.action_calendar_event')
+        url = "/odoo/action-" + str(action_id.id)
+        self.start_tour(url, 'test_calendar_delete_tour', login='admin')
+        event = self.env['calendar.event'].search([('name', '=', 'Test Event')])
+        self.assertFalse(event) # Check if the event has been correctly deleted
+
+    def test_calendar_decline_tour(self):
+        """
+            Check that we can decline events.
+        """
+        user_admin = self.env.ref('base.user_admin')
+        user_demo = self.user_demo
+        start = datetime.combine(date.today(), datetime.min.time()).replace(hour=9)
+        stop = datetime.combine(date.today(), datetime.min.time()).replace(hour=12)
+        event = self.env['calendar.event'].with_user(user_admin).create({
+            'name': 'Test Event',
+            'description': 'Test Description',
+            'start': start.strftime("%Y-%m-%d %H:%M:%S"),
+            'stop': stop.strftime("%Y-%m-%d %H:%M:%S"),
+            'duration': 3,
+            'location': 'Odoo S.A.',
+            'privacy': 'public',
+            'show_as': 'busy',
+        })
+        event.partner_ids = [Command.link(user_demo.partner_id.id)]
+        action_id = self.env.ref('calendar.action_calendar_event')
+        url = "/odoo/action-" + str(action_id.id)
+        self.start_tour(url, 'test_calendar_decline_tour', login='demo')
+        attendee = self.env['calendar.attendee'].search([('event_id', '=', event.id), ('partner_id', '=', user_demo.partner_id.id)])
+        self.assertEqual(attendee.state, 'declined') # Check if the event has been correctly declined
+
+    def test_calendar_decline_with_everybody_filter_tour(self):
+        """
+            Check that we can decline events with the "Everybody's calendars" filter.
+        """
+        user_admin = self.env.ref('base.user_admin')
+        user_demo = self.user_demo
+        start = datetime.combine(date.today(), datetime.min.time()).replace(hour=9)
+        stop = datetime.combine(date.today(), datetime.min.time()).replace(hour=12)
+        event = self.env['calendar.event'].with_user(user_admin).create({
+            'name': 'Test Event',
+            'description': 'Test Description',
+            'start': start.strftime("%Y-%m-%d %H:%M:%S"),
+            'stop': stop.strftime("%Y-%m-%d %H:%M:%S"),
+            'duration': 3,
+            'location': 'Odoo S.A.',
+            'privacy': 'public',
+            'show_as': 'busy',
+        })
+        event.partner_ids = [Command.link(user_demo.partner_id.id)]
+        action_id = self.env.ref('calendar.action_calendar_event')
+        url = "/odoo/action-" + str(action_id.id)
+        self.start_tour(url, 'test_calendar_decline_with_everybody_filter_tour', login='demo')
+        attendee = self.env['calendar.attendee'].search([('event_id', '=', event.id), ('partner_id', '=', user_demo.partner_id.id)])
+        self.assertEqual(attendee.state, 'declined') # Check if the event has been correctly declined
 
     def test_default_duration(self):
         # Check the default duration depending on various parameters
@@ -343,25 +739,26 @@ class TestCalendar(SavepointCaseWithUserDemo):
         duration = self.env['calendar.event'].with_company(second_company).get_default_duration()
         self.assertEqual(duration, 8, "Custom duration is 8 hours in the other company")
 
-    def test_discuss_videocall_not_ringing_with_event(self):
-        self.event_tech_presentation._set_discuss_videocall_location()
-        self.event_tech_presentation._create_videocall_channel()
-        self.event_tech_presentation.write(
-            {
-                "start": fields.Datetime.to_string(datetime.now() + timedelta(hours=2)),
-            }
-        )
+    def test_calendar_res_id_fallback_when_res_id_is_0(self):
+        user_admin = self.env.ref('base.user_admin')
+        context_defaults = {
+            'default_res_model': 'res.partner',
+            'default_res_model_id': self.env['ir.model']._get('res.partner').id,
+            'default_res_id': self.user_demo.id,
+        }
 
-        partner1, partner2 = self.env["res.partner"].create(
-            [{"name": "Bob", "email": "bob@gm.co"}, {"name": "Jack", "email": "jack@gm.co"}]
-        )
-        new_partners = [partner1.id, partner2.id]
-        # invite partners to meeting
-        self.event_tech_presentation.write(
-            {"partner_ids": [Command.link(new_partner) for new_partner in new_partners]}
-        )
+        self.env['mail.activity.type'].create({
+            'name': 'Meeting',
+            'category': 'meeting'
+        })
 
-        channel_member = self.event_tech_presentation.videocall_channel_id.channel_member_ids[0]
-        channel_member_2 = self.event_tech_presentation.videocall_channel_id.channel_member_ids[1]
-        channel_member._rtc_join_call()
-        self.assertFalse(channel_member_2.rtc_inviting_session_id)
+        event = self.env['calendar.event'].with_user(user_admin).with_context(**context_defaults).create({
+            'name': 'All Day',
+            'start': "2018-10-16 00:00:00",
+            'start_date': "2018-10-16",
+            'stop': "2018-10-18 00:00:00",
+            'stop_date': "2018-10-18",
+            'allday': True,
+            'res_id': 0,
+        })
+        self.assertTrue(event.res_id)

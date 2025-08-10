@@ -6,7 +6,7 @@ from odoo import models
 class ProductCombo(models.Model):
     _inherit = 'product.combo'
 
-    def _get_max_quantity(self, website, sale_order, **kwargs):
+    def _get_max_quantity(self, website, **kwargs):
         """ The max quantity of a combo is the max quantity of its combo item with the highest max
         quantity. If one of the combo items has no max quantity, then the combo also has no max
         quantity.
@@ -19,7 +19,6 @@ class ProductCombo(models.Model):
         """
         self.ensure_one()
         max_quantities = [
-            item.product_id._get_max_quantity(website, sale_order, **kwargs)
-            for item in self.combo_item_ids
+            item.product_id._get_max_quantity(website, **kwargs) for item in self.combo_item_ids
         ]
         return max(max_quantities) if (None not in max_quantities) else None

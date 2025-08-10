@@ -1,5 +1,5 @@
 import { expect, test, getFixture } from "@odoo/hoot";
-import { click, press, queryAll } from "@odoo/hoot-dom";
+import { click, press, keyDown, keyUp, queryAll, queryFirst } from "@odoo/hoot-dom";
 import { animationFrame } from "@odoo/hoot-mock";
 import { reactive } from "@odoo/owl";
 import {
@@ -94,46 +94,6 @@ test("view switcher", async () => {
     expect.verifySteps(["kanban"]);
 });
 
-test.tags("desktop");
-test("view switcher (middle click)", async () => {
-    await mountWithSearch(
-        ControlPanel,
-        { resModel: "foo" },
-        {
-            viewSwitcherEntries: [
-                { type: "list", active: true, icon: "oi-view-list", name: "List" },
-                { type: "kanban", icon: "oi-view-kanban", name: "Kanban" },
-            ],
-        }
-    );
-    expect(`.o_control_panel_navigation .o_cp_switch_buttons`).toHaveCount(1);
-    expect(`.o_switch_view`).toHaveCount(2);
-
-    getService("action").switchView = (viewType, props, options) =>
-        expect.step(`${viewType} -- ${JSON.stringify(props)} -- ${JSON.stringify(options)}`);
-
-    await contains(".o_switch_view.o_kanban").click({ ctrlKey: true });
-    expect.verifySteps([`kanban -- {} -- {"newWindow":true}`]);
-});
-
-test.tags("desktop");
-test("views aria labels", async () => {
-    await mountWithSearch(
-        ControlPanel,
-        { resModel: "foo" },
-        {
-            viewSwitcherEntries: [
-                { type: "list", active: true, icon: "oi-view-list", name: "List" },
-                { type: "kanban", icon: "oi-view-kanban", name: "Kanban" },
-            ],
-        }
-    );
-
-    const views = queryAll`.o_switch_view`;
-    expect(views[0]).toHaveAttribute("aria-label", "List View");
-    expect(views[1]).toHaveAttribute("aria-label", "Kanban View");
-});
-
 test.tags("mobile");
 test("view switcher on mobile", async () => {
     await mountWithSearch(
@@ -206,6 +166,35 @@ test("view switcher hotkey cycles through views", async () => {
 });
 
 test.tags("desktop");
+test("hotkey overlay not overlapped by active view button", async () => {
+    onRpc("has_group", () => true);
+
+    await mountWithCleanup(WebClient);
+    await getService("action").doAction({
+        res_model: "foo",
+        type: "ir.actions.act_window",
+        views: [
+            [false, "list"],
+            [false, "kanban"],
+        ],
+    });
+
+    await keyDown("alt");
+    expect(`.o_cp_switch_buttons .o_web_hotkey_overlay`).toHaveCount(1);
+    expect(`.o_switch_view.active`).toHaveCount(1);
+
+    const hotkeyZIndex = Number(
+        getComputedStyle(queryFirst(`.o_cp_switch_buttons .o_web_hotkey_overlay`)).zIndex
+    );
+    const buttonZIndex = Number(getComputedStyle(queryFirst(`.o_switch_view.active`)).zIndex);
+
+    expect(hotkeyZIndex).toBeGreaterThan(buttonZIndex);
+
+    await keyUp("alt");
+    expect(`.o_cp_switch_buttons .o_web_hotkey_overlay`).toHaveCount(0);
+});
+
+test.tags("desktop");
 test("control panel layout buttons in dialog", async () => {
     onRpc("has_group", () => true);
     Foo._fields.char = fields.Char();
@@ -228,8 +217,8 @@ test("control panel layout buttons in dialog", async () => {
     });
     expect(`.o_list_view`).toHaveCount(1);
     await contains(".o_data_cell").click();
-    expect(".modal-footer button:visible").toHaveCount(2);
-    expect(".o_control_panel_main_buttons button").toHaveCount(0, {
+    expect(".modal-footer .o_list_buttons button").toHaveCount(2);
+    expect(".o_control_panel .o_list_buttons button").toHaveCount(0, {
         message: "layout buttons are not replicated in the control panel when inside a dialog",
     });
 });

@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
 import { rpc } from "@web/core/network/rpc";
 import weUtils from '@web_editor/js/common/utils';
@@ -148,8 +150,7 @@ export class ImageSelector extends FileSelector {
             // big deal.
             const originalId = this.props.media && this.props.media.dataset.originalId;
             if (originalId) {
-                // the dataset is a DOMStringMap, cast identifier to integer
-                subDomain.push(parseInt(originalId));
+                subDomain.push(originalId);
             }
 
             domain.push(['original_id', 'in', subDomain]);

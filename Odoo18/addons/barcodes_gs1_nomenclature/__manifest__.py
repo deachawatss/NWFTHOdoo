@@ -3,7 +3,7 @@
 {
     'name': 'Barcode - GS1 Nomenclature',
     'version': '1.0',
-    'category': 'Supply Chain/Inventory',
+    'category': 'Hidden',
     'summary': 'Parse barcodes according to the GS1-128 specifications',
     'depends': ['barcodes', 'uom'],
     'data': [
@@ -16,10 +16,9 @@
             'barcodes_gs1_nomenclature/static/src/js/barcode_parser.js',
             'barcodes_gs1_nomenclature/static/src/js/barcode_service.js',
         ],
-        'web.assets_unit_tests': [
+        'web.qunit_suite_tests': [
             'barcodes_gs1_nomenclature/static/src/js/tests/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

@@ -6,28 +6,24 @@ from odoo.exceptions import UserError
 from odoo.http import request
 
 
-class ResLang(models.Model):
+class Lang(models.Model):
     _inherit = "res.lang"
 
     def write(self, vals):
         if 'active' in vals and not vals['active']:
             if self.env['website'].search_count([('language_ids', 'in', self._ids)], limit=1):
                 raise UserError(_("Cannot deactivate a language that is currently used on a website."))
-        return super().write(vals)
+        return super(Lang, self).write(vals)
 
-    @tools.ormcache_context(keys=("website_id", "web_force_installed_langs"))
+    @tools.ormcache_context(keys=("website_id",))
     def _get_frontend(self) -> LangDataDict:
         """ Return the available languages for current request
         :return: LangDataDict({code: LangData})
         """
         if request and getattr(request, 'is_frontend', True):
             # get languages while ignoring current language as the one in the context may be invalid
-            if self.env.context.get('web_force_installed_langs'):
-                langs = sorted(map(dict, self._get_active_by('code').values()),
-                               key=lambda lang: lang['name'])
-            else:
-                lang_ids = self.env['website'].get_current_website().with_context(lang=False).language_ids.sorted('name').ids
-                langs = [dict(self.env['res.lang']._get_data(id=id_)) for id_ in lang_ids]
+            lang_ids = self.env['website'].get_current_website().with_context(lang=False).language_ids.sorted('name').ids
+            langs = [dict(self.env['res.lang']._get_data(id=id_)) for id_ in lang_ids]
             es_419_exists = any(lang['code'] == 'es_419' for lang in langs)
             already_shortened = []
             for lang in langs:

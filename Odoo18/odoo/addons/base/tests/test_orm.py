@@ -1,6 +1,7 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo.exceptions import AccessError, LockError
+from odoo.exceptions import AccessError
 from odoo.tests.common import TransactionCase, tagged
 from odoo.tools import mute_logger
 from odoo import Command
@@ -24,7 +25,7 @@ class TestORM(TransactionCase):
         user = self.env['res.users'].create({
             'name': 'test user',
             'login': 'test2',
-            'group_ids': [Command.set([self.ref('base.group_user')])],
+            'groups_id': [Command.set([self.ref('base.group_user')])],
         })
         cs = (c1 + c2).with_user(user)
         self.assertEqual([{'id': c2.id, 'name': 'Y'}], cs.read(['name']), "read() should skip deleted records")
@@ -37,8 +38,7 @@ class TestORM(TransactionCase):
     def test_access_partial_deletion(self):
         """ Check accessing a record from a recordset where another record has been deleted. """
         Model = self.env['res.country']
-        display_name_field = Model._fields['display_name']
-        self.assertTrue(display_name_field.compute and not display_name_field.store, "test assumption not satisfied")
+        self.assertTrue(type(Model).display_name.automatic, "test assumption not satisfied")
 
         # access regular field when another record from the same prefetch set has been deleted
         records = Model.create([{'name': name[0], 'code': name[1]} for name in (['Foo', 'ZV'], ['Bar', 'ZX'], ['Baz', 'ZY'])])
@@ -60,7 +60,7 @@ class TestORM(TransactionCase):
         user = self.env['res.users'].create({
             'name': 'test user',
             'login': 'test2',
-            'group_ids': [Command.set([self.ref('base.group_user')])],
+            'groups_id': [Command.set([self.ref('base.group_user')])],
         })
 
         partner_model = self.env['ir.model'].search([('model','=','res.partner')])
@@ -152,59 +152,6 @@ class TestORM(TransactionCase):
         recs = partner.browse([0])
         self.assertFalse(recs.exists())
 
-    def test_lock_for_update(self):
-        partner = self.env['res.partner']
-        p1, p2 = partner.search([], limit=2)
-
-        # lock p1
-        p1.lock_for_update(allow_referencing=True)
-        p1.lock_for_update(allow_referencing=False)
-
-        with self.env.registry.cursor() as cr:
-            recs = (p1 + p2).with_env(partner.env(cr=cr))
-            with self.assertRaises(LockError):
-                recs.lock_for_update()
-            sub_p2 = recs[1]
-            sub_p2.lock_for_update()
-
-            # parent transaction and read, but cannot lock the p2 records
-            p2.invalidate_model()
-            self.assertTrue(p2.name)
-            with self.assertRaises(LockError):
-                p2.lock_for_update()
-
-            # can still read from parent after locks and lock failures
-            p1.invalidate_model()
-            self.assertTrue(p1.name)
-
-        # can lock p2 now
-        p2.lock_for_update()
-
-        # cannot lock inexisting record
-        inexisting = partner.create({'name': 'inexisting'})
-        inexisting.unlink()
-        self.assertFalse(inexisting.exists())
-        with self.assertRaises(LockError):
-            inexisting.lock_for_update()
-
-    def test_try_lock_for_update(self):
-        partner = self.env['res.partner']
-        p1, p2, *_other = recs = partner.search([], limit=4)
-
-        # lock p1
-        self.assertEqual(p1.try_lock_for_update(allow_referencing=True), p1)
-        self.assertEqual(p1.try_lock_for_update(allow_referencing=False), p1)
-
-        with self.env.registry.cursor() as cr:
-            sub_recs = (p1 + p2).with_env(partner.env(cr=cr))
-            self.assertEqual(sub_recs.try_lock_for_update(), sub_recs[1])
-
-        self.assertEqual(recs.try_lock_for_update(limit=1), p1)
-        self.assertEqual(recs.try_lock_for_update(), recs)
-
-        # check that order is preserved when limiting
-        self.assertEqual(recs[::-1].try_lock_for_update(limit=1), recs[-1])
-
     def test_write_duplicate(self):
         p1 = self.env['res.partner'].create({'name': 'W'})
         (p1 + p1).write({'name': 'X'})
@@ -215,14 +162,14 @@ class TestORM(TransactionCase):
         user = self.env['res.users'].create({
             'name': 'test',
             'login': 'test_m2m_store_trigger',
-            'group_ids': [Command.set([])],
+            'groups_id': [Command.set([])],
         })
         self.assertTrue(user.share)
 
-        group_user.write({'user_ids': [Command.link(user.id)]})
+        group_user.write({'users': [Command.link(user.id)]})
         self.assertFalse(user.share)
 
-        group_user.write({'user_ids': [Command.unlink(user.id)]})
+        group_user.write({'users': [Command.unlink(user.id)]})
         self.assertTrue(user.share)
 
     def test_create_multi(self):

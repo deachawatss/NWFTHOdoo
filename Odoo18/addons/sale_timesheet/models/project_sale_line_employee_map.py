@@ -1,16 +1,16 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, fields, models
-from odoo.fields import Domain
+from odoo.osv import expression
 from odoo.tools.misc import unquote
 
 
-class ProjectSaleLineEmployeeMap(models.Model):
+class ProjectProductEmployeeMap(models.Model):
     _name = 'project.sale.line.employee.map'
     _description = 'Project Sales line, employee mapping'
 
     def _domain_sale_line_id(self):
-        domain = Domain.AND([
+        domain = expression.AND([
             self.env['sale.order.line']._sellable_lines_domain(),
             self.env['sale.order.line']._domain_sale_line_service(),
             [
@@ -19,7 +19,7 @@ class ProjectSaleLineEmployeeMap(models.Model):
         ])
         return domain
 
-    project_id = fields.Many2one('project.project', "Project", domain=[('is_template', '=', False)], required=True, index=True)
+    project_id = fields.Many2one('project.project', "Project", required=True)
     employee_id = fields.Many2one('hr.employee', "Employee", required=True, domain="[('id', 'not in', existing_employee_ids)]")
     existing_employee_ids = fields.Many2many('hr.employee', compute="_compute_existing_employee_ids", export_string_translation=False)
     sale_line_id = fields.Many2one(
@@ -38,10 +38,9 @@ class ProjectSaleLineEmployeeMap(models.Model):
     cost_currency_id = fields.Many2one('res.currency', string="Cost Currency", related='employee_id.currency_id', readonly=True, export_string_translation=False)
     is_cost_changed = fields.Boolean('Is Cost Manually Changed', compute='_compute_is_cost_changed', store=True, export_string_translation=False)
 
-    _uniqueness_employee = models.Constraint(
-        'UNIQUE(project_id,employee_id)',
-        'An employee cannot be selected more than once in the mapping. Please remove duplicate(s) and try again.',
-    )
+    _sql_constraints = [
+        ('uniqueness_employee', 'UNIQUE(project_id,employee_id)', 'An employee cannot be selected more than once in the mapping. Please remove duplicate(s) and try again.'),
+    ]
 
     @api.depends('employee_id', 'project_id.sale_line_employee_ids.employee_id')
     def _compute_existing_employee_ids(self):
@@ -131,8 +130,8 @@ class ProjectSaleLineEmployeeMap(models.Model):
         maps._update_project_timesheet()
         return maps
 
-    def write(self, vals):
-        res = super().write(vals)
+    def write(self, values):
+        res = super(ProjectProductEmployeeMap, self).write(values)
         self._update_project_timesheet()
         return res
 

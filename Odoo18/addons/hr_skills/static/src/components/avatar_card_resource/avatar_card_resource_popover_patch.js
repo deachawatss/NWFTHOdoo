@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { patch } from "@web/core/utils/patch";
 import { AvatarCardResourcePopover } from "@resource_mail/components/avatar_card_resource/avatar_card_resource_popover";
 
@@ -22,9 +24,6 @@ export const patchAvatarCardResourcePopover = {
             ...super.fieldNames,
             "employee_skill_ids",
         ];
-    },
-    get hasFooter() {
-        return this.skills?.length > 0 || super.hasFooter;
     },
     get skillTags() {
         return this.skills.map(({ id, display_name, color }) => ({

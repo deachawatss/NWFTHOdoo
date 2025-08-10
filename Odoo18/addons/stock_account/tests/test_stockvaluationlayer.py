@@ -22,7 +22,7 @@ class TestStockValuationCommon(TransactionCase):
         cls.product1 = cls.env['product.product'].create({
             'name': 'product1',
             'is_storable': True,
-            'categ_id': cls.env.ref('product.product_category_goods').id,
+            'categ_id': cls.env.ref('product.product_category_all').id,
         })
         cls.picking_type_in = cls.env.ref('stock.picking_type_in')
         cls.picking_type_out = cls.env.ref('stock.picking_type_out')
@@ -40,6 +40,7 @@ class TestStockValuationCommon(TransactionCase):
         loc_dest = loc_dest or self.stock_location
         pick_type = pick_type or self.picking_type_in
         in_move = self.env['stock.move'].create({
+            'name': 'in %s units @ %s per unit' % (str(quantity), str(unit_cost)),
             'product_id': product.id,
             'location_id': self.supplier_location.id,
             'location_dest_id': loc_dest.id,
@@ -82,6 +83,7 @@ class TestStockValuationCommon(TransactionCase):
         loc_src = loc_src or self.stock_location
         pick_type = pick_type or self.picking_type_out
         out_move = self.env['stock.move'].create({
+            'name': 'out %s units' % str(quantity),
             'product_id': product.id,
             'location_id': loc_src.id,
             'location_dest_id': self.customer_location.id,
@@ -127,6 +129,7 @@ class TestStockValuationCommon(TransactionCase):
 
     def _make_dropship_move(self, product, quantity, unit_cost=None, lot_ids=False):
         dropshipped = self.env['stock.move'].create({
+            'name': 'dropship %s units' % str(quantity),
             'product_id': product.id,
             'location_id': self.supplier_location.id,
             'location_dest_id': self.customer_location.id,
@@ -305,12 +308,10 @@ class TestStockValuationStandard(TestStockValuationCommon):
         product1 = self.env['product.product'].create({
             'name': 'p1',
             'is_storable': True,
-            'categ_id': self.env.ref('product.product_category_expenses').id,
         })
         product2 = self.env['product.product'].create({
             'name': 'p2',
             'is_storable': True,
-            'categ_id': self.env.ref('product.product_category_expenses').id,
         })
         picking = self.env['stock.picking'].create({
             'picking_type_id': self.picking_type_in.id,
@@ -320,6 +321,7 @@ class TestStockValuationStandard(TestStockValuationCommon):
         for product in (product1, product2):
             product.standard_price = 10
             in_move = self.env['stock.move'].create({
+                'name': 'in %s units @ %s per unit' % (2, str(10)),
                 'product_id': product.id,
                 'location_id': self.supplier_location.id,
                 'location_dest_id': self.stock_location.id,
@@ -707,6 +709,53 @@ class TestStockValuationAVCO(TestStockValuationCommon):
             {'quantity': 10, 'value': 50},
         ])
 
+    def test_change_quantity_from_other_company(self):
+        """
+        checks that a move on company A from a user logged in company B creates a svl with correct values (the ones from company A)
+        """
+        # Give user access of company A + B, with default A
+        company_A = self.env.company
+        company_B = self.env['res.company'].create({
+            'name': 'Super Company',
+        })
+        self.env.user.write({'company_ids': [(6, 0, [company_A.id, company_B.id])], 'company_id': company_A.id})
+        warehouse_B = self.env.user.with_company(company_B)._get_default_warehouse_id()
+        if not warehouse_B:
+            warehouse_B = self.env['stock.warehouse'].sudo().create({'name': 'WH', 'code': 'WH-B', 'company_id': company_B.id})
+            self.assertEqual(self.env.user.with_company(company_B)._get_default_warehouse_id(), warehouse_B)
+        warehouse_A = self.env.user.with_company(company_A)._get_default_warehouse_id()
+        # set product1 property cost method also in comp B
+        self.product1.with_company(company_B).product_tmpl_id.categ_id.property_cost_method = 'average'
+        # make both in moves so that the product has a standard price of 100 in comp A and 10 in comp B
+        self.env.user.company_id = company_A
+        move_comp_A = self._make_in_move(self.product1, 1, unit_cost=100)
+        self.assertEqual(self.env['stock.valuation.layer'].search([('stock_move_id', '=', move_comp_A.id)]).value, 100)
+        self.env.user.company_id = company_B
+        move_comp_B = self._make_in_move(self.product1, 1, unit_cost=10, create_picking=True, loc_dest=warehouse_B.lot_stock_id, pick_type=warehouse_B.in_type_id)
+        self.assertEqual(self.env['stock.valuation.layer'].search([('stock_move_id', '=', move_comp_B.id)]).value, 10)
+        # make the cross move
+        picking = self.env['stock.picking'].create({
+            'picking_type_id': warehouse_A.in_type_id.id,
+            'location_id': self.supplier_location.id,
+            'location_dest_id': warehouse_A.lot_stock_id.id,
+            'move_ids': [Command.create({
+                'name': 'moveC',
+                'product_id': self.product1.id,
+                'location_id': self.supplier_location.id,
+                'location_dest_id': warehouse_A.lot_stock_id.id,
+                'product_uom': self.uom_unit.id,
+                'product_uom_qty': 1,
+                'picking_type_id': warehouse_A.in_type_id.id,
+                'company_id': company_A.id,
+            })],
+        })
+        cross_move = picking.move_ids[0]
+        picking.action_confirm()
+        picking.action_assign()
+        cross_move.picked = True
+        picking._action_done()
+        self.assertEqual(self.env['stock.valuation.layer'].search([('stock_move_id', '=', cross_move.id)]).value, 100)
+
 
 class TestStockValuationFIFO(TestStockValuationCommon):
     @classmethod
@@ -935,7 +984,7 @@ class TestStockValuationChangeCostMethod(TestStockValuationCommon):
 
         self.assertEqual(len(self.product1.stock_valuation_layer_ids), 5)
         for svl in self.product1.stock_valuation_layer_ids.sorted()[-2:]:
-            self.assertEqual(svl.description, 'Costing method change for product category Goods: from standard to fifo.')
+            self.assertEqual(svl.description, 'Costing method change for product category All: from standard to fifo.')
 
     def test_standard_to_fifo_2(self):
         """ We want the same result as `test_standard_to_fifo_1` but by changing the category of
@@ -1035,7 +1084,7 @@ class TestStockValuationChangeValuation(TestStockValuationCommon):
     @classmethod
     def setUpClass(cls):
         super(TestStockValuationChangeValuation, cls).setUpClass()
-        cls.stock_input_account, cls.stock_output_account, cls.stock_valuation_account, cls.expense_account, cls.income_account, cls.stock_journal = _create_accounting_data(cls.env)
+        cls.stock_input_account, cls.stock_output_account, cls.stock_valuation_account, cls.expense_account, cls.stock_journal = _create_accounting_data(cls.env)
         cls.product1.categ_id.property_valuation = 'real_time'
         cls.product1.write({
             'property_account_expense_id': cls.expense_account.id,
@@ -1071,7 +1120,7 @@ class TestStockValuationChangeValuation(TestStockValuationCommon):
         self.assertEqual(len(self.product1.stock_valuation_layer_ids.mapped('account_move_id')), 1)
         self.assertEqual(len(self.product1.stock_valuation_layer_ids), 3)
         for svl in self.product1.stock_valuation_layer_ids.sorted()[-2:]:
-            self.assertEqual(svl.description, 'Valuation method change for product category Goods: from manual_periodic to real_time.')
+            self.assertEqual(svl.description, 'Valuation method change for product category All: from manual_periodic to real_time.')
 
     def test_standard_manual_to_auto_2(self):
         self.product1.product_tmpl_id.categ_id.property_cost_method = 'standard'
@@ -1232,7 +1281,7 @@ class TestAngloSaxonAccounting(AccountTestInvoicingCommon, TestStockValuationCom
         cls.product1 = cls.env['product.product'].create({
             'name': 'product1',
             'is_storable': True,
-            'categ_id': cls.env.ref('product.product_category_goods').id,
+            'categ_id': cls.env.ref('product.product_category_all').id,
             'property_account_expense_id': cls.expense_account.id,
         })
         cls.product1.categ_id.write({
@@ -1250,6 +1299,7 @@ class TestAngloSaxonAccounting(AccountTestInvoicingCommon, TestStockValuationCom
         loc_dest = loc_dest or self.stock_location
         pick_type = pick_type or self.picking_type_in
         in_move = self.env['stock.move'].create({
+            'name': 'in %s units @ %s per unit' % (str(quantity), str(unit_cost)),
             'product_id': product.id,
             'location_id': self.supplier_location.id,
             'location_dest_id': loc_dest.id,
@@ -1277,6 +1327,7 @@ class TestAngloSaxonAccounting(AccountTestInvoicingCommon, TestStockValuationCom
 
     def _make_dropship_move(self, product, quantity, unit_cost=None):
         dropshipped = self.env['stock.move'].create({
+            'name': 'dropship %s units' % str(quantity),
             'product_id': product.id,
             'location_id': self.supplier_location.id,
             'location_dest_id': self.customer_location.id,
@@ -1310,7 +1361,7 @@ class TestAngloSaxonAccounting(AccountTestInvoicingCommon, TestStockValuationCom
         When reversing an invoice that contains some anglo-saxo AML, the new anglo-saxo AML should have the same value
         """
         # Required for `account_id` to be visible in the view
-        self.env.user.group_ids += self.env.ref('account.group_account_readonly')
+        self.env.user.groups_id += self.env.ref('account.group_account_readonly')
         self.product1.categ_id.property_cost_method = 'average'
 
         self._make_in_move(self.product1, 2, unit_cost=10)

@@ -6,7 +6,7 @@
         <field name="arch" type="xml">
             <form>
                 <sheet>
-                    <div class="o_auth_totp_enable_2FA container ps-0">
+                    <div class="o_auth_totp_enable_2FA container">
                         <div class="mb-3 w-100">
                             <h3 class="fw-bold">Authenticator App Setup</h3>
                             <ul>
@@ -66,8 +66,8 @@
                     </div>
                 </sheet>
                 <footer>
-                    <button type="object" name="enable" class="btn btn-primary" context="{'code': code}"
-                            string="Enable Two-Factor Authentication" data-hotkey="q"/>
+                    <button type="object" name="enable" class="btn btn-primary"
+                            string="Activate" data-hotkey="q"/>
                     <button string="Cancel" special="cancel" data-hotkey="x"/>
                 </footer>
             </form>

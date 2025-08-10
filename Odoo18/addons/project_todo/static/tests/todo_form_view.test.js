@@ -1,6 +1,6 @@
 import { beforeEach, expect, test } from "@odoo/hoot";
-import { click, queryAllTexts } from "@odoo/hoot-dom";
-import { animationFrame } from "@odoo/hoot-mock";
+import { animationFrame, click, queryAllTexts } from "@odoo/hoot-dom";
+
 import {
     contains,
     fields,
@@ -27,7 +27,7 @@ beforeEach(() => {
             <form string="To-do" class="o_todo_form_view" js_class="todo_form">
                 <field name="name"/>
                 <field name="priority" invisible="1"/>
-                <field name="date_deadline" widget="remaining_days"/>
+                <field name="user_ids" widget="many2many_tags"/>
             </form>`,
         activity: `
             <activity string="MailTestActivity">
@@ -83,28 +83,6 @@ test("Check that project_task_action_convert_todo_to_task does not appear in the
     });
 });
 
-test("Check that todo_form view contains the TodoDoneCheckmark and remaining_days widgets", async () => {
-    await mountWithCleanup(WebClient);
-    await getService("action").doAction({
-        name: "To-do",
-        res_model: "project.task",
-        type: "ir.actions.act_window",
-        views: [
-            [false, "list"],
-            [false, "form"],
-        ],
-    });
-
-    expect(".o_field_todo_done_checkmark").toHaveCount(3, {
-        message: "The todo list view should contain 3 TodoDoneCheckmark widgets",
-    });
-
-    await contains(".o_data_cell").click();
-    await animationFrame();
-    expect(".o_field_remaining_days").toHaveCount(1, {
-        message: "The todo form view should have deadline field (o_field_remaining_days)",
-    });
-});
 test.tags("desktop");
 test("Check if opening form view from activity view does open with chatter visble", async () => {
     // Basic/Minimum data needed for activity view to be displayed
@@ -127,6 +105,7 @@ test("Check if opening form view from activity view does open with chatter visbl
                     id: type.id,
                     name: type.display_name,
                     template_ids: templates,
+                    keep_done: type.keep_done,
                 };
             }),
         };

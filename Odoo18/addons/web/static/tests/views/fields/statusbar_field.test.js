@@ -1,16 +1,7 @@
 import { expect, test } from "@odoo/hoot";
-import {
-    click,
-    edit,
-    press,
-    queryAll,
-    queryAllTexts,
-    queryAttribute,
-    queryFirst,
-} from "@odoo/hoot-dom";
+import { click, edit, press, queryAllTexts, queryAttribute, queryFirst } from "@odoo/hoot-dom";
 import { animationFrame, runAllTimers } from "@odoo/hoot-mock";
 import {
-    contains,
     clickSave,
     defineActions,
     defineModels,
@@ -283,8 +274,7 @@ test("statusbar with required modifier", async () => {
     expect.verifySteps(["Show error message"]);
 });
 
-test.tags("desktop");
-test("statusbar with no value in readonly on desktop", async () => {
+test("statusbar with no value in readonly", async () => {
     await mountView({
         type: "form",
         resModel: "partner",
@@ -300,25 +290,6 @@ test("statusbar with no value in readonly on desktop", async () => {
 
     expect(".o_statusbar_status").not.toHaveClass("o_field_empty");
     expect(".o_statusbar_status button:visible").toHaveCount(2);
-});
-
-test.tags("mobile");
-test("statusbar with no value in readonly on mobile", async () => {
-    await mountView({
-        type: "form",
-        resModel: "partner",
-        resId: 1,
-        arch: /* xml */ `
-            <form>
-                <header>
-                    <field name="product_id" widget="statusbar" />
-                </header>
-            </form>
-        `,
-    });
-
-    expect(".o_statusbar_status").not.toHaveClass("o_field_empty");
-    expect(".o_statusbar_status .dropdown-toggle:visible").toHaveCount(1);
 });
 
 test("statusbar with domain but no value (create mode)", async () => {
@@ -367,8 +338,7 @@ test("clickable statusbar should change m2o fetching domain in edit mode", async
     expect(".o_statusbar_status button:not(.dropdown-toggle)").toHaveCount(2);
 });
 
-test.tags("desktop");
-test("statusbar fold_field option and statusbar_visible attribute on desktop", async () => {
+test("statusbar fold_field option and statusbar_visible attribute", async () => {
     Partner._records[0].bar = false;
 
     await mountView({
@@ -395,36 +365,7 @@ test("statusbar fold_field option and statusbar_visible attribute on desktop", a
     });
 });
 
-test.tags("mobile");
-test("statusbar fold_field option and statusbar_visible attribute on mobile", async () => {
-    Partner._records[0].bar = false;
-
-    await mountView({
-        type: "form",
-        resModel: "partner",
-        resId: 1,
-        arch: /* xml */ `
-            <form>
-                <header>
-                    <field name="trululu" widget="statusbar" options="{'fold_field': 'bar'}" />
-                    <field name="color" widget="statusbar" statusbar_visible="red" />
-                </header>
-            </form>
-        `,
-    });
-
-    await click(".o_statusbar_status .dropdown-toggle:not(.d-none)");
-    await animationFrame();
-
-    expect(".o_statusbar_status:first .dropdown-toggle:visible").toHaveCount(1);
-    expect(".o_statusbar_status:last .dropdown-toggle:visible").toHaveCount(1);
-    expect(".o_statusbar_status button").not.toBeEnabled({
-        message: "no status bar buttons should be enabled",
-    });
-});
-
-test.tags("desktop");
-test("statusbar: choose an item from the folded menu on desktop", async () => {
+test("statusbar: choose an item from the folded menu", async () => {
     Partner._records[0].bar = false;
 
     await mountView({
@@ -451,41 +392,6 @@ test("statusbar: choose an item from the folded menu on desktop", async () => {
     await click(".o_statusbar_status .dropdown-toggle:not(.d-none)");
     await animationFrame();
     await click(".o-dropdown--menu .dropdown-item");
-    await animationFrame();
-
-    expect("[aria-checked='true']").toHaveText("second record", {
-        message: "status has changed to the selected dropdown item",
-    });
-});
-
-test.tags("mobile");
-test("statusbar: choose an item from the folded menu on mobile", async () => {
-    Partner._records[0].bar = false;
-
-    await mountView({
-        type: "form",
-        resModel: "partner",
-        resId: 1,
-        arch: /* xml */ `
-            <form>
-                <header>
-                    <field name="trululu" widget="statusbar" options="{'clickable': '1', 'fold_field': 'bar'}" />
-                </header>
-            </form>
-        `,
-    });
-
-    expect("[aria-checked='true']").toHaveText("aaa", {
-        message: "default status is 'aaa'",
-    });
-
-    expect(".o_statusbar_status .dropdown-toggle:visible").toHaveText("aaa", {
-        message: "button has the correct text",
-    });
-
-    await click(".o_statusbar_status .dropdown-toggle:not(.d-none)");
-    await animationFrame();
-    await click(".o-dropdown--menu .dropdown-item:nth-child(2)");
     await animationFrame();
 
     expect("[aria-checked='true']").toHaveText("second record", {
@@ -706,8 +612,7 @@ test("open form with statusbar, leave and come back to another one with other do
     expect.verifySteps(["search_read"]);
 });
 
-test.tags("desktop");
-test("clickable statusbar with readonly modifier set to false is editable on desktop", async () => {
+test("clickable statusbar with readonly modifier set to false is editable", async () => {
     await mountView({
         type: "form",
         resModel: "partner",
@@ -724,29 +629,7 @@ test("clickable statusbar with readonly modifier set to false is editable on des
     expect(".o_statusbar_status button[disabled][aria-checked='false']:visible").toHaveCount(0);
 });
 
-test.tags("mobile");
-test("clickable statusbar with readonly modifier set to false is editable on mobile", async () => {
-    await mountView({
-        type: "form",
-        resModel: "partner",
-        resId: 2,
-        arch: /* xml */ `
-            <form>
-                <header>
-                    <field name="product_id" widget="statusbar" options="{'clickable': true}" readonly="False"/>
-                </header>
-            </form>
-        `,
-    });
-    expect(".o_statusbar_status .dropdown-toggle:visible").toHaveCount(1);
-    expect(".o_statusbar_status button[disabled][aria-checked='false']:visible").toHaveCount(0);
-    await click(".o_statusbar_status .dropdown-toggle:visible");
-    await animationFrame();
-    expect(".o-dropdown--menu .dropdown-item").toHaveCount(2);
-});
-
-test.tags("desktop");
-test("clickable statusbar with readonly modifier set to true is not editable on desktop", async () => {
+test("clickable statusbar with readonly modifier set to true is not editable", async () => {
     await mountView({
         type: "form",
         resModel: "partner",
@@ -762,25 +645,7 @@ test("clickable statusbar with readonly modifier set to true is not editable on 
     expect(".o_statusbar_status button[disabled]:visible").toHaveCount(2);
 });
 
-test.tags("mobile");
-test("clickable statusbar with readonly modifier set to true is not editable on mobile", async () => {
-    await mountView({
-        type: "form",
-        resModel: "partner",
-        resId: 2,
-        arch: /* xml */ `
-            <form>
-                <header>
-                    <field name="product_id" widget="statusbar" options="{'clickable': true}" readonly="True"/>
-                </header>
-            </form>
-        `,
-    });
-    expect(".o_statusbar_status .dropdown-toggle[disabled]:visible").toHaveCount(1);
-});
-
-test.tags("desktop");
-test("non-clickable statusbar with readonly modifier set to false is not editable on desktop", async () => {
+test("non-clickable statusbar with readonly modifier set to false is not editable", async () => {
     await mountView({
         type: "form",
         resModel: "partner",
@@ -796,24 +661,6 @@ test("non-clickable statusbar with readonly modifier set to false is not editabl
     expect(".o_statusbar_status button[disabled]:visible").toHaveCount(2);
 });
 
-test.tags("mobile");
-test("non-clickable statusbar with readonly modifier set to false is not editable on mobile", async () => {
-    await mountView({
-        type: "form",
-        resModel: "partner",
-        resId: 2,
-        arch: /* xml */ `
-            <form>
-                <header>
-                    <field name="product_id" widget="statusbar" options="{'clickable': false}" readonly="False"/>
-                </header>
-            </form>
-        `,
-    });
-    expect(".o_statusbar_status .dropdown-toggle[disabled]:visible").toHaveCount(1);
-});
-
-test.tags("desktop");
 test("last status bar button have a border radius (no arrow shape) on the right side when a prior folded stage gets selected", async () => {
     class Stage extends models.Model {
         name = fields.Char();
@@ -899,7 +746,7 @@ test("correctly load statusbar when dynamic domain changes", async () => {
 
     defineModels([Stage, Project, Task]);
 
-    onRpc("search_read", ({ kwargs }) => expect.step(kwargs.domain));
+    onRpc("search_read", ({ kwargs }) => expect.step(JSON.stringify(kwargs.domain)));
     await mountView({
         type: "form",
         resModel: "task",
@@ -914,120 +761,15 @@ test("correctly load statusbar when dynamic domain changes", async () => {
         `,
     });
     expect(queryAllTexts(".o_statusbar_status button:not(.d-none)")).toEqual(["Stage Project 1"]);
-    expect.verifySteps([["|", ["id", "=", 1], ["project_ids", "in", 1]]]);
+    expect.verifySteps(['["|",["id","=",1],["project_ids","in",1]]']);
     await click(`[name="project_id"] .dropdown input`);
     await animationFrame();
     await click(`[name="project_id"] .dropdown .dropdown-menu .ui-menu-item:contains("Project 2")`);
     await animationFrame();
 
     expect(queryAllTexts(".o_statusbar_status button:not(.d-none)")).toEqual(["Stage Project 2"]);
-    expect.verifySteps([["|", ["id", "=", 2], ["project_ids", "in", 2]]]);
+    expect.verifySteps(['["|",["id","=",2],["project_ids","in",2]]']);
     await clickSave();
     expect(queryAllTexts(".o_statusbar_status button:not(.d-none)")).toEqual(["Stage Project 2"]);
     expect.verifySteps([]);
-});
-
-test.tags("mobile");
-test("statusbar is rendered correctly on small devices", async () => {
-    Partner._records = [
-        { id: 1, name: "first record", trululu: 4 },
-        { id: 2, name: "second record", trululu: 1 },
-        { id: 3, name: "third record" },
-        { id: 4, name: "aaa" },
-    ];
-    await mountView({
-        type: "form",
-        resModel: "partner",
-        resId: 1,
-        arch: /* xml */ `
-            <form>
-                <header>
-                    <field name="trululu" widget="statusbar" options="{'clickable': 1}" />
-                </header>
-                <field name="name" />
-            </form>
-        `,
-    });
-    expect(
-        queryAll(".o_statusbar_status .o_arrow_button.dropdown-toggle", { visible: true })
-    ).toHaveCount(1);
-    expect(".o_statusbar_status .o_arrow_button.o_first:visible").toHaveCount(1);
-    expect(".o-dropdown--menu").toHaveCount(0, { message: "dropdown should be hidden" });
-    expect(".o_statusbar_status button.dropdown-toggle:visible").toHaveText("aaa");
-
-    // open the dropdown
-    await contains(".o_statusbar_status .dropdown-toggle").click();
-
-    expect(".o-dropdown--menu").toHaveCount(1, { message: "dropdown should be visible" });
-    expect(".o-dropdown--menu .dropdown-item").toHaveCount(4);
-});
-
-test.tags("mobile");
-test("statusbar with no status on extra small screens", async () => {
-    Partner._records = [
-        { id: 1, name: "first record", trululu: 4 },
-        { id: 2, name: "second record", trululu: 1 },
-        { id: 3, name: "third record" },
-        { id: 4, name: "aaa" },
-    ];
-    await mountView({
-        type: "form",
-        resModel: "partner",
-        resId: 4,
-        arch: /* xml */ `
-            <form>
-                <header>
-                    <field name="trululu" widget="statusbar" />
-                </header>
-            </form>
-        `,
-    });
-
-    expect(".o_field_statusbar").not.toHaveClass("o_field_empty", {
-        message: "statusbar widget should have class o_field_empty in edit",
-    });
-    expect(".o_statusbar_status button.dropdown-toggle:visible:disabled").toHaveCount(1);
-    expect(".o_statusbar_status button.dropdown-toggle:visible:disabled").toHaveText("More");
-});
-
-test.tags("mobile");
-test("clickable statusbar widget on mobile view", async () => {
-    Partner._records = [
-        { id: 1, name: "first record", trululu: 4 },
-        { id: 2, name: "second record", trululu: 1 },
-        { id: 3, name: "third record" },
-        { id: 4, name: "aaa" },
-    ];
-    await mountView({
-        type: "form",
-        resModel: "partner",
-        resId: 1,
-        arch: /* xml */ `
-                <form>
-                    <header>
-                        <field name="trululu" widget="statusbar" options="{'clickable': '1'}" />
-                    </header>
-                </form>
-            `,
-    });
-
-    // Open dropdown
-    click(queryFirst(".o_statusbar_status .dropdown-toggle", { visible: true }));
-    await animationFrame();
-
-    expect(".o-dropdown--menu .dropdown-item").toHaveCount(4);
-
-    click(".o-dropdown--menu .dropdown-item");
-    await animationFrame();
-
-    expect(".o_arrow_button_current").toHaveText("first record");
-    expect(
-        queryAll(".o_statusbar_status .o_arrow_button.dropdown-toggle", { visible: true })
-    ).toHaveCount(1);
-
-    // Open second dropdown
-    click(queryFirst(".o_statusbar_status .dropdown-toggle", { visible: true }));
-    await animationFrame();
-
-    expect(".o-dropdown--menu .dropdown-item").toHaveCount(4);
 });

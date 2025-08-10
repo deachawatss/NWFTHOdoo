@@ -5,8 +5,9 @@ from lxml import html
 from unittest.mock import Mock, patch
 from werkzeug.urls import url_parse
 
-from odoo.addons.http_routing.tests.common import MockRequest
+from odoo.addons.website.tools import MockRequest
 from odoo.tests import common
+from odoo.exceptions import UserError
 
 
 class TestMenu(common.TransactionCase):
@@ -236,18 +237,48 @@ class TestMenu(common.TransactionCase):
         submenu.url = '/sub/slug-3'
         test_full_case(submenu)
 
-    def test_menu_group_ids(self):
+    def test_07_menu_hierarchy_validation(self):
         Menu = self.env['website.menu']
-        menu = Menu.create({
-            'name': 'Test',
+
+        # Validation 1: Parent menu validation
+        self.main_menu = Menu.create({
+            'name': 'Main',
         })
-        self.assertEqual(menu.group_ids, self.env['res.groups'])
-        menu.group_ids = self.env.ref('base.group_user')
-        self.assertEqual(
-            menu.group_ids,
-            self.env.ref('base.group_user') +
-            self.env.ref('website.group_website_designer')
-        )
+        self.child_menu_1 = Menu.create({
+            'name': 'Child1',
+        })
+        self.child_menu_1.parent_id = self.main_menu.id
+
+        # Attempt to assign a second child menu as a child of the first child menu,
+        # which should raise a UserError due to hierarchy restrictions.
+        self.child_menu_2 = Menu.create({
+            'name': 'Child2',
+        })
+        with self.assertRaises(UserError):
+            self.child_menu_2.parent_id = self.child_menu_1.id
+
+        # Validation 2: Mega menu validation
+        self.mega_menu = Menu.create({
+            'name': 'Mega menu',
+            'is_mega_menu': True,
+        })
+        self.another_menu = Menu.create({
+            'name': 'Sample_menu',
+        })
+
+        # Attempt to assign a parent to the mega menu and a child to it,
+        # which should both raise UserErrors due to mega menu restrictions.
+        with self.assertRaises(UserError):
+            self.mega_menu.parent_id = self.another_menu.id
+
+        with self.assertRaises(UserError):
+            self.another_menu.parent_id = self.mega_menu.id
+
+        # Validation 3: Child menu condition validation
+        # Attempt to assign another_menu as a parent of main_menu chain having Child1,
+        # which should raise a UserError because a main_menu had child.
+        with self.assertRaises(UserError):
+            self.main_menu.parent_id = self.another_menu.id
 
 
 class TestMenuHttp(common.HttpCase):
@@ -269,7 +300,6 @@ class TestMenuHttp(common.HttpCase):
             'url': self.page_url,
             'website_id': 1,
         })
-        self.headers = {"Content-Type": "application/json"}
 
     def simulate_rpc_save_menu(self, data, to_delete=None):
         self.authenticate("admin", "admin")
@@ -325,7 +355,6 @@ class TestMenuHttp(common.HttpCase):
 
     def test_03_mega_menu_translate(self):
         # Setup
-        self.authenticate('admin', 'admin')
         fr = self.env['res.lang']._activate_lang('fr_FR')
         Menu = self.env['website.menu']
         website = self.env['website'].browse(1)
@@ -346,13 +375,7 @@ class TestMenuHttp(common.HttpCase):
         root = html.fromstring(menu.mega_menu_content)
         to_translate = root.text_content()
         sha = sha256(to_translate.encode()).hexdigest()
-        payload = self.build_rpc_payload({
-            'model': menu._name,
-            'record_id': menu.id,
-            'field_name': 'mega_menu_content',
-            'translations': {fr.code: {sha: 'french_mega_menu_content'}},
-        })
-        self.url_open('/web_editor/field/translation/update', data=json.dumps(payload), headers=self.headers)
+        menu.web_update_field_translations('mega_menu_content', {fr.code: {sha: 'french_mega_menu_content'}})
         self.assertIn("french_mega_menu_content",
                       menu.with_context(lang=fr.code, website_id=website.id).mega_menu_content)
 
@@ -361,3 +384,14 @@ class TestMenuHttp(common.HttpCase):
         self.assertIn(b"french_mega_menu_content", page.content)
         page = self.url_open('/%s?edit_translations=1' % fr.url_code)
         self.assertIn(b"french_mega_menu_content", page.content)
+
+    def test_menu_empty_url(self):
+        website = self.env['website'].browse(1)
+        menu = self.env['website.menu'].create({
+            'name': 'Test Empty URL menu',
+            'parent_id': website.menu_id.id,
+            'website_id': website.id,
+        })
+        self.assertFalse(menu.url, "Menu URL should be empty")
+        # this should not crash
+        website.is_menu_cache_disabled()

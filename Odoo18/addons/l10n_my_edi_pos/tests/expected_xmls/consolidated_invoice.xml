@@ -170,7 +170,7 @@
                 <cbc:ID>01</cbc:ID>
                 <cbc:Percent>5.0</cbc:Percent>
                 <cac:TaxScheme>
-                    <cbc:ID schemeID="UN/ECE 5153" schemeAgencyID="6">OTH</cbc:ID>
+                    <cbc:ID>VAT</cbc:ID>
                 </cac:TaxScheme>
             </cac:TaxCategory>
         </cac:TaxSubtotal>
@@ -182,7 +182,7 @@
                 <cbc:ID>01</cbc:ID>
                 <cbc:Percent>10.0</cbc:Percent>
                 <cac:TaxScheme>
-                    <cbc:ID schemeID="UN/ECE 5153" schemeAgencyID="6">OTH</cbc:ID>
+                    <cbc:ID>VAT</cbc:ID>
                 </cac:TaxScheme>
             </cac:TaxCategory>
         </cac:TaxSubtotal>
@@ -213,7 +213,7 @@
                     <cbc:ID>01</cbc:ID>
                     <cbc:Percent>5.0</cbc:Percent>
                     <cac:TaxScheme>
-                        <cbc:ID schemeID="UN/ECE 5153" schemeAgencyID="6">OTH</cbc:ID>
+                        <cbc:ID>VAT</cbc:ID>
                     </cac:TaxScheme>
                 </cac:TaxCategory>
             </cac:TaxSubtotal>
@@ -225,7 +225,7 @@
                     <cbc:ID>01</cbc:ID>
                     <cbc:Percent>10.0</cbc:Percent>
                     <cac:TaxScheme>
-                        <cbc:ID schemeID="UN/ECE 5153" schemeAgencyID="6">OTH</cbc:ID>
+                        <cbc:ID>VAT</cbc:ID>
                     </cac:TaxScheme>
                 </cac:TaxCategory>
             </cac:TaxSubtotal>
@@ -240,14 +240,14 @@
                 <cbc:ID>01</cbc:ID>
                 <cbc:Percent>5.0</cbc:Percent>
                 <cac:TaxScheme>
-                    <cbc:ID schemeID="UN/ECE 5153" schemeAgencyID="6">OTH</cbc:ID>
+                    <cbc:ID>VAT</cbc:ID>
                 </cac:TaxScheme>
             </cac:ClassifiedTaxCategory>
             <cac:ClassifiedTaxCategory>
                 <cbc:ID>01</cbc:ID>
                 <cbc:Percent>10.0</cbc:Percent>
                 <cac:TaxScheme>
-                    <cbc:ID schemeID="UN/ECE 5153" schemeAgencyID="6">OTH</cbc:ID>
+                    <cbc:ID>VAT</cbc:ID>
                 </cac:TaxScheme>
             </cac:ClassifiedTaxCategory>
         </cac:Item>
@@ -272,7 +272,7 @@
                     <cbc:ID>01</cbc:ID>
                     <cbc:Percent>5.0</cbc:Percent>
                     <cac:TaxScheme>
-                        <cbc:ID schemeID="UN/ECE 5153" schemeAgencyID="6">OTH</cbc:ID>
+                        <cbc:ID>VAT</cbc:ID>
                     </cac:TaxScheme>
                 </cac:TaxCategory>
             </cac:TaxSubtotal>
@@ -284,7 +284,7 @@
                     <cbc:ID>01</cbc:ID>
                     <cbc:Percent>10.0</cbc:Percent>
                     <cac:TaxScheme>
-                        <cbc:ID schemeID="UN/ECE 5153" schemeAgencyID="6">OTH</cbc:ID>
+                        <cbc:ID>VAT</cbc:ID>
                     </cac:TaxScheme>
                 </cac:TaxCategory>
             </cac:TaxSubtotal>
@@ -299,14 +299,14 @@
                 <cbc:ID>01</cbc:ID>
                 <cbc:Percent>5.0</cbc:Percent>
                 <cac:TaxScheme>
-                    <cbc:ID schemeID="UN/ECE 5153" schemeAgencyID="6">OTH</cbc:ID>
+                    <cbc:ID>VAT</cbc:ID>
                 </cac:TaxScheme>
             </cac:ClassifiedTaxCategory>
             <cac:ClassifiedTaxCategory>
                 <cbc:ID>01</cbc:ID>
                 <cbc:Percent>10.0</cbc:Percent>
                 <cac:TaxScheme>
-                    <cbc:ID schemeID="UN/ECE 5153" schemeAgencyID="6">OTH</cbc:ID>
+                    <cbc:ID>VAT</cbc:ID>
                 </cac:TaxScheme>
             </cac:ClassifiedTaxCategory>
         </cac:Item>

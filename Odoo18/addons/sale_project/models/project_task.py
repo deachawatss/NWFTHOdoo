@@ -2,7 +2,7 @@
 
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError, AccessError
-from odoo.fields import Domain
+from odoo.osv import expression
 from odoo.tools import SQL
 from odoo.tools.misc import unquote
 
@@ -11,7 +11,7 @@ class ProjectTask(models.Model):
     _inherit = "project.task"
 
     def _domain_sale_line_id(self):
-        domain = Domain.AND([
+        domain = expression.AND([
             self.env['sale.order.line']._sellable_lines_domain(),
             self.env['sale.order.line']._domain_sale_line_service(),
             [
@@ -41,13 +41,13 @@ class ProjectTask(models.Model):
     display_sale_order_button = fields.Boolean(string='Display Sales Order', compute='_compute_display_sale_order_button')
 
     @property
-    def TASK_PORTAL_READABLE_FIELDS(self):
-        return super().TASK_PORTAL_READABLE_FIELDS | {'allow_billable', 'sale_order_id', 'sale_line_id', 'display_sale_order_button'}
+    def SELF_READABLE_FIELDS(self):
+        return super().SELF_READABLE_FIELDS | {'allow_billable', 'sale_order_id', 'sale_line_id', 'display_sale_order_button'}
 
     @api.model
     def _group_expand_sales_order(self, sales_orders, domain):
-        start_date = self.env.context.get('gantt_start_date')
-        scale = self.env.context.get('gantt_scale')
+        start_date = self._context.get('gantt_start_date')
+        scale = self._context.get('gantt_scale')
         if not (start_date and scale):
             return sales_orders
         search_on_comodel = self._search_on_comodel(domain, "sale_order_id", "sale.order")
@@ -108,9 +108,11 @@ class ProjectTask(models.Model):
                 sale_line = False
                 if task.parent_id.sale_line_id and task.parent_id.partner_id.commercial_partner_id == task.partner_id.commercial_partner_id:
                     sale_line = task.parent_id.sale_line_id
+                elif task.milestone_id.sale_line_id:
+                    sale_line = task.milestone_id.sale_line_id
                 elif task.project_id.sale_line_id and task.project_id.partner_id.commercial_partner_id == task.partner_id.commercial_partner_id:
                     sale_line = task.project_id.sale_line_id
-                task.sale_line_id = sale_line or task.milestone_id.sale_line_id
+                task.sale_line_id = sale_line
 
     @api.depends('sale_order_id')
     def _compute_display_sale_order_button(self):
@@ -212,15 +214,16 @@ class ProjectTask(models.Model):
 
     @api.model
     def _search_task_to_invoice(self, operator, value):
-        if operator != 'in':
-            return NotImplemented
         sql = SQL("""(
             SELECT so.id
             FROM sale_order so
             WHERE so.invoice_status != 'invoiced'
                 AND so.invoice_status != 'no'
         )""")
-        return [('sale_order_id', 'in', sql)]
+        operator_new = 'in'
+        if (bool(operator == '=') ^ bool(value)):
+            operator_new = 'not in'
+        return [('sale_order_id', operator_new, sql)]
 
     @api.onchange('sale_line_id')
     def _onchange_partner_id(self):
@@ -228,7 +231,7 @@ class ProjectTask(models.Model):
             self.partner_id = self.sale_line_id.order_partner_id
 
     def _get_projects_to_make_billable_domain(self, additional_domain=None):
-        return Domain.AND([
+        return expression.AND([
             super()._get_projects_to_make_billable_domain(additional_domain),
             [
                 ('partner_id', '!=', False),

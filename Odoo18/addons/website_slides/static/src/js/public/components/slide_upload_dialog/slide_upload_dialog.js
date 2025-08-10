@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { Component, onMounted, useState } from "@odoo/owl";
 import { Dialog } from "@web/core/dialog/dialog";
 import { DropdownItem } from "@web/core/dropdown/dropdown_item";
@@ -20,7 +22,7 @@ export class SlideUploadDialog extends Component {
         installModuleData: null,
     };
     static categoryData = {
-        document: { icon: "fa-file-pdf-o", label: _t("Presentation / Doc") },
+        document: { icon: "fa-file-pdf-o", label: _t("Document") },
         infographic: { icon: "fa-file-image-o", label: _t("Image") },
         article: { icon: "fa-file-text", label: _t("Article") },
         video: { icon: "fa-file-video-o", label: _t("Video") },

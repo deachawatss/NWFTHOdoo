@@ -1,7 +1,9 @@
+# -*- coding: utf-8 -*-
+
 from odoo import api, fields, models, exceptions, _
 
 
-class RatingRating(models.Model):
+class Rating(models.Model):
     _inherit = 'rating.rating'
 
     # Adding information for comment a rating message
@@ -12,17 +14,17 @@ class RatingRating(models.Model):
     publisher_datetime = fields.Datetime("Commented on", readonly=True)
 
     @api.model_create_multi
-    def create(self, vals_list):
-        for values in vals_list:
+    def create(self, values_list):
+        for values in values_list:
             self._synchronize_publisher_values(values)
-        ratings = super().create(vals_list)
+        ratings = super().create(values_list)
         if any(rating.publisher_comment for rating in ratings):
             ratings._check_synchronize_publisher_values()
         return ratings
 
-    def write(self, vals):
-        self._synchronize_publisher_values(vals)
-        return super().write(vals)
+    def write(self, values):
+        self._synchronize_publisher_values(values)
+        return super().write(values)
 
     def _check_synchronize_publisher_values(self):
         """ Either current user is a member of website restricted editor group

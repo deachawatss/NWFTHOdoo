@@ -3,7 +3,7 @@
 from odoo import api, fields, models
 
 
-class SaleMassCancelOrders(models.TransientModel):
+class MassCancelOrders(models.TransientModel):
     _name = 'sale.mass.cancel.orders'
     _description = "Cancel multiple quotations"
 

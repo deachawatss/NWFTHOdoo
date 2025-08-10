@@ -80,7 +80,7 @@ describe("insert tabulation", () => {
         await testTabulation({
             contentBefore: `<p><font style="background-color: rgb(255,255,0);">\u200B[]</font></p>`,
             stepFunction: keydownTab,
-            contentAfterEdit: `<p o-we-hint-text='Type "/" for commands' class="o-we-hint">${oeTab(
+            contentAfterEdit: `<p>${oeTab(
                 TAB_WIDTH,
                 false
             )}<font style="background-color: rgb(255,255,0);">\u200B[]</font></p>`,
@@ -362,7 +362,8 @@ describe("insert tabulation", () => {
             contentBefore:
                 `<p>${oeTab()}a[${oeTab()}b${oeTab()}</p>` +
                 `<ul>` +
-                    `<li><p>c${oeTab()}d${oeTab()}</p>` +
+                    `<li>c${oeTab()}d${oeTab()}</li>` +
+                    `<li class="oe-nested">` +
                         `<ul>` +
                             `<li>${oeTab()}e${oeTab()}</li>` +
                         `</ul>` +
@@ -375,7 +376,8 @@ describe("insert tabulation", () => {
                 `<ul>` +
                     `<li class="oe-nested">` +
                         `<ul>` +
-                            `<li><p>c${oeTab(tabAfterCinNestedLI, false)}d${oeTab(tabAfterD, false)}</p>` +
+                            `<li>c${oeTab(tabAfterCinNestedLI, false)}d${oeTab(tabAfterD, false)}</li>` +
+                            `<li class="oe-nested">` +
                                 `<ul>` +
                                     `<li>${oeTab(tabInDoubleNestedList, false)}e${oeTab(tabAfterE, false)}</li>` +
                                 `</ul>` +
@@ -389,7 +391,8 @@ describe("insert tabulation", () => {
                 `<ul>` +
                     `<li class="oe-nested">` +
                         `<ul>` +
-                            `<li><p>c${oeTab(tabAfterCinNestedLI)}d${oeTab(tabAfterD)}</p>` +
+                            `<li>c${oeTab(tabAfterCinNestedLI)}d${oeTab(tabAfterD)}</li>` +
+                            `<li class="oe-nested">` +
                                 `<ul>` +
                                     `<li>${oeTab(tabInDoubleNestedList)}e${oeTab(tabAfterE)}</li>` +
                                 `</ul>` +
@@ -743,8 +746,8 @@ describe("remove tabulation with shift+tab", () => {
             contentBefore:
                 `<p>${oeTab()}${oeTab()}a[${oeTab()}b${oeTab()}</p>` +
                 `<ul>` +
-                `<li class="oe-nested"><ul><li><p>c${oeTab()}d${oeTab()}</p>` +
-                `<ul><li>${oeTab()}e${oeTab()}</li></ul></li></ul></li>` +
+                `<li class="oe-nested"><ul><li>c${oeTab()}d${oeTab()}</li>` +
+                `<li class="oe-nested"><ul><li>${oeTab()}e${oeTab()}</li></ul></li></ul></li>` +
                 `</ul>` +
                 `<blockquote>${oeTab()}f${oeTab()}]g</blockquote>`,
             stepFunction: keydownShiftTab,
@@ -754,8 +757,8 @@ describe("remove tabulation with shift+tab", () => {
                     false
                 )}</p>` +
                 `<ul>` +
-                `<li><p>c${oeTab(tabAfterCinLI, false)}d${oeTab(tabAfterD, false)}</p>` +
-                `<ul><li>${oeTab(tabInNestedList, false)}e${oeTab(
+                `<li>c${oeTab(tabAfterCinLI, false)}d${oeTab(tabAfterD, false)}</li>` +
+                `<li class="oe-nested"><ul><li>${oeTab(tabInNestedList, false)}e${oeTab(
                     tabAfterE,
                     false
                 )}</li></ul></li>` +
@@ -764,8 +767,10 @@ describe("remove tabulation with shift+tab", () => {
             contentAfter:
                 `<p>${oeTab(TAB_WIDTH)}a[${oeTab(tabAfterA)}b${oeTab(tabAfterB)}</p>` +
                 `<ul>` +
-                `<li><p>c${oeTab(tabAfterCinLI)}d${oeTab(tabAfterD)}</p>` +
-                `<ul><li>${oeTab(tabInNestedList)}e${oeTab(tabAfterE)}</li></ul></li>` +
+                `<li>c${oeTab(tabAfterCinLI)}d${oeTab(tabAfterD)}</li>` +
+                `<li class="oe-nested"><ul><li>${oeTab(tabInNestedList)}e${oeTab(
+                    tabAfterE
+                )}</li></ul></li>` +
                 `</ul>` +
                 `<blockquote>f${oeTab(tabAfterFinBlockquote)}]g</blockquote>`,
         });

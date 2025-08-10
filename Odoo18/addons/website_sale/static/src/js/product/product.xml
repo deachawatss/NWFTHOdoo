@@ -2,7 +2,7 @@
 <templates xml:space="preserve">
     <t t-inherit="sale.Product" t-inherit-mode="extension">
         <QuantityButtons position="attributes">
-            <attribute name="t-if" add="this.props.can_be_sold" separator=" &amp;&amp; "/>
+            <attribute name="t-if">this.props.can_be_sold</attribute>
         </QuantityButtons>
         <QuantityButtons position="after">
             <t t-call="website_sale.not_for_sale"/>
@@ -51,7 +51,7 @@
 
     <t t-name="website_sale.strikethrough_product_price">
         <h5
-            class="oe_striked_price text-muted small text-decoration-line-through text-nowrap"
+            class="oe_striked_price text-muted small"
             t-if="this.props.strikethrough_price"
             t-out="formattedStrikethroughPrice"
         />

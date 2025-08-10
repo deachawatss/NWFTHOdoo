@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { Component, useState, onWillUnmount } from "@odoo/owl";
 
 const { DateTime } = luxon;
@@ -8,7 +10,6 @@ export class CardLayout extends Component {
         fromTrialMode: { type: Boolean, optional: true },
         companyImageUrl: { type: String },
         kioskReturn: { type: Function },
-        activeDisplay: { type: String },
     };
     static defaultProps = {
         kioskModeClasses: "",

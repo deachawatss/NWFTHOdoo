@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from uuid import uuid4
@@ -10,7 +11,7 @@ from odoo.tools import format_amount
 class LoyaltyCard(models.Model):
     _name = 'loyalty.card'
     _inherit = ['mail.thread']
-    _description = "Loyalty Coupon"
+    _description = 'Loyalty Coupon'
     _rec_name = 'code'
 
     @api.model
@@ -18,30 +19,24 @@ class LoyaltyCard(models.Model):
         """
         Barcode identifiable codes.
         """
-        return "044" + str(uuid4())[7:-18]
+        return '044' + str(uuid4())[7:-18]
 
     @api.depends('program_id', 'code')
     def _compute_display_name(self):
         for card in self:
-            card.display_name = f"{card.program_id.name}: {card.code}"
+            card.display_name = f'{card.program_id.name}: {card.code}'
 
-    program_id = fields.Many2one(
-        comodel_name='loyalty.program',
-        ondelete='restrict',
-        index='btree_not_null',
-        default=lambda self: self.env.context.get('active_id', None),
-    )
+    program_id = fields.Many2one('loyalty.program', ondelete='restrict', default=lambda self: self.env.context.get('active_id', None))
     program_type = fields.Selection(related='program_id.program_type')
-    # TODO probably isn't useful to store this company_id anymore
-    company_id = fields.Many2one(related='program_id.company_id', store=True, precompute=True)
+    company_id = fields.Many2one(related='program_id.company_id', store=True)
     currency_id = fields.Many2one(related='program_id.currency_id')
     # Reserved for this partner if non-empty
-    partner_id = fields.Many2one(comodel_name='res.partner', index=True)
+    partner_id = fields.Many2one('res.partner', index=True)
     points = fields.Float(tracking=True)
     point_name = fields.Char(related='program_id.portal_point_name', readonly=True)
     points_display = fields.Char(compute='_compute_points_display')
 
-    code = fields.Char(required=True, default=lambda self: self._generate_code())
+    code = fields.Char(default=lambda self: self._generate_code(), required=True)
     expiration_date = fields.Date()
 
     use_count = fields.Integer(compute='_compute_use_count')
@@ -52,16 +47,15 @@ class LoyaltyCard(models.Model):
         readonly=True,
     )
 
-    _card_code_unique = models.Constraint(
-        'UNIQUE(code)',
-        "A coupon/loyalty card must have a unique code.",
-    )
+    _sql_constraints = [
+        ('card_code_unique', 'UNIQUE(code)', 'A coupon/loyalty card must have a unique code.')
+    ]
 
     @api.constrains('code')
     def _contrains_code(self):
         # Prevent a coupon from having the same code a program
         if self.env['loyalty.rule'].search_count([('mode', '=', 'with_code'), ('code', 'in', self.mapped('code'))]):
-            raise ValidationError(_("A trigger with the same code as one of your coupon already exists."))
+            raise ValidationError(_('A trigger with the same code as one of your coupon already exists.'))
 
     @api.depends('points', 'point_name')
     def _compute_points_display(self):
@@ -76,7 +70,7 @@ class LoyaltyCard(models.Model):
 
     def _format_points(self, points):
         self.ensure_one()
-        if self.program_id.currency_id and self.point_name == self.program_id.currency_id.symbol:
+        if self.point_name == self.program_id.currency_id.symbol:
             return format_amount(self.env, points, self.program_id.currency_id)
         if points == int(points):
             return f"{int(points)} {self.point_name or ''}"
@@ -89,6 +83,10 @@ class LoyaltyCard(models.Model):
     def _get_default_template(self):
         self.ensure_one()
         return self.program_id.communication_plan_ids.filtered(lambda m: m.trigger == 'create').mail_template_id[:1]
+
+    def _get_mail_partner(self):
+        self.ensure_one()
+        return self.partner_id
 
     def _get_mail_author(self):
         self.ensure_one()
@@ -120,7 +118,7 @@ class LoyaltyCard(models.Model):
             force_email=True,
         )
         return {
-            'name': _("Compose Email"),
+            'name': _('Compose Email'),
             'type': 'ir.actions.act_window',
             'view_mode': 'form',
             'res_model': 'mail.compose.message',
@@ -141,7 +139,7 @@ class LoyaltyCard(models.Model):
         for program in self.program_id:
             create_comm_per_program[program] = program.communication_plan_ids.filtered(lambda c: c.trigger == 'create')
         for coupon in self:
-            if not create_comm_per_program[coupon.program_id] or not coupon._mail_get_customer():
+            if not create_comm_per_program[coupon.program_id] or not coupon._get_mail_partner():
                 continue
             for comm in create_comm_per_program[coupon.program_id]:
                 mail_template = comm.mail_template_id
@@ -171,7 +169,7 @@ class LoyaltyCard(models.Model):
                 .filtered(lambda c: c.trigger == 'points_reach')\
                 .sorted('points', reverse=True)
         for coupon in self:
-            if not coupon._mail_get_customer():
+            if not coupon._get_mail_partner():
                 continue
             coupon_change = points_changes[coupon]
             # Do nothing if coupon lost points or did not change

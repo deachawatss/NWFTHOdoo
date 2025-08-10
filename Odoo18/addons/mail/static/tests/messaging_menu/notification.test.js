@@ -1,22 +1,17 @@
 import {
+    assertSteps,
     click,
     contains,
     defineMailModels,
     start,
     startServer,
+    step,
     triggerEvents,
 } from "@mail/../tests/mail_test_helpers";
 import { rpcWithEnv } from "@mail/utils/common/misc";
 import { describe, expect, test } from "@odoo/hoot";
 import { mockDate } from "@odoo/hoot-mock";
-import {
-    asyncStep,
-    Command,
-    mockService,
-    serverState,
-    waitForSteps,
-    withUser,
-} from "@web/../tests/web_test_helpers";
+import { Command, mockService, serverState, withUser } from "@web/../tests/web_test_helpers";
 
 /** @type {ReturnType<import("@mail/utils/common/misc").rpcWithEnv>} */
 let rpc;
@@ -113,7 +108,7 @@ test("open non-channel failure", async () => {
     ]);
     mockService("action", {
         doAction(action) {
-            asyncStep("do_action");
+            step("do_action");
             expect(action.name).toBe("Mail Failures");
             expect(action.type).toBe("ir.actions.act_window");
             expect(action.view_mode).toBe("kanban,list,form");
@@ -134,7 +129,7 @@ test("open non-channel failure", async () => {
     await start();
     await click(".o_menu_systray i[aria-label='Messages']");
     await click(".o-mail-NotificationItem");
-    await waitForSteps(["do_action"]);
+    await assertSteps(["do_action"]);
 });
 
 test("different discuss.channel are not grouped", async () => {
@@ -275,7 +270,6 @@ test("marked as read thread notifications are ordered by last message date", asy
 });
 
 test("thread notifications are re-ordered on receiving a new message", async () => {
-    mockDate("2023-01-03 12:00:00"); // so that it's after last interest (mock server is in 2019 by default!)
     const pyEnv = await startServer();
     const bobUserId = pyEnv["res.users"].create({ name: "Bob" });
     const bobPartnerId = pyEnv["res.partner"].create({ name: "Bob", user_id: bobUserId.id });
@@ -292,13 +286,11 @@ test("thread notifications are re-ordered on receiving a new message", async () 
     pyEnv["mail.message"].create([
         {
             date: "2019-01-01 00:00:00",
-            body: "some text",
             model: "discuss.channel",
             res_id: channelId_1,
         },
         {
             date: "2020-01-01 00:00:00",
-            body: "some text 2",
             model: "discuss.channel",
             res_id: channelId_2,
         },

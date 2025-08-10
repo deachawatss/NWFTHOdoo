@@ -1,6 +1,8 @@
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
-import { stepUtils } from "@web_tour/tour_utils";
+import { stepUtils } from "@web_tour/tour_service/tour_utils";
 
 import { markup } from "@odoo/owl";
 import { queryFirst } from "@odoo/hoot-dom";
@@ -271,16 +273,6 @@ stepUtils.autoExpandMoreButtons(),
 },
 {
     isActive: ["mobile"],
-    trigger: ".o_field_widget[name=min_qty] + .o_field_widget[name=product_uom_id] input",
-    run: "click",
-},
-{
-    isActive: ["mobile"],
-    trigger: ".o_kanban_record span:contains('Units')",
-    run: "click",
-},
-{
-    isActive: ["mobile"],
     trigger: ".modal:not(.o_inactive_modal) .modal-footer .btn-primary:contains(Save & Close):enabled",
     content: _t('Save & Close'),
     tooltipPosition: 'right',
@@ -307,7 +299,7 @@ stepUtils.autoExpandMoreButtons(),
     // click somewhere else to exit cell focus
 }, {
     isActive: ["desktop"],
-    trigger: 'th:contains("Unit")',
+    trigger: 'label:contains("Purchase Unit")',
     run: "click",
     // click somewhere else to exit cell focus
 }, {
@@ -438,16 +430,6 @@ stepUtils.autoExpandMoreButtons(),
 },
 {
     isActive: ["mobile"],
-    trigger: ".o_field_widget[name=min_qty] + .o_field_widget[name=product_uom_id] input",
-    run: "click",
-},
-{
-    isActive: ["mobile"],
-    trigger: ".o_kanban_record span:contains('Units')",
-    run: "click",
-},
-{
-    isActive: ["mobile"],
     trigger: ".modal:not(.o_inactive_modal) .modal-title:contains('Vendor')",
 },
 {
@@ -478,7 +460,7 @@ stepUtils.autoExpandMoreButtons(),
     // click somewhere else to exit cell focus
 }, {
     isActive: ["desktop"],
-    trigger: 'th:contains("Unit")',
+    trigger: 'label:contains("Purchase Unit")',
     run: "click",
     // click somewhere else to exit cell focus
 }, {
@@ -618,7 +600,7 @@ stepUtils.autoExpandMoreButtons(),
 ...stepUtils.toggleHomeMenu(),
 ...stepUtils.goToAppSteps('crm.crm_menu_root', markup(_t('Organize your sales activities with the <b>CRM app</b>.'))),
 {
-    trigger: '.o_opportunity_kanban .o_kanban_renderer',
+    trigger: '.o_opportunity_kanban',
 },
 {
     trigger: ".o-kanban-button-new",
@@ -706,13 +688,7 @@ stepUtils.autoExpandMoreButtons(),
     run: "click",
 }, {
     isActive: ["mobile"],
-    trigger: ".o_statusbar_status button:contains('New')",
-    content: _t("Open statusbar's dropdown."),
-    tooltipPosition: "bottom",
-    run: "click",
-}, {
-    isActive: ["mobile"],
-    trigger: ".o-dropdown--menu .o-dropdown-item:contains('Proposition')",
+    trigger: ".o_statusbar_status button:contains('Proposition')",
     content: _t("Change status from New to proposition."),
     tooltipPosition: "bottom",
     run: "click",
@@ -832,7 +808,7 @@ stepUtils.autoExpandMoreButtons(),
 {
     trigger: "body:not(:has(.modal))",
 },
-...stepUtils.statusbarButtonsSteps('Send', _t("Try to send it to email"), ".o_statusbar_status .dropdown-toggle:contains('Quotation')"),
+...stepUtils.statusbarButtonsSteps('Send by Email', _t("Try to send it to email"), ".o_statusbar_status .o_arrow_button_current:contains('Quotation')"),
 {
     isActive: ["body:not(:has(.modal-footer button[name='action_send_mail']))"],
     trigger: ".modal .modal-footer button[name='document_layout_save']",
@@ -840,12 +816,12 @@ stepUtils.autoExpandMoreButtons(),
     tooltipPosition: "bottom",
     run: "click",
 }, {
-    trigger: ".o-mail-RecipientsInputTagsListPopover input",
+    trigger: ".modal:not(.o_inactive_modal) .o_field_widget[name=email] input",
     content: _t("Enter an email address"),
     tooltipPosition: "right",
     run: "edit test@the_flow.com",
 }, {
-    trigger: ".o-mail-RecipientsInputTagsListPopover .btn-primary:contains(Set Email)",
+    trigger: ".modal:not(.o_inactive_modal) .modal-footer .btn-primary:contains(save & close)",
     content: _t("Save your changes"),
     tooltipPosition: "bottom",
     run: "click",
@@ -906,12 +882,14 @@ stepUtils.autoExpandMoreButtons(),
     run: "click",
 },
 {
-    trigger: ".o_field_widget[name=product_min_qty] input",
+    // FIXME WOWL: remove first part of selector when legacy view is dropped
+    trigger: "input.o_field_widget[name=product_min_qty], .o_field_widget[name=product_min_qty] input",
     content: _t("Set the minimum product quantity"),
     tooltipPosition: "right",
     run: "edit 1",
 }, {
-    trigger: ".o_field_widget[name=product_max_qty] input",
+    // FIXME WOWL: remove first part of selector when legacy view is dropped
+    trigger: "input.o_field_widget[name=product_max_qty], .o_field_widget[name=product_max_qty] input",
     content: _t("Set the maximum product quantity"),
     tooltipPosition: "right",
     run: "edit 10",
@@ -930,9 +908,6 @@ stepUtils.autoExpandMoreButtons(),
 },
 //Go to purchase:
 ...stepUtils.toggleHomeMenu(),
-
-
-
 ...stepUtils.goToAppSteps('purchase.menu_purchase_root', _t('Go to Purchase')),
 {
     isActive: ["desktop"],
@@ -947,9 +922,35 @@ stepUtils.autoExpandMoreButtons(),
     tooltipPosition: 'bottom',
     run: "click",
 },
-...stepUtils.statusbarButtonsSteps('Confirm Order', _t("Confirm quotation"), ".o_statusbar_status .dropdown-toggle:contains('RFQ')"),
-...stepUtils.statusbarButtonsSteps('Receive', _t("Receive Product"), ".o_statusbar_status .dropdown-toggle:contains('Purchase Order')"),
+...stepUtils.statusbarButtonsSteps('Confirm Order', _t("Confirm quotation"), ".o_statusbar_status .o_arrow_button_current:contains('RFQ')"),
+...stepUtils.statusbarButtonsSteps('Receive Products', _t("Receive Product"), ".o_statusbar_status .o_arrow_button_current:contains('Purchase Order')"),
 ...stepUtils.statusbarButtonsSteps('Validate', _t("Validate"), ".o_statusbar_status:contains('Ready')"),
+{
+    trigger: ".o_back_button:enabled, .breadcrumb-item:not('.active'):last",
+    content: _t('go back to the purchase order'),
+    tooltipPosition: 'bottom',
+    run: "click",
+},
+...stepUtils.statusbarButtonsSteps('Create Bill', _t('go to Vendor Bills'), ".o_statusbar_status:contains('Purchase Order')"),
+{
+    trigger: ".o_form_label .o_field_widget:contains('Vendor Bill')",
+},
+{
+    trigger:".o_field_widget[name=invoice_date] input",
+    content: _t('Set the invoice date'),
+    run: "edit 01/01/2020",
+},
+...stepUtils.statusbarButtonsSteps('Confirm', _t("Try to send it to email"), ".o_statusbar_status .o_arrow_button_current:contains('Draft')"),
+...stepUtils.statusbarButtonsSteps('Pay', _t("Pay"), ".o_statusbar_status .o_arrow_button_current:contains('Posted')"),
+{
+    trigger: ".modal .modal-footer .btn-primary",
+    content: _t("Validate"),
+    tooltipPosition: "bottom",
+    run: "click",
+},
+{
+    trigger: "body:not(:has(.modal))",
+},
 ...stepUtils.toggleHomeMenu(),
 ...stepUtils.goToAppSteps('mrp.menu_mrp_root', _t('Go to Manufacturing')),
 {
@@ -997,7 +998,7 @@ stepUtils.autoExpandMoreButtons(),
     tooltipPosition: "right",
     run: "edit 1 && click body",
 },
-...stepUtils.statusbarButtonsSteps('Produce All', _t("Produce All"), ".o_statusbar_status .dropdown-toggle:contains('To Close')"),
+...stepUtils.statusbarButtonsSteps('Produce All', _t("Produce All"), ".o_statusbar_status .o_arrow_button_current:contains('To Close')"),
 ...stepUtils.toggleHomeMenu(),
 ...stepUtils.goToAppSteps('sale.sale_menu_root', markup(_t('Organize your sales activities with the <b>Sales app</b>.'))),
 {
@@ -1069,7 +1070,7 @@ stepUtils.autoExpandMoreButtons(true),
     run: "click",
 },
 {
-    trigger: '.o_form_view div.o_notebook_headers',
+    trigger: '.o_project_task_form_view div.o_notebook_headers',
 },
 {
     trigger: 'a.nav-link:contains(Timesheets)',
@@ -1153,7 +1154,7 @@ stepUtils.autoExpandMoreButtons(true),
     trigger: "body:not(:has(.modal))",
 },
 ...stepUtils.statusbarButtonsSteps('Confirm', _t("Validate"), ".o_breadcrumb .active:contains('Draft Invoice')"),
-...stepUtils.statusbarButtonsSteps('Pay', _t("Pay"), ".o_statusbar_status .dropdown-toggle:contains('Posted')"),
+...stepUtils.statusbarButtonsSteps('Pay', _t("Pay"), ".o_statusbar_status .o_arrow_button_current:contains('Posted')"),
 {
     trigger: ".modal .modal-footer .btn-primary",
     content: _t("Validate"),
@@ -1237,6 +1238,11 @@ stepUtils.autoExpandMoreButtons(true),
     trigger: ".o_kanban_record span:contains('the_flow.customer')",
     content: _t("Select the newly created bank transaction"),
     run: "click",
+}, {
+    isActive: ["enterprise", "desktop"],
+    trigger: "button.btn-primary:contains('Validate')",
+    content: _t("Reconcile the bank transaction"),
+    run: "click",
 },
 // exit reconciliation widget
 stepUtils.toggleHomeMenu()[0],
@@ -1248,5 +1254,5 @@ stepUtils.toggleHomeMenu()[0],
 {
     isActive: ["auto", "desktop", "enterprise"],
     content: "check that we're back on the dashboard",
-    trigger: 'a:contains("Sales")',
+    trigger: 'a:contains("Customer Invoices")',
 }]});

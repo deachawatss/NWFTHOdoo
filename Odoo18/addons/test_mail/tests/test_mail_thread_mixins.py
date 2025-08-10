@@ -3,18 +3,18 @@
 
 from odoo import exceptions, tools
 from odoo.addons.mail.tests.common import MailCommon
-from odoo.addons.mail.tests.common_tracking import MailTrackingDurationMixinCase
+from odoo.addons.mail.tests.mail_tracking_duration_mixin_case import MailTrackingDurationMixinCase
 from odoo.addons.test_mail.tests.common import TestRecipients
 from odoo.tests.common import tagged, users
 from odoo.tools import mute_logger
 
 
-@tagged('mail_thread', 'mail_track')
+@tagged('mail_thread', 'mail_track', 'is_query_count')
 class TestMailTrackingDurationMixin(MailTrackingDurationMixinCase):
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass('mail.test.track.duration.mixin')
+        super().setUpClass('mail.test.mail.tracking.duration')
 
     def test_mail_tracking_duration(self):
         self._test_record_duration_tracking()
@@ -79,7 +79,7 @@ class TestMailThread(MailCommon, TestRecipients):
                 bl_record.unlink()
 
 
-@tagged('mail_thread', 'mail_thread_cc', 'mail_tools')
+@tagged('mail_thread', 'mail_thread_cc')
 class TestMailThreadCC(MailCommon):
 
     @users("employee")
@@ -90,18 +90,29 @@ class TestMailThreadCC(MailCommon):
         record = self.env['mail.test.cc'].create({
             'email_cc': 'cc1@example.com, cc2@example.com, cc3 <cc3@example.com>',
         })
-        suggestions = record._message_get_suggested_recipients(no_create=True)
-        expected_list = [
-            {
-                'name': '', 'email': 'cc1@example.com',
-                'partner_id': False, 'create_values': {},
-            }, {
-                'name': '', 'email': 'cc2@example.com',
-                'partner_id': False, 'create_values': {},
-            }, {
-                'name': 'cc3', 'email': 'cc3@example.com',
-                'partner_id': False, 'create_values': {},
-            }]
-        self.assertEqual(len(suggestions), len(expected_list))
-        for suggestion, expected in zip(suggestions, expected_list):
-            self.assertDictEqual(suggestion, expected)
+        suggestions = record._message_get_suggested_recipients()
+        self.assertItemsEqual(
+            suggestions,
+            [
+                {
+                    'lang': None,
+                    'reason': 'CC Email',
+                    'name': 'cc1@example.com',
+                    'email': 'cc1@example.com',
+                    'create_values': {},
+                }, {
+                    'lang': None,
+                    'reason': 'CC Email',
+                    'name': 'cc2@example.com',
+                    'email': 'cc2@example.com',
+                    'create_values': {},
+                }, {
+                    'lang': None,
+                    'reason': 'CC Email',
+                    'name': '"cc3" <cc3@example.com>',
+                    'email': '"cc3" <cc3@example.com>',
+                    'create_values': {},
+                },
+            ],
+            'cc should be in suggestions',
+        )

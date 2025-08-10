@@ -4,6 +4,7 @@ from odoo import models
 
 
 class StockPicking(models.Model):
+
     _inherit = 'stock.picking'
 
     def _l10n_in_get_invoice_partner(self):

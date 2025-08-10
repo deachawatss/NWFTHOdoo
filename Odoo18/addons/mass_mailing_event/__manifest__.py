@@ -3,7 +3,7 @@
 
 {
     'name': 'Mass mailing on attendees',
-    'category': 'Marketing/Email Marketing',
+    'category': 'Hidden',
     'version': '1.0',
     'description':
         """
@@ -17,6 +17,5 @@ Bridge module adding UX requirements to ease mass mailing of event attendees.
         'views/event_views.xml'
     ],
     'auto_install': True,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

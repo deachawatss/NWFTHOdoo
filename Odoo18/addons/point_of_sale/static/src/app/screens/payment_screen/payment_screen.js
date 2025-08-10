@@ -1,25 +1,24 @@
 import { _t } from "@web/core/l10n/translation";
 import { parseFloat } from "@web/views/fields/parsers";
-import { useErrorHandlers, useAsyncLockedMethod } from "@point_of_sale/app/hooks/hooks";
+import { useErrorHandlers, useAsyncLockedMethod } from "@point_of_sale/app/utils/hooks";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 
 import { AlertDialog, ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
-import { NumberPopup } from "@point_of_sale/app/components/popups/number_popup/number_popup";
-import { PriceFormatter } from "@point_of_sale/app/components/price_formatter/price_formatter";
-import { DatePickerPopup } from "@point_of_sale/app/components/popups/date_picker_popup/date_picker_popup";
+import { NumberPopup } from "@point_of_sale/app/utils/input_popups/number_popup";
+import { DatePickerPopup } from "@point_of_sale/app/utils/date_picker_popup/date_picker_popup";
 import { ConnectionLostError, RPCError } from "@web/core/network/rpc";
 
 import { PaymentScreenPaymentLines } from "@point_of_sale/app/screens/payment_screen/payment_lines/payment_lines";
 import { PaymentScreenStatus } from "@point_of_sale/app/screens/payment_screen/payment_status/payment_status";
-import { usePos } from "@point_of_sale/app/hooks/pos_hook";
-import { Component, onMounted } from "@odoo/owl";
-import { Numpad, enhancedButtons } from "@point_of_sale/app/components/numpad/numpad";
-import { ask, makeAwaitable } from "@point_of_sale/app/utils/make_awaitable_dialog";
-import { handleRPCError } from "@point_of_sale/app/utils/error_handlers";
+import { usePos } from "@point_of_sale/app/store/pos_hook";
+import { Component, useState, onMounted } from "@odoo/owl";
+import { Numpad, enhancedButtons } from "@point_of_sale/app/generic_components/numpad/numpad";
+import { floatIsZero, roundPrecision } from "@web/core/utils/numbers";
+import { ask } from "@point_of_sale/app/store/make_awaitable_dialog";
+import { handleRPCError } from "@point_of_sale/app/errors/error_handlers";
 import { sprintf } from "@web/core/utils/strings";
 import { serializeDateTime } from "@web/core/l10n/dates";
-import { useRouterParamsChecker } from "@point_of_sale/app/hooks/pos_router_hook";
 
 export class PaymentScreen extends Component {
     static template = "point_of_sale.PaymentScreen";
@@ -27,7 +26,6 @@ export class PaymentScreen extends Component {
         Numpad,
         PaymentScreenPaymentLines,
         PaymentScreenStatus,
-        PriceFormatter,
     };
     static props = {
         orderUuid: String,
@@ -35,7 +33,7 @@ export class PaymentScreen extends Component {
 
     setup() {
         this.pos = usePos();
-        this.ui = useService("ui");
+        this.ui = useState(useService("ui"));
         this.dialog = useService("dialog");
         this.invoiceService = useService("account_move");
         this.notification = useService("notification");
@@ -46,7 +44,6 @@ export class PaymentScreen extends Component {
             .sort((a, b) => a.sequence - b.sequence);
         this.numberBuffer = useService("number_buffer");
         this.numberBuffer.use(this._getNumberBufferConfig);
-        useRouterParamsChecker();
         useErrorHandlers();
         this.payment_interface = null;
         this.error = false;
@@ -55,7 +52,7 @@ export class PaymentScreen extends Component {
     }
 
     onMounted() {
-        const order = this.pos.getOrder();
+        const order = this.pos.get_order();
 
         for (const payment of order.payment_ids) {
             const pmid = payment.payment_method_id.id;
@@ -67,24 +64,16 @@ export class PaymentScreen extends Component {
         if (this.payment_methods_from_config.length == 1 && this.paymentLines.length == 0) {
             this.addNewPaymentLine(this.payment_methods_from_config[0]);
         }
-
-        //Activate the invoice option for refund orders if the original order was invoiced.
-        if (
-            this.currentOrder.isRefund &&
-            this.currentOrder.lines[0].refunded_orderline_id?.order_id?.isToInvoice()
-        ) {
-            this.currentOrder.setToInvoice(true);
-        }
     }
 
     getNumpadButtons() {
         const colorClassMap = {
-            [this.env.services.localization.decimalPoint]: "o_colorlist_item_numpad_color_6",
-            Backspace: "o_colorlist_item_numpad_color_1",
-            "+10": "o_colorlist_item_numpad_color_10",
-            "+20": "o_colorlist_item_numpad_color_10",
-            "+50": "o_colorlist_item_numpad_color_10",
-            "-": "o_colorlist_item_numpad_color_3",
+            [this.env.services.localization.decimalPoint]: "o_colorlist_item_color_transparent_6",
+            Backspace: "o_colorlist_item_color_transparent_1",
+            "+10": "o_colorlist_item_color_transparent_10",
+            "+20": "o_colorlist_item_color_transparent_10",
+            "+50": "o_colorlist_item_color_transparent_10",
+            "-": "o_colorlist_item_color_transparent_3",
         };
 
         return enhancedButtons().map((button) => ({
@@ -114,18 +103,11 @@ export class PaymentScreen extends Component {
     get currentOrder() {
         return this.pos.models["pos.order"].getBy("uuid", this.props.orderUuid);
     }
-    get isRefundOrder() {
-        return this.currentOrder.isRefund;
-    }
     get paymentLines() {
         return this.currentOrder.payment_ids;
     }
     get selectedPaymentLine() {
-        return this.currentOrder.getSelectedPaymentline();
-    }
-    makeAnimation() {
-        this.pos.addAnimation = true;
-        setTimeout(() => (this.pos.addAnimation = false), 1000);
+        return this.currentOrder.get_selected_paymentline();
     }
     async addNewPaymentLine(paymentMethod) {
         if (
@@ -149,20 +131,16 @@ export class PaymentScreen extends Component {
             return;
         }
 
-        if (this.paymentLines.length === 0) {
-            this.makeAnimation();
-        }
         // original function: click_paymentmethods
-        const result = this.currentOrder.addPaymentline(paymentMethod);
-        if (!this.checkCashRoundingHasBeenWellApplied()) {
+        const result = this.currentOrder.add_paymentline(paymentMethod);
+        if (!this.check_cash_rounding_has_been_well_applied()) {
             return;
         }
         if (result) {
-            this.numberBuffer.set(result.amount.toString());
+            this.numberBuffer.reset();
             if (
                 paymentMethod.use_payment_terminal &&
-                !this.isRefundOrder &&
-                paymentMethod.payment_terminal.fastPayments
+                (paymentMethod.payment_terminal?.fast_payments ?? true)
             ) {
                 const newPaymentLine = this.paymentLines.at(-1);
                 this.sendPaymentRequest(newPaymentLine);
@@ -178,7 +156,7 @@ export class PaymentScreen extends Component {
     }
     updateSelectedPaymentline(amount = false) {
         if (this.paymentLines.every((line) => line.paid)) {
-            this.currentOrder.addPaymentline(this.payment_methods_from_config[0]);
+            this.currentOrder.add_paymentline(this.payment_methods_from_config[0]);
         }
         if (!this.selectedPaymentLine) {
             return;
@@ -199,63 +177,45 @@ export class PaymentScreen extends Component {
         );
         if (
             !hasCashPaymentMethod &&
-            amount > this.currentOrder.getDue() + this.selectedPaymentLine.amount
+            amount > this.currentOrder.get_due() + this.selectedPaymentLine.amount
         ) {
-            this.selectedPaymentLine.setAmount(0);
-            this.numberBuffer.set(this.currentOrder.getDue().toString());
-            amount = this.currentOrder.getDue();
+            this.selectedPaymentLine.set_amount(0);
+            this.numberBuffer.set(this.currentOrder.get_due().toString());
+            amount = this.currentOrder.get_due();
             this.showMaxValueError();
         }
         if (
             payment_terminal &&
-            !["pending", "retry"].includes(this.selectedPaymentLine.getPaymentStatus())
+            !["pending", "retry"].includes(this.selectedPaymentLine.get_payment_status())
         ) {
             return;
         }
         if (amount === null) {
             this.deletePaymentLine(this.selectedPaymentLine.uuid);
         } else {
-            this.selectedPaymentLine.setAmount(amount);
+            this.selectedPaymentLine.set_amount(amount);
         }
     }
-    async toggleIsToInvoice() {
-        this.currentOrder.setToInvoice(!this.currentOrder.isToInvoice());
+    toggleIsToInvoice() {
+        this.currentOrder.set_to_invoice(!this.currentOrder.is_to_invoice());
     }
     openCashbox() {
         this.hardwareProxy.openCashbox();
     }
     async addTip() {
-        const tip = this.currentOrder.getTip();
-        const change = this.currentOrder.getChange();
+        // click_tip
+        const tip = this.currentOrder.get_tip();
+        const change = this.currentOrder.get_change();
         const value = tip === 0 && change > 0 ? change : tip;
-        const newTip = await makeAwaitable(this.dialog, NumberPopup, {
+
+        this.dialog.add(NumberPopup, {
             title: tip ? _t("Change Tip") : _t("Add Tip"),
             startingValue: this.env.utils.formatCurrency(value, false),
             formatDisplayedValue: (x) => `${this.pos.currency.symbol} ${x}`,
+            getPayload: async (num) => {
+                await this.pos.set_tip(parseFloat(num ?? ""));
+            },
         });
-
-        if (newTip === undefined) {
-            return;
-        }
-        await this.pos.setTip(parseFloat(newTip ?? ""));
-        const pLine =
-            this.selectedPaymentLine &&
-            (!this.selectedPaymentLine.isElectronic() ||
-                this.selectedPaymentLine.getPaymentStatus() === "pending")
-                ? this.selectedPaymentLine
-                : false;
-
-        if (!pLine || newTip === tip) {
-            this.notification.add(
-                _t(
-                    "The tip has been added to the order. However,the selected payment line does not allow tips to be added."
-                )
-            );
-            return;
-        }
-        const tipDifference = parseFloat(newTip) - (tip || 0);
-        const tipToAdd = change <= 0 ? tipDifference : Math.max(0, tipDifference - change);
-        pLine.setAmount(pLine.getAmount() + tipToAdd);
     }
     async toggleShippingDatePicker() {
         if (!this.currentOrder.getShippingDate()) {
@@ -272,37 +232,44 @@ export class PaymentScreen extends Component {
     deletePaymentLine(uuid) {
         const line = this.paymentLines.find((line) => line.uuid === uuid);
         if (line.payment_method_id.payment_method_type === "qr_code") {
-            this.currentOrder.removePaymentline(line);
+            this.currentOrder.remove_paymentline(line);
             this.numberBuffer.reset();
             return;
         }
         // If a paymentline with a payment terminal linked to
         // it is removed, the terminal should get a cancel
         // request.
-        if (["waiting", "waitingCard", "timeout"].includes(line.getPaymentStatus())) {
-            line.setPaymentStatus("waitingCancel");
+        if (
+            ["waiting", "waitingCard", "timeout"].includes(line.get_payment_status()) &&
             line.payment_method_id.payment_terminal
-                .sendPaymentCancel(this.currentOrder, uuid)
+        ) {
+            line.set_payment_status("waitingCancel");
+            line.payment_method_id.payment_terminal
+                .send_payment_cancel(this.currentOrder, uuid)
                 .then(() => {
-                    this.currentOrder.removePaymentline(line);
+                    this.currentOrder.remove_paymentline(line);
                     this.numberBuffer.reset();
                 });
-        } else if (line.getPaymentStatus() !== "waitingCancel") {
-            this.currentOrder.removePaymentline(line);
+        } else if (line.get_payment_status() !== "waitingCancel") {
+            this.currentOrder.remove_paymentline(line);
             this.numberBuffer.reset();
         }
     }
     selectPaymentLine(uuid) {
         const line = this.paymentLines.find((line) => line.uuid === uuid);
-        this.currentOrder.selectPaymentline(line);
+        this.currentOrder.select_paymentline(line);
         this.numberBuffer.reset();
     }
     async validateOrder(isForceValidate) {
         this.numberBuffer.capture();
-        if (!this.checkCashRoundingHasBeenWellApplied()) {
+        if (!this.check_cash_rounding_has_been_well_applied()) {
             return;
         }
-        const linesToRemove = this.currentOrder.lines.filter((line) => line.canBeRemoved);
+        const linesToRemove = this.currentOrder.lines.filter((line) => {
+            const rounding = line.product_id.uom_id.rounding;
+            const decimals = Math.max(0, Math.ceil(-Math.log10(rounding)));
+            return floatIsZero(line.qty, decimals);
+        });
         for (const line of linesToRemove) {
             this.currentOrder.removeOrderline(line);
         }
@@ -310,27 +277,26 @@ export class PaymentScreen extends Component {
             // remove pending payments before finalizing the validation
             const toRemove = [];
             for (const line of this.paymentLines) {
-                if (!line.isDone() || line.amount === 0) {
+                if (!line.is_done() || line.amount === 0) {
                     toRemove.push(line);
                 }
             }
 
             for (const line of toRemove) {
-                this.currentOrder.removePaymentline(line);
+                this.currentOrder.remove_paymentline(line);
             }
-
             await this._finalizeValidation();
         }
     }
     async _finalizeValidation() {
-        if (this.currentOrder.isPaidWithCash() || this.currentOrder.getChange()) {
+        if (this.currentOrder.is_paid_with_cash() || this.currentOrder.get_change()) {
             this.hardwareProxy.openCashbox();
         }
 
         this.currentOrder.date_order = serializeDateTime(luxon.DateTime.now());
         for (const line of this.paymentLines) {
             if (!line.amount === 0) {
-                this.currentOrder.removePaymentline(line);
+                this.currentOrder.remove_paymentline(line);
             }
         }
 
@@ -347,7 +313,7 @@ export class PaymentScreen extends Component {
             }
 
             // 2. Invoice.
-            if (this.shouldDownloadInvoice() && this.currentOrder.isToInvoice()) {
+            if (this.shouldDownloadInvoice() && this.currentOrder.is_to_invoice()) {
                 if (this.currentOrder.raw.account_move) {
                     await this.invoiceService.downloadPdf(this.currentOrder.raw.account_move);
                 } else {
@@ -359,30 +325,27 @@ export class PaymentScreen extends Component {
                 }
             }
         } catch (error) {
-            return this.handleValidationError(error);
+            if (error instanceof ConnectionLostError) {
+                this.pos.showScreen(this.nextScreen);
+                Promise.reject(error);
+            } else if (error instanceof RPCError) {
+                this.currentOrder.state = "draft";
+                handleRPCError(error, this.dialog);
+            } else {
+                throw error;
+            }
+            return error;
         } finally {
             this.env.services.ui.unblock();
         }
 
         // 3. Post process.
-        const postPushOrders = syncOrderResult.filter((order) => order.waitForPushOrder());
+        const postPushOrders = syncOrderResult.filter((order) => order.wait_for_push_order());
         if (postPushOrders.length > 0) {
             await this.postPushOrderResolve(postPushOrders.map((order) => order.id));
         }
 
         await this.afterOrderValidation(!!syncOrderResult && syncOrderResult.length > 0);
-    }
-    handleValidationError(error) {
-        if (error instanceof ConnectionLostError) {
-            this.pos.navigate(this.nextPage.page, this.nextPage.params);
-            Promise.reject(error);
-        } else if (error instanceof RPCError) {
-            this.currentOrder.state = "draft";
-            handleRPCError(error, this.dialog);
-        } else {
-            throw error;
-        }
-        return error;
     }
     async postPushOrderResolve(ordersServerId) {
         const postPushResult = await this._postPushOrderResolve(this.currentOrder, ordersServerId);
@@ -396,30 +359,25 @@ export class PaymentScreen extends Component {
     async afterOrderValidation() {
         // Always show the next screen regardless of error since pos has to
         // continue working even offline.
-        let nextPage = this.nextPage;
+        let nextScreen = this.nextScreen;
         let switchScreen = true;
 
-        this.currentOrder.uiState.locked = true;
-        if (!this.pos.config.module_pos_restaurant) {
-            this.pos.sendOrderInPreparation(this.currentOrder, { orderDone: true });
-        }
-
         if (
-            nextPage.page === "ReceiptScreen" &&
+            nextScreen === "ReceiptScreen" &&
             this.currentOrder.nb_print === 0 &&
             this.pos.config.iface_print_auto
         ) {
-            const invoiced_finalized = this.currentOrder.isToInvoice()
+            const invoiced_finalized = this.currentOrder.is_to_invoice()
                 ? this.currentOrder.finalized
                 : true;
 
             if (invoiced_finalized) {
-                await this.pos.printReceipt({ order: this.currentOrder });
+                this.pos.printReceipt(this.currentOrder);
 
                 if (this.pos.config.iface_print_skip_screen) {
-                    this.pos.orderDone(this.currentOrder);
+                    this.currentOrder.set_screen_data({ name: "" });
                     switchScreen = this.currentOrder.uuid === this.pos.selectedOrderUuid;
-                    nextPage = this.pos.defaultPage;
+                    nextScreen = "ProductScreen";
                     if (switchScreen) {
                         this.selectNextOrder();
                     }
@@ -428,14 +386,14 @@ export class PaymentScreen extends Component {
         }
 
         if (switchScreen) {
-            this.pos.navigate(nextPage.page, nextPage.params);
+            this.pos.showScreen(nextScreen);
         }
     }
     selectNextOrder() {
         if (this.currentOrder.originalSplittedOrder) {
-            this.pos.selectedOrderUuid = this.currentOrder.uiState.splittedOrderUuid;
+            this.pos.selectedOrderUuid = this.currentOrder.originalSplittedOrder.uuid;
         } else {
-            this.pos.addNewOrder();
+            this.pos.add_new_order();
         }
     }
     /**
@@ -446,15 +404,8 @@ export class PaymentScreen extends Component {
     shouldDownloadInvoice() {
         return true;
     }
-    get nextPage() {
-        return !this.error
-            ? {
-                  page: "ReceiptScreen",
-                  params: {
-                      orderUuid: this.currentOrder.uuid,
-                  },
-              }
-            : this.pos.defaultPage;
+    get nextScreen() {
+        return !this.error ? "ReceiptScreen" : "ProductScreen";
     }
     paymentMethodImage(id) {
         if (this.paymentMethod.image) {
@@ -471,7 +422,7 @@ export class PaymentScreen extends Component {
         const splitPayments = this.paymentLines.filter(
             (payment) => payment.payment_method_id.split_transactions
         );
-        if (splitPayments.length && !this.currentOrder.getPartner()) {
+        if (splitPayments.length && !this.currentOrder.get_partner()) {
             const paymentMethod = splitPayments[0].payment_method_id;
             const confirmed = await ask(this.dialog, {
                 title: _t("Customer Required"),
@@ -485,11 +436,7 @@ export class PaymentScreen extends Component {
     }
 
     async _isOrderValid(isForceValidate) {
-        if (this.currentOrder.isRefundInProcess()) {
-            return false;
-        }
-
-        if (this.currentOrder.getOrderlines().length === 0 && this.currentOrder.isToInvoice()) {
+        if (this.currentOrder.get_orderlines().length === 0 && this.currentOrder.is_to_invoice()) {
             this.dialog.add(AlertDialog, {
                 title: _t("Empty Order"),
                 body: _t(
@@ -504,8 +451,8 @@ export class PaymentScreen extends Component {
         }
 
         if (
-            (this.currentOrder.isToInvoice() || this.currentOrder.getShippingDate()) &&
-            !this.currentOrder.getPartner()
+            (this.currentOrder.is_to_invoice() || this.currentOrder.getShippingDate()) &&
+            !this.currentOrder.get_partner()
         ) {
             const confirmed = await ask(this.dialog, {
                 title: _t("Please select the Customer"),
@@ -519,7 +466,7 @@ export class PaymentScreen extends Component {
             return false;
         }
 
-        const partner = this.currentOrder.getPartner();
+        const partner = this.currentOrder.get_partner();
         if (
             this.currentOrder.getShippingDate() &&
             !(partner.name && partner.street && partner.city && partner.country_id)
@@ -531,32 +478,27 @@ export class PaymentScreen extends Component {
             return false;
         }
 
-        if (!this.currentOrder.presetRequirementsFilled) {
-            this.dialog.add(AlertDialog, {
-                title: _t("Customer required"),
-                body: _t("Please add a valid customer to the order."),
-            });
-            return false;
-        }
-
         if (
-            !this.pos.currency.isZero(this.currentOrder.getTotalWithTax()) &&
+            !floatIsZero(
+                this.currentOrder.get_total_with_tax(),
+                this.pos.currency.decimal_places
+            ) &&
             this.currentOrder.payment_ids.length === 0
         ) {
             this.notification.add(_t("Select a payment method to validate the order."));
             return false;
         }
 
-        if (!this.currentOrder.isPaid() || this.invoicing) {
+        if (!this.currentOrder.is_paid() || this.invoicing) {
             return false;
         }
 
         // The exact amount must be paid if there is no cash payment method defined.
         if (
             Math.abs(
-                this.currentOrder.getTotalWithTax() -
-                    this.currentOrder.getTotalPaid() +
-                    this.currentOrder.getRoundingApplied()
+                this.currentOrder.get_total_with_tax() -
+                    this.currentOrder.get_total_paid() +
+                    this.currentOrder.get_rounding_applied()
             ) > 0.00001
         ) {
             if (!this.pos.models["pos.payment.method"].some((pm) => pm.is_cash_count)) {
@@ -573,19 +515,19 @@ export class PaymentScreen extends Component {
         // if the change is too large, it's probably an input error, make the user confirm.
         if (
             !isForceValidate &&
-            this.currentOrder.getTotalWithTax() > 0 &&
-            this.currentOrder.getTotalWithTax() * 1000 < this.currentOrder.getTotalPaid()
+            this.currentOrder.get_total_with_tax() > 0 &&
+            this.currentOrder.get_total_with_tax() * 1000 < this.currentOrder.get_total_paid()
         ) {
             this.dialog.add(ConfirmationDialog, {
                 title: _t("Please Confirm Large Amount"),
                 body:
                     _t("Are you sure that the customer wants to  pay") +
                     " " +
-                    this.env.utils.formatCurrency(this.currentOrder.getTotalPaid()) +
+                    this.env.utils.formatCurrency(this.currentOrder.get_total_paid()) +
                     " " +
                     _t("for an order of") +
                     " " +
-                    this.env.utils.formatCurrency(this.currentOrder.getTotalWithTax()) +
+                    this.env.utils.formatCurrency(this.currentOrder.get_total_with_tax()) +
                     " " +
                     _t('? Clicking "Confirm" will validate the payment.'),
                 confirm: () => this.validateOrder(true),
@@ -613,7 +555,7 @@ export class PaymentScreen extends Component {
         let isPaymentSuccessful = false;
         if (line.payment_method_id.payment_method_type === "qr_code") {
             const resp = await this.pos.showQR(line);
-            isPaymentSuccessful = line.handlePaymentResponse(resp);
+            isPaymentSuccessful = line.handle_payment_response(resp);
         } else {
             isPaymentSuccessful = await line.pay();
         }
@@ -626,61 +568,64 @@ export class PaymentScreen extends Component {
         const currentOrder = line.pos_order_id;
         if (
             isPaymentSuccessful &&
-            currentOrder.isPaid() &&
-            currency.isZero(currentOrder.getDue()) &&
-            config.auto_validate_terminal_payment &&
-            !currentOrder.isRefundInProcess()
+            currentOrder.is_paid() &&
+            floatIsZero(currentOrder.get_due(), currency.decimal_places) &&
+            config.auto_validate_terminal_payment
         ) {
             this.validateOrder(false);
         }
     }
     async sendPaymentCancel(line) {
         const payment_terminal = line.payment_method_id.payment_terminal;
-        line.setPaymentStatus("waitingCancel");
-        const isCancelSuccessful = await payment_terminal.sendPaymentCancel(
+        line.set_payment_status("waitingCancel");
+        const isCancelSuccessful = await payment_terminal.send_payment_cancel(
             this.currentOrder,
             line.uuid
         );
         if (isCancelSuccessful) {
-            line.setPaymentStatus("retry");
+            line.set_payment_status("retry");
             this.pos.paymentTerminalInProgress = false;
         } else {
-            line.setPaymentStatus("waitingCard");
+            line.set_payment_status("waitingCard");
         }
     }
     async sendPaymentReverse(line) {
         const payment_terminal = line.payment_method_id.payment_terminal;
-        line.setPaymentStatus("reversing");
+        line.set_payment_status("reversing");
 
-        const isReversalSuccessful = await payment_terminal.sendPaymentReversal(line.uuid);
+        const isReversalSuccessful = await payment_terminal.send_payment_reversal(line.uuid);
         if (isReversalSuccessful) {
-            line.setAmount(0);
-            line.setPaymentStatus("reversed");
+            line.set_amount(0);
+            line.set_payment_status("reversed");
         } else {
             line.can_be_reversed = false;
-            line.setPaymentStatus("done");
+            line.set_payment_status("done");
         }
     }
     async sendForceDone(line) {
-        line.setPaymentStatus("done");
+        line.set_payment_status("done");
     }
 
-    checkCashRoundingHasBeenWellApplied() {
+    check_cash_rounding_has_been_well_applied() {
         const cashRounding = this.pos.config.rounding_method;
         if (!cashRounding) {
             return true;
         }
 
-        const order = this.pos.getOrder();
+        const order = this.pos.get_order();
         const currency = this.pos.currency;
         for (const payment of order.payment_ids) {
             if (!payment.payment_method_id.is_cash_count) {
                 continue;
             }
 
-            const amountPaid = payment.getAmount();
-            const expectedAmountPaid = cashRounding.round(amountPaid);
-            if (currency.isZero(expectedAmountPaid - amountPaid)) {
+            const amountPaid = payment.get_amount();
+            const expectedAmountPaid = roundPrecision(
+                amountPaid,
+                cashRounding.rounding,
+                cashRounding.rounding_method
+            );
+            if (floatIsZero(expectedAmountPaid - amountPaid, currency.decimal_places)) {
                 continue;
             }
 
@@ -702,12 +647,4 @@ export class PaymentScreen extends Component {
     }
 }
 
-registry.category("pos_pages").add("PaymentScreen", {
-    name: "PaymentScreen",
-    component: PaymentScreen,
-    route: `/pos/ui/${odoo.pos_config_id}/payment/{string:orderUuid}`,
-    params: {
-        orderUuid: true,
-        orderFinalized: false,
-    },
-});
+registry.category("pos_screens").add("PaymentScreen", PaymentScreen);

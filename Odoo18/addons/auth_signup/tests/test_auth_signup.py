@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from contextlib import contextmanager
 from unittest.mock import patch
 
 import odoo
 from odoo import http
 from odoo.addons.base.tests.common import HttpCaseWithUserPortal, HttpCaseWithUserDemo
-from odoo.exceptions import AccessError, UserError
+from odoo.exceptions import AccessError
 
 from datetime import datetime, timedelta
 
@@ -23,14 +22,6 @@ class TestAuthSignupFlow(HttpCaseWithUserPortal, HttpCaseWithUserDemo):
 
     def _get_free_signup_url(self):
         return '/web/signup'
-
-    @contextmanager
-    def patch_captcha_signup(self):
-        def _verify_request_recaptcha_token(self, captcha):
-            if captcha != 'signup':
-                raise UserError("CAPTCHA test")
-        with patch.object(self.env.registry['ir.http'], '_verify_request_recaptcha_token', _verify_request_recaptcha_token):
-            yield
 
     def test_confirmation_mail_free_signup(self):
         """
@@ -55,11 +46,10 @@ class TestAuthSignupFlow(HttpCaseWithUserPortal, HttpCaseWithUserDemo):
         }
 
         # Override unlink to not delete the email if the send works.
-        with patch.object(odoo.addons.mail.models.mail_mail.MailMail, 'unlink', lambda self: None), self.patch_captcha_signup():
+        with patch.object(odoo.addons.mail.models.mail_mail.MailMail, 'unlink', lambda self: None):
             # Call the controller
             url_free_signup = self._get_free_signup_url()
-            response = self.url_open(url_free_signup, data=payload)
-            self.assertIn('/web/login?redirect=%2Fweb%2Flogin_successful%3Faccount_created%3DTrue', response.url)
+            self.url_open(url_free_signup, data=payload)
             # Check if an email is sent to the new userw
             new_user = self.env['res.users'].search([('name', '=', name)])
             self.assertTrue(new_user)
@@ -68,7 +58,7 @@ class TestAuthSignupFlow(HttpCaseWithUserPortal, HttpCaseWithUserDemo):
 
     def test_compute_signup_url(self):
         user = self.user_demo
-        user.group_ids -= self.env.ref('base.group_partner_manager')
+        user.groups_id -= self.env.ref('base.group_partner_manager')
 
         partner = self.partner_portal
         partner.signup_prepare()
@@ -95,5 +85,6 @@ class TestAuthSignupFlow(HttpCaseWithUserPortal, HttpCaseWithUserDemo):
         ])
         for u in users:
             u.create_date = datetime.now() - timedelta(days=5, minutes=10)
+        self.env.flush_all()
         with self.registry.cursor() as cr:
             users.with_env(users.env(cr=cr)).send_unregistered_user_reminder(after_days=5, batch_size=100)

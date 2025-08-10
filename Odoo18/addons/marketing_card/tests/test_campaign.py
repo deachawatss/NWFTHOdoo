@@ -1,4 +1,5 @@
 import base64
+from datetime import datetime
 from lxml import html
 from unittest.mock import patch
 
@@ -33,7 +34,7 @@ class TestMarketingCardMail(MailCase, MarketingCardCommon):
     @mute_logger('odoo.addons.mail.models.mail_mail')
     def test_campaign_send_mailing(self):
         campaign = self.campaign.with_user(self.env.user)
-        self.env.user.sudo().group_ids += self.env.ref('mass_mailing.group_mass_mailing_user')
+        self.env.user.sudo().groups_id += self.env.ref('mass_mailing.group_mass_mailing_user')
         partners = self.env['res.partner'].sudo().create([{'name': f'Part{n}', 'email': f'partn{n}@test.lan'} for n in range(7)])
         mailing_context = campaign.action_share().get('context') | {
             'default_email_from': 'test@test.lan',
@@ -82,7 +83,7 @@ class TestMarketingCardMail(MailCase, MarketingCardCommon):
             mailing.action_update_cards()
         self.assertEqual(len(self._wkhtmltoimage_bodies), 5)
 
-        with self.mock_mail_gateway(), self.assertQueryCount(65):
+        with self.mock_mail_gateway(), self.assertQueryCount(243):
             mailing._action_send_mail()
 
         cards = self.env['card.card'].search([('campaign_id', '=', campaign.id)])
@@ -188,6 +189,40 @@ class TestMarketingCardRender(MarketingCardCommon):
             self.static_campaign.preview_record_ref = self.partners[0]
             self.assertEqual(self.static_campaign.res_model, 'res.partner')
 
+    @mock_image_render
+    def test_fetch_datetime(self):
+        """Fetching a datetime field should attempt to translate it in the relevant timezone."""
+        freeze_dt = datetime(2020, 5, 5, 12, 0, 0)
+        campaign = self.campaign.with_user(self.env.user)
+        campaign.write({
+            'content_header': False,
+            'content_header_dyn': True,
+            'content_header_path': 'write_date',
+        })
+        with self.mock_datetime_and_now(freeze_dt):
+            campaign.preview_record_ref.name = 'test_fetch_datetime'
+        timezones = [None, 'Europe/Brussels', 'Asia/Tokyo']
+        timezone_result_headers = []
+        for tz in timezones:
+            # force find different timezones to check the returned time
+            with patch(
+                    'odoo.addons.mail.models.models.BaseModel._mail_get_timezone_with_default',
+                    lambda model, default_tz: tz
+            ):
+                timezone_result_headers.append(
+                    campaign._get_card_element_values(campaign.preview_record_ref)['header']
+                )
+        utc_header, brussels_header, tokyo_header = timezone_result_headers
+        self.assertEqual(
+            utc_header, datetime(2020, 5, 5, 12, 0, 0)
+        )
+        self.assertEqual(
+            brussels_header, datetime(2020, 5, 5, 14, 0, 0)
+        )
+        self.assertEqual(
+            tokyo_header, datetime(2020, 5, 5, 21, 0, 0)
+        )
+
 
 @tagged('post_install', '-at_install')
 class TestMarketingCardRouting(HttpCase, MarketingCardCommon):
@@ -214,6 +249,15 @@ class TestMarketingCardRouting(HttpCase, MarketingCardCommon):
         self.assertTrue(image_request_headers.get('Content-Length'))
         self.assertTrue(card.image)
         self.assertEqual(card.share_status, 'visited')
+        self.assertEqual(card.active, False, "preview card was updated and is thus considered not valid")
+        self.campaign.flush_recordset()
+        self.assertEqual(self.campaign.card_count, 19)
+        self.assertEqual(self.campaign.card_click_count, 0)
+        self.assertEqual(self.campaign.card_share_count, 0, 'A regular user fetching the card should not count as a share.')
+
+        # recipient opens the card they received
+        card.active = True  # reset as if it were never used as preview
+        image_request_headers = self.url_open(card._get_card_url())
         self.campaign.flush_recordset()
         self.assertEqual(self.campaign.card_count, 20)
         self.assertEqual(self.campaign.card_click_count, 1)
@@ -245,7 +289,7 @@ class TestMarketingCardRouting(HttpCase, MarketingCardCommon):
         redirect_response = self.url_open(card._get_redirect_url(), allow_redirects=False)
         self.assertEqual(redirect_response.status_code, 303)
         self.assertEqual(redirect_response._next.url, self.campaign.link_tracker_id.short_url)
-        self.url_open(redirect_response._next.url, allow_redirects=False)
+        self.opener.send(redirect_response._next, allow_redirects=False)
         self.assertEqual(self.campaign.target_url_click_count, 1)
 
         cards[1:10].share_status = 'visited'
@@ -261,28 +305,26 @@ class TestMarketingCardSecurity(MarketingCardCommon):
     @mute_logger('odoo.addons.mail.models.mail_render_mixin')
     def test_campaign_field_paths(self):
         """Check that card updates are performed as the current user."""
-        # restrict reading from partner states (flush to apply new rule)
+        # restrict reading from partner titles (flush to apply new rule)
         rules = self.env['ir.rule'].sudo().create([{
-            'name': 'marketing card user read partner state',
+            'name': 'marketing card user read partner title',
             'domain_force': repr([(0, '=', 1)]),
             'groups': self.env.ref('marketing_card.marketing_card_group_user').ids,
-            'model_id': self.env['ir.model']._get_id('res.country.state'),
+            'model_id': self.env['ir.model']._get_id('res.partner.title'),
             'perm_read': True,
         }, {
-            'name': 'system user read partner state',
+            'name': 'system user read partner title',
             'domain_force': repr([(1, '=', 1)]),
             'groups': self.env.ref('base.group_system').ids,
-            'model_id': self.env['ir.model']._get_id('res.country.state'),
+            'model_id': self.env['ir.model']._get_id('res.partner.title'),
             'perm_read': True,
         }])
         rules.flush_recordset()
-        # set a state as sudo and invalidate to force fetch as test user
-        self.marketing_card_user.partner_id.state_id = self.env['res.country.state'].sudo().create({
-            'name': 'test marketing card state',
-            'code': 'ZZ',
-            'country_id': self.env.ref('base.be').id,
+        # set a title as sudo and invalidate to force fetch as test user
+        self.marketing_card_user.partner_id.title = self.env['res.partner.title'].sudo().create({
+            'name': 'test marketing card title',
         })
-        self.marketing_card_user.partner_id.state_id.invalidate_recordset()
+        self.marketing_card_user.partner_id.title.invalidate_recordset()
 
         campaign = self.campaign.with_user(self.env.user)
         campaign.preview_record_ref = self.marketing_card_user.partner_id
@@ -291,18 +333,18 @@ class TestMarketingCardSecurity(MarketingCardCommon):
         with self.assertRaises(exceptions.UserError):
             campaign.write({
                 'content_header_dyn': True,
-                'content_header_path': 'state_id.name',
+                'content_header_path': 'title.name',
             })
             # flush to compute image_preview
             campaign.flush_recordset()
 
         campaign.with_user(self.system_admin).write({
             'content_header_dyn': True,
-            'content_header_path': 'state_id.name',
+            'content_header_path': 'title.name',
         })
         campaign.with_user(self.system_admin).flush_recordset()
-        # clear state from cache as it was fetched by the admin for the preview render
-        self.marketing_card_user.partner_id.state_id.invalidate_recordset()
+        # clear title from cache as it was fetched by the admin for the preview render
+        self.marketing_card_user.partner_id.title.invalidate_recordset()
 
         with self.assertRaises(exceptions.UserError), self.mock_image_renderer():
             campaign._update_cards([('id', '=', self.marketing_card_user.partner_id.id)])
@@ -310,7 +352,7 @@ class TestMarketingCardSecurity(MarketingCardCommon):
 
         with self.mock_image_renderer():
             campaign.with_user(self.system_admin)._update_cards([('id', '=', self.marketing_card_user.partner_id.id)])
-        self.assertIn('test marketing card state', self._wkhtmltoimage_bodies[0])
+        self.assertIn('test marketing card title', self._wkhtmltoimage_bodies[0])
 
     def test_campaign_ownership(self):
         campaign_as_manager = self.campaign.with_user(self.marketing_card_manager)

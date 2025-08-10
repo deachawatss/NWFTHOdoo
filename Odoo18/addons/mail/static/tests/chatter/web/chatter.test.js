@@ -1,30 +1,29 @@
 import {
     SIZES,
-    STORE_FETCH_ROUTES,
+    assertSteps,
     click,
     contains,
     defineMailModels,
     dragenterFiles,
     dropFiles,
     insertText,
-    listenStoreFetch,
     onRpcBefore,
     openFormView,
     patchUiSize,
     scroll,
     start,
     startServer,
+    step,
     triggerHotkey,
-    waitStoreFetch,
 } from "@mail/../tests/mail_test_helpers";
 import { describe, expect, test } from "@odoo/hoot";
 import { Deferred, advanceTime } from "@odoo/hoot-mock";
 import {
-    asyncStep,
     defineActions,
     getService,
     mockService,
-    waitForSteps,
+    onRpc,
+    serverState,
 } from "@web/../tests/web_test_helpers";
 
 import { DELAY_FOR_SPINNER } from "@mail/chatter/web_portal/chatter";
@@ -36,54 +35,34 @@ defineMailModels();
 test("simple chatter on a record", async () => {
     const pyEnv = await startServer();
     onRpcBefore((route, args) => {
-        if (
-            (route.startsWith("/mail") || route.startsWith("/discuss")) &&
-            !STORE_FETCH_ROUTES.includes(route)
-        ) {
-            asyncStep(`${route} - ${JSON.stringify(args)}`);
+        if (route.startsWith("/mail") || route.startsWith("/discuss")) {
+            step(`${route} - ${JSON.stringify(args)}`);
         }
     });
-    listenStoreFetch(undefined, { logParams: ["mail.thread"] });
     await start();
-    await waitStoreFetch(["failures", "systray_get_activities", "init_messaging"]);
+    await assertSteps([
+        `/mail/data - ${JSON.stringify({
+            init_messaging: {},
+            failures: true,
+            systray_get_activities: true,
+            context: { lang: "en", tz: "taht", uid: serverState.userId, allowed_company_ids: [1] },
+        })}`,
+    ]);
     const partnerId = pyEnv["res.partner"].create({ name: "John Doe" });
     await openFormView("res.partner", partnerId);
     await contains(".o-mail-Chatter-topbar");
     await contains(".o-mail-Thread");
-    await waitStoreFetch(
-        [
-            [
-                "mail.thread",
-                {
-                    access_params: {},
-                    request_list: [
-                        "activities",
-                        "attachments",
-                        "followers",
-                        "scheduledMessages",
-                        "suggestedRecipients",
-                    ],
-                    thread_id: partnerId,
-                    thread_model: "res.partner",
-                },
-            ],
-        ],
-        {
-            ignoreOrder: true,
-            stepsAfter: [
-                '/mail/thread/recipients/fields - {"thread_model":"res.partner"}',
-                '/mail/thread/recipients/fields - {"thread_model":"res.partner"}',
-                `/mail/thread/messages - {"thread_id":${partnerId},"thread_model":"res.partner","fetch_params":{"limit":30}}`,
-            ],
-        }
-    );
+    await assertSteps([
+        `/mail/thread/data - {"request_list":["activities","attachments","followers","scheduledMessages","suggestedRecipients"],"thread_id":${partnerId},"thread_model":"res.partner"}`,
+        `/mail/thread/messages - {"thread_id":${partnerId},"thread_model":"res.partner","limit":30}`,
+    ]);
 });
 
 test("can post a message on a record thread", async () => {
     const pyEnv = await startServer();
     const partnerId = pyEnv["res.partner"].create({ name: "John Doe" });
     onRpcBefore("/mail/message/post", (args) => {
-        asyncStep("/mail/message/post");
+        step("/mail/message/post");
         const expected = {
             context: args.context,
             post_data: {
@@ -107,14 +86,14 @@ test("can post a message on a record thread", async () => {
     await contains(".o-mail-Message", { count: 0 });
     await click(".o-mail-Composer button[aria-label='Send']:enabled");
     await contains(".o-mail-Message");
-    await waitForSteps(["/mail/message/post"]);
+    await assertSteps(["/mail/message/post"]);
 });
 
 test("can post a note on a record thread", async () => {
     const pyEnv = await startServer();
     const partnerId = pyEnv["res.partner"].create({ name: "John Doe" });
     onRpcBefore("/mail/message/post", (args) => {
-        asyncStep("/mail/message/post");
+        step("/mail/message/post");
         const expected = {
             context: args.context,
             post_data: {
@@ -138,7 +117,7 @@ test("can post a note on a record thread", async () => {
     await contains(".o-mail-Message", { count: 0 });
     await click(".o-mail-Composer button:enabled", { text: "Log" });
     await contains(".o-mail-Message");
-    await waitForSteps(["/mail/message/post"]);
+    await assertSteps(["/mail/message/post"]);
 });
 
 test("No attachment loading spinner when creating records", async () => {
@@ -149,14 +128,8 @@ test("No attachment loading spinner when creating records", async () => {
 });
 
 test("No attachment loading spinner when switching from loading record to creation of record", async () => {
-    const def = new Deferred();
+    onRpc("/mail/thread/data", async () => await new Deferred());
     const pyEnv = await startServer();
-    listenStoreFetch("mail.thread", {
-        async onRpc() {
-            asyncStep("before mail.thread");
-            await def;
-        },
-    });
     await start();
     const partnerId = pyEnv["res.partner"].create({ name: "John" });
     await openFormView("res.partner", partnerId);
@@ -165,9 +138,6 @@ test("No attachment loading spinner when switching from loading record to creati
     await contains("button[aria-label='Attach files'] .fa-spin");
     await click(".o_control_panel_main_buttons .o_form_button_create");
     await contains("button[aria-label='Attach files'] .fa-spin", { count: 0 });
-    await waitForSteps(["before mail.thread"]);
-    def.resolve();
-    await waitStoreFetch("mail.thread");
 });
 
 test("Composer toggle state is kept when switching from aside to bottom", async () => {
@@ -321,6 +291,7 @@ test("base rendering when chatter has no record", async () => {
     await contains(".o-mail-Message-author", { text: "Mitchell Admin" });
     await contains(".o-mail-Message-body", { text: "Creating a new record..." });
     await contains("button", { count: 0, text: "Load More" });
+    await contains(".o-mail-Message-actions");
 });
 
 test("base rendering when chatter has attachments", async () => {
@@ -579,18 +550,6 @@ test("chatter updating", async () => {
     await contains(".o-mail-Message");
 });
 
-test("chatter message actions appear only after saving the form", async () => {
-    await start();
-    await openFormView("res.partner");
-    await contains(".o-mail-Message");
-    await contains(".o-mail-Message-actions", { count: 0 });
-    await click(".o_form_button_save");
-    await click("button", { text: "Send message" });
-    await insertText(".o-mail-Composer-input", "hey");
-    await click(".o-mail-Composer-send");
-    await contains(".o-mail-Message-actions");
-});
-
 test("post message on draft record", async () => {
     await start();
     await openFormView("res.partner", undefined, {
@@ -616,13 +575,13 @@ test("schedule activities on draft record should prompt with scheduling an activ
             if (action.res_model === "res.partner") {
                 return super.doAction(...arguments);
             } else if (action.res_model === "mail.activity.schedule") {
-                asyncStep("mail.activity.schedule");
+                step("mail.activity.schedule");
                 expect(action.context.active_model).toBe("res.partner");
                 expect(Number(action.context.active_id)).toBeGreaterThan(0);
                 options.onClose();
                 wizardOpened.resolve();
             } else {
-                asyncStep("Unexpected action" + action.res_model);
+                step("Unexpected action" + action.res_model);
             }
         },
     });
@@ -636,9 +595,9 @@ test("schedule activities on draft record should prompt with scheduling an activ
                 <chatter/>
             </form>`,
     });
-    await click("button", { text: "Activity" });
+    await click("button", { text: "Activities" });
     await wizardOpened;
-    await waitForSteps(["mail.activity.schedule"]);
+    await assertSteps(["mail.activity.schedule"]);
 });
 
 test("upload attachment on draft record", async () => {

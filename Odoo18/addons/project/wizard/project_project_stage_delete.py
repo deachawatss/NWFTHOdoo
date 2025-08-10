@@ -4,8 +4,7 @@
 from ast import literal_eval
 from odoo import api, fields, models
 
-
-class ProjectProjectStageDeleteWizard(models.TransientModel):
+class ProjectStageDelete(models.TransientModel):
     _name = 'project.project.stage.delete.wizard'
     _description = 'Project Stage Delete Wizard'
 

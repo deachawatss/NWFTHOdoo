@@ -1,7 +1,8 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+
+from odoo import _, api, fields, models, tools
 
 
 class UtmSource(models.Model):
@@ -10,17 +11,9 @@ class UtmSource(models.Model):
 
     name = fields.Char(string='Source Name', required=True)
 
-    _unique_name = models.Constraint(
-        'UNIQUE(name)',
-        'The name must be unique',
-    )
-
-    @api.ondelete(at_uninstall=False)
-    def _unlink_except_referral(self):
-        utm_source_referral = self.env.ref('utm.utm_source_referral', raise_if_not_found=False)
-        for record in self:
-            if record == utm_source_referral:
-                raise ValidationError(_("You cannot delete the 'Referral' UTM source record."))
+    _sql_constraints = [
+        ('unique_name', 'UNIQUE(name)', 'The name must be unique'),
+    ]
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -38,13 +31,12 @@ class UtmSource(models.Model):
         if len(content) >= 24:
             content = f'{content[:20]}...'
 
-        create_date = record.create_date or fields.Datetime.today()
+        create_date = record.create_date or fields.date.today()
+        create_date = fields.date.strftime(create_date, tools.DEFAULT_SERVER_DATE_FORMAT)
         model_description = self.env['ir.model']._get(record._name).name
         return _(
             '%(content)s (%(model_description)s created on %(create_date)s)',
-            content=content,
-            model_description=model_description,
-            create_date=fields.Date.to_string(create_date),
+            content=content, model_description=model_description, create_date=create_date,
         )
 
 
@@ -59,9 +51,9 @@ class UtmSourceMixin(models.AbstractModel):
     source_id = fields.Many2one('utm.source', string='Source', required=True, ondelete='restrict', copy=False)
 
     @api.model
-    def default_get(self, fields):
-        # Exclude 'name' from fields to avoid retrieving it from context.
-        return super().default_get([field for field in fields if field != "name"])
+    def default_get(self, fields_list):
+        # Exclude 'name' from fields_list to avoid retrieving it from context.
+        return super().default_get([field for field in fields_list if field != "name"])
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -88,20 +80,20 @@ class UtmSourceMixin(models.AbstractModel):
 
         return super().create(vals_list)
 
-    def write(self, vals):
-        if (vals.get(self._rec_name) or vals.get('name')) and len(self) > 1:
+    def write(self, values):
+        if (values.get(self._rec_name) or values.get('name')) and len(self) > 1:
             raise ValueError(
                 _('You cannot update multiple records with the same name. The name should be unique!')
             )
 
-        if vals.get(self._rec_name) and not vals.get('name'):
-            vals['name'] = self.env['utm.source']._generate_name(self, vals[self._rec_name])
-        if vals.get('name'):
-            vals['name'] = self.env['utm.mixin'].with_context(
+        if values.get(self._rec_name) and not values.get('name'):
+            values['name'] = self.env['utm.source']._generate_name(self, values[self._rec_name])
+        if values.get('name'):
+            values['name'] = self.env['utm.mixin'].with_context(
                 utm_check_skip_record_ids=self.source_id.ids
-            )._get_unique_names("utm.source", [vals['name']])[0]
+            )._get_unique_names("utm.source", [values['name']])[0]
 
-        return super().write(vals)
+        return super().write(values)
 
     def copy_data(self, default=None):
         """Increment the counter when duplicating the source."""

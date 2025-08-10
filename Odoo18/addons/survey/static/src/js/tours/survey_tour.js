@@ -1,6 +1,8 @@
+/** @odoo-module */
+
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
-import { stepUtils } from "@web_tour/tour_utils";
+import { stepUtils } from "@web_tour/tour_service/tour_utils";
 
 import { markup } from "@odoo/owl";
 
@@ -62,7 +64,7 @@ registry.category("web_tour.tours").add('survey_tour', {
     run: "click",
 }, {
     trigger: 'button[name=action_survey_user_input_completed]',
-    content: _t("Here, you can view the participants."),
+    content: _t("Here, you can overview all the participations."),
     tooltipPosition: 'bottom',
     run: "click",
 }, {

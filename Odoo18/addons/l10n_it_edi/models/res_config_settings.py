@@ -1,68 +1,71 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, models, fields, _
+from odoo.exceptions import UserError
 
 
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
 
-    l10n_it_edi_register = fields.Boolean(
-        compute='_compute_l10n_it_edi_register',
-        inverse='_set_l10n_it_edi_register',
-        readonly=False,
-    )
-    l10n_it_edi_purchase_journal_id = fields.Many2one(
-        related='company_id.l10n_it_edi_purchase_journal_id',
-        readonly=False,
-    )
-    l10n_it_edi_show_purchase_journal_id = fields.Boolean(compute='_compute_l10n_it_edi_show_purchase_journal_id')
+    is_edi_proxy_active = fields.Boolean(compute='_compute_is_edi_proxy_active')
     company_parent_id = fields.Many2one(related='company_id.parent_id', readonly=True)  # TODO: remove in master
     use_root_proxy_user = fields.Boolean(compute='_compute_use_root_proxy_user')
+    l10n_it_edi_proxy_current_state = fields.Char(compute='_compute_l10n_it_edi_proxy_current_state')
+    l10n_it_edi_register = fields.Boolean(compute='_compute_l10n_it_edi_register', inverse='_set_l10n_it_edi_register_demo_mode')
+    l10n_it_edi_demo_mode = fields.Selection(
+        [('demo', 'Demo'),
+         ('test', 'Test (experimental)'),
+         ('prod', 'Official')],
+        compute='_compute_l10n_it_edi_demo_mode',
+        inverse='_set_l10n_it_edi_register_demo_mode',
+        readonly=False)
 
     def _create_proxy_user(self, company_id, edi_mode):
-        return self.env['account_edi_proxy_client.user']._register_proxy_user(company_id, 'l10n_it_edi', edi_mode)
+        self.env['account_edi_proxy_client.user']._register_proxy_user(company_id, 'l10n_it_edi', edi_mode)
 
-    @api.depends('company_id')
-    def _compute_l10n_it_edi_show_purchase_journal_id(self):
+    def button_create_proxy_user(self):
+        self._create_proxy_user(self.company_id, self.l10n_it_edi_demo_mode)
+
+    @api.depends('company_id.account_edi_proxy_client_ids', 'company_id.account_edi_proxy_client_ids.active')
+    def _compute_l10n_it_edi_demo_mode(self):
         for config in self:
-            # Only show the setting when there exists more than 1 purchase journal.
-            purchase_journal_count = self.env['account.journal'].search_count([
-                *self.env['account.journal']._check_company_domain(config.company_id._l10n_it_get_edi_company()),
-                ('type', '=', 'purchase'),
-            ])
-            config.l10n_it_edi_show_purchase_journal_id = purchase_journal_count >= 2
+            edi_user = config.company_id.l10n_it_edi_proxy_user_id
+            config.l10n_it_edi_demo_mode = edi_user.edi_mode or 'demo'
+
+    @api.depends('company_id.account_edi_proxy_client_ids', 'company_id.account_edi_proxy_client_ids.active')
+    def _compute_is_edi_proxy_active(self):
+        for config in self:
+            config.is_edi_proxy_active = config.company_id.account_edi_proxy_client_ids
+
+    @api.depends('company_id.account_edi_proxy_client_ids', 'company_id.account_edi_proxy_client_ids.active')
+    def _compute_l10n_it_edi_proxy_current_state(self):
+        for config in self:
+            proxy_user = config.company_id.l10n_it_edi_proxy_user_id
+            config.l10n_it_edi_proxy_current_state = 'inactive' if not proxy_user else 'demo' if proxy_user.id_client[:4] == 'demo' else 'active'
 
     @api.depends('company_id')
     def _compute_l10n_it_edi_register(self):
+        """Needed because it expects a compute"""
+        self.l10n_it_edi_register = False
+
+    def _set_l10n_it_edi_register_demo_mode(self):
         for config in self:
-            config.l10n_it_edi_register = config.company_id._l10n_it_get_edi_company().l10n_it_edi_register
+            proxy_user = config.company_id.l10n_it_edi_proxy_user_id
 
-    def _set_l10n_it_edi_register(self):
-        for config in self:
-            company = config.company_id._l10n_it_get_edi_company()
-            company.l10n_it_edi_register = config.l10n_it_edi_register
-            proxy_user = self.env['account_edi_proxy_client.user'].search([
-                ('company_id', '=', company.id),
-                ('proxy_type', '=', 'l10n_it_edi'),
-                ('edi_mode', '!=', 'demo'),  # make sure it's a "real" proxy_user (edi_mode is 'test' or 'prod')
-            ], limit=1)
+            old_edi_mode = config.company_id.l10n_it_edi_proxy_user_id.edi_mode
+            edi_mode = config.l10n_it_edi_demo_mode
+            # If the user is trying to change from a state in which they have a registered official or testing proxy client
+            # to another state, we should stop them
+            if old_edi_mode not in ('demo', False, edi_mode):
+                raise UserError(_("The company has already registered with the service as 'Test' or 'Official', it cannot change."))
 
-            if proxy_user and proxy_user.active != config.l10n_it_edi_register:
-                # Deactivate / Reactive the current proxy user based on the config's l10n_it_edi_register value
-                proxy_user._toggle_proxy_user_active()
-            elif config.l10n_it_edi_register and not proxy_user:
-                # Create a new proxy user
-                edi_mode = self.env['ir.config_parameter'].sudo().get_param('l10n_it_edi.proxy_user_edi_mode') or 'prod'
-                proxy_user = self._create_proxy_user(company, edi_mode)
-
-            if proxy_user:
-                # Delete any previously created demo proxy user
-                self.env['account_edi_proxy_client.user'].search([
-                    ('company_id', '=', company.id),
-                    ('proxy_type', '=', 'l10n_it_edi'),
-                    ('edi_mode', '=', 'demo'),
-                    ('id', '!=', proxy_user.id),
-                ]).sudo().unlink()
+            if config.l10n_it_edi_register:
+                # If we are transitioning from a demo user
+                # to test or production one, then we should
+                # delete the old one before creating the new one.
+                if old_edi_mode == 'demo' and edi_mode != 'demo':
+                    proxy_user.sudo().unlink()
+                self._create_proxy_user(config.company_id, edi_mode)
 
     @api.depends('company_id.account_edi_proxy_client_ids', 'company_id.account_edi_proxy_client_ids.active')
     def _compute_use_root_proxy_user(self):

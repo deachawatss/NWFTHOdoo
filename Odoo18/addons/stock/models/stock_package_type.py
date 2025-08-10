@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import api, fields, models
+from odoo import fields, models
 
 
-class StockPackageType(models.Model):
+class PackageType(models.Model):
     _name = 'stock.package.type'
     _description = "Stock package type"
+    _order = "sequence, id"
 
     def _get_default_length_uom(self):
         return self.env['product.template']._get_length_uom_name_from_ir_config_parameter()
@@ -26,40 +27,14 @@ class StockPackageType(models.Model):
     length_uom_name = fields.Char(string='Length unit of measure label', compute='_compute_length_uom_name', default=_get_default_length_uom)
     company_id = fields.Many2one('res.company', 'Company', index=True)
     storage_category_capacity_ids = fields.One2many('stock.storage.category.capacity', 'package_type_id', 'Storage Category Capacity', copy=True)
-    route_ids = fields.Many2many('stock.route', string='Routes', domain="[('package_type_selectable', '=', True)]")
 
-    _barcode_uniq = models.Constraint(
-        'unique(barcode)',
-        'A barcode can only be assigned to one package type!',
-    )
-    _positive_height = models.Constraint(
-        'CHECK(height>=0.0)',
-        'Height must be positive',
-    )
-    _positive_width = models.Constraint(
-        'CHECK(width>=0.0)',
-        'Width must be positive',
-    )
-    _positive_length = models.Constraint(
-        'CHECK(packaging_length>=0.0)',
-        'Length must be positive',
-    )
-    _positive_max_weight = models.Constraint(
-        'CHECK(max_weight>=0.0)',
-        'Max Weight must be positive',
-    )
-
-    @api.depends('name', 'packaging_length', 'width', 'height')
-    @api.depends_context('formatted_display_name')
-    def _compute_display_name(self):
-        packages_to_process_ids = []
-        for package in self:
-            if package.env.context.get('formatted_display_name') and package.packaging_length and package.width and package.height:
-                package.display_name = f"{package.name}\t--{package.packaging_length} x {package.width} x {package.height}--"
-            else:
-                packages_to_process_ids.append(package.id)
-        if packages_to_process_ids:
-            super(StockPackageType, self.env['stock.package.type'].browse(packages_to_process_ids))._compute_display_name()
+    _sql_constraints = [
+        ('barcode_uniq', 'unique(barcode)', "A barcode can only be assigned to one package type!"),
+        ('positive_height', 'CHECK(height>=0.0)', 'Height must be positive'),
+        ('positive_width', 'CHECK(width>=0.0)', 'Width must be positive'),
+        ('positive_length', 'CHECK(packaging_length>=0.0)', 'Length must be positive'),
+        ('positive_max_weight', 'CHECK(max_weight>=0.0)', 'Max Weight must be positive'),
+    ]
 
     def _compute_length_uom_name(self):
         for package_type in self:

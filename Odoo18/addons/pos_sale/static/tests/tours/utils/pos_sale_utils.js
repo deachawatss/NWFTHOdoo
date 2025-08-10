@@ -1,6 +1,8 @@
-import * as ProductScreen from "@point_of_sale/../tests/pos/tours/utils/product_screen_util";
-import * as Dialog from "@point_of_sale/../tests/generic_helpers/dialog_util";
-import * as Numpad from "@point_of_sale/../tests/generic_helpers/numpad_util";
+/** @odoo-module */
+
+import * as ProductScreen from "@point_of_sale/../tests/tours/utils/product_screen_util";
+import * as Dialog from "@point_of_sale/../tests/tours/utils/dialog_util";
+import * as Numpad from "@point_of_sale/../tests/tours/utils/numpad_util";
 
 export function selectNthOrder(n) {
     return [
@@ -8,6 +10,22 @@ export function selectNthOrder(n) {
         {
             content: `select nth order`,
             trigger: `.modal:not(.o_inactive_modal) table.o_list_table tbody tr.o_data_row:nth-child(${n}) td`,
+            run: "click",
+        },
+    ];
+}
+
+export function settleSaleOrderByPrice(price) {
+    return [
+        ...ProductScreen.clickControlButton("Quotation/Order"),
+        {
+            content: `select sale order with price ${price}`,
+            trigger: `.modal:not(.o_inactive_modal) table.o_list_table tbody tr.o_data_row td:contains('${price}')`,
+            run: "click",
+        },
+        {
+            content: `Choose to settle the order`,
+            trigger: `.modal:not(.o_inactive_modal) .selection-item:contains('Settle the order')`,
             run: "click",
         },
     ];

@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { Link } from "./link";
 import { ColorPalette } from '@web_editor/js/wysiwyg/widgets/color_palette';
 import weUtils from "@web_editor/js/common/utils";
@@ -98,8 +100,7 @@ export class LinkTools extends Link {
     /**
      * @override
      */
-    async _updateState(props) {
-        this.initialIsNewWindowFromProps = props.initialIsNewWindow;
+    async _updateState() {
         await super._updateState(...arguments);
         // Keep track of each selected custom color and colorpicker.
         this.customColors = {};
@@ -165,6 +166,31 @@ export class LinkTools extends Link {
     focusUrl() {
         this.$el[0].scrollIntoView();
         super.focusUrl(...arguments);
+    }
+
+    /**
+     * Method no longer used, kept for compatibility (stable policy).
+     * To be removed in master.
+     */
+    openDocumentDialog() {
+        this.props.wysiwyg.openMediaDialog({
+            resModel: "ir.ui.view",
+            useMediaLibrary: true,
+            noImages: true,
+            noIcons: true,
+            noVideos: true,
+            save: async (link) => {
+                this.initialNewWindow = this.initialIsNewWindowFromProps;
+                this._updateInitialNewWindowUI();
+                let relativeUrl = link.href.substr(window.location.origin.length);
+                await this._determineAttachmentType(relativeUrl.split("?")[0]);
+                if (this.isLastAttachmentUrl) {
+                    relativeUrl = relativeUrl.replace("&download=true", "");
+                }
+                this.$el[0].querySelector("#o_link_dialog_url_input").value = relativeUrl;
+                this.__onURLInput();
+            },
+        });
     }
 
     async uploadFile() {
@@ -490,6 +516,12 @@ export class LinkTools extends Link {
         this._setSelectOption($target, true);
         this._updateOptionsUI();
         this._adaptPreview();
+        // Reactivate the snippet to update the Button snippet editor's visibility
+        // if the element type has changed (e.g., from button to link or vice versa).
+        this.props.wysiwyg.snippetsMenuBus.trigger("ACTIVATE_SNIPPET", {
+            $snippet: $(this.linkEl),
+            onSuccess: () => { },
+        });
     }
     /**
      * Sets the border width on the link.

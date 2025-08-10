@@ -2,10 +2,9 @@
 <odoo auto_sequence="1">
     <record id="tax_report" model="account.report">
         <field name="name">Tax Report</field>
-        <field name="name@el_GR">Φορολογική έκθεση</field>
         <field name="root_report_id" ref="account.generic_tax_report"/>
         <field name="country_id" ref="base.gr"/>
-        <field name="allow_foreign_vat" eval="True"/>
+        <field name="filter_fiscal_position" eval="True"/>
         <field name="availability_condition">country</field>
         <field name="column_ids">
             <record id="tax_report_balance" model="account.report.column">
@@ -16,17 +15,14 @@
         <field name="line_ids">
             <record id="l10n_gr_tr_table_B" model="account.report.line">
                 <field name="name">B. TABLE OF OUTPUTS – INPUTS after the reduction (according to the VAT rates) of refunds - deductions</field>
-                <field name="name@el_GR">B. ΠΙΝΑΚΑΣ ΕΚΡΟΩΝ - ΕΙΣΡΟΩΝ μετά τη μείωση (σύμφωνα με τους συντελεστές ΦΠΑ) των επιστροφών - εκπτώσεων</field>
                 <field name="hierarchy_level">0</field>
                 <field name="children_ids">
                     <record id="l10n_gr_tr_section_a" model="account.report.line">
                         <field name="name">a. Taxable outputs - output tax</field>
-                        <field name="name@el_GR">a. Φορολογητέες εκροές - φόρος εκροών</field>
                         <field name="hierarchy_level">1</field>
                         <field name="children_ids">
                             <record id="l10n_gr_tr_301" model="account.report.line">
                                 <field name="name">301 - Sales 13%</field>
-                                <field name="name@el_GR">301 - Πωλήσεις 13%</field>
                                 <field name="code">l10n_gr_301</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -39,7 +35,6 @@
                             </record>
                             <record id="l10n_gr_tr_302" model="account.report.line">
                                 <field name="name">302 - Sales 6%</field>
-                                <field name="name@el_GR">302 - Πωλήσεις 6%</field>
                                 <field name="code">l10n_gr_302</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -52,7 +47,6 @@
                             </record>
                             <record id="l10n_gr_tr_303" model="account.report.line">
                                 <field name="name">303 - Sales 24%</field>
-                                <field name="name@el_GR">303 - Πωλήσεις 24%</field>
                                 <field name="code">l10n_gr_303</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -65,7 +59,6 @@
                             </record>
                             <record id="l10n_gr_tr_304" model="account.report.line">
                                 <field name="name">304 - Sales 9%</field>
-                                <field name="name@el_GR">304 - Πωλήσεις 9%</field>
                                 <field name="code">l10n_gr_304</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -78,7 +71,6 @@
                             </record>
                             <record id="l10n_gr_tr_305" model="account.report.line">
                                 <field name="name">305 - Sales 4%</field>
-                                <field name="name@el_GR">305 - Πωλήσεις 4%</field>
                                 <field name="code">l10n_gr_305</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -91,7 +83,6 @@
                             </record>
                             <record id="l10n_gr_tr_306" model="account.report.line">
                                 <field name="name">306 - Sales 17%</field>
-                                <field name="name@el_GR">306 - Πωλήσεις 17%</field>
                                 <field name="code">l10n_gr_306</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -104,7 +95,6 @@
                             </record>
                             <record id="l10n_gr_tr_307" model="account.report.line">
                                 <field name="name">307 - Taxable outputs</field>
-                                <field name="name@el_GR">307 - Φορολογητέες εκροές</field>
                                 <field name="code">l10n_gr_307</field>
                                 <field name="hierarchy_level">2</field>
                                 <field name="aggregation_formula">
@@ -118,7 +108,6 @@
                             </record>
                             <record id="l10n_gr_tr_331" model="account.report.line">
                                 <field name="name">331 - VAT sales 13%</field>
-                                <field name="name@el_GR">331 - Πωλήσεις ΦΠΑ 13%</field>
                                 <field name="code">l10n_gr_331</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -131,7 +120,6 @@
                             </record>
                             <record id="l10n_gr_tr_332" model="account.report.line">
                                 <field name="name">332 - VAT sales 6%</field>
-                                <field name="name@el_GR">332 - Πωλήσεις ΦΠΑ 6%</field>
                                 <field name="code">l10n_gr_332</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -144,7 +132,6 @@
                             </record>
                             <record id="l10n_gr_tr_333" model="account.report.line">
                                 <field name="name">333 - VAT sales 24%</field>
-                                <field name="name@el_GR">333 - Πωλήσεις ΦΠΑ 24%</field>
                                 <field name="code">l10n_gr_333</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -157,7 +144,6 @@
                             </record>
                             <record id="l10n_gr_tr_334" model="account.report.line">
                                 <field name="name">334 - VAT Sales 9%</field>
-                                <field name="name@el_GR">334 - Πωλήσεις ΦΠΑ 9%</field>
                                 <field name="code">l10n_gr_334</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -170,7 +156,6 @@
                             </record>
                             <record id="l10n_gr_tr_335" model="account.report.line">
                                 <field name="name">335 - VAT sales 4%</field>
-                                <field name="name@el_GR">335 - Πωλήσεις ΦΠΑ 4%</field>
                                 <field name="code">l10n_gr_335</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -183,7 +168,6 @@
                             </record>
                             <record id="l10n_gr_tr_336" model="account.report.line">
                                 <field name="name">336 - VAT sales 17%</field>
-                                <field name="name@el_GR">336 - Πωλήσεις ΦΠΑ 17%</field>
                                 <field name="code">l10n_gr_336</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -196,7 +180,6 @@
                             </record>
                             <record id="l10n_gr_tr_337" model="account.report.line">
                                 <field name="name">337 - VAT taxable outputs</field>
-                                <field name="name@el_GR">337 - Φορολογητέες εκροές ΦΠΑ</field>
                                 <field name="code">l10n_gr_337</field>
                                 <field name="hierarchy_level">2</field>
                                 <field name="aggregation_formula">
@@ -210,7 +193,6 @@
                             </record>
                             <record id="l10n_gr_tr_342" model="account.report.line">
                                 <field name="name">342 - Intra-community supplies</field>
-                                <field name="name@el_GR">342 - Ενδοκοινοτικός εφοδιασμός</field>
                                 <field name="code">l10n_gr_342</field>
                                 <field name="expression_ids">
                                     <record id="l10n_gr_tr_342_tag" model="account.report.expression">
@@ -222,7 +204,6 @@
                             </record>
                             <record id="l10n_gr_tr_345" model="account.report.line">
                                 <field name="name">345 - Intra-community supplies of services</field>
-                                <field name="name@el_GR">345 - Ενδοκοινοτικές παροχές υπηρεσιών</field>
                                 <field name="code">l10n_gr_345</field>
                                 <field name="expression_ids">
                                     <record id="l10n_gr_tr_345_tag" model="account.report.expression">
@@ -234,7 +215,6 @@
                             </record>
                             <record id="l10n_gr_tr_348" model="account.report.line">
                                 <field name="name">348 - Exports and exemptions of ships and aircrafts</field>
-                                <field name="name@el_GR">348 - Εξαγωγές και απαλλαγές πλοίων και αεροσκαφών</field>
                                 <field name="code">l10n_gr_348</field>
                                 <field name="expression_ids">
                                     <record id="l10n_gr_tr_348_tag" model="account.report.expression">
@@ -246,7 +226,6 @@
                             </record>
                             <record id="l10n_gr_tr_349" model="account.report.line">
                                 <field name="name">349 - Other outputs without VAT with right to deduct</field>
-                                <field name="name@el_GR">349 - Άλλες εκροές χωρίς ΦΠΑ με δικαίωμα έκπτωσης</field>
                                 <field name="code">l10n_gr_349</field>
                                 <field name="expression_ids">
                                     <record id="l10n_gr_tr_349_tag" model="account.report.expression">
@@ -258,7 +237,6 @@
                             </record>
                             <record id="l10n_gr_tr_310" model="account.report.line">
                                 <field name="name">310 - Outputs exempted or excepted, without right to deduct</field>
-                                <field name="name@el_GR">310 - Εκροές που απαλλάσσονται ή εξαιρούνται, χωρίς δικαίωμα έκπτωσης</field>
                                 <field name="code">l10n_gr_310</field>
                                 <field name="expression_ids">
                                     <record id="l10n_gr_tr_310_tag" model="account.report.expression">
@@ -270,7 +248,6 @@
                             </record>
                             <record id="l10n_gr_tr_311" model="account.report.line">
                                 <field name="name">311 - Total outputs</field>
-                                <field name="name@el_GR">311 - Συνολικές εκροές</field>
                                 <field name="code">l10n_gr_311</field>
                                 <field name="hierarchy_level">2</field>
                                 <field name="aggregation_formula">
@@ -284,7 +261,6 @@
                             </record>
                             <record id="l10n_gr_tr_312" model="account.report.line">
                                 <field name="name">312 - VAT turnover</field>
-                                <field name="name@el_GR">312 - Κύκλος εργασιών ΦΠΑ</field>
                                 <field name="code">l10n_gr_312</field>
                                 <field name="hierarchy_level">2</field>
                                 <field name="expression_ids">
@@ -300,12 +276,10 @@
                     </record>
                     <record id="l10n_gr_tr_section_b" model="account.report.line">
                         <field name="name">b. Taxable inputs - input tax</field>
-                        <field name="name@el_GR">b. Φορολογητέες εισροές - φόρος εισροών</field>
                         <field name="hierarchy_level">1</field>
                         <field name="children_ids">
                             <record id="l10n_gr_tr_361" model="account.report.line">
                                 <field name="name">361 - Purchases and expenditures within the country</field>
-                                <field name="name@el_GR">361 - Αγορές και δαπάνες στο εσωτερικό της χώρας</field>
                                 <field name="code">l10n_gr_361</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -318,7 +292,6 @@
                             </record>
                             <record id="l10n_gr_tr_362" model="account.report.line">
                                 <field name="name">362 - Purchases and imports of investment goods</field>
-                                <field name="name@el_GR">362 - Αγορές και εισαγωγές επενδυτικών αγαθών</field>
                                 <field name="code">l10n_gr_362</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -331,7 +304,6 @@
                             </record>
                             <record id="l10n_gr_tr_363" model="account.report.line">
                                 <field name="name">363 - Other imports</field>
-                                <field name="name@el_GR">363 - Άλλες εισαγωγές</field>
                                 <field name="code">l10n_gr_363</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -344,7 +316,6 @@
                             </record>
                             <record id="l10n_gr_tr_364" model="account.report.line">
                                 <field name="name">364 - Intra-community acquisitions of goods</field>
-                                <field name="name@el_GR">364 - Ενδοκοινοτικές αποκτήσεις αγαθών</field>
                                 <field name="code">l10n_gr_364</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -357,7 +328,6 @@
                             </record>
                             <record id="l10n_gr_tr_365" model="account.report.line">
                                 <field name="name">365 - Intra-community acquisitions of services art. 14.2.a</field>
-                                <field name="name@el_GR">365 - Ενδοκοινοτικές αποκτήσεις υπηρεσιών</field>
                                 <field name="code">l10n_gr_365</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -370,7 +340,6 @@
                             </record>
                             <record id="l10n_gr_tr_366" model="account.report.line">
                                 <field name="name">366 - Other reverse charge transactions</field>
-                                <field name="name@el_GR">366 - Άλλες συναλλαγές αντιστροφής της επιβάρυνσης</field>
                                 <field name="code">l10n_gr_366</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -383,7 +352,6 @@
                             </record>
                             <record id="l10n_gr_tr_367" model="account.report.line">
                                 <field name="name">367 - Taxable inputs total</field>
-                                <field name="name@el_GR">367 - Σύνολο φορολογητέων εισροών</field>
                                 <field name="code">l10n_gr_367</field>
                                 <field name="hierarchy_level">2</field>
                                 <field name="aggregation_formula">
@@ -397,7 +365,6 @@
                             </record>
                             <record id="l10n_gr_tr_381" model="account.report.line">
                                 <field name="name">381 - VAT purchases and expenditures within the country</field>
-                                <field name="name@el_GR">381 - Αγορές και δαπάνες ΦΠΑ στο εσωτερικό της χώρας</field>
                                 <field name="code">l10n_gr_381</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -410,7 +377,6 @@
                             </record>
                             <record id="l10n_gr_tr_382" model="account.report.line">
                                 <field name="name">382 - VAT purchases and imports of investment goods</field>
-                                <field name="name@el_GR">382 - ΦΠΑ αγορών και εισαγωγών επενδυτικών αγαθών</field>
                                 <field name="code">l10n_gr_382</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -423,7 +389,6 @@
                             </record>
                             <record id="l10n_gr_tr_383" model="account.report.line">
                                 <field name="name">383 - VAT other imports</field>
-                                <field name="name@el_GR">383 - ΦΠΑ λοιπών εισαγωγών</field>
                                 <field name="code">l10n_gr_383</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -436,7 +401,6 @@
                             </record>
                             <record id="l10n_gr_tr_384" model="account.report.line">
                                 <field name="name">384 - VAT intra-community acquisitions of goods</field>
-                                <field name="name@el_GR">384 - ΦΠΑ στην ενδοκοινοτική απόκτηση αγαθών</field>
                                 <field name="code">l10n_gr_384</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -449,7 +413,6 @@
                             </record>
                             <record id="l10n_gr_tr_385" model="account.report.line">
                                 <field name="name">385 - VAT Intra-Community Acquisitions of services art. 14.2.a</field>
-                                <field name="name@el_GR">385 - ΦΠΑ Ενδοκοινοτικές αποκτήσεις υπηρεσιών art. 14.2.a</field>
                                 <field name="code">l10n_gr_385</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -462,7 +425,6 @@
                             </record>
                             <record id="l10n_gr_tr_386" model="account.report.line">
                                 <field name="name">386 - VAT other reverse charge transactions</field>
-                                <field name="name@el_GR">386 - ΦΠΑ και άλλες συναλλαγές αντίστροφης επιβάρυνσης</field>
                                 <field name="code">l10n_gr_386</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -475,7 +437,6 @@
                             </record>
                             <record id="l10n_gr_tr_387" model="account.report.line">
                                 <field name="name">387 - VAT taxable inputs total</field>
-                                <field name="name@el_GR">387 - Σύνολο φορολογητέων εισροών ΦΠΑ</field>
                                 <field name="code">l10n_gr_387</field>
                                 <field name="hierarchy_level">2</field>
                                 <field name="aggregation_formula">
@@ -491,12 +452,10 @@
                     </record>
                     <record id="l10n_gr_tr_section_d" model="account.report.line">
                         <field name="name">d. Amounts added to the input tax total</field>
-                        <field name="name@el_GR">d. Ποσά που προστίθενται στο σύνολο του φόρου εισροών</field>
                         <field name="hierarchy_level">1</field>
                         <field name="children_ids">
                             <record id="l10n_gr_tr_400" model="account.report.line">
                                 <field name="name">400 - Tax refund (sales of agricultural products x 3%)</field>
-                                <field name="name@el_GR">400 - Επιστροφή φόρου (πωλήσεις γεωργικών προϊόντων x 3%)</field>
                                 <field name="code">l10n_gr_400</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -510,7 +469,6 @@
                             </record>
                             <record id="l10n_gr_tr_402" model="account.report.line">
                                 <field name="name">402 - Other added amounts</field>
-                                <field name="name@el_GR">402 - Άλλα προστιθέμενα ποσά</field>
                                 <field name="code">l10n_gr_402</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -524,7 +482,6 @@
                             </record>
                             <record id="l10n_gr_tr_407" model="account.report.line">
                                 <field name="name">407 - Amounts of adjustments of previous tax year for deduction</field>
-                                <field name="name@el_GR">407 - Ποσά προσαρμογών προηγούμενου φορολογικού έτους για έκπτωση</field>
                                 <field name="code">l10n_gr_407</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -538,7 +495,6 @@
                             </record>
                             <record id="l10n_gr_tr_410" model="account.report.line">
                                 <field name="name">410 - Added amounts to total inputs tax</field>
-                                <field name="name@el_GR">410 - Προστιθέμενα ποσά στο συνολικό φόρο εισροών</field>
                                 <field name="code">l10n_gr_410</field>
                                 <field name="hierarchy_level">2</field>
                                 <field name="expression_ids">
@@ -553,12 +509,10 @@
                     </record>
                     <record id="l10n_gr_tr_section_e" model="account.report.line">
                         <field name="name">e. Deductible amounts from the total input tax</field>
-                        <field name="name@el_GR">e. Εκπιπτόμενα ποσά από το συνολικό φόρο εισροών</field>
                         <field name="hierarchy_level">1</field>
                         <field name="children_ids">
                             <record id="l10n_gr_tr_411" model="account.report.line">
                                 <field name="name">411 - Inputs VAT reduced under prorata scheme</field>
-                                <field name="name@el_GR">411 - Μείωση του ΦΠΑ εισροών στο πλαίσιο του καθεστώτος prorata</field>
                                 <field name="code">l10n_gr_411</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -572,7 +526,6 @@
                             </record>
                             <record id="l10n_gr_tr_422" model="account.report.line">
                                 <field name="name">422 - Other removable amounts</field>
-                                <field name="name@el_GR">422 - Άλλα αφαιρούμενα ποσά</field>
                                 <field name="code">l10n_gr_422</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -586,7 +539,6 @@
                             </record>
                             <record id="l10n_gr_tr_423" model="account.report.line">
                                 <field name="name">423 - Amount of adjustments of previous tax year to be paid</field>
-                                <field name="name@el_GR">423 - Ποσό προσαρμογών του προηγούμενου φορολογικού έτους που πρέπει να καταβληθεί</field>
                                 <field name="code">l10n_gr_423</field>
                                 <field name="hierarchy_level">3</field>
                                 <field name="expression_ids">
@@ -600,7 +552,6 @@
                             </record>
                             <record id="l10n_gr_tr_428" model="account.report.line">
                                 <field name="name">428 - Amounts removable from total inputs tax</field>
-                                <field name="name@el_GR">428 - Ποσά που αφαιρούνται από το συνολικό φόρο εισροών</field>
                                 <field name="code">l10n_gr_428</field>
                                 <field name="hierarchy_level">2</field>
                                 <field name="aggregation_formula">
@@ -615,7 +566,6 @@
             </record>
             <record id="l10n_gr_tr_430" model="account.report.line">
                 <field name="name">430 - Remaining inputs VAT</field>
-                <field name="name@el_GR">430 - Υπόλοιπο εισροών ΦΠΑ</field>
                 <field name="code">l10n_gr_430</field>
                 <field name="hierarchy_level">1</field>
                 <field name="aggregation_formula">
@@ -626,12 +576,10 @@
             </record>
             <record id="l10n_gr_tr_table_C" model="account.report.line">
                 <field name="name">C. TABLE OF TAX SETTLEMENT to be paid, deducted or refunded</field>
-                <field name="name@el_GR">C. ΠΙΝΑΚΑΣ ΦΟΡΟΛΟΓΙΚΟΥ ΔΙΑΚΑΝΟΝΙΣΜΟΥ που πρέπει να καταβληθεί, να αφαιρεθεί ή να επιστραφεί</field>
                 <field name="hierarchy_level">0</field>
                 <field name="children_ids">
                     <record id="l10n_gr_tr_470" model="account.report.line">
                         <field name="name">470 - Credit balance</field>
-                        <field name="name@el_GR">470 - Πιστωτικό υπόλοιπο</field>
                         <field name="code">l10n_gr_470</field>
                         <field name="hierarchy_level">3</field>
                         <field name="expression_ids">
@@ -645,7 +593,6 @@
                     </record>
                     <record id="l10n_gr_tr_480" model="account.report.line">
                         <field name="name">480 - Debit balance</field>
-                        <field name="name@el_GR">480 - Χρεωστικό υπόλοιπο</field>
                         <field name="code">l10n_gr_480</field>
                         <field name="hierarchy_level">3</field>
                         <field name="expression_ids">
@@ -659,7 +606,6 @@
                     </record>
                     <record id="l10n_gr_tr_401" model="account.report.line">
                         <field name="name">401 - Credit balance of previous taxable period</field>
-                        <field name="name@el_GR">401 - Πιστωτικό υπόλοιπο προηγούμενης φορολογικής περιόδου</field>
                         <field name="code">l10n_gr_401</field>
                         <field name="hierarchy_level">3</field>
                         <field name="expression_ids">
@@ -667,7 +613,7 @@
                                 <field name="label">_applied_carryover_balance</field>
                                 <field name="engine">external</field>
                                 <field name="formula">most_recent</field>
-                                <field name="date_scope">previous_return_period</field>
+                                <field name="date_scope">previous_tax_period</field>
                             </record>
                             <record id="l10n_gr_tr_401_tag" model="account.report.expression">
                                 <field name="label">tag</field>
@@ -683,7 +629,6 @@
                     </record>
                     <record id="l10n_gr_tr_403" model="account.report.line">
                         <field name="name">403 - Assessed amount of previous return of this taxable period (= code 511)</field>
-                        <field name="name@el_GR">403 - Εκτιμώμενο ποσό της προηγούμενης δήλωσης αυτής της φορολογικής περιόδου (= κωδικός 511)</field>
                         <field name="code">l10n_gr_403</field>
                         <field name="hierarchy_level">3</field>
                         <field name="expression_ids">
@@ -697,7 +642,6 @@
                     </record>
                     <record id="l10n_gr_tr_404" model="account.report.line">
                         <field name="name">404 - Tax that is committed through banks</field>
-                        <field name="name@el_GR">404 - Φόρος που δεσμεύεται μέσω τραπεζών</field>
                         <field name="code">l10n_gr_404</field>
                         <field name="hierarchy_level">3</field>
                         <field name="expression_ids">
@@ -711,7 +655,6 @@
                     </record>
                     <record id="l10n_gr_tr_483" model="account.report.line">
                         <field name="name">483 - Debit amount less than 30€ of previous taxable period</field>
-                        <field name="name@el_GR">483 - Χρεωστικό ποσό μικρότερο των 30€ της προηγούμενης φορολογικής περιόδου</field>
                         <field name="code">l10n_gr_483</field>
                         <field name="hierarchy_level">3</field>
                         <field name="expression_ids">
@@ -719,7 +662,7 @@
                                 <field name="label">_applied_carryover_balance</field>
                                 <field name="engine">external</field>
                                 <field name="formula">most_recent</field>
-                                <field name="date_scope">previous_return_period</field>
+                                <field name="date_scope">previous_tax_period</field>
                             </record>
                             <record id="l10n_gr_tr_483_tag" model="account.report.expression">
                                 <field name="label">tag</field>
@@ -735,7 +678,6 @@
                     </record>
                     <record id="l10n_gr_tr_505" model="account.report.line">
                         <field name="name">505 - Amount which has been refunded or requested to be refund</field>
-                        <field name="name@el_GR">505 - Ποσό που επιστράφηκε ή ζητήθηκε να επιστραφεί</field>
                         <field name="code">l10n_gr_505</field>
                         <field name="hierarchy_level">3</field>
                         <field name="expression_ids">
@@ -749,7 +691,6 @@
                     </record>
                     <record id="l10n_gr_tr_502" model="account.report.line">
                         <field name="name">502 - AMOUNT for deduction</field>
-                        <field name="name@el_GR">502 - ΠΟΣΟ για έκπτωση</field>
                         <field name="code">l10n_gr_502</field>
                         <field name="hierarchy_level">2</field>
                         <field name="expression_ids">
@@ -777,7 +718,6 @@
                     </record>
                     <record id="l10n_gr_tr_503" model="account.report.line">
                         <field name="name">503 - AMOUNT REQUESTED for refund</field>
-                        <field name="name@el_GR">503 - ΑΙΤΟΥΜΕΝΟ ΠΟΣΟ για επιστροφή χρημάτων</field>
                         <field name="code">l10n_gr_503</field>
                         <field name="hierarchy_level">2</field>
                         <field name="expression_ids">
@@ -791,7 +731,6 @@
                     </record>
                     <record id="l10n_gr_tr_511" model="account.report.line">
                         <field name="name">511 - AMOUNT TO BE PAID</field>
-                        <field name="name@el_GR">511 - ΚΑΤΑΒΛΗΤΈΟ ΠΟΣΌ</field>
                         <field name="code">l10n_gr_511</field>
                         <field name="hierarchy_level">2</field>
                         <field name="expression_ids">

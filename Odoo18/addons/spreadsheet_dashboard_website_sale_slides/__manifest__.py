@@ -2,7 +2,7 @@
 {
     'name': "Spreadsheet dashboard for eLearning",
     'version': '1.0',
-    'category': 'Productivity/Dashboard',
+    'category': 'Hidden',
     'summary': 'Spreadsheet',
     'description': 'Spreadsheet',
     'depends': ['spreadsheet_dashboard', 'website_sale_slides'],
@@ -11,6 +11,5 @@
     ],
     'installable': True,
     'auto_install': ['website_sale_slides'],
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

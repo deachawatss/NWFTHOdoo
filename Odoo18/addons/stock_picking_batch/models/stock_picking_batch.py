@@ -1,14 +1,16 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from markupsafe import Markup
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
-
+from odoo.osv.expression import AND
+from odoo.tools import float_is_zero, format_list
 
 class StockPickingBatch(models.Model):
-    _name = 'stock.picking.batch'
     _inherit = ['mail.thread', 'mail.activity.mixin']
+    _name = "stock.picking.batch"
     _description = "Batch Transfer"
     _order = "name desc"
 
@@ -60,9 +62,9 @@ class StockPickingBatch(models.Model):
     is_wave = fields.Boolean('This batch is a wave')
     show_lots_text = fields.Boolean(compute='_compute_show_lots_text')
     estimated_shipping_weight = fields.Float(
-        "shipping_weight", compute='_compute_estimated_shipping_capacity', digits='Product Unit')
+        "shipping_weight", compute='_compute_estimated_shipping_capacity', digits='Product Unit of Measure')
     estimated_shipping_volume = fields.Float(
-        "shipping_volume", compute='_compute_estimated_shipping_capacity', digits='Product Unit')
+        "shipping_volume", compute='_compute_estimated_shipping_capacity', digits='Product Unit of Measure')
     properties = fields.Properties('Properties', definition='picking_type_id.batch_properties_definition', copy=True)
 
     @api.depends('description')
@@ -175,25 +177,18 @@ class StockPickingBatch(models.Model):
         for vals in vals_list:
             if vals.get('name', '/') == '/':
                 company_id = vals.get('company_id', self.env.company.id)
-                picking_type = self.env['stock.picking.type'].browse(vals.get('picking_type_id'))
-                if picking_type:
-                    sequence_code = 'picking.wave' if vals.get('is_wave') else 'picking.batch'
-                    vals['name'] = self._prepare_name(picking_type, sequence_code, company_id)
+                if vals.get('is_wave'):
+                    vals['name'] = self.env['ir.sequence'].with_company(company_id).next_by_code('picking.wave') or '/'
+                else:
+                    vals['name'] = self.env['ir.sequence'].with_company(company_id).next_by_code('picking.batch') or '/'
         return super().create(vals_list)
 
     def write(self, vals):
-        batches_to_rename = self.env['stock.picking.batch']
-        if vals.get('picking_type_id'):
-            picking_type = self.env['stock.picking.type'].browse(vals.get('picking_type_id'))
-            batches_to_rename = self.filtered(lambda b: b.picking_type_id != picking_type)
         res = super().write(vals)
         if not self.picking_ids:
             self.filtered(lambda b: b.state == 'in_progress').action_cancel()
         if vals.get('picking_type_id'):
             self._sanity_check()
-            for batch in batches_to_rename:
-                sequence_code = 'picking.wave' if batch.is_wave else 'picking.batch'
-                batch.name = self._prepare_name(picking_type, sequence_code, batch.company_id)
         if vals.get('picking_ids'):
             batch_without_picking_type = self.filtered(lambda batch: not batch.picking_type_id)
             if batch_without_picking_type:
@@ -232,10 +227,10 @@ class StockPickingBatch(models.Model):
 
     def action_done(self):
         def has_no_quantity(picking):
-            return all(not m.picked or m.product_uom.is_zero(m.quantity) for m in picking.move_ids if m.state not in ('done', 'cancel'))
+            return all(not m.picked or float_is_zero(m.quantity, precision_rounding=m.product_uom.rounding) for m in picking.move_ids if m.state not in ('done', 'cancel'))
 
         def is_empty(picking):
-            return all(m.product_uom.is_zero(m.quantity) for m in picking.move_ids if m.state not in ('done', 'cancel'))
+            return all(float_is_zero(m.quantity, precision_rounding=m.product_uom.rounding) for m in picking.move_ids if m.state not in ('done', 'cancel'))
 
         self.ensure_one()
         self._check_company()
@@ -263,12 +258,6 @@ class StockPickingBatch(models.Model):
                     picking.batch_id.id,
                     picking.batch_id.name))
 
-        if empty_waiting_pickings:
-            self.message_post(body=_(
-                "%s was removed from the batch, no quantity processed",
-                Markup(', ').join([picking._get_html_link() for picking in empty_waiting_pickings])
-            ))
-
         return pickings.with_context(**context).button_validate()
 
     def action_assign(self):
@@ -281,7 +270,14 @@ class StockPickingBatch(models.Model):
         """
         self.ensure_one()
         if self.state not in ('done', 'cancel'):
-            return self.move_line_ids.action_put_in_pack()
+            move_line_ids = self.picking_ids[0]._package_move_lines(batch_pack=True)
+            if move_line_ids:
+                res = move_line_ids.picking_id[0]._pre_put_in_pack_hook(move_line_ids)
+                if res:
+                    return res
+                package = move_line_ids.picking_id._put_in_pack(move_line_ids)
+                return move_line_ids.picking_id[0]._post_put_in_pack_hook(package)
+            raise UserError(_("Please add 'Done' quantities to the batch picking to create a new pack."))
 
     def action_view_reception_report(self):
         action = self.picking_ids[0].action_view_reception_report()
@@ -314,69 +310,9 @@ class StockPickingBatch(models.Model):
                 'default_move_quantity': 'move'},
         }
 
-    def action_merge(self):
-        if not self:
-            return
-        if len(self.picking_type_id) > 1:
-            raise UserError(_('Batch/Wave transfers with different operation types cannot be merged.'))
-        if len(set(self.mapped('is_wave'))) > 1:
-            raise UserError(_('Batch transfers cannot be merged with wave transfers and vice versa.'))
-        if len(set(self.mapped('state'))) > 1:
-            raise UserError(_('Batch/Wave transfers with different states cannot be merged.'))
-        if self[0].state in ['done', 'cancel']:
-            raise UserError(_('You cannot merge done or cancelled batch/wave transfers.'))
-
-        target_batch = self[:1]
-        other_batches = self[1:]
-        earliest_batch = self.sorted(key=lambda b: b.scheduled_date)[0]
-        merged_batch_vals = earliest_batch._get_merged_batch_vals()
-        target_batch.move_line_ids |= other_batches.move_line_ids
-        target_batch.picking_ids |= other_batches.picking_ids
-        target_batch.write(merged_batch_vals)
-        other_batches.unlink()
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': _('Batch/Wave transfers have been merged into the following transfer'),
-                'message': '%s',
-                'links': [{
-                    'label': target_batch.name,
-                    'url': f"/odoo/action-stock_picking_batch.{'action_picking_tree_wave' if target_batch.is_wave else 'stock_picking_batch_action'}/{target_batch.id}",
-                }],
-                'sticky': False,
-                'next': {'type': 'ir.actions.act_window_close'},
-            }
-        }
-
-    def action_batch_detailed_operations(self):
-        self.ensure_one()
-        view_id = self.env.ref('stock_picking_batch.view_move_line_tree').id
-        return {
-            'name': _('Detailed Operations'),
-            'view_mode': 'list',
-            'type': 'ir.actions.act_window',
-            'res_model': 'stock.move.line',
-            'views': [(view_id, 'list')],
-            'domain': [('id', 'in', self.picking_ids.move_line_ids.ids)],
-            'context': {
-                'default_company_id': self.company_id.id,
-                'default_picking_id': self.picking_ids and self.picking_ids[0].id or False,
-                'picking_ids': self.picking_ids.ids,
-                'show_lots_text': self.show_lots_text,
-                'picking_code': self.picking_type_code,
-                'create': self.state not in ('done', 'cancel'),
-            }
-        }
-
     # -------------------------------------------------------------------------
     # Miscellaneous
     # -------------------------------------------------------------------------
-    @api.model
-    def _prepare_name(self, picking_type, sequence_code, company_id):
-        sequence_prefix, sequence_number = (self.env['ir.sequence'].with_company(company_id).next_by_code(sequence_code) or '/').split('/')
-        return f"{sequence_prefix}/{picking_type.sequence_code}/{sequence_number}"
-
     def _sanity_check(self):
         for batch in self:
             if not batch.picking_ids <= batch.allowed_picking_ids:
@@ -386,7 +322,7 @@ class StockPickingBatch(models.Model):
                     "Please check their states and operation types.\n\n"
                     "Incompatibilities: %(incompatible_transfers)s",
                     batch=batch.name,
-                    incompatible_transfers=erroneous_pickings.mapped('name')))
+                    incompatible_transfers=format_list(self.env, erroneous_pickings.mapped('name'))))
 
     def _track_subtype(self, init_values):
         if 'state' in init_values:
@@ -427,11 +363,3 @@ class StockPickingBatch(models.Model):
         if self.picking_type_id.batch_max_pickings:
             res = res and (len(self.picking_ids) + num_of_pickings <= self.picking_type_id.batch_max_pickings)
         return res
-
-    def _get_merged_batch_vals(self):
-        self.ensure_one()
-        return {
-            'user_id': self.user_id.id,
-            'description': self.description,
-            'scheduled_date': self.scheduled_date,
-        }

@@ -73,8 +73,13 @@ class ODSReader(object):
                         if n.nodeType == 3:
                             textContent = u'{}{}'.format(textContent, n.data)
 
-                if not textContent.startswith("#"):  # ignore comments cells
-                    arrCells.extend([textContent] * int(repeat))
+                if textContent:
+                    if not textContent.startswith("#"):  # ignore comments cells
+                        for rr in range(int(repeat)):  # repeated?
+                            arrCells.append(textContent)
+                else:
+                    for rr in range(int(repeat)):
+                        arrCells.append("")
 
             # if row contained something
             if arrCells:

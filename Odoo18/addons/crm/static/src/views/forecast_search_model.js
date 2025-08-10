@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { Domain } from "@web/core/domain";
 import { makeContext } from "@web/core/context";
 import { SearchModel } from "@web/search/search_model";

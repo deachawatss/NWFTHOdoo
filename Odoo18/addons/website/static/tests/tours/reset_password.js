@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
 
 registry.category("web_tour.tours").add('website_reset_password', {
@@ -19,15 +21,7 @@ registry.category("web_tour.tours").add('website_reset_password', {
         expectUnloadPage: true,
     },
     {
-        content: "check that we get the success alert",
-        trigger: '.alert-success',
-    },
-    {
-        content: "click on the back to login link",
-        trigger: '.btn-link',
-    },
-    {
-        content: "check that we're on the login page",
-        trigger: '.oe_login_form',
+        content: "check that we're logged in",
+        trigger: '.o_user_menu .dropdown-toggle',
     },
 ]});

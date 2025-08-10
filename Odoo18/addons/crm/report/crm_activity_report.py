@@ -4,10 +4,10 @@
 from odoo import fields, models, tools
 
 
-class CrmActivityReport(models.Model):
+class ActivityReport(models.Model):
     """ CRM Lead Analysis """
 
-    _name = 'crm.activity.report'
+    _name = "crm.activity.report"
     _auto = False
     _description = "CRM Activity Analysis"
     _rec_name = 'id'
@@ -34,11 +34,6 @@ class CrmActivityReport(models.Model):
         help="Type is used to separate Leads and Opportunities")
     active = fields.Boolean('Active', readonly=True)
     tag_ids = fields.Many2many(related="lead_id.tag_ids", readonly=True)
-    won_status = fields.Selection([
-        ('won', 'Won'),
-        ('lost', 'Lost'),
-        ('pending', 'Pending'),
-    ], string='Is Won', readonly=True)
 
     def _select(self):
         return """
@@ -61,8 +56,7 @@ class CrmActivityReport(models.Model):
                 l.stage_id,
                 l.partner_id,
                 l.type as lead_type,
-                l.active,
-                l.won_status
+                l.active
         """
 
     def _from(self):
@@ -82,8 +76,8 @@ class CrmActivityReport(models.Model):
         """
 
     def init(self):
-        tools.drop_view_if_exists(self.env.cr, self._table)
-        self.env.cr.execute("""
+        tools.drop_view_if_exists(self._cr, self._table)
+        self._cr.execute("""
             CREATE OR REPLACE VIEW %s AS (
                 %s
                 %s

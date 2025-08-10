@@ -261,7 +261,7 @@ describe("getAdjacents", () => {
     });
 });
 describe("getCommonAncestor", () => {
-    let root, p1, p2, p3, span1, span2, li1, li2, li3, ol;
+    let root, p1, p2, span1, span2, ul, li1, li2, li3, li4, ol;
     const prepareHtml = () => {
         [root] = insertTestHtml(
             unformat(`
@@ -273,19 +273,21 @@ describe("getCommonAncestor", () => {
                     <span> span2 </span>
                 <p/>
                 <ul>
-                    <li><p> list item 1 </p>
+                    <li> list item 1 </li>
+                    <li id="li2" class="oe-nested">
                         <ol>
-                            <li> list item 2 </li>
                             <li> list item 3 </li>
+                            <li> list item 4 </li>
                         </ol>
                     </li>
                 </ul>
             </div>
         `)
         );
-        [p1, p2, p3] = root.querySelectorAll("p");
+        [p1, p2] = root.querySelectorAll("p");
         [span1, span2] = root.querySelectorAll("span");
-        [li1, li2, li3] = root.querySelectorAll("li");
+        [ul] = root.querySelectorAll("ul");
+        [li1, li2, li3, li4] = root.querySelectorAll("li");
         [ol] = root.querySelectorAll("ol");
     };
 
@@ -312,7 +314,7 @@ describe("getCommonAncestor", () => {
         let result = getCommonAncestor([span1, span2], p1);
         expect(result).toBe(null);
 
-        result = getCommonAncestor([ol], p3);
+        result = getCommonAncestor([ol], li1);
         expect(result).toBe(null);
     });
 
@@ -321,14 +323,14 @@ describe("getCommonAncestor", () => {
         let result = getCommonAncestor([span1, span2]);
         expect(result).toBe(p2);
 
-        result = getCommonAncestor([li2, li3]);
-        expect(result).toBe(ol);
+        result = getCommonAncestor([li1, li3]);
+        expect(result).toBe(ul);
     });
 
     test("should return the common ancestor element of multiple nodes", () => {
         prepareHtml();
-        let result = getCommonAncestor([li1, li2, li3], root);
-        expect(result).toBe(li1);
+        let result = getCommonAncestor([li1, li2, li3, li4], root);
+        expect(result).toBe(ul);
 
         result = getCommonAncestor([p2, span1, span2], root);
         expect(result).toBe(p2);

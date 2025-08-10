@@ -1,10 +1,5 @@
-import { _t } from "@web/core/l10n/translation";
 import { Plugin } from "../plugin";
 import { childNodes, descendants, getCommonAncestor } from "../utils/dom_traversal";
-import { hasTouch } from "@web/core/browser/feature_detection";
-import { withSequence } from "@html_editor/utils/resource";
-import { Deferred } from "@web/core/utils/concurrency";
-import { toggleClass } from "@html_editor/utils/dom";
 
 /**
  * @typedef { import("./selection_plugin").EditorSelection } EditorSelection
@@ -48,13 +43,6 @@ import { toggleClass } from "@html_editor/utils/dom";
  * // todo change oldValue to attributeOldValue
  * @property { string } oldValue
  *
- * @typedef { Object } HistoryMutationClassList
- * @property { "classList" } type
- * @property { string } id
- * @property { string } className
- * @property { boolean } value
- * @property { boolean } oldValue
- *
  * @typedef { Object } HistoryMutationAdd
  * @property { "add" } type
  * // todo change id to nodeId
@@ -81,42 +69,25 @@ import { toggleClass } from "@html_editor/utils/dom";
  * // todo change previousId to previousNodeId
  * @property { string } previousId
  *
- * @typedef { HistoryMutationCharacterData | HistoryMutationAttributes | HistoryMutationClassList | HistoryMutationAdd | HistoryMutationRemove } HistoryMutation
- *
- * @typedef {Object} MutationRecordClassList
- * @property { "classList" } type
- * @property { Node } target
- * @property { string } className
- * @property { boolean } value
- *
- * @typedef {Object} MutationRecordAttributes
- * @property { "attributes" } type
- * @property { Node } target
- * @property { string } attributeName
- * @property { string } oldValue
- * @property { string } newValue
- *
- * @typedef { MutationRecord | MutationRecordClassList | MutationRecordAttributes } HistoryMutationRecord
+ * @typedef { HistoryMutationCharacterData | HistoryMutationAttributes | HistoryMutationAdd | HistoryMutationRemove } HistoryMutation
  *
  * @typedef { Object } PreviewableOperation
- * @property { Function } commit
+ * @property { Function } apply
  * @property { Function } preview
  * @property { Function } revert
  */
 
 /**
  * @typedef { Object } HistoryShared
- * @property { HistoryPlugin['addCustomMutation'] } addCustomMutation
- * @property { HistoryPlugin['applyCustomMutation'] } applyCustomMutation
  * @property { HistoryPlugin['addExternalStep'] } addExternalStep
  * @property { HistoryPlugin['addStep'] } addStep
  * @property { HistoryPlugin['canRedo'] } canRedo
  * @property { HistoryPlugin['canUndo'] } canUndo
- * @property { HistoryPlugin['ignoreDOMMutations'] } ignoreDOMMutations
+ * @property { HistoryPlugin['disableObserver'] } disableObserver
+ * @property { HistoryPlugin['enableObserver'] } enableObserver
  * @property { HistoryPlugin['getHistorySteps'] } getHistorySteps
  * @property { HistoryPlugin['getNodeById'] } getNodeById
  * @property { HistoryPlugin['makePreviewableOperation'] } makePreviewableOperation
- * @property { HistoryPlugin['makePreviewableAsyncOperation'] } makePreviewableAsyncOperation
  * @property { HistoryPlugin['makeSavePoint'] } makeSavePoint
  * @property { HistoryPlugin['makeSnapshotStep'] } makeSnapshotStep
  * @property { HistoryPlugin['redo'] } redo
@@ -125,26 +96,21 @@ import { toggleClass } from "@html_editor/utils/dom";
  * @property { HistoryPlugin['serializeSelection'] } serializeSelection
  * @property { HistoryPlugin['stageSelection'] } stageSelection
  * @property { HistoryPlugin['undo'] } undo
- * @property { HistoryPlugin['getIsPreviewing'] } getIsPreviewing
- * @property { HistoryPlugin['setStepExtra'] } setStepExtra
- * @property { HistoryPlugin['getIsCurrentStepModified'] } getIsCurrentStepModified
  */
 
 export class HistoryPlugin extends Plugin {
     static id = "history";
     static dependencies = ["selection", "sanitize"];
     static shared = [
-        "addCustomMutation",
-        "applyCustomMutation",
         "addExternalStep",
         "addStep",
         "canRedo",
         "canUndo",
-        "ignoreDOMMutations",
+        "disableObserver",
+        "enableObserver",
         "getHistorySteps",
         "getNodeById",
         "makePreviewableOperation",
-        "makePreviewableAsyncOperation",
         "makeSavePoint",
         "makeSnapshotStep",
         "redo",
@@ -153,44 +119,12 @@ export class HistoryPlugin extends Plugin {
         "serializeSelection",
         "stageSelection",
         "undo",
-        "getIsPreviewing",
-        "setStepExtra",
-        "getIsCurrentStepModified",
     ];
     resources = {
         user_commands: [
-            {
-                id: "historyUndo",
-                description: _t("Undo"),
-                icon: "fa-undo",
-                run: this.undo.bind(this),
-            },
-            {
-                id: "historyRedo",
-                description: _t("Redo"),
-                icon: "fa-repeat",
-                run: this.redo.bind(this),
-            },
+            { id: "historyUndo", run: this.undo.bind(this) },
+            { id: "historyRedo", run: this.redo.bind(this) },
         ],
-        ...(hasTouch() && {
-            toolbar_groups: withSequence(5, { id: "historyMobile" }),
-            toolbar_items: [
-                {
-                    id: "undo",
-                    groupId: "historyMobile",
-                    commandId: "historyUndo",
-                    isDisabled: () => !this.canUndo(),
-                    namespaces: ["compact", "expanded"],
-                },
-                {
-                    id: "redo",
-                    groupId: "historyMobile",
-                    commandId: "historyRedo",
-                    isDisabled: () => !this.canRedo(),
-                    namespaces: ["compact", "expanded"],
-                },
-            ],
-        }),
         shortcuts: [
             { hotkey: "control+z", commandId: "historyUndo" },
             { hotkey: "control+y", commandId: "historyRedo" },
@@ -200,19 +134,10 @@ export class HistoryPlugin extends Plugin {
             this.enableObserver();
             this.reset(this.config.content);
         },
-        on_prepare_drag_handlers: this.disableIsCurrentStepModifiedWarning.bind(this),
-        // Resource definitions:
-        normalize_handlers: [
-            // (commonRootOfModifiedEl or editableEl) => {
-            //    clean up DOM before taking into account for next history step
-            //    remaining in edit mode
-            // }
-        ],
     };
 
     setup() {
         this.mutationFilteredClasses = new Set(this.getResource("system_classes"));
-        this.mutationFilteredAttributes = new Set(this.getResource("system_attributes"));
         this._onKeyupResetContenteditableNodes = [];
         this.addDomListener(this.document, "beforeinput", this._onDocumentBeforeInput.bind(this));
         this.addDomListener(this.document, "input", this._onDocumentInput.bind(this));
@@ -220,13 +145,8 @@ export class HistoryPlugin extends Plugin {
             this.stageSelection();
         });
         this.observer = new MutationObserver(this.handleNewRecords.bind(this));
-        this.enableObserverCallbacks = new Set();
         this._cleanups.push(() => this.observer.disconnect());
         this.clean();
-    }
-
-    getIsPreviewing() {
-        return this.isPreviewing;
     }
 
     clean() {
@@ -239,7 +159,6 @@ export class HistoryPlugin extends Plugin {
             mutations: [],
             id: this.generateId(),
             previousStepId: undefined,
-            extraStepInfos: {},
         });
         /** @type { Map<string, "consumed"|"undo"|"redo"> } */
         this.stepsStates = new Map();
@@ -270,17 +189,18 @@ export class HistoryPlugin extends Plugin {
      * @param { HistoryStep[] } steps
      */
     resetFromSteps(steps) {
-        this.ignoreDOMMutations(() => {
-            this.editable.replaceChildren();
-            this.clean();
-            this.stageSelection();
-            for (const step of steps) {
-                this.applyMutations(step.mutations);
-            }
-            this.steps = steps;
-            // todo: to test
-            this.dispatchTo("history_reset_from_steps_handlers");
-        });
+        this.disableObserver();
+        this.editable.replaceChildren();
+        this.clean();
+        this.stageSelection();
+        for (const step of steps) {
+            this.applyMutations(step.mutations);
+        }
+        this.steps = steps;
+        // todo: to test
+        this.dispatchTo("history_reset_from_steps_handlers");
+
+        this.enableObserver();
         this.dispatchTo("history_reset_from_steps_handlers");
     }
     makeSnapshotStep() {
@@ -316,9 +236,6 @@ export class HistoryPlugin extends Plugin {
     }
 
     enableObserver() {
-        if (this.enableObserverCallbacks.size > 0) {
-            return;
-        }
         this.observer.observe(this.editable, {
             childList: true,
             subtree: true,
@@ -328,38 +245,10 @@ export class HistoryPlugin extends Plugin {
             characterDataOldValue: true,
         });
     }
-    /**
-     * Disable the mutation observer.
-     *
-     * /!\ This method should be used with extreme caution. Not observing some
-     * mutations could lead to mutations that are impossible to undo/redo.
-     */
     disableObserver() {
-        const enableObserver = () => {
-            this.enableObserverCallbacks.delete(enableObserver);
-            this.enableObserver();
-        };
-        this.enableObserverCallbacks.add(enableObserver);
+        // @todo @phoenix do we still want to unobserve sometimes?
         this.handleObserverRecords();
         this.observer.disconnect();
-        return enableObserver;
-    }
-
-    /**
-     * Execute {@link callback} while the MutationObserver is disabled.
-     *
-     * /!\ This method should be used with extreme caution. Not observing some
-     * mutations could lead to mutations that are impossible to undo/redo.
-     *
-     * @param {Function} callback
-     */
-    ignoreDOMMutations(callback) {
-        const enableObserver = this.disableObserver();
-        try {
-            return callback();
-        } finally {
-            enableObserver();
-        }
     }
 
     handleObserverRecords() {
@@ -367,25 +256,18 @@ export class HistoryPlugin extends Plugin {
     }
 
     /**
-     * @param { MutationRecord[] } mutationRecords
-     * @returns { HistoryMutationRecord[] }
+     * @param { MutationRecord[] } records
+     * @returns { MutationRecord[] } processed records
      */
-    processNewRecords(mutationRecords) {
-        mutationRecords = this.filterMutationRecords(mutationRecords);
-        /** @type {HistoryMutationRecord[]} */
-        const records = mutationRecords
-            .flatMap((record) => this.transformRecord(record))
-            .filter((record) => !this.isSystemClassOrAttributeRecord(record))
-            .filter((record) => !this.isNoOpRecord(record));
+    processNewRecords(records) {
+        this.setIdOnRecords(records);
+        records = this.filterMutationRecords(records);
+        if (!records.length) {
+            return [];
+        }
+        this.getResource("handleNewRecords").forEach((cb) => cb(records));
         this.stageRecords(records);
         return records;
-    }
-
-    /**
-     * @param {HistoryMutationRecord} param0
-     */
-    isNoOpRecord({ type, oldValue, newValue }) {
-        return type === "attributes" && oldValue === newValue;
     }
 
     dispatchContentUpdated() {
@@ -406,14 +288,7 @@ export class HistoryPlugin extends Plugin {
      * @param { MutationRecord[] } records
      */
     handleNewRecords(records) {
-        const filteredRecords = this.processNewRecords(records);
-        if (filteredRecords.length) {
-            // TODO modify `handleMutations` of web_studio to handle
-            // `undoOperation`
-            const stepState = this.stepsStates.get(this.currentStep.id);
-            this.getResource("handleNewRecords").forEach((cb) => cb(filteredRecords, stepState));
-            // Process potential new records adds by handleNewRecords.
-            this.processNewRecords(this.observer.takeRecords());
+        if (this.processNewRecords(records).length) {
             this.dispatchContentUpdated();
         }
     }
@@ -443,135 +318,72 @@ export class HistoryPlugin extends Plugin {
     }
     /**
      * @param { MutationRecord[] } records
-     * @returns { MutationRecord[] }
      */
     filterMutationRecords(records) {
         this.dispatchTo("before_filter_mutation_record_handlers", records);
         for (const callback of this.getResource("savable_mutation_record_predicates")) {
             records = records.filter(callback);
         }
-        records = this.filterAttributeMutationRecords(records);
-        // @todo: this removes mutation records that change the node reference.
-        // Fix this!
-        records = records.filter((record) => !this.isSameTextContentMutation(record));
-        records = this.filterOutIntermediateStateMutationRecords(records);
-        return records;
-    }
 
-    /**
-     * @param { MutationRecord[] } records
-     */
-    filterAttributeMutationRecords(records) {
-        return records.filter((record) => {
-            if (record.type !== "attributes") {
-                return true;
-            }
-            // Skip the attributes change on the dom.
-            if (record.target === this.editable) {
-                return false;
-            }
-            if (record.attributeName === "contenteditable") {
-                return false;
-            }
-            return true;
-        });
-    }
-
-    /**
-     * @todo: handle characterData mutations
-     *
-     * @param { MutationRecord[] } records
-     */
-    filterOutIntermediateStateMutationRecords(records) {
-        /** @type {Map<Node, Set<string>>} */
-        const nodeToAttributes = new Map();
+        // Save the first attribute in a cache to compare only the first
+        // attribute record of node to its latest state.
+        const attributeCache = new Map();
         const filteredRecords = [];
+
         for (const record of records) {
-            if (record.type !== "attributes") {
-                filteredRecords.push(record);
+            if (record.type === "attributes") {
+                // Skip the attributes change on the dom.
+                if (record.target === this.editable) {
+                    continue;
+                }
+                if (record.attributeName === "contenteditable") {
+                    continue;
+                }
+                // @todo @phoenix test attributeCache
+                attributeCache.set(record.target, attributeCache.get(record.target) || {});
+                // @todo @phoenix add test for mutationFilteredClasses.
+                if (record.attributeName === "class") {
+                    const classBefore = (record.oldValue && record.oldValue.split(" ")) || [];
+                    const classAfter =
+                        (record.target.className &&
+                            record.target.className.split &&
+                            record.target.className.split(" ")) ||
+                        [];
+                    const excludedClasses = [];
+                    for (const klass of classBefore) {
+                        if (!classAfter.includes(klass)) {
+                            excludedClasses.push(klass);
+                        }
+                    }
+                    for (const klass of classAfter) {
+                        if (!classBefore.includes(klass)) {
+                            excludedClasses.push(klass);
+                        }
+                    }
+                    if (
+                        excludedClasses.length &&
+                        excludedClasses.every((c) => this.mutationFilteredClasses.has(c))
+                    ) {
+                        continue;
+                    }
+                }
+                if (
+                    typeof attributeCache.get(record.target)[record.attributeName] === "undefined"
+                ) {
+                    const oldValue = record.oldValue === undefined ? null : record.oldValue;
+                    attributeCache.get(record.target)[record.attributeName] =
+                        oldValue !== record.target.getAttribute(record.attributeName);
+                }
+                if (!attributeCache.get(record.target)[record.attributeName]) {
+                    continue;
+                }
+            } else if (record.type === "childList" && this.isSameTextContentMutation(record)) {
                 continue;
             }
-            // Add entry for current target if not already present.
-            if (!nodeToAttributes.has(record.target)) {
-                nodeToAttributes.set(record.target, new Set());
-            }
-            const visitedAttributes = nodeToAttributes.get(record.target);
-            // Keep only the first mutation record for each attribute.
-            if (!visitedAttributes.has(record.attributeName)) {
-                filteredRecords.push(record);
-                visitedAttributes.add(record.attributeName);
-            }
+            filteredRecords.push(record);
         }
+        // @todo @phoenix allow an option to filter mutation records.
         return filteredRecords;
-    }
-
-    /**
-     * Class attribute records are expanded into multiple classList records.
-     * Attribute records have their oldValue normalized and newValue added to it.
-     * @todo: expand childList mutations to add/remove records.
-     *
-     * @param { MutationRecord } record
-     * @returns { HistoryMutationRecord | HistoryMutationRecord[] }
-     */
-    transformRecord(record) {
-        if (record.type === "attributes") {
-            if (record.attributeName === "class") {
-                return this.splitClassMutationRecord(record);
-            }
-            const oldValue = record.oldValue === undefined ? null : record.oldValue;
-            const newValue = record.target.getAttribute(record.attributeName);
-            const { type, target, attributeName } = record;
-            return { type, target, attributeName, oldValue, newValue };
-        }
-        return record;
-    }
-
-    /**
-     * Breaks down a class attribute mutation into individual class
-     * addition/removal records for more precise history tracking.
-     *
-     * @param { MutationRecord } record of type "attributes" with attributeName === "class"
-     * @returns { MutationRecordClassList[]}
-     */
-    splitClassMutationRecord(record) {
-        // oldValue can be nullish, or have extra spaces
-        const oldValue = record.oldValue?.split(" ").filter(Boolean);
-        const classesBefore = new Set(oldValue);
-        const classesAfter = new Set(record.target.classList);
-        // @todo: use Set.prototype.difference when it becomes widely available
-        const setDifference = (setA, setB) => {
-            const diff = new Set(setA);
-            setB.forEach((item) => diff.delete(item));
-            return diff;
-        };
-        const addedClasses = setDifference(classesAfter, classesBefore);
-        const removedClasses = setDifference(classesBefore, classesAfter);
-
-        /** @type {(className: string, operation: string) => MutationRecordClassList } */
-        const createClassRecord = (className, isAdded) => ({
-            type: "classList",
-            target: record.target,
-            className,
-            value: isAdded,
-        });
-        // Generate records for each class change
-        return [
-            ...[...addedClasses].map((cls) => createClassRecord(cls, true)),
-            ...[...removedClasses].map((cls) => createClassRecord(cls, false)),
-        ];
-    }
-
-    /**
-     * @param { HistoryMutationRecord } record
-     */
-    isSystemClassOrAttributeRecord(record) {
-        if (record.type === "attributes") {
-            return this.mutationFilteredAttributes.has(record.attributeName);
-        }
-        if (record.type === "classList") {
-            return this.mutationFilteredClasses.has(record.className);
-        }
-        return false;
     }
 
     /**
@@ -607,7 +419,11 @@ export class HistoryPlugin extends Plugin {
      */
     stageSelection() {
         const selection = this.dependencies.selection.getEditableSelection();
-        if (this.getIsCurrentStepModified()) {
+        if (
+            this.currentStep.mutations.find((m) =>
+                ["characterData", "remove", "add"].includes(m.type)
+            )
+        ) {
             console.warn(
                 `should not have any "characterData", "remove" or "add" mutations in current step when you update the selection`
             );
@@ -616,10 +432,9 @@ export class HistoryPlugin extends Plugin {
         this.currentStep.selection = this.serializeSelection(selection);
     }
     /**
-     * @param { HistoryMutationRecord[] } records
+     * @param { MutationRecord[] } records
      */
     stageRecords(records) {
-        this.setIdOnRecords(records);
         // @todo @phoenix test this feature.
         // There is a case where node A is added and node B is a descendant of
         // node A where node B was not in the observed tree) then node B is
@@ -650,49 +465,24 @@ export class HistoryPlugin extends Plugin {
                     });
                     break;
                 }
-                case "classList": {
-                    this.currentStep.mutations.push({
-                        type: "classList",
-                        id: this.nodeToIdMap.get(record.target),
-                        className: record.className,
-                        oldValue: !record.value,
-                        value: record.value,
-                    });
-                    break;
-                }
                 case "attributes": {
                     this.currentStep.mutations.push({
                         type: "attributes",
                         id: this.nodeToIdMap.get(record.target),
                         attributeName: record.attributeName,
+                        value: record.target.getAttribute(record.attributeName),
                         oldValue: record.oldValue,
-                        value: record.newValue,
                     });
                     this.dispatchTo("attribute_change_handlers", {
                         target: record.target,
                         attributeName: record.attributeName,
                         oldValue: record.oldValue,
-                        value: record.newValue,
+                        value: record.target.getAttribute(record.attributeName),
                     });
                     break;
                 }
                 case "childList": {
                     record.addedNodes.forEach((added) => {
-                        // When nodes are expected to not be observed by the
-                        // history, e.g. because they belong to a distinct
-                        // lifecycle such as interactions, some operations such
-                        // as replaceChildren might impact such a node together
-                        // with observed ones.
-                        // Marking the node with skipHistoryHack makes sure that
-                        // it does not accidentally get observed during those
-                        // operations.
-                        // TODO Find a better solution.
-                        if (
-                            added?.dataset?.skipHistoryHack ||
-                            added?.closest?.("data-skip-history-hack")
-                        ) {
-                            return;
-                        }
                         const mutation = {
                             type: "add",
                         };
@@ -715,13 +505,6 @@ export class HistoryPlugin extends Plugin {
                         this.currentStep.mutations.push(mutation);
                     });
                     record.removedNodes.forEach((removed) => {
-                        // TODO Find a better solution.
-                        if (
-                            removed?.dataset?.skipHistoryHack ||
-                            removed?.closest?.("data-skip-history-hack")
-                        ) {
-                            return;
-                        }
                         this.currentStep.mutations.push({
                             type: "remove",
                             id: this.nodeToIdMap.get(removed),
@@ -739,26 +522,6 @@ export class HistoryPlugin extends Plugin {
                 }
             }
         }
-    }
-
-    applyCustomMutation({ apply, revert }) {
-        apply();
-        this.addCustomMutation({ apply, revert });
-    }
-
-    addCustomMutation({ apply, revert }) {
-        const customMutation = {
-            type: "custom",
-            apply: () => {
-                apply();
-                this.addCustomMutation({ apply, revert });
-            },
-            revert: () => {
-                revert();
-                this.addCustomMutation({ apply: revert, revert: apply });
-            },
-        };
-        this.currentStep.mutations.push(customMutation);
     }
 
     /**
@@ -786,9 +549,8 @@ export class HistoryPlugin extends Plugin {
     /**
      * @param { Object } [params]
      * @param { "consumed"|"undo"|"redo" } [params.stepState]
-     * @param {Object} [params.extraStepInfos]
      */
-    addStep({ stepState, extraStepInfos } = {}) {
+    addStep({ stepState } = {}) {
         // @todo @phoenix should we allow to pause the making of a step?
         // if (!this.stepsActive) {
         //     return;
@@ -798,21 +560,14 @@ export class HistoryPlugin extends Plugin {
         // @todo @phoenix sanitize plugin
         // this.sanitize();
 
-        // Set the state of the step here.
-        // That way, the state of undo and redo is truly accessible when
-        // executing the onChange callback.
-        // It is useful for external components if they execute shared.can[Undo|Redo]
-        const currentStep = this.currentStep;
-        if (stepState) {
-            this.stepsStates.set(currentStep.id, stepState);
-        }
         this.handleObserverRecords();
+        const currentStep = this.currentStep;
         const currentMutationsCount = currentStep.mutations.length;
         if (currentMutationsCount === 0) {
             return false;
         }
         const stepCommonAncestor = this.getMutationsRoot(currentStep.mutations) || this.editable;
-        this.dispatchTo("normalize_handlers", stepCommonAncestor, stepState);
+        this.dispatchTo("normalize_handlers", stepCommonAncestor);
         this.handleObserverRecords();
         if (currentMutationsCount === currentStep.mutations.length) {
             // If there was no registered mutation during the normalization step,
@@ -827,24 +582,22 @@ export class HistoryPlugin extends Plugin {
         this.steps.push(currentStep);
         // @todo @phoenix add this in the linkzws plugin.
         // this._setLinkZws();
-        this.dispatchTo("before_add_step_handlers");
-        if (extraStepInfos) {
-            currentStep.extraStepInfos = extraStepInfos;
-        }
         this.currentStep = this.processHistoryStep({
             id: this.generateId(),
             selection: {},
             mutations: [],
             previousStepId: undefined,
-            extraStepInfos: {},
         });
+        // Set the state of the step here.
+        // That way, the state of undo and redo is truly accessible
+        // when executing the onChange callback.
+        // It is useful for external components if they execute shared.can[Undo|Redo]
+        if (stepState) {
+            this.stepsStates.set(currentStep.id, stepState);
+        }
         this.stageSelection();
-        this.dispatchTo("step_added_handlers", {
-            step: currentStep,
-            stepCommonAncestor,
-            isPreviewing: this.isPreviewing,
-        });
-        this.config.onChange?.({ isPreviewing: this.isPreviewing });
+        this.dispatchTo("step_added_handlers", { step: currentStep, stepCommonAncestor });
+        this.config.onChange?.();
         return currentStep;
     }
     canUndo() {
@@ -869,17 +622,15 @@ export class HistoryPlugin extends Plugin {
         lastStep.mutations = [];
 
         const pos = this.getNextUndoIndex();
-        let revertedStep;
         if (pos > 0) {
             // Consider the position consumed.
-            revertedStep = this.steps[pos];
-            this.stepsStates.set(revertedStep.id, "consumed");
-            this.revertMutations(revertedStep.mutations, { forNewStep: true });
-            this.setSerializedSelection(revertedStep.selection);
-            this.addStep({ stepState: "undo", extraStepInfos: revertedStep.extraStepInfos });
+            this.stepsStates.set(this.steps[pos].id, "consumed");
+            this.revertMutations(this.steps[pos].mutations, { forNewStep: true });
+            this.setSerializedSelection(this.steps[pos].selection);
+            this.addStep({ stepState: "undo" });
             // Consider the last position of the history as an undo.
         }
-        this.dispatchTo("post_undo_handlers", revertedStep);
+        this.dispatchTo("post_undo_handlers");
     }
     redo() {
         this.handleObserverRecords();
@@ -893,15 +644,13 @@ export class HistoryPlugin extends Plugin {
         this.currentStep.mutations = [];
 
         const pos = this.getNextRedoIndex();
-        let revertedStep;
         if (pos > 0) {
-            revertedStep = this.steps[pos];
-            this.stepsStates.set(revertedStep.id, "consumed");
-            this.revertMutations(revertedStep.mutations, { forNewStep: true });
-            this.setSerializedSelection(revertedStep.selection);
-            this.addStep({ stepState: "redo", extraStepInfos: revertedStep.extraStepInfos });
+            this.stepsStates.set(this.steps[pos].id, "consumed");
+            this.revertMutations(this.steps[pos].mutations, { forNewStep: true });
+            this.setSerializedSelection(this.steps[pos].selection);
+            this.addStep({ stepState: "redo" });
         }
-        this.dispatchTo("post_redo_handlers", revertedStep);
+        this.dispatchTo("post_redo_handlers");
     }
     /**
      * @param { SerializedSelection } selection
@@ -1025,10 +774,6 @@ export class HistoryPlugin extends Plugin {
     applyMutations(mutations, { forNewStep = false } = {}) {
         for (const mutation of mutations) {
             switch (mutation.type) {
-                case "custom": {
-                    mutation.apply();
-                    break;
-                }
                 case "characterData": {
                     const node = this.idToNodeMap.get(mutation.id);
                     if (node) {
@@ -1036,17 +781,10 @@ export class HistoryPlugin extends Plugin {
                     }
                     break;
                 }
-                case "classList": {
-                    const node = this.idToNodeMap.get(mutation.id);
-                    if (node) {
-                        toggleClass(node, mutation.className, mutation.value);
-                    }
-                    break;
-                }
                 case "attributes": {
                     const node = this.idToNodeMap.get(mutation.id);
                     if (node) {
-                        let value = mutation.value;
+                        let value = this.getAttributeValue(mutation.attributeName, mutation.value);
                         for (const cb of this.getResource("attribute_change_processors")) {
                             value = cb(
                                 {
@@ -1101,10 +839,6 @@ export class HistoryPlugin extends Plugin {
     revertMutations(mutations, { forNewStep = false } = {}) {
         for (const mutation of mutations.toReversed()) {
             switch (mutation.type) {
-                case "custom": {
-                    mutation.revert();
-                    break;
-                }
                 case "characterData": {
                     const node = this.idToNodeMap.get(mutation.id);
                     if (node) {
@@ -1112,17 +846,13 @@ export class HistoryPlugin extends Plugin {
                     }
                     break;
                 }
-                case "classList": {
-                    const node = this.idToNodeMap.get(mutation.id);
-                    if (node) {
-                        toggleClass(node, mutation.className, mutation.oldValue);
-                    }
-                    break;
-                }
                 case "attributes": {
                     const node = this.idToNodeMap.get(mutation.id);
                     if (node) {
-                        let value = mutation.oldValue;
+                        let value = this.getAttributeValue(
+                            mutation.attributeName,
+                            mutation.oldValue
+                        );
                         for (const cb of this.getResource("attribute_change_processors")) {
                             value = cb(
                                 {
@@ -1212,7 +942,6 @@ export class HistoryPlugin extends Plugin {
         let applied = false;
         // TODO ABD TODO @phoenix: selection may become obsolete, it should evolve with mutations.
         const selectionToRestore = this.dependencies.selection.preserveSelection();
-        const extraToRestore = { ...this.currentStep.extraStepInfos };
         return () => {
             if (applied) {
                 return;
@@ -1226,7 +955,6 @@ export class HistoryPlugin extends Plugin {
             this.handleObserverRecords();
             // TODO ABD TODO @phoenix: evaluate if the selection is not restorable at the desired position
             selectionToRestore.restore();
-            this.currentStep.extraStepInfos = extraToRestore;
             this.dispatchTo("restore_savepoint_handlers");
         };
     }
@@ -1242,74 +970,18 @@ export class HistoryPlugin extends Plugin {
             preview: (...args) => {
                 revertOperation();
                 revertOperation = this.makeSavePoint();
-                this.isPreviewing = true;
                 operation(...args);
-                // todo: We should not add a step on preview as it would send
-                // unnecessary steps in collaboration and let the other peer see
-                // what we preview.
-                //
-                // The operation should be similar than in the 'commit'
-                // (normalize etc...) hence the 'addStep' (but we need to remove
-                // it for the collaboration).
-                this.addStep();
             },
             commit: (...args) => {
                 revertOperation();
-                this.isPreviewing = false;
                 operation(...args);
                 this.addStep();
             },
             revert: () => {
                 revertOperation();
-                revertOperation = () => {};
-                this.isPreviewing = false;
             },
         };
     }
-
-    /**
-     * Creates a set of functions to preview, apply, and revert an async operation.
-     * @param {Function} operation
-     * @returns {PreviewableOperation}
-     */
-    makePreviewableAsyncOperation(operation) {
-        let revertOperation = () => {};
-
-        return {
-            preview: async (...args) => {
-                revertOperation();
-                const def = new Deferred();
-                const revertSavePoint = this.makeSavePoint();
-                revertOperation = async () => {
-                    await def;
-                    revertSavePoint();
-                };
-                this.isPreviewing = true;
-                await operation(...args);
-                def.resolve();
-                // todo: We should not add a step on preview as it would send
-                // unnecessary steps in collaboration and let the other peer see
-                // what we preview.
-                //
-                // The operation should be similar than in the 'commit'
-                // (normalize etc...) hence the 'addStep' (but we need to remove
-                // it for the collaboration).
-                this.addStep();
-            },
-            commit: async (...args) => {
-                revertOperation();
-                this.isPreviewing = false;
-                await operation(...args);
-                this.addStep();
-            },
-            revert: async () => {
-                await revertOperation();
-                revertOperation = () => {};
-                this.isPreviewing = false;
-            },
-        };
-    }
-
     /**
      * Discard the current draft, and, if necessary, consume and revert
      * reversible steps until the specified step index, and ensure that
@@ -1359,26 +1031,19 @@ export class HistoryPlugin extends Plugin {
         this.addStep({ stepState: "consumed" });
     }
 
-    setStepExtra(key, value) {
-        this.currentStep.extraStepInfos[key] = value;
-    }
-
-    disableIsCurrentStepModifiedWarning() {
-        this.ignoreIsCurrentStepModified = true;
-        return () => {
-            this.ignoreIsCurrentStepModified = false;
-        };
-    }
-
-    getIsCurrentStepModified() {
-        if (this.ignoreIsCurrentStepModified) {
-            return false;
+    /**
+     * @param { string } attributeName
+     * @param { string } value
+     */
+    getAttributeValue(attributeName, value) {
+        if (typeof value === "string" && attributeName === "class") {
+            value = value
+                .split(" ")
+                .filter((c) => !this.mutationFilteredClasses.has(c))
+                .join(" ");
         }
-        return this.currentStep.mutations.find((m) =>
-            ["characterData", "remove", "add"].includes(m.type)
-        );
+        return value;
     }
-
     /**
      * @param { Node } node
      * @param { string } attributeName

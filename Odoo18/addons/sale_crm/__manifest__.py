@@ -4,7 +4,7 @@
 {
     'name': 'Opportunity to Quotation',
     'version': '1.0',
-    'category': 'Sales/Sales',
+    'category': 'Hidden',
     'description': """
 This module adds a shortcut on one or several opportunity cases in the CRM.
 ===========================================================================
@@ -20,6 +20,7 @@ modules.
     'data': [
         'security/ir.model.access.csv',
         'data/crm_lead_merge_template.xml',
+        'views/partner_views.xml',
         'views/sale_order_views.xml',
         'views/crm_lead_views.xml',
         'views/crm_team_views.xml',
@@ -27,6 +28,5 @@ modules.
     ],
     'auto_install': True,
     'uninstall_hook': 'uninstall_hook',
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { intersection } from "@web/core/utils/arrays";
 import { _t } from "@web/core/l10n/translation";
 import { renderToElement } from "@web/core/utils/render";
@@ -15,11 +17,12 @@ import { UrlAutoComplete } from "@website/components/autocomplete_with_pages/url
 function loadAnchors(url, body) {
     return new Promise(function (resolve, reject) {
         if (url === window.location.pathname || url[0] === "#") {
-            resolve(body ? body.outerHTML : document.body.outerHTML);
+            resolve(body ? body : document.body.outerHTML);
         } else if (url.length && !url.startsWith("http")) {
-            // TODO: Might be broken with ReplaceMedia (NBY) and LinkTools
             fetch(window.location.origin + url)
-                .then((response) => response.text())
+                .then((response) => {
+                    return response.text();
+                })
                 .then((text) => {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(text, "text/html");
@@ -32,12 +35,13 @@ function loadAnchors(url, body) {
         }
     })
         .then(function (response) {
-            const fragment = new DOMParser().parseFromString(response, "text/html");
-            const anchorEls = fragment.querySelectorAll(
-                `[id][data-anchor="true"], .modal[id][data-display="onClick"]`
-            );
-            const anchors = Array.from(anchorEls).map((el) => "#" + el.id);
-
+            const anchors = Array.from(
+                response.querySelectorAll(
+                    '[id][data-anchor=true], .modal[id][data-display="onClick"]'
+                )
+            ).map((el) => {
+                return "#" + el.id;
+            });
             // Always suggest the top and the bottom of the page as internal link
             // anchor even if the header and the footer are not in the DOM. Indeed,
             // the "scrollTo" function handles the scroll towards those elements
@@ -61,10 +65,10 @@ function loadAnchors(url, body) {
  *
  * @param {HTMLInputElement} input
  */
-function autocompleteWithPages(input, options= {}, env = undefined) {
+function autocompleteWithPages(input, options= {}) {
     const owlApp = new App(UrlAutoComplete, {
-        env: env || Component.env,
-        dev: env ? env.debug : Component.env.debug,
+        env: Component.env,
+        dev: Component.env.debug,
         getTemplate,
         props: {
             options,
@@ -239,7 +243,7 @@ function isHTTPSorNakedDomainRedirection(url1, url2) {
            url1.replace(/^www\./, '') === url2.replace(/^www\./, '');
 }
 
-export function sendRequest(route, params) {
+function sendRequest(route, params) {
     function _addInput(form, name, value) {
         let param = document.createElement('input');
         param.setAttribute('type', 'hidden');

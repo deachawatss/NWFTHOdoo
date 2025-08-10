@@ -13,6 +13,8 @@ class AccountChartTemplate(models.AbstractModel):
             'display_invoice_amount_total_words': True,
             'property_account_receivable_id': 'cuenta105_01',
             'property_account_payable_id': 'cuenta201_01',
+            'property_account_expense_categ_id': 'cuenta601_84',
+            'property_account_income_categ_id': 'cuenta401_01',
             'property_stock_account_input_categ_id': 'cuenta205_06_01',
             'property_stock_account_output_categ_id': 'cuenta107_05_01',
             'property_stock_valuation_account_id': 'cuenta115_01',
@@ -38,9 +40,6 @@ class AccountChartTemplate(models.AbstractModel):
                 'tax_calculation_rounding_method': 'round_globally',
                 'account_sale_tax_id': 'tax12',
                 'account_purchase_tax_id': 'tax14',
-                'expense_account_id': 'cuenta601_84',
-                'income_account_id': 'cuenta401_01',
-                'account_cash_basis_base_account_id': 'cuenta801_01_99',
             },
         }
 
@@ -53,11 +52,7 @@ class AccountChartTemplate(models.AbstractModel):
                 'code': 'CBMX',
                 'default_account_id': "cuenta118_01",
                 'show_on_dashboard': True,
-            },
-            'cash': {
-                'name': _("Cash"),
-                'type': 'cash',
-            },
+            }
         }
 
     def _get_accounts_data_values(self, company, template_data, bank_prefix='', code_digits=0):

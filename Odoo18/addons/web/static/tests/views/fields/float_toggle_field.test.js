@@ -16,14 +16,7 @@ class Partner extends models.Model {
     _records = [{ id: 1, float_field: 0.44444 }];
 }
 
-class User extends models.Model {
-    _name = "res.users";
-    has_group() {
-        return true;
-    }
-}
-
-defineModels([Partner, User]);
+defineModels([Partner]);
 
 test("basic flow in form view", async () => {
     onRpc("partner", "web_save", ({ args }) => {

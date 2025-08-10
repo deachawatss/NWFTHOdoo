@@ -3,7 +3,6 @@
 
 from odoo import models
 
-
 class PosOrderLine(models.Model):
     _inherit = "pos.order.line"
 
@@ -17,7 +16,6 @@ class PosOrderLine(models.Model):
         bom_line_ids = [item for x in boms for item in x[0].bom_line_ids.ids]
         ml_product_to_consider = (product.bom_ids and [comp[0].product_id.id for comp in components]) or [product.id]
         return stock_moves.filtered(lambda ml: ml.product_id.id in ml_product_to_consider and (ml.bom_line_id.id in bom_line_ids))
-
 
 class PosOrder(models.Model):
     _inherit = "pos.order"

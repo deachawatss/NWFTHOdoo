@@ -2,7 +2,6 @@ import {
     clickOnEditAndWaitEditMode,
     clickOnSave,
     registerWebsitePreviewTour,
-    changeOptionInPopover,
 } from "@website/js/tours/tour_utils";
 
 registerWebsitePreviewTour(
@@ -17,15 +16,24 @@ registerWebsitePreviewTour(
             trigger: ":iframe .s_website_form .s_website_form_input[name=name]",
             run: "click",
         },
-        ...changeOptionInPopover("Field", "Visibility", "Visible only if"),
+        {
+            content: "Open visibility dropdown",
+            trigger: 'we-select:has([data-set-visibility="conditional"])',
+            run: "click",
+        },
+        {
+            content: "Set visibility to conditional",
+            trigger: '[data-set-visibility="conditional"]',
+            run: "click",
+        },
         {
             content: "Open model selector",
-            trigger: "button[id='hidden_condition_record_opt']:contains('Test Tag')",
+            trigger: 'we-select:has([data-select-data-attribute="2"])',
             run: "click",
         },
         {
             content: "Set model to tag #2",
-            trigger: ".o_popover div.o-dropdown-item:contains('Test Tag #2')",
+            trigger: '[data-select-data-attribute="2"]',
             run: "click",
         },
         ...clickOnSave(),
@@ -42,12 +50,12 @@ registerWebsitePreviewTour(
         },
         {
             content: "Open comparator dropdown",
-            trigger: "button[id='hidden_condition_record_opt']:contains('Is equal to')",
+            trigger: 'we-select:has([data-select-data-attribute="!selected"])',
             run: "click",
         },
         {
             content: "Set comparator to Is not equal",
-            trigger: ".o_popover div.o-dropdown-item:contains('Is not equal to')",
+            trigger: '[data-select-data-attribute="!selected"]',
             run: "click",
         },
         ...clickOnSave(),

@@ -1,8 +1,9 @@
+/** @odoo-module */
+
 import { registry } from '@web/core/registry';
 
 import { listView } from '@web/views/list/list_view';
 import { ListRenderer } from '@web/views/list/list_renderer';
-import { ListController } from '@web/views/list/list_controller';
 
 import { LunchDashboard } from '../components/lunch_dashboard';
 import { LunchRendererMixin } from '../mixins/lunch_renderer_mixin';
@@ -30,18 +31,9 @@ export class LunchListRenderer extends LunchRendererMixin(ListRenderer) {
     }
 }
 
-class LunchListController extends ListController {
-    get modelOptions() {
-        return {
-            ...super.modelOptions,
-            lazy: false,
-        };
-    }
-}
 
 registry.category('views').add('lunch_list', {
     ...listView,
-    Controller: LunchListController,
     Renderer: LunchListRenderer,
     SearchModel: LunchSearchModel,
 });

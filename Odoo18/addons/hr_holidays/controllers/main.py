@@ -14,7 +14,7 @@ class HrHolidaysController(http.Controller):
             try:
                 record.action_approve()
             except Exception:
-                return MailController._redirect_to_generic_fallback('hr.leave', res_id)
+                return MailController._redirect_to_messaging()
         return redirect
 
     @http.route('/leave/validate', type='http', auth='user', methods=['GET'])
@@ -22,7 +22,7 @@ class HrHolidaysController(http.Controller):
         comparison, record, redirect = MailController._check_token_and_record_or_redirect('hr.leave', int(res_id), token)
         if comparison and record:
             try:
-                record.action_approve()
+                record.action_validate()
             except Exception:
                 return MailController._redirect_to_generic_fallback('hr.leave', res_id)
         return redirect

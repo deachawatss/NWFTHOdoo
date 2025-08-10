@@ -7,7 +7,7 @@ from odoo.exceptions import ValidationError
 
 
 class RegistrationEditor(models.TransientModel):
-    _name = 'registration.editor'
+    _name = "registration.editor"
     _description = 'Edit Attendee Details on Sales Confirmation'
 
     sale_order_id = fields.Many2one('sale.order', 'Sales Order', required=True, ondelete='cascade')
@@ -17,12 +17,11 @@ class RegistrationEditor(models.TransientModel):
     def default_get(self, fields):
         res = super(RegistrationEditor, self).default_get(fields)
         if not res.get('sale_order_id'):
-            sale_order_id = res.get('sale_order_id', self.env.context.get('active_id'))
+            sale_order_id = res.get('sale_order_id', self._context.get('active_id'))
             res['sale_order_id'] = sale_order_id
         sale_order = self.env['sale.order'].browse(res.get('sale_order_id'))
         registrations = self.env['event.registration'].search([
             ('sale_order_id', '=', sale_order.id),
-            ('event_slot_id', 'in', sale_order.mapped('order_line.event_slot_id').ids or [False]),
             ('event_ticket_id', 'in', sale_order.mapped('order_line.event_ticket_id').ids),
             ('state', '!=', 'cancel')])
 
@@ -34,7 +33,6 @@ class RegistrationEditor(models.TransientModel):
             # Add existing registrations
             attendee_list += [[0, 0, {
                 'event_id': reg.event_id.id,
-                'event_slot_id': reg.event_slot_id.id,
                 'event_ticket_id': reg.event_ticket_id.id,
                 'registration_id': reg.id,
                 'name': reg.name,
@@ -45,7 +43,6 @@ class RegistrationEditor(models.TransientModel):
             # Add new registrations
             attendee_list += [[0, 0, {
                 'event_id': so_line.event_id.id,
-                'event_slot_id': so_line.event_slot_id.id,
                 'event_ticket_id': so_line.event_ticket_id.id,
                 'sale_order_line_id': so_line.id,
                 'name': so_line.order_partner_id.name,
@@ -72,7 +69,7 @@ class RegistrationEditor(models.TransientModel):
 
 class RegistrationEditorLine(models.TransientModel):
     """Event Registration"""
-    _name = 'registration.editor.line'
+    _name = "registration.editor.line"
     _description = 'Edit Attendee Line on Sales Confirmation'
     _order = "id desc"
 
@@ -81,7 +78,6 @@ class RegistrationEditorLine(models.TransientModel):
     event_id = fields.Many2one('event.event', string='Event', required=True)
     company_id = fields.Many2one(related="event_id.company_id")
     registration_id = fields.Many2one('event.registration', 'Original Registration')
-    event_slot_id = fields.Many2one('event.slot', string='Event Slot')
     event_ticket_id = fields.Many2one('event.event.ticket', string='Event Ticket')
     email = fields.Char(string='Email')
     phone = fields.Char(string='Phone')
@@ -92,13 +88,12 @@ class RegistrationEditorLine(models.TransientModel):
         registration_data = {
             'partner_id': self.editor_id.sale_order_id.partner_id.id,
             'name': self.name or self.editor_id.sale_order_id.partner_id.name,
-            'phone': self.phone or self.editor_id.sale_order_id.partner_id.phone,
+            'phone': self.phone or self.editor_id.sale_order_id.partner_id.phone or self.editor_id.sale_order_id.partner_id.mobile,
             'email': self.email or self.editor_id.sale_order_id.partner_id.email,
         }
         if include_event_values:
             registration_data.update({
                 'event_id': self.event_id.id,
-                'event_slot_id': self.event_slot_id.id,
                 'event_ticket_id': self.event_ticket_id.id,
                 'sale_order_id': self.editor_id.sale_order_id.id,
                 'sale_order_line_id': self.sale_order_line_id.id,

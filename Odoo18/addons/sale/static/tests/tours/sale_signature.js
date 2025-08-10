@@ -1,6 +1,8 @@
+/** @odoo-module **/
+
+import { waitUntil } from "@odoo/hoot-dom";
 import { registry } from "@web/core/registry";
 import { redirect } from "@web/core/utils/urls";
-import { waitUntil } from "@odoo/hoot-dom";
 
 // This tour relies on data created on the Python test.
 registry.category("web_tour.tours").add('sale_signature', {

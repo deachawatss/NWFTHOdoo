@@ -3,7 +3,7 @@
 from collections import defaultdict
 
 from odoo import api, fields, models, _
-from odoo.fields import Domain
+from odoo.osv.expression import AND
 
 
 class StockPicking(models.Model):
@@ -30,11 +30,13 @@ class StockPicking(models.Model):
 
     @api.model
     def _search_days_to_arrive(self, operator, value):
-        return [('date_done', operator, value)]
+        date_value = fields.Datetime.from_string(value)
+        return [('date_done', operator, date_value)]
 
     @api.model
     def _search_delay_pass(self, operator, value):
-        return [('purchase_id.date_order', operator, value)]
+        date_value = fields.Datetime.from_string(value)
+        return [('purchase_id.date_order', operator, date_value)]
 
 
 class StockWarehouse(models.Model):
@@ -79,6 +81,13 @@ class StockWarehouse(models.Model):
             result[warehouse.id].update(warehouse._get_receive_rules_dict())
         return result
 
+    def _get_receive_rules_dict(self):
+        rules = super()._get_receive_rules_dict()
+        customer_loc, __ = self._get_partner_locations()
+        # Sets the right order for new warehouses: buy then push.
+        rules['crossdock'].insert(0, self.Routing(self.env['stock.location'], customer_loc, self.in_type_id, 'buy'))
+        return rules
+
     def _get_routes_values(self):
         routes = super(StockWarehouse, self)._get_routes_values()
         routes.update(self._get_receive_routes_values('buy_to_resupply'))
@@ -93,7 +102,7 @@ class StockWarehouse(models.Model):
         return res
 
 
-class StockReturnPicking(models.TransientModel):
+class ReturnPicking(models.TransientModel):
     _inherit = "stock.return.picking"
 
     def _prepare_move_default_values(self, return_line, new_picking):
@@ -109,23 +118,21 @@ class StockReturnPicking(models.TransientModel):
         return picking
 
 
-class StockWarehouseOrderpoint(models.Model):
+class Orderpoint(models.Model):
     _inherit = "stock.warehouse.orderpoint"
 
     show_supplier = fields.Boolean('Show supplier column', compute='_compute_show_suppplier')
     supplier_id = fields.Many2one(
-        'product.supplierinfo', string='Vendor Pricelist', check_company=True,
+        'product.supplierinfo', string='Supplier', check_company=True,
         domain="['|', ('product_id', '=', product_id), '&', ('product_id', '=', False), ('product_tmpl_id', '=', product_tmpl_id)]")
-    vendor_id = fields.Many2one(related='supplier_id.partner_id', string="Vendor")
+    vendor_id = fields.Many2one(related='supplier_id.partner_id', string="Vendor", store=True)
     purchase_visibility_days = fields.Float(default=0.0, help="Visibility Days applied on the purchase routes.")
     product_supplier_id = fields.Many2one('res.partner', compute='_compute_product_supplier_id', store=True, string='Product Supplier')
 
     @api.depends('product_id.purchase_order_line_ids.product_qty', 'product_id.purchase_order_line_ids.state')
-    def _compute_qty_to_order_computed(self):
-        """ Extend to add more depends values
-        TODO: Probably performance costly due to x2many in depends
-        """
-        return super()._compute_qty_to_order_computed()
+    def _compute_qty(self):
+        """ Extend to add more depends values """
+        return super()._compute_qty()
 
     @api.depends('supplier_id')
     def _compute_lead_days(self):
@@ -193,9 +200,9 @@ class StockWarehouseOrderpoint(models.Model):
 
     def _get_replenishment_order_notification(self):
         self.ensure_one()
-        domain = Domain('orderpoint_id', 'in', self.ids)
+        domain = [('orderpoint_id', 'in', self.ids)]
         if self.env.context.get('written_after'):
-            domain &= Domain('write_date', '>=', self.env.context.get('written_after'))
+            domain = AND([domain, [('write_date', '>=', self.env.context.get('written_after'))]])
         order = self.env['purchase.order.line'].search(domain, limit=1).order_id
         if order:
             return {
@@ -263,7 +270,7 @@ class StockLot(models.Model):
         self.ensure_one()
         action = self.env["ir.actions.actions"]._for_xml_id("purchase.purchase_form_action")
         action['domain'] = [('id', 'in', self.mapped('purchase_order_ids.id'))]
-        action['context'] = dict(self.env.context, create=False)
+        action['context'] = dict(self._context, create=False)
         return action
 
 

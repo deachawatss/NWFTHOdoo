@@ -110,7 +110,7 @@ class MrpSubcontractingPurchaseTest(TestMrpSubcontractingCommon):
                 'name': 'finished',
                 'product_id': self.finished.id,
                 'product_qty': 1.0,
-                'product_uom_id': self.finished.uom_id.id,
+                'product_uom': self.finished.uom_id.id,
                 'price_unit': 50.0}
             )],
         })
@@ -136,7 +136,7 @@ class MrpSubcontractingPurchaseTest(TestMrpSubcontractingCommon):
                 'name': 'finished',
                 'product_id': self.finished.id,
                 'product_qty': product_qty,
-                'product_uom_id': self.finished.uom_id.id,
+                'product_uom': self.finished.uom_id.id,
                 'price_unit': 50.0}
             )],
         })
@@ -185,7 +185,7 @@ class MrpSubcontractingPurchaseTest(TestMrpSubcontractingCommon):
                 'name': self.finished2.name,
                 'product_id': self.finished2.id,
                 'product_uom_qty': 10,
-                'product_uom_id': self.finished2.uom_id.id,
+                'product_uom': self.finished2.uom_id.id,
                 'price_unit': 1,
             })],
         })
@@ -219,7 +219,7 @@ class MrpSubcontractingPurchaseTest(TestMrpSubcontractingCommon):
         ensures that the final received quantity is correctly computed
         """
         grp_multi_loc = self.env.ref('stock.group_stock_multi_locations')
-        self.env.user.write({'group_ids': [(4, grp_multi_loc.id)]})
+        self.env.user.write({'groups_id': [(4, grp_multi_loc.id)]})
 
         po = self.env['purchase.order'].create({
             'partner_id': self.subcontractor_partner1.id,
@@ -227,7 +227,7 @@ class MrpSubcontractingPurchaseTest(TestMrpSubcontractingCommon):
                 'name': self.finished2.name,
                 'product_id': self.finished2.id,
                 'product_uom_qty': 10,
-                'product_uom_id': self.finished2.uom_id.id,
+                'product_uom': self.finished2.uom_id.id,
                 'price_unit': 1,
             })],
         })
@@ -296,7 +296,7 @@ class MrpSubcontractingPurchaseTest(TestMrpSubcontractingCommon):
             'order_line': [(0, 0, {
                 'product_id': product.id,
                 'product_qty': 1,
-                'product_uom_id': product.uom_id.id,
+                'product_uom': product.uom_id.id,
                 'name': product.name,
                 'price_unit': 1,
             })],
@@ -329,7 +329,7 @@ class MrpSubcontractingPurchaseTest(TestMrpSubcontractingCommon):
                 'name': self.finished2.name,
                 'product_id': self.finished2.id,
                 'product_uom_qty': 10,
-                'product_uom_id': self.finished2.uom_id.id,
+                'product_uom': self.finished2.uom_id.id,
                 'price_unit': 1,
             })],
         })
@@ -362,7 +362,7 @@ class MrpSubcontractingPurchaseTest(TestMrpSubcontractingCommon):
         self.env.company.anglo_saxon_accounting = True
         resupply_sub_on_order_route = self.env['stock.route'].search([('name', '=', 'Resupply Subcontractor on Order')])
         (self.comp1 + self.comp2).write({'route_ids': [(6, None, [resupply_sub_on_order_route.id])]})
-        product_category_all = self.product_category
+        product_category_all = self.env.ref('product.product_category_all')
         product_category_all.property_cost_method = 'standard'
         product_category_all.property_valuation = 'real_time'
         self._setup_category_stock_journals()
@@ -417,7 +417,7 @@ class MrpSubcontractingPurchaseTest(TestMrpSubcontractingCommon):
             An extra SVL should be created to correct the valuation of the product
             Also check account move data for real time inventory
         """
-        product_category_all = self.product_category
+        product_category_all = self.env.ref('product.product_category_all')
         product_category_all.property_cost_method = 'fifo'
         product_category_all.property_valuation = 'real_time'
         in_account = self.env['account.account'].create({
@@ -455,14 +455,14 @@ class MrpSubcontractingPurchaseTest(TestMrpSubcontractingCommon):
                     'name': self.comp1.name,
                     'product_id': self.comp1.id,
                     'product_uom_qty': 1,
-                    'product_uom_id': self.finished.uom_id.id,
+                    'product_uom': self.finished.uom_id.id,
                     'price_unit': 10,
                 }),
                 Command.create({
                     'name': self.comp2.name,
                     'product_id': self.comp2.id,
                     'product_uom_qty': 1,
-                    'product_uom_id': self.finished.uom_id.id,
+                    'product_uom': self.finished.uom_id.id,
                     'price_unit': 10,
                 })
             ],
@@ -478,7 +478,7 @@ class MrpSubcontractingPurchaseTest(TestMrpSubcontractingCommon):
                 'name': self.finished.name,
                 'product_id': self.finished.id,
                 'product_uom_qty': 1,
-                'product_uom_id': self.finished.uom_id.id,
+                'product_uom': self.finished.uom_id.id,
                 'price_unit': 100,
             })],
         })
@@ -520,7 +520,7 @@ class MrpSubcontractingPurchaseTest(TestMrpSubcontractingCommon):
                 'name': self.finished2.name,
                 'product_id': self.finished2.id,
                 'product_qty': 10,
-                'product_uom_id': self.finished2.uom_id.id,
+                'product_uom': self.finished2.uom_id.id,
                 'price_unit': 1,
             })],
         })
@@ -689,7 +689,7 @@ class MrpSubcontractingPurchaseTest(TestMrpSubcontractingCommon):
                 'name': 'finished',
                 'product_id': self.finished.id,
                 'product_qty': 1.0,
-                'product_uom_id': self.finished.uom_id.id,
+                'product_uom': self.finished.uom_id.id,
                 'price_unit': 50.0}
             )],
         })
@@ -723,12 +723,12 @@ class MrpSubcontractingPurchaseTest(TestMrpSubcontractingCommon):
         buy_route = self.env['stock.route'].search([('name', '=', 'Buy')])
         mto_route.active = True
         self.finished.route_ids = mto_route.ids + buy_route.ids
-        self.env['product.supplierinfo'].create({
-            'product_id': self.finished.id,
+        seller = self.env['product.supplierinfo'].create({
             'partner_id': self.vendor.id,
             'price': 12.0,
             'delay': 0
         })
+        self.finished.seller_ids = [(6, 0, [seller.id])]
 
         mo = self.env['mrp.production'].create({
             'product_id': self.finished2.id,
@@ -789,7 +789,12 @@ class MrpSubcontractingPurchaseTest(TestMrpSubcontractingCommon):
             'bom_line_ids': [(0, 0, {'product_id': component.id, 'product_qty': 1.0})],
         })
 
-        self.env['stock.quant']._update_available_quantity(component, self.warehouse.lot_stock_id, total_component_quantity)
+        inventory_wizard = self.env['stock.change.product.qty'].create({
+            'product_id': component.id,
+            'product_tmpl_id': component.product_tmpl_id.id,
+            'new_quantity': total_component_quantity,
+        })
+        inventory_wizard.change_product_qty()
         # Check quantity was updated
         self.assertEqual(component.virtual_available, total_component_quantity)
         self.assertEqual(component.qty_available, total_component_quantity)
@@ -890,7 +895,7 @@ class MrpSubcontractingPurchaseTest(TestMrpSubcontractingCommon):
         Check the locations.
         """
         grp_multi_loc = self.env.ref('stock.group_stock_multi_locations')
-        self.env.user.write({'group_ids': [Command.link(grp_multi_loc.id)]})
+        self.env.user.write({'groups_id': [Command.link(grp_multi_loc.id)]})
         subcontract_loc = self.env.company.subcontracting_location_id
         production_loc = self.finished.property_stock_production
         final_loc = self.env['stock.location'].create({
@@ -904,7 +909,7 @@ class MrpSubcontractingPurchaseTest(TestMrpSubcontractingCommon):
                 'name': self.finished.name,
                 'product_id': self.finished.id,
                 'product_qty': 2.0,
-                'product_uom_id': self.finished.uom_id.id,
+                'product_uom': self.finished.uom_id.id,
                 'price_unit': 1.0,
             })],
         })
@@ -948,7 +953,7 @@ class MrpSubcontractingPurchaseTest(TestMrpSubcontractingCommon):
                 'name': self.finished.name,
                 'product_id': self.finished.id,
                 'product_qty': 2.0,
-                'product_uom_id': self.finished.uom_id.id,
+                'product_uom': self.finished.uom_id.id,
                 'price_unit': 10.0,
             })],
         })
@@ -984,6 +989,7 @@ class MrpSubcontractingPurchaseTest(TestMrpSubcontractingCommon):
             'location_id': wh.lot_stock_id.id,
             'location_dest_id': self.env.ref('stock.stock_location_customers').id,
             'move_ids': [Command.create({
+                'name': 'TGVDALT out move',
                 'product_id': final_product.id,
                 'product_uom_qty': 2,
                 'location_id': wh.lot_stock_id.id,
@@ -1017,8 +1023,8 @@ class MrpSubcontractingPurchaseTest(TestMrpSubcontractingCommon):
             'order_line': [Command.create({
                 'name': self.finished2.name,
                 'product_id': self.finished2.id,
-                'product_qty': 10,
-                'product_uom_id': self.finished2.uom_id.id,
+                'product_uom_qty': 10,
+                'product_uom': self.finished2.uom_id.id,
                 'price_unit': 1,
             })],
         })

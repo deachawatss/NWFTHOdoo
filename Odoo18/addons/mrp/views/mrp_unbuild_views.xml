@@ -24,21 +24,18 @@
                 <search string="Search">
                     <field name="product_id"/>
                     <field name="mo_id"/>
-                    <group string="Filters">
+                    <group expand="0" string="Filters">
                         <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
                         <filter name="done" string="Done" domain="[('state', '=', 'done')]"/>
-                        <filter invisible="1" string="My Activities" name="filter_activities_my"
-                            domain="[('activity_user_id', '=', uid)]"/>
-                        <separator invisible="1"/>
                         <filter invisible="1" string="Late Activities" name="activities_overdue"
-                            domain="[('activity_date_deadline', '&lt;', context_today().strftime('%Y-%m-%d'))]"
-                            help="Show all records whose next activity date is past"/>
+                            domain="[('my_activity_date_deadline', '&lt;', context_today().strftime('%Y-%m-%d'))]"
+                            help="Show all records which has next action date is before today"/>
                         <filter invisible="1" string="Today Activities" name="activities_today"
-                            domain="[('activity_date_deadline', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                            domain="[('my_activity_date_deadline', '=', context_today().strftime('%Y-%m-%d'))]"/>
                         <filter invisible="1" string="Future Activities" name="activities_upcoming_all"
-                            domain="[('activity_date_deadline', '&gt;', context_today().strftime('%Y-%m-%d'))]"/>
+                            domain="[('my_activity_date_deadline', '&gt;', context_today().strftime('%Y-%m-%d'))]"/>
                     </group>
-                    <group string='Group by...'>
+                    <group expand='0' string='Group by...'>
                         <filter string='Product' name="productgroup" context="{'group_by': 'product_id'}"/>
                         <filter string="Manufacturing Order" name="mogroup" context="{'group_by': 'mo_id'}"/>
                     </group>
@@ -99,7 +96,7 @@
                                 <label for="product_qty"/>
                                 <div class="o_row">
                                     <field name="product_qty" readonly="has_tracking == 'serial' or state == 'done'"/>
-                                    <field name="product_uom_id" options="{'no_open': True, 'no_create': True}" groups="uom.group_uom" widget="many2one_uom" readonly="mo_id or state == 'done'" force_save="1"/>
+                                    <field name="product_uom_id" options="{'no_open': True, 'no_create': True}" groups="uom.group_uom" readonly="mo_id or state == 'done'" force_save="1"/>
                                 </div>
                             </group>
                             <group>
@@ -134,7 +131,7 @@
                                 <label for="product_qty"/>
                                 <div class="o_row">
                                     <field name="product_qty" readonly="has_tracking == 'serial'"/>
-                                    <field name="product_uom_id" options="{'no_open': True, 'no_create': True}" groups="uom.group_uom" widget="many2one_uom" readonly="mo_id" force_save="1"/>
+                                    <field name="product_uom_id" options="{'no_open': True, 'no_create': True}" groups="uom.group_uom" readonly="mo_id" force_save="1"/>
                                 </div>
                             </group>
                             <group>
@@ -167,7 +164,7 @@
                     <field name="mo_id" readonly="state == 'done'"/>
                     <field name="lot_id" groups="stock.group_production_lot"/>
                     <field name="product_qty" readonly="state == 'done'"/>
-                    <field name="product_uom_id" groups="uom.group_uom" widget="many2one_uom" readonly="state == 'done'"/>
+                    <field name="product_uom_id" groups="uom.group_uom" readonly="state == 'done'"/>
                     <field name="location_id" options="{'no_create': True}" groups="stock.group_stock_multi_locations" readonly="state == 'done'"/>
                     <field name="activity_exception_decoration" widget="activity_exception"/>
                     <field name="company_id" groups="base.group_multi_company" readonly="state == 'done'"/>
@@ -179,7 +176,6 @@
     <record model="ir.actions.act_window" id="mrp_unbuild">
         <field name="name">Unbuild Orders</field>
         <field name="res_model">mrp.unbuild</field>
-        <field name="path">unbuild-orders</field>
         <field name="view_mode">list,kanban,form,activity</field>
         <field name="help" type="html">
           <p class="o_view_nocontent_smiling_face">

@@ -2,7 +2,7 @@
 from odoo import fields, models
 
 
-class Test_Search_PanelSource_Model(models.Model):
+class SourceModel(models.Model):
     _name = 'test_search_panel.source_model'
     _description = 'Source Model'
 
@@ -16,7 +16,7 @@ class Test_Search_PanelSource_Model(models.Model):
     tag_id = fields.Many2one('test_search_panel.filter_target_model', string="Tag")
 
 
-class Test_Search_PanelCategory_Target_Model(models.Model):
+class CategoryTargetModel(models.Model):
     _name = 'test_search_panel.category_target_model'
     _order = 'name'
     _description = 'Category target model'
@@ -26,7 +26,7 @@ class Test_Search_PanelCategory_Target_Model(models.Model):
     parent_name_id = fields.Many2one('test_search_panel.category_target_model')
 
 
-class Test_Search_PanelCategory_Target_Model_No_Parent_Name(models.Model):
+class CategoryTargetModelNoParentName(models.Model):
     _name = 'test_search_panel.category_target_model_no_parent_name'
     _order = 'id desc'
     _description = 'Category target model'
@@ -34,7 +34,7 @@ class Test_Search_PanelCategory_Target_Model_No_Parent_Name(models.Model):
     name = fields.Char('Name', required=True)
 
 
-class Test_Search_PanelFilter_Target_Model(models.Model):
+class FilterTargetModel(models.Model):
     _name = 'test_search_panel.filter_target_model'
     _order = 'name'
     _description = 'Filter target model'

@@ -86,7 +86,7 @@
 
             <field name="visibility"/>
             <field name="visibility_password_display" invisible="visibility != 'password'" required="visibility == 'password'" password="True" string="Password"/>
-            <field name="group_ids" invisible="visibility != 'restricted_group'" string="Authorized Groups" widget="many2many_tags"/>
+            <field name="groups_id" invisible="visibility != 'restricted_group'" string="Authorized Groups" widget="many2many_tags"/>
             <field name="is_new_page_template" string="Is a Template" widget="boolean_toggle" options="{'autosave': False}"/>
         </xpath>
     </field>
@@ -109,8 +109,6 @@
             <field name="is_published"/>
 
             <field name="create_uid" column_invisible="True"/>
-            <field name="view_write_uid" widget="many2one_avatar" optional="hide"/>
-            <field name="view_write_date" optional="hide"/>
             <field name="write_uid" widget="many2one_avatar" optional="hide"/>
             <field name="write_date" optional="hide"/>
             <field name="track" optional="hide"/>
@@ -172,8 +170,6 @@
             <separator/>
             <filter string="Tracked" name="tracked" domain="[('track', '=', True)]"/>
             <filter string="Not tracked" name="not_tracked" domain="[('track', '=', False)]"/>
-            <separator/>
-            <filter string="Not SEO optimized" name="not_seo_optimized" domain="[('is_seo_optimized', '=', False)]"/>
         </search>
     </field>
 </record>

@@ -11,7 +11,7 @@ from odoo import api, models
 VALIDATION_KARMA_GAIN = 3
 
 
-class ResUsers(models.Model):
+class Users(models.Model):
     _inherit = 'res.users'
 
     @property
@@ -53,8 +53,9 @@ class ResUsers(models.Model):
             }
             params.update(kwargs)
             token_url = self.get_base_url() + '/profile/validate_email?%s' % urls.url_encode(params)
-            activation_template.sudo().with_context(token_url=token_url).send_mail(
-                self.id, force_send=True, raise_exception=True)
+            with self._cr.savepoint():
+                activation_template.sudo().with_context(token_url=token_url).send_mail(
+                    self.id, force_send=True, raise_exception=True)
         return True
 
     def _process_profile_validation_token(self, token, email):

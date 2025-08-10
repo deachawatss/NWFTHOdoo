@@ -25,7 +25,7 @@ test("PhoneField in form view on normal screens (readonly)", async () => {
     await mountView({
         type: "form",
         resModel: "partner",
-        readonly: true,
+        mode: "readonly",
         arch: /* xml */ `
             <form>
                 <sheet>
@@ -137,21 +137,6 @@ test("phone field with placeholder", async () => {
     expect(".o_field_widget[name='foo'] input").toHaveProperty("placeholder", "Placeholder");
 });
 
-test("placeholder_field shows as placeholder", async () => {
-    Partner._fields.char = fields.Char({
-        default: "My Placeholder",
-    });
-    await mountView({
-        type: "form",
-        resModel: "partner",
-        arch: `<form>
-            <field name="foo" widget="phone" options="{'placeholder_field' : 'char'}"/>
-            <field name="char"/>
-        </form>`,
-    });
-    expect(`.o_field_phone input`).toHaveAttribute("placeholder", "My Placeholder");
-});
-
 test("unset and readonly PhoneField", async () => {
     Partner._fields.foo.default = false;
     await mountView({
@@ -175,7 +160,7 @@ test("href is correctly formatted", async () => {
     await mountView({
         type: "form",
         resModel: "partner",
-        readonly: true,
+        mode: "readonly",
         arch: /* xml */ `
             <form>
                 <sheet>

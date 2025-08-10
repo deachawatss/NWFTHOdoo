@@ -44,6 +44,7 @@ class StockGenerateCommon(TransactionCase):
                 'location_dest_id': self.location_dest.id,
             }) for i in range(nbre_of_lines)]
         return self.env['stock.move'].create({
+            'name': 'Move Test',
             'product_id': product.id,
             'product_uom': self.uom_unit.id,
             'location_id': self.location.id,
@@ -219,7 +220,7 @@ class StockGenerateCommon(TransactionCase):
 
         # We need to activate multi-locations to use putaway rules.
         grp_multi_loc = self.env.ref('stock.group_stock_multi_locations')
-        self.env.user.write({'group_ids': [(4, grp_multi_loc.id)]})
+        self.env.user.write({'groups_id': [(4, grp_multi_loc.id)]})
         # Creates a putaway rule
         self.env['stock.putaway.rule'].create({
             'product_id': self.product_serial.id,
@@ -247,7 +248,7 @@ class StockGenerateCommon(TransactionCase):
         -> The test ensures that the destination locations are correct
         """
         stock_location = self.warehouse.lot_stock_id
-        self.env.user.write({'group_ids': [(4, self.env.ref('stock.group_stock_multi_locations').id)]})
+        self.env.user.write({'groups_id': [(4, self.env.ref('stock.group_stock_multi_locations').id)]})
 
         # max 1 x product_serial
         stor_category = self.env['stock.storage.category'].create({
@@ -283,6 +284,7 @@ class StockGenerateCommon(TransactionCase):
             'state': 'draft',
         })
         move = self.env['stock.move'].create({
+            'name': self.product_serial.name,
             'product_id': self.product_serial.id,
             'product_uom': self.product_serial.uom_id.id,
             'product_uom_qty': 2.0,
@@ -327,6 +329,7 @@ class StockGenerateCommon(TransactionCase):
             'state': 'draft',
         })
         self.env['stock.move'].create({
+            'name': product_lot.name,
             'product_id': product_lot.id,
             'product_uom': product_lot.uom_id.id,
             'product_uom_qty': 5.0,
@@ -374,6 +377,7 @@ class StockGenerateCommon(TransactionCase):
             'state': 'draft',
         })
         move = self.env['stock.move'].create({
+            'name': product_lot.name,
             'product_id': product_lot.id,
             'product_uom': product_lot.uom_id.id,
             'product_uom_qty': 5.0,

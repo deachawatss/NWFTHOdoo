@@ -1,7 +1,7 @@
 import { registry } from "@web/core/registry";
 import { Dropdown } from "@web/core/dropdown/dropdown";
 import { ActionMenus } from "@web/search/action_menus/action_menus";
-import { _t } from "@web/core/l10n/translation";
+
 import { onWillStart, onWillUpdateProps } from "@odoo/owl";
 
 const cogMenuRegistry = registry.category("cogMenu");
@@ -30,7 +30,6 @@ export class CogMenu extends ActionMenus {
         context: { type: ActionMenus.props.context, optional: true },
         resModel: { type: ActionMenus.props.resModel, optional: true },
         items: { ...ActionMenus.props.items, optional: true },
-        slots: { type: Object, optional: true },
     };
     static defaultProps = {
         ...ActionMenus.defaultProps,
@@ -66,12 +65,12 @@ export class CogMenu extends ActionMenus {
     }
 
     get cogItems() {
-        return [...this.registryItems, ...this.actionItems].sort(
-            (item1, item2) => (item1.groupNumber || 0) - (item2.groupNumber || 0)
-        );
-    }
-
-    getPrintItemAriaLabel(item) {
-        return _t("Print report: %s", item.description);
+        return [...this.actionItems, ...this.registryItems].sort((item1, item2) => {
+            const grp = (item1.groupNumber || 0) - (item2.groupNumber || 0);
+            if (grp !== 0) {
+                return grp;
+            }
+            return (item1.sequence || 0) - (item2.sequence || 0);
+        });
     }
 }

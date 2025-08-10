@@ -1,7 +1,8 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import fields, models
-from odoo.fields import Domain
+from odoo.osv import expression
 
 
 class StockRequestCount(models.TransientModel):
@@ -12,7 +13,7 @@ class StockRequestCount(models.TransientModel):
         'Inventory Date', required=True,
         help="Choose a date to get the inventory at that date",
         default=fields.Datetime.now)
-    user_id = fields.Many2one('res.users', string="User", domain=lambda self: [('all_group_ids', 'in', self.env.ref('stock.group_stock_user').id)])
+    user_id = fields.Many2one('res.users', string="User", domain=lambda self: [('groups_id', 'in', self.env.ref('stock.group_stock_user').id)])
     quant_ids = fields.Many2many('stock.quant')
     set_count = fields.Selection([('empty', 'Leave Empty'), ('set', 'Set Current Value')], default='empty', string='Count')
 
@@ -32,11 +33,9 @@ class StockRequestCount(models.TransientModel):
             return quants_to_count
         # Searches sibling quants for tracked product.
         if tracked_quants:
-            domain = {
-                Domain('product_id', '=', quant.product_id.id) & Domain('location_id', '=', quant.location_id.id)
-                for quant in tracked_quants
-            }
-            domain = Domain.OR(domain)
+            domain = {('&', ('product_id', '=', quant.product_id.id), ('location_id', '=', quant.location_id.id))
+                    for quant in tracked_quants}
+            domain = expression.OR(domain)
             sibling_quants = self.env['stock.quant'].search(domain)
             quants_to_count |= sibling_quants
         return quants_to_count

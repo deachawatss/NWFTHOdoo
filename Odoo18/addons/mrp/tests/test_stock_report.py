@@ -218,38 +218,39 @@ class TestMrpStockReports(TestReportsCommon):
         superkit = self.env['product.product'].create({
             'name': 'Super Kit',
             'type': 'consu',
-            'uom_id': self.env['uom.uom'].create({
+            'packaging_ids': [(0, 0, {
                 'name': '6-pack',
-                'relative_factor': 6,
-                'relative_uom_id': self.env.ref('uom.product_uom_unit').id,
-            }).id,
+                'qty': 6,
+            })],
         })
 
         compo01, compo02 = self.env['product.product'].create([{
             'name': n,
             'is_storable': True,
             'uom_id': self.env.ref('uom.product_uom_meter').id,
+            'uom_po_id': self.env.ref('uom.product_uom_meter').id,
         } for n in ['Compo 01', 'Compo 02']])
 
         self.env['mrp.bom'].create({
             'product_tmpl_id': superkit.product_tmpl_id.id,
             'product_qty': 1,
             'type': 'phantom',
-            'product_uom_id': superkit.uom_id.id,
             'bom_line_ids': [
-                (0, 0, {'product_id': compo01.id, 'product_qty': 6}),
-                (0, 0, {'product_id': compo02.id, 'product_qty': 6}),
+                (0, 0, {'product_id': compo01.id, 'product_qty': 1}),
+                (0, 0, {'product_id': compo02.id, 'product_qty': 1}),
             ],
         })
 
-        for back_order, expected_vals in [('never', [12, 12]), ('always', [24, 12])]:
+        for back_order, expected_vals in [('never', [12, 12, 2, 2]), ('always', [24, 12, 4, 2])]:
             picking_form = Form(self.env['stock.picking'])
             picking_form.picking_type_id = self.picking_type_in
             picking_form.partner_id = self.partner
             with picking_form.move_ids_without_package.new() as move:
                 move.product_id = superkit
-                move.product_uom_qty = 4
+                move.product_uom = self.env.ref('uom.product_uom_dozen')
+                move.product_uom_qty = 2
             picking = picking_form.save()
+            picking.move_ids.product_packaging_id = superkit.packaging_ids
             picking.action_confirm()
 
             picking.move_ids.write({'quantity': 12, 'picked': True})
@@ -259,7 +260,7 @@ class TestMrpStockReports(TestReportsCommon):
             self.assertFalse(non_kit_aggregate_values)
             aggregate_values = picking.move_line_ids._get_aggregated_product_quantities(kit_name=superkit.display_name)
             for line in aggregate_values.values():
-                self.assertItemsEqual([line[val] for val in ['qty_ordered', 'quantity']], expected_vals)
+                self.assertItemsEqual([line[val] for val in ['qty_ordered', 'quantity', 'packaging_qty', 'packaging_quantity']], expected_vals)
 
             html_report = self.env['ir.actions.report']._render_qweb_html('stock.report_deliveryslip', picking.ids)[0]
             self.assertTrue(html_report, "report generated successfully")
@@ -316,7 +317,7 @@ class TestMrpStockReports(TestReportsCommon):
         picking.action_confirm()
 
         picking.move_ids.write({'quantity': 1, 'picked': True})
-        move = picking.move_ids.filtered(lambda m: m.description_picking == "Super Kit" and m.product_id == compo03)
+        move = picking.move_ids.filtered(lambda m: m.name == "Super Kit" and m.product_id == compo03)
         move.move_line_ids.result_package_id = self.env['stock.quant.package'].create({'name': 'Package0001'})
         picking.button_validate()
 
@@ -487,6 +488,7 @@ class TestMrpStockReports(TestReportsCommon):
             'location_dest_id': self.stock_location.id,
             'move_type': 'one',
             'move_ids_without_package': [Command.create({
+                    'name': 'test_out_1',
                     'product_id': part.id,
                     'product_uom_qty': 20,
                     'location_id': self.env.ref('stock.stock_location_suppliers').id,
@@ -522,16 +524,10 @@ class TestMrpStockReports(TestReportsCommon):
         """
         # Create a color variant, which will be used to create a Product
         attribute_color = self.env['product.attribute'].create({'name': 'Color'})
-        value_black, value_white = self.env['product.attribute.value'].create([
-            {
-                'name': 'Black',
-                'attribute_id': attribute_color.id,
-            },
-            {
-                'name': 'White',
-                'attribute_id': attribute_color.id,
-            },
-        ])
+        value_black, value_white = self.env['product.attribute.value'].create({
+            'name': name,
+            'attribute_id': attribute_color.id,
+        } for name in ['Black', 'White'])
         # Create 3 product templates, one for the variants, to check to not all variants are used
         # to compute the cost of the MO, another one to make sure the 'missing components' are still
         # taken into account (they are the product that were removed from the MO but are still present
@@ -639,56 +635,3 @@ class TestMrpStockReports(TestReportsCommon):
         mo.move_raw_ids.filtered(lambda m: m.product_id == black_white_product and m.bom_line_id.bom_id.type != 'phantom').unlink()
         mo_report = self.env['report.mrp.report_mo_overview'].get_report_values(mo.id)
         self.assertEqual(mo_report['data']['extras']['unit_bom_cost'], mo_report['data']['extras']['unit_mo_cost'] + missing_product.standard_price + black_white_product.standard_price, 'The BoM unit cost should take the missing components into account, which are the deleted MO lines')
-
-    def test_mo_overview_operation_cost(self):
-        """ Test that operations correctly compute their cost depending on their cost_mode. """
-        expedition_33 = self.product
-        lumiere = self.env['mrp.workcenter'].create({
-            'name': 'Lumière',
-            'costs_hour': 33,
-        })
-        bom_baguette = self.env['mrp.bom'].create({
-            'product_id': expedition_33.id,
-            'product_tmpl_id': expedition_33.product_tmpl_id.id,
-            'product_qty': 1.0,
-            'type': 'normal',
-            'operation_ids': [
-                Command.create({
-                    'name': 'Get on a boat',
-                    'workcenter_id': lumiere.id,
-                    'time_cycle': 60,
-                    'sequence': 1,
-                    'cost_mode': 'actual'
-                }),
-                Command.create({
-                    'name': 'Die on a beach',
-                    'workcenter_id': lumiere.id,
-                    'time_cycle': 60,
-                    'sequence': 2,
-                    'cost_mode': 'estimated'
-                }),
-            ],
-        })
-
-        mo = self.env['mrp.production'].create({
-            'name': 'MO',
-            'product_qty': 1.0,
-            'product_id': expedition_33.id,
-        })
-        mo.action_confirm()
-        mo.workorder_ids.duration = 10
-
-        overview_values = self.env['report.mrp.report_mo_overview'].get_report_values(mo.id)
-        self.assertEqual(overview_values['data']['operations']['details'][0]['mo_cost'], 33.0)
-        self.assertEqual(overview_values['data']['operations']['details'][0]['real_cost'], 5.5)
-        self.assertEqual(overview_values['data']['operations']['details'][1]['mo_cost'], 33.0)
-        self.assertEqual(overview_values['data']['operations']['details'][1]['real_cost'], 33.0)
-
-        # Costs should stay the same for a done MO and/or if the cost_mode of the operation is changed
-        mo.button_mark_done()
-        bom_baguette.operation_ids.filtered(lambda o: o.cost_mode == 'estimated').cost_mode = 'actual'
-        overview_values = self.env['report.mrp.report_mo_overview'].get_report_values(mo.id)
-        self.assertEqual(overview_values['data']['operations']['details'][0]['mo_cost'], 33.0)
-        self.assertEqual(overview_values['data']['operations']['details'][0]['real_cost'], 5.5)
-        self.assertEqual(overview_values['data']['operations']['details'][1]['mo_cost'], 33.0)
-        self.assertEqual(overview_values['data']['operations']['details'][1]['real_cost'], 33.0)

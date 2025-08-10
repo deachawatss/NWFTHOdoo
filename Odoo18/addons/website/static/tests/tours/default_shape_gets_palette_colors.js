@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { queryFirst } from "@odoo/hoot-dom";
 import {
     changeOption,
@@ -19,7 +21,7 @@ registerWebsitePreviewTour("default_shape_gets_palette_colors", {
         id: 's_text_image',
         name: 'Text - Image',
     }),
-    changeOption("Text - Image", "toggleBgShape"),
+    changeOption('ColoredLevelBackground', 'Shape'),
     {
         content: "Check that shape does not have a background-image in its inline style",
         trigger: ':iframe #wrap .s_text_image .o_we_shape',

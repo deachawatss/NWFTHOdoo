@@ -2,6 +2,12 @@
 
 from urllib.parse import quote
 
+try:
+    from google.oauth2 import service_account
+    from google.auth.transport.requests import Request
+except ImportError:
+    service_account = Request = None
+
 from odoo.tests.common import TransactionCase
 from odoo.exceptions import UserError
 
@@ -10,6 +16,8 @@ from .. import uninstall_hook
 
 class TestCloudStorageGoogleCommon(TransactionCase):
     def setUp(self):
+        if not service_account:
+            self.skipTest('google.oauth2 is not installed')
         super().setUp()
         self.DUMMY_GOOGLE_ACCOUNT_INFO = r'''
 {

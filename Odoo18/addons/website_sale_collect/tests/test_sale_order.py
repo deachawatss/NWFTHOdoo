@@ -40,36 +40,22 @@ class TestSaleOrder(ClickAndCollectCommon):
         so = self._create_in_store_delivery_order(pickup_location_data={'id': warehouse_2.id})
         self.assertEqual(so.warehouse_id, warehouse_2)
 
-    def test_fiscal_position_id_is_computed_from_pickup_location_partner(self):
-        fp_be = self.env['account.fiscal.position'].create({
-            'name': "Test BE fiscal position",
-            'country_id': self.country_be.id,
-            'auto_apply': True,
-        })
-        self.default_partner.country_id = self.country_us
-        self.warehouse.partner_id.country_id = self.country_be
-        so = self._create_in_store_delivery_order(
-            partner_shipping_id=self.default_partner.id,
-            pickup_location_data={'id': self.warehouse.id},
-        )
-        self.assertEqual(so.fiscal_position_id, fp_be)
-
     def test_setting_pickup_location_assigns_correct_fiscal_position(self):
-        fp_be = self.env['account.fiscal.position'].create({
-            'name': "Test BE fiscal position",
-            'country_id': self.country_be.id,
+        fp_us = self.env['account.fiscal.position'].create({
+            'name': "Test US fiscal position",
+            'country_id': self.country_us.id,
             'auto_apply': True,
         })
         so = self._create_in_store_delivery_order()
-        self.default_partner.country_id = self.country_be
+        self.default_partner.country_id = self.country_us
         warehouse = self._create_warehouse()
         warehouse.partner_id = self.default_partner
         so._set_pickup_location('{"id":' + str(warehouse.id) + '}')
-        self.assertEqual(so.fiscal_position_id, fp_be)
+        self.assertEqual(so.fiscal_position_id, fp_us)
 
     def test_selecting_not_in_store_dm_resets_fiscal_position(self):
         fp_us = self.env['account.fiscal.position'].create({
-            'name': "Test US fiscal position",
+            'name': "Test US US fiscal position",
             'country_id': self.country_us.id,
             'auto_apply': True,
         })
@@ -83,7 +69,7 @@ class TestSaleOrder(ClickAndCollectCommon):
         self.website.warehouse_id = self.warehouse_2
         so = self._create_in_store_delivery_order()
         so.warehouse_id = self.warehouse
-        free_qty = so._get_free_qty(self.storable_product)
+        _, free_qty = so._get_cart_and_free_qty(self.storable_product)
         self.assertEqual(free_qty, 10)
 
     def test_prevent_buying_out_of_stock_products(self):

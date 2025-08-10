@@ -1,17 +1,17 @@
 import {
+    assertSteps,
     click,
     contains,
     defineMailModels,
-    editInput,
     openDiscuss,
     patchUiSize,
     SIZES,
     start,
     startServer,
+    step,
 } from "@mail/../tests/mail_test_helpers";
 import { describe, test } from "@odoo/hoot";
-import { advanceTime } from "@odoo/hoot-mock";
-import { asyncStep, patchWithCleanup, waitForSteps } from "@web/../tests/web_test_helpers";
+import { patchWithCleanup } from "@web/../tests/web_test_helpers";
 
 import { browser } from "@web/core/browser/browser";
 
@@ -41,8 +41,6 @@ test("Renders the call settings", async () => {
     patchUiSize({ size: SIZES.SM });
     await start();
     await openDiscuss(channelId);
-    // dropdown requires an extra delay before click (because handler is registered in useEffect)
-    await contains("[title='Open Actions Menu']");
     await click("[title='Open Actions Menu']");
     await click(".o-dropdown-item", { text: "Call Settings" });
     await contains(".o-discuss-CallSettings");
@@ -51,8 +49,7 @@ test("Renders the call settings", async () => {
     await contains("option[value=mockVideoDeviceId]", { count: 0 });
     await contains("button", { text: "Voice Detection" });
     await contains("button", { text: "Push to Talk" });
-    await contains("span", { text: "Voice detection sensitivity" });
-    await contains("button", { text: "Test" });
+    await contains("label", { text: "Voice detection threshold" });
     await contains("label", { text: "Show video participants only" });
     await contains("label", { text: "Blur video background" });
 });
@@ -63,14 +60,12 @@ test("activate push to talk", async () => {
     patchUiSize({ size: SIZES.SM });
     await start();
     await openDiscuss(channelId);
-    // dropdown requires an extra delay before click (because handler is registered in useEffect)
-    await contains("[title='Open Actions Menu']");
     await click("[title='Open Actions Menu']");
     await click(".o-dropdown-item", { text: "Call Settings" });
     await click("button", { text: "Push to Talk" });
     await contains("i[aria-label='Register new key']");
     await contains("label", { text: "Delay after releasing push-to-talk" });
-    await contains("label", { text: "Voice detection sensitivity", count: 0 });
+    await contains("label", { text: "Voice detection threshold", count: 0 });
 });
 
 test("activate blur", async () => {
@@ -79,8 +74,6 @@ test("activate blur", async () => {
     patchUiSize({ size: SIZES.SM });
     await start();
     await openDiscuss(channelId);
-    // dropdown requires an extra delay before click (because handler is registered in useEffect)
-    await contains("[title='Open Actions Menu']");
     await click("[title='Open Actions Menu']");
     await click(".o-dropdown-item", { text: "Call Settings" });
     await click("input[title='Blur video background']");
@@ -91,14 +84,25 @@ test("activate blur", async () => {
 test("local storage for call settings", async () => {
     const pyEnv = await startServer();
     const channelId = pyEnv["discuss.channel"].create({ name: "test" });
-    localStorage.setItem("mail_user_setting_background_blur_amount", "3");
-    localStorage.setItem("mail_user_setting_edge_blur_amount", "5");
-    localStorage.setItem("mail_user_setting_show_only_video", "true");
-    localStorage.setItem("mail_user_setting_use_blur", "true");
-    patchWithCleanup(localStorage, {
+    patchWithCleanup(browser.localStorage, {
+        getItem(key) {
+            if (key === "mail_user_setting_background_blur_amount") {
+                return "3";
+            }
+            if (key === "mail_user_setting_edge_blur_amount") {
+                return "5";
+            }
+            if (key === "mail_user_setting_show_only_video") {
+                return "true";
+            }
+            if (key === "mail_user_setting_use_blur") {
+                return "true";
+            }
+            return super.getItem(key);
+        },
         setItem(key, value) {
             if (key.startsWith("mail_user_setting")) {
-                asyncStep(`${key}: ${value}`);
+                step(`${key}: ${value}`);
             }
             return super.setItem(key, value);
         },
@@ -107,8 +111,6 @@ test("local storage for call settings", async () => {
     await start();
     await openDiscuss(channelId);
     // testing load from local storage
-    // dropdown requires an extra delay before click (because handler is registered in useEffect)
-    await contains("[title='Open Actions Menu']");
     await click("[title='Open Actions Menu']");
     await click(".o-dropdown-item", { text: "Call Settings" });
     await contains("input[title='Show video participants only']:checked");
@@ -118,10 +120,7 @@ test("local storage for call settings", async () => {
 
     // testing save to local storage
     await click("input[title='Show video participants only']");
-    await waitForSteps(["mail_user_setting_show_only_video: false"]);
+    await assertSteps(["mail_user_setting_show_only_video: false"]);
     await click("input[title='Blur video background']");
-    await waitForSteps(["mail_user_setting_use_blur: false"]);
-    await editInput(document.body, ".o-Discuss-CallSettings-thresholdInput", 0.3);
-    await advanceTime(2000); // threshold setting debounce timer
-    await waitForSteps(["mail_user_setting_voice_threshold: 0.3"]);
+    await assertSteps(["mail_user_setting_use_blur: false"]);
 });

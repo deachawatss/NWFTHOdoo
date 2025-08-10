@@ -1,16 +1,10 @@
-import { hrModels } from "@hr/../tests/hr_test_helpers";
-import { fields } from "@web/../tests/web_test_helpers";
+import { fields, models } from "@web/../tests/web_test_helpers";
 
-export class HrEmployee extends hrModels.HrEmployee {
+export class HrEmployee extends models.Model {
     _name = "hr.employee";
 
     name = fields.Char();
-    leave_date_to = fields.Date();
-    user_id = fields.Many2one({ relation: "res.users" });
-
-    _get_store_avatar_card_fields() {
-        return [...super._get_store_avatar_card_fields(), "leave_date_to"];
-    }
+    department_id = fields.Many2one({ relation: "hr.department" });
 
     _records = [
         {

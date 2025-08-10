@@ -1,6 +1,6 @@
 import { registry } from "@web/core/registry";
 
-registry.category("web_tour.tours").add("test_mail_full.chatbot_redirect_to_portal", {
+registry.category("web_tour.tours").add("chatbot_redirect_to_portal", {
     url: "/contactus",
     steps: () => [
         {
@@ -13,13 +13,13 @@ registry.category("web_tour.tours").add("test_mail_full.chatbot_redirect_to_port
             run: "click",
         },
         {
-            trigger: ".o-livechat-root:shadow li button:contains(Go to the portal page)",
+            trigger: ".o-livechat-root:shadow li:contains(Go to the portal page)",
             run: "click",
-            expectUnloadPage: true,
         },
         {
             trigger: ".o-livechat-root:shadow .o-mail-Message:contains('Go to the portal page')",
         },
+        { trigger: "#chatterRoot:shadow .o-mail-Chatter" },
         {
             trigger: ".o-livechat-root:shadow .o-mail-Message:last:contains('Tadam')",
         },

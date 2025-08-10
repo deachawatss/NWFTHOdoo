@@ -23,18 +23,18 @@ class TestMassMailing(TestMailFullCommon):
 
         # optout records 1 and 2
         (recipients[1] | recipients[2]).write({'opt_out': True})
-        recipients[1].email_from = f'"Format Me" <{recipients[1].email_normalized}>'
+        recipients[1].email_from = f'"Format Me" <{recipients[1].email_from}>'
         # blacklist records 3 and 4
         self.env['mail.blacklist'].create({'email': recipients[3].email_normalized})
         self.env['mail.blacklist'].create({'email': recipients[4].email_normalized})
-        recipients[3].email_from = f'"Format Me" <{recipients[3].email_normalized}>'
+        recipients[3].email_from = f'"Format Me" <{recipients[3].email_from}>'
         # have a duplicate email for 9
-        recipients[9].email_from = f'"Format Me" <{recipients[9].email_normalized}>'
+        recipients[9].email_from = f'"Format Me" <{recipients[9].email_from}>'
         recipient_dup_1 = recipients[9].copy()
-        recipient_dup_1.email_from = f'"Format Me" <{recipient_dup_1.email_normalized}>'
+        recipient_dup_1.email_from = f'"Format Me" <{recipient_dup_1.email_from}>'
         # have another duplicate for 9, but with multi emails already done
         recipient_dup_2 = recipients[9].copy()
-        recipient_dup_2.email_from += f'; "TestDupe" <{recipients[8].email_normalized}>'
+        recipient_dup_2.email_from += f'; "TestDupe" <{recipients[8].email_from}>'
         # have another duplicate for 9, but with multi emails, one is different
         recipient_dup_3 = recipients[9].copy()  # this one will passthrough (best-effort)
         recipient_dup_3.email_from += '; "TestMulti" <test.multi@test.example.com>'
@@ -60,24 +60,12 @@ class TestMassMailing(TestMailFullCommon):
         for recipient in recipients_all:
             with self.subTest(recipient_from=recipient.email_from):
                 recipient_info = {
+                    'email': recipient.email_normalized,
                     'content': f'Hello {recipient.name}',
-                    'email': recipient.email_normalized or '',
-                    'email_to_mail': recipient.email_from or '',
-                    'email_to_recipients': [[recipient.email_from]],
                     'mail_values': {
                         'subject': f'Subject {recipient.name}',
                     },
                 }
-                # ; transformed into comma
-                if recipient == recipient_dup_2:
-                    recipient_info['email_to_mail'] = '"Format Me" <test.record.09@test.example.com>,"TestDupe" <test.record.08@test.example.com>'
-                if recipient == recipient_dup_3:
-                    recipient_info['email_to_mail'] = '"Format Me" <test.record.09@test.example.com>,"TestMulti" <test.multi@test.example.com>'
-                    # multi email -> outgoing email contains all emails
-                    recipient_info['email_to_recipients'] = [['"Format Me" <test.record.09@test.example.com>', '"TestMulti" <test.multi@test.example.com>']]
-                if recipient == recipient_dup_4:
-                    recipient_info['email_to_mail'] = '"Format Me" <test.record.09@test.example.com>,"TestDupe" <test.record.08@test.example.com>'
-
                 # opt-out: cancel (cancel mail)
                 if recipient in recipients[1] | recipients[2]:
                     recipient_info['trace_status'] = "cancel"
@@ -100,7 +88,11 @@ class TestMassMailing(TestMailFullCommon):
                     recipient_info['failure_type'] = "mail_email_invalid"
                     recipient_info['email'] = recipient.email_from  # normalized is False but email should be falsymail
                 else:
-                    email = self._find_sent_email(self.user_marketing.email_formatted, recipient_info['email_to_recipients'][0])
+                    # multi email -> outgoing email contains all emails
+                    if recipient == recipient_dup_3:
+                        email = self._find_sent_email(self.user_marketing.email_formatted, ['test.record.09@test.example.com', 'test.multi@test.example.com'])
+                    else:
+                        email = self._find_sent_email(self.user_marketing.email_formatted, [recipient.email_normalized])
                     # preview correctly integrated rendered qweb
                     self.assertIn(
                         'Hi %s :)' % recipient.name,
@@ -132,23 +124,23 @@ class TestMassMailing(TestMailFullCommon):
                         view_params['hash_token']
                     )
 
-            self.assertMailTraces(
-                [recipient_info], mailing, recipient,
-                mail_links_info=[[
-                    ('url0', 'https://www.odoo.tz/my/%s' % recipient.name, True, {}),
-                    ('url1', 'https://www.odoo.be', True, {}),
-                    ('url2', 'https://www.odoo.com', True, {}),
-                    ('url3', 'https://www.odoo.eu', True, {}),
-                    ('url4', 'https://www.example.com/foo/bar?baz=qux', True, {'baz': 'qux'}),
-                    ('url5', '%s/event/dummy-event-0' % mailing.get_base_url(), True, {}),
-                    # view is not shortened and parsed at sending
-                    ('url6', '%s/view' % mailing.get_base_url(), False, {}),
-                    ('url7', 'mailto:test@odoo.com', False, {}),
-                    # unsubscribe is not shortened and parsed at sending
-                    ('url8', '%s/unsubscribe_from_list' % mailing.get_base_url(), False, {}),
-                ]],
-                check_mail=True,
-            )
+                self.assertMailTraces(
+                    [recipient_info], mailing, recipient,
+                    mail_links_info=[[
+                        ('url0', 'https://www.odoo.tz/my/%s' % recipient.name, True, {}),
+                        ('url1', 'https://www.odoo.be', True, {}),
+                        ('url2', 'https://www.odoo.com', True, {}),
+                        ('url3', 'https://www.odoo.eu', True, {}),
+                        ('url4', 'https://www.example.com/foo/bar?baz=qux', True, {'baz': 'qux'}),
+                        ('url5', '%s/event/dummy-event-0' % mailing.get_base_url(), True, {}),
+                        # view is not shortened and parsed at sending
+                        ('url6', '%s/view' % mailing.get_base_url(), False, {}),
+                        ('url7', 'mailto:test@odoo.com', False, {}),
+                        # unsubscribe is not shortened and parsed at sending
+                        ('url8', '%s/unsubscribe_from_list' % mailing.get_base_url(), False, {}),
+                    ]],
+                    check_mail=True,
+                )
 
         # sent: 15, 2 bl, 3 opt-out, 3 invalid -> 7 remaining
         # ignored: 2 bl + 3 optout + 2 invalid + 1 duplicate; failed: 0

@@ -80,7 +80,7 @@ export class MailThread extends models.ServerModel {
             {
                 [filter_recipients ? "recipients" : "followers"]: mailDataHelpers.Store.many(
                     followers,
-                    makeKwArgs({ mode: reset ? "REPLACE" : "ADD" })
+                    reset ? "REPLACE" : "ADD"
                 ),
             },
             makeKwArgs({ as_thread: true })
@@ -105,8 +105,6 @@ export class MailThread extends models.ServerModel {
         const MailThread = this.env["mail.thread"];
         /** @type {import("mock_models").ResUsers} */
         const ResUsers = this.env["res.users"];
-        /** @type {import("mock_models").MailMessageSubtype} */
-        const MailMessageSubtype = this.env["mail.message.subtype"];
 
         const id = ids[0]; // ensure_one
         if (kwargs.context?.mail_post_autofollow && kwargs.partner_ids?.length) {
@@ -125,6 +123,7 @@ export class MailThread extends models.ServerModel {
             });
             kwargs.attachment_ids = attachmentIds.map((attachmentId) => Command.link(attachmentId));
         }
+        const subtype_xmlid = kwargs.subtype_xmlid || "mail.mt_note";
         let author_id;
         let email_from;
         const author_guest_id =
@@ -142,9 +141,8 @@ export class MailThread extends models.ServerModel {
             author_id,
             author_guest_id,
             email_from,
-            subtype_id: MailMessageSubtype._filter([
-                ["subtype_xmlid", "=", kwargs.subtype_xmlid || "mail.mt_note"],
-            ])[0]?.id,
+            is_discussion: subtype_xmlid === "mail.mt_comment",
+            is_note: subtype_xmlid === "mail.mt_note",
             model: this._name,
             res_id: id,
         });
@@ -159,7 +157,7 @@ export class MailThread extends models.ServerModel {
             });
         }
         MailThread._notify_thread.call(this, ids, messageId, kwargs.context?.temporary_id);
-        return [messageId];
+        return messageId;
     }
 
     /**
@@ -311,7 +309,6 @@ export class MailThread extends models.ServerModel {
             result.push({
                 partner_id: partner.id,
                 name: partner.display_name,
-                email: partner.email,
                 lang,
                 reason,
                 create_values: {},
@@ -585,8 +582,9 @@ export class MailThread extends models.ServerModel {
         return false;
     }
 
-    _thread_to_store(store, fields, request_list) {
-        const kwargs = getKwArgs(arguments, "store", "fields", "request_list");
+    _thread_to_store(ids, store, fields, request_list) {
+        const kwargs = getKwArgs(arguments, "ids", "store", "fields", "request_list");
+        const id = kwargs.ids[0];
         store = kwargs.store;
         fields = kwargs.fields;
         request_list = kwargs.request_list;
@@ -605,17 +603,14 @@ export class MailThread extends models.ServerModel {
         if (!fields) {
             fields = [];
         }
-        const thread = this[0];
-        store._add_record_fields(this.env[this._name].browse(thread.id), fields, true);
-        const res = {};
+        const [thread] = this.env[this._name].browse(id);
+        const [res] = this.read(thread.id, fields, makeKwArgs({ load: false }));
         if (request_list) {
             res.hasReadAccess = true;
             res.hasWriteAccess = thread.hasWriteAccess ?? true; // mimic user with write access by default
             res["canPostOnReadonly"] = this._mail_post_access === "read";
         }
-        const model = this.env[this._name];
-
-        if (request_list && request_list.includes("activities") && model.has_activities) {
+        if (request_list && request_list.includes("activities") && this.has_activities) {
             res["activities"] = mailDataHelpers.Store.many(
                 MailActivity.browse(thread.activity_ids)
             );
@@ -631,14 +626,11 @@ export class MailThread extends models.ServerModel {
             res["isLoadingAttachments"] = false;
             // Specific implementation of mail.thread.main.attachment
             if (this.env[this._name]._fields.message_main_attachment_id) {
-                res["message_main_attachment_id"] = mailDataHelpers.Store.one(
+                res["mainAttachment"] = mailDataHelpers.Store.one(
                     IrAttachment.browse(thread.message_main_attachment_id),
                     makeKwArgs({ only_id: true })
                 );
             }
-        }
-        if (request_list && request_list.includes("display_name")) {
-            res.display_name = thread.display_name;
         }
         if (fields.includes("display_name")) {
             res.name = thread.display_name ?? thread.name;
@@ -659,7 +651,7 @@ export class MailThread extends models.ServerModel {
             );
             MailThread._message_followers_to_store.call(
                 this,
-                [thread.id],
+                [id],
                 store,
                 makeKwArgs({ reset: true })
             );
@@ -671,7 +663,7 @@ export class MailThread extends models.ServerModel {
             ]);
             MailThread._message_followers_to_store.call(
                 this,
-                [thread.id],
+                [id],
                 store,
                 makeKwArgs({ filter_recipients: true, reset: true })
             );
@@ -681,16 +673,16 @@ export class MailThread extends models.ServerModel {
         }
         if (request_list && request_list.includes("suggestedRecipients")) {
             res["suggestedRecipients"] = MailThread._message_get_suggested_recipients.call(this, [
-                thread.id,
+                id,
             ]);
         }
         if (request_list && request_list.includes("scheduledMessages")) {
             res["scheduledMessages"] = mailDataHelpers.Store.many(
                 MailScheduledMessage.filter(
-                    (message) => message.model === this._name && message.res_id === thread.id
-                )
+                    (message) => message.model === this._name && message.res_id === id,
+                ),
             );
         }
-        store._add_record_fields(this.env[this._name].browse(thread.id), res, true);
+        store.add(this.env[this._name].browse(id), res, makeKwArgs({ as_thread: true }));
     }
 }

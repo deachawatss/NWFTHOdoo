@@ -1,7 +1,7 @@
 from odoo import models
 
 
-class EventEventTicket(models.Model):
+class EventTicket(models.Model):
     _inherit = 'event.event.ticket'
     _order = "event_id, sequence, price, name, id"
 
@@ -11,4 +11,4 @@ class EventEventTicket(models.Model):
         self.ensure_one()
         if self.product_id.description_sale:
             return '%s\n%s' % (self.product_id.description_sale, self.event_id.display_name)
-        return super()._get_ticket_multiline_description()
+        return super(EventTicket, self)._get_ticket_multiline_description()

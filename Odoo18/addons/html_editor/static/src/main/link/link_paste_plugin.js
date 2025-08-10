@@ -6,7 +6,7 @@ import { leftPos } from "@html_editor/utils/position";
 
 export class LinkPastePlugin extends Plugin {
     static id = "linkPaste";
-    static dependencies = ["link", "clipboard", "selection", "dom", "history"];
+    static dependencies = ["link", "clipboard", "selection", "dom"];
     resources = {
         before_paste_handlers: this.removeFullySelectedLink.bind(this),
         paste_text_overrides: this.handlePasteText.bind(this),
@@ -90,7 +90,7 @@ export class LinkPastePlugin extends Plugin {
                     this.dependencies.link.createLink(url, splitAroundUrl[i])
                 );
             } else if (splitAroundUrl[i] !== "") {
-                this.dependencies.clipboard.pasteText(splitAroundUrl[i]);
+                this.dependencies.clipboard.pasteText(selection, splitAroundUrl[i]);
             }
         }
     }

@@ -2,7 +2,7 @@ import { expect, test } from "@odoo/hoot";
 import { click, edit, press, queryAllTexts, queryOne } from "@odoo/hoot-dom";
 import { animationFrame, runAllTimers } from "@odoo/hoot-mock";
 import { Component, useState, xml } from "@odoo/owl";
-import { getMockEnv, mountWithCleanup, patchWithCleanup } from "@web/../tests/web_test_helpers";
+import { mountWithCleanup, patchWithCleanup } from "@web/../tests/web_test_helpers";
 
 import { MainComponentsContainer } from "@web/core/main_components_container";
 import { SelectMenu } from "@web/core/select_menu/select_menu";
@@ -138,11 +138,7 @@ test("Close dropdown on click outside", async () => {
     await open();
     expect(".o_select_menu_menu").toHaveCount(1);
 
-    if (getMockEnv().isSmall) {
-        await click(".o_bottom_sheet_backdrop");
-    } else {
-        await click(document.body);
-    }
+    await click(document.body);
     await animationFrame();
 
     expect(".o_select_menu_menu").toHaveCount(0);
@@ -664,7 +660,7 @@ test("When multiSelect is enable, value is an array of values, mutliple choices 
         }
 
         onSelect(newValue) {
-            expect.step(newValue);
+            expect.step(JSON.stringify(newValue));
             this.state.value = newValue;
         }
     }
@@ -680,7 +676,7 @@ test("When multiSelect is enable, value is an array of values, mutliple choices 
     await click(".o_select_menu_item:nth-child(1)");
     await animationFrame();
 
-    expect.verifySteps([["a"]]);
+    expect.verifySteps([`["a"]`]);
 
     expect(".o_select_menu .o_tag_badge_text").toHaveCount(1);
     expect(".o_select_menu .o_tag_badge_text").toHaveText("A");
@@ -691,7 +687,7 @@ test("When multiSelect is enable, value is an array of values, mutliple choices 
 
     await click(".o_select_menu_item:nth-child(2)");
     await animationFrame();
-    expect.verifySteps([["a", "b"]]);
+    expect.verifySteps([`["a","b"]`]);
 
     expect(".o_select_menu .o_tag_badge_text").toHaveCount(2);
 
@@ -722,7 +718,7 @@ test("When multiSelect is enable, allow deselecting elements by clicking the sel
         }
 
         onSelect(newValue) {
-            expect.step(newValue);
+            expect.step(JSON.stringify(newValue));
             this.state.value = newValue;
         }
     }
@@ -734,7 +730,7 @@ test("When multiSelect is enable, allow deselecting elements by clicking the sel
     await click(".o_select_menu_item:nth-child(1)");
     await animationFrame();
 
-    expect.verifySteps([["b"]]);
+    expect.verifySteps([`["b"]`]);
 
     expect(".o_select_menu .o_tag_badge_text").toHaveCount(1);
     expect(".o_select_menu .o_tag_badge_text").toHaveText("B");
@@ -744,7 +740,7 @@ test("When multiSelect is enable, allow deselecting elements by clicking the sel
 
     await click(".o_tag .o_delete");
     await animationFrame();
-    expect.verifySteps([[]]);
+    expect.verifySteps(["[]"]);
 
     expect(".o_select_menu .o_tag").toHaveCount(0);
 });
@@ -953,6 +949,8 @@ test("Choices are updated and filtered when props change", async () => {
 });
 
 test("SelectMenu group items only after being opened", async () => {
+    let count = 0;
+
     patchWithCleanup(SelectMenu.prototype, {
         filterOptions(args) {
             expect.step("filterOptions");
@@ -986,9 +984,11 @@ test("SelectMenu group items only after being opened", async () => {
             });
         }
 
-        onInput(searchString) {
+        onInput() {
+            count++;
             // options have been filtered when typing on the search input",
-            if (searchString === "option d") {
+            expect.verifySteps(["filterOptions"]);
+            if (count === 1) {
                 this.state.choices = [{ label: "Option C", value: "optionC" }];
                 this.state.groups = [
                     {
@@ -1015,7 +1015,7 @@ test("SelectMenu group items only after being opened", async () => {
 
     await open();
     expect(".o_select_menu_menu").toHaveText("Option A\nGroup A\nOption B\nOption C");
-    expect.verifySteps(["filterOptions", "filterOptions"]);
+    expect.verifySteps(["filterOptions"]);
 
     await click("input");
     await edit("option d");
@@ -1023,14 +1023,14 @@ test("SelectMenu group items only after being opened", async () => {
     await animationFrame();
 
     expect(".o_select_menu_menu").toHaveText("Group B\nOption D");
-    expect.verifySteps(["filterOptions", "filterOptions"]);
+    expect.verifySteps(["filterOptions"]);
     await edit("");
     await runAllTimers();
 
     await animationFrame();
 
     expect(".o_select_menu_menu").toHaveText("Option A\nGroup A\nOption B\nOption C");
-    expect.verifySteps(["filterOptions", "filterOptions"]);
+    expect.verifySteps(["filterOptions"]);
 });
 
 test("search value is cleared when reopening the menu", async () => {
@@ -1058,7 +1058,7 @@ test("search value is cleared when reopening the menu", async () => {
     }
     await mountSingleApp(MyParent);
     await open();
-    expect.verifySteps(["search="]);
+    expect.verifySteps([]);
     await click("input");
     await edit("a");
     await runAllTimers();

@@ -1,6 +1,6 @@
 import { expect, test } from "@odoo/hoot";
 import { setSelection } from "./_helpers/selection";
-import { click, hover, queryOne, waitFor, waitForNone } from "@odoo/hoot-dom";
+import { click, hover, queryAll, queryOne, waitFor, waitForNone } from "@odoo/hoot-dom";
 import { defineModels, fields, models, mountView } from "@web/../tests/web_test_helpers";
 import { animationFrame } from "@odoo/hoot-mock";
 import { unformat } from "./_helpers/format";
@@ -106,7 +106,7 @@ test("Table column control should always be displayed on top of the table", asyn
     const scrollableElement = queryOne(".o_content");
     const table = queryOne(".odoo-editor-editable table");
     await hover(".odoo-editor-editable td");
-    let columnControl = await waitFor(".o-we-table-menu[data-type='column']");
+    const columnControl = await waitFor(".o-we-table-menu[data-type='column']");
 
     // Table column control displayed on hover should be above the table
     expect(bottom(columnControl)).toBeLessThan(top(table));
@@ -117,13 +117,11 @@ test("Table column control should always be displayed on top of the table", asyn
     await animationFrame();
 
     await hover(".odoo-editor-editable td");
-    columnControl = await waitFor(".o-we-table-menu[data-type='column']");
+    await animationFrame();
 
-    // Table column control still above the table,
-    // even though the table is close to the top
-    // of its container, but it should be hidden
-    expect(bottom(columnControl)).toBeLessThan(top(table));
-    expect(columnControl).not.toBeVisible();
+    // Table control should not be displayed (it should not overflow the scroll
+    // container, nor be placed below the first row).
+    expect(queryAll(".o-we-table-menu[data-type='column']")).toHaveCount(0);
 });
 
 test.tags("desktop");

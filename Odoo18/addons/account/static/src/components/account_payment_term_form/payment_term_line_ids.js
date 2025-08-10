@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
 
 import { X2ManyField, x2ManyField } from "@web/views/fields/x2many/x2many_field";

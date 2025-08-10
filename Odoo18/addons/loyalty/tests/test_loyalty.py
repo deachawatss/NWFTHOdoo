@@ -1,13 +1,13 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from unittest.mock import patch
-
 from psycopg2 import IntegrityError
 
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 from odoo.fields import Command
-from odoo.tests import Form, TransactionCase, tagged
+from odoo.tests import tagged, TransactionCase, Form
 from odoo.tools import mute_logger
+
+from unittest.mock import patch
 
 
 @tagged('post_install', '-at_install')
@@ -57,8 +57,10 @@ class TestLoyalty(TransactionCase):
 
     def test_discount_product_unlink(self):
         # Test that we can not unlink discount line product id
-        with mute_logger('odoo.sql_db'), self.assertRaises(IntegrityError):
-            self.program.reward_ids.discount_line_product_id.unlink()
+        with mute_logger('odoo.sql_db'):
+            with self.assertRaises(IntegrityError):
+                with self.cr.savepoint():
+                    self.program.reward_ids.discount_line_product_id.unlink()
 
     def test_loyalty_mail(self):
         # Test basic loyalty_mail functionalities
@@ -164,25 +166,35 @@ class TestLoyalty(TransactionCase):
             ],
         })
         before_archived_reward_ids = self.program.reward_ids
-        self.program.action_archive()
-        self.program.action_unarchive()
+        self.program.toggle_active()
+        self.program.toggle_active()
         after_archived_reward_ids = self.program.reward_ids
         self.assertEqual(before_archived_reward_ids, after_archived_reward_ids)
+
+    def test_prevent_archive_pricelist_linked_to_program(self):
+        self.program.pricelist_ids = demo_pricelist = self.env['product.pricelist'].create({
+            'name': "Demo"
+        })
+        with self.assertRaises(UserError):
+            demo_pricelist.action_archive()
+        self.program.action_archive()
+        demo_pricelist.action_archive()
 
     def test_prevent_archiving_product_linked_to_active_loyalty_reward(self):
         self.program.program_type = 'promotion'
         self.program.flush_recordset()
+        product = self.product
         reward = self.env['loyalty.reward'].create({
             'program_id': self.program.id,
-            'discount_line_product_id': self.product.id,
+            'discount_line_product_id': product.id,
         })
         self.program.write({
             'reward_ids': [Command.link(reward.id)],
         })
         with self.assertRaises(ValidationError):
-            self.product.action_archive()
+            product.action_archive()
         self.program.action_archive()
-        self.product.action_archive()
+        product.action_archive()
 
     def test_prevent_archiving_product_used_for_discount_reward(self):
         """
@@ -209,20 +221,21 @@ class TestLoyalty(TransactionCase):
         We just have to archive the free product that has been created while creating
         the program itself not the product we already had before.
         """
+        product = self.product
         loyalty_program = self.env['loyalty.program'].create({
             'name': 'Test Program',
             'program_type': 'buy_x_get_y',
             'reward_ids': [
                 Command.create({
                     'description': 'Test Product',
-                    'reward_product_id': self.product.id,
+                    'reward_product_id': product.id,
                     'reward_type': 'product'
                 }),
             ],
         })
         loyalty_program.action_archive()
         # Make sure that the main product didn't get archived
-        self.assertTrue(self.product.active)
+        self.assertTrue(product.active)
 
     def test_merge_loyalty_cards(self):
         """Test merging nominative loyalty cards from source partners to a destination partner

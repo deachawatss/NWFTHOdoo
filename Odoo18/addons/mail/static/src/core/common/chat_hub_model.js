@@ -1,10 +1,5 @@
 import { browser } from "@web/core/browser/browser";
-import { fields, Record } from "./record";
-
-import { Deferred, Mutex } from "@web/core/utils/concurrency";
-
-export const CHAT_HUB_KEY = "mail.ChatHub";
-const CHAT_HUB_COMPACT_LS = "mail.user_setting.chathub_compact";
+import { Record } from "./record";
 
 export class ChatHub extends Record {
     BUBBLE = 56; // same value as $o-mail-ChatHub-bubblesWidth
@@ -16,69 +11,41 @@ export class ChatHub extends Record {
     WINDOW = 380; // same value as $o-mail-ChatWindow-width
 
     /** @returns {import("models").ChatHub} */
-    static new() {
-        /** @type {import("models").ChatHub} */
-        const chatHub = super.new(...arguments);
-        browser.addEventListener("storage", (ev) => {
-            if (ev.key === CHAT_HUB_KEY) {
-                chatHub.load(ev.newValue);
-            } else if (ev.key === null) {
-                chatHub.load();
-            }
-            if (ev.key === CHAT_HUB_COMPACT_LS) {
-                chatHub.compact = ev.newValue === "true";
-            }
-        });
-        chatHub
-            .load(browser.localStorage.getItem(CHAT_HUB_KEY) ?? undefined)
-            .then(() => chatHub.initPromise.resolve());
-        return chatHub;
+    static get(data) {
+        return super.get(data);
     }
-
-    compact = fields.Attr(false, {
-        compute() {
-            return browser.localStorage.getItem(CHAT_HUB_COMPACT_LS) === "true";
-        },
-        /** @this {import("models").Chathub} */
-        onUpdate() {
-            if (this.compact) {
-                browser.localStorage.setItem(CHAT_HUB_COMPACT_LS, this.compact.toString());
-            } else {
-                browser.localStorage.removeItem(CHAT_HUB_COMPACT_LS);
-            }
-        },
-    });
-    canShowOpened = fields.Many("ChatWindow");
-    canShowFolded = fields.Many("ChatWindow");
+    /** @returns {import("models").ChatHub|import("models").ChatHub[]} */
+    static insert(data) {
+        return super.insert(...arguments);
+    }
+    compact = false;
     /** From left to right. Right-most will actually be folded */
-    opened = fields.Many("ChatWindow", {
+    opened = Record.many("ChatWindow", {
         inverse: "hubAsOpened",
         /** @this {import("models").ChatHub} */
         onAdd(r) {
             this.onRecompute();
         },
+        /** @this {import("models").ChatHub} */
+        onDelete() {
+            this.onRecompute();
+        },
     });
     /** From top to bottom. Bottom-most will actually be hidden */
-    folded = fields.Many("ChatWindow", { inverse: "hubAsFolded" });
-    initPromise = new Deferred();
-    preFirstFetchPromise = new Deferred();
-    loadMutex = new Mutex();
+    folded = Record.many("ChatWindow", {
+        inverse: "hubAsFolded",
+        /** @this {import("models").ChatHub} */
+        onAdd(r) {
+            this.onRecompute();
+        },
+        /** @this {import("models").ChatHub} */
+        onDelete() {
+            this.onRecompute();
+        },
+    });
 
-    async closeAll() {
-        await this.initPromise;
-        const promises = [];
-        for (const cw of [...this.opened, ...this.folded]) {
-            promises.push(cw.close({ notifyState: false }));
-        }
-        await Promise.all(promises);
-        this.save(); // sync only once at the end
-    }
-
-    hideAll() {
-        for (const cw of this.opened) {
-            cw.bypassCompact = false;
-        }
-        this.compact = true;
+    closeAll() {
+        [...this.opened, ...this.folded].forEach((cw) => cw.close());
     }
 
     onRecompute() {
@@ -86,37 +53,6 @@ export class ChatHub extends Record {
             const cw = this.opened.pop();
             this.folded.unshift(cw);
         }
-    }
-
-    async load(str = "{}") {
-        await this.loadMutex.exec(() => this._load(str));
-    }
-
-    async _load(str) {
-        /** @type {{ opened: Object[], folded: Object[] }} */
-        const { opened = [], folded = [] } = JSON.parse(str);
-        const getThread = (data) => this.store.Thread.getOrFetch(data, ["display_name"]);
-        const openPromises = opened.map(getThread);
-        const foldPromises = folded.map(getThread);
-        this.preFirstFetchPromise.resolve();
-        const foldThreads = await Promise.all(foldPromises);
-        const openThreads = await Promise.all(openPromises);
-        /** @param {import("models").Thread[]} threads */
-        const insertChatWindows = (threads) =>
-            threads
-                .filter((thread) => thread)
-                .map((thread) => this.store.ChatWindow.insert({ thread }));
-        const toFold = insertChatWindows(foldThreads);
-        const toOpen = insertChatWindows(openThreads);
-        // close first to make room for others
-        for (const chatWindow of [...this.opened, ...this.folded]) {
-            if (chatWindow.notIn(toOpen) && chatWindow.notIn(toFold)) {
-                chatWindow.close({ force: true, notifyState: false });
-            }
-        }
-        // folded before opened because if there are too many opened they will be added to folded
-        this.folded = toFold;
-        this.opened = toOpen;
     }
 
     get maxOpened() {
@@ -135,22 +71,6 @@ export class ChatHub extends Record {
         const chatBubbleSpace = this.BUBBLE_START + this.BUBBLE + this.BUBBLE_OUTER * 2;
         return Math.min(this.BUBBLE_LIMIT, Math.floor(browser.innerHeight / chatBubbleSpace));
     }
-
-    save() {
-        browser.localStorage.setItem(
-            CHAT_HUB_KEY,
-            JSON.stringify({
-                opened: this.opened.map((cw) => ({ id: cw.thread.id, model: cw.thread.model })),
-                folded: this.folded.map((cw) => ({ id: cw.thread.id, model: cw.thread.model })),
-            })
-        );
-    }
-
-    showConversations = fields.Attr(false, {
-        compute() {
-            return this.canShowOpened.length + this.canShowFolded.length > 0;
-        },
-    });
 }
 
 ChatHub.register();

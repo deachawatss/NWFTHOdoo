@@ -43,7 +43,7 @@ class TestEquipmentMulticompany(TransactionCase):
             'company_id': company_a.id,
             'login': 'e_equipment_manager',
             'email': 'eqmanager@yourcompany.example.com',
-            'group_ids': [(6, 0, [group_manager.id])],
+            'groups_id': [(6, 0, [group_manager.id])],
             'company_ids': [(6, 0, [company_a.id, company_b.id])]
         })
 
@@ -53,7 +53,7 @@ class TestEquipmentMulticompany(TransactionCase):
             'company_id': company_b.id,
             'login': 'emp',
             'email': 'empuser@yourcompany.example.com',
-            'group_ids': [(6, 0, [group_user.id])],
+            'groups_id': [(6, 0, [group_user.id])],
             'company_ids': [(6, 0, [company_b.id])]
         })
 

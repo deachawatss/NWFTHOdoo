@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { useChildRef, useService } from "@web/core/utils/hooks";
 import { registry } from "@web/core/registry";
 import { _t } from "@web/core/l10n/translation";
@@ -32,30 +34,28 @@ export class PartnerAutoCompleteCharField extends CharField {
             {
                 options: async (request, shouldSearchWorldWide) => {
                     if (await this.validateSearchTerm(request)) {
-                        let queryCountryId = this.props.record.data?.country_id ? this.props.record.data.country_id.id : false;
+                        let queryCountryId = this.props.record.data?.country_id ? this.props.record.data.country_id[0] : false;
                         if (shouldSearchWorldWide){
-                        	queryCountryId = 0;
+                            queryCountryId = 0;
                         }
                         const suggestions = await this.partnerAutocomplete.autocomplete(request, queryCountryId);
-                        return suggestions.map((suggestion) => ({
-                            cssClass: "partner_autocomplete_dropdown_char",
-                            data: suggestion,
-                            label: suggestion.name,
-                            onSelect: () => this.onSelectPartnerAutocompleteOption(suggestion),
-                        }));
+                        suggestions.forEach((suggestion) => {
+                            suggestion.classList = "partner_autocomplete_dropdown_char";
+                        });
+                        return suggestions;
                     }
                     else {
                         return [];
                     }
                 },
-                optionSlot: "partnerOption",
+                optionTemplate: "partner_autocomplete.DropdownOption",
                 placeholder: _t('Searching Autocomplete...'),
             },
         ];
     }
 
-    async onSelectPartnerAutocompleteOption(option) {
-        let data = await this.partnerAutocomplete.getCreateData(option);
+    async onSelect(option) {
+        let data = await this.partnerAutocomplete.getCreateData(Object.getPrototypeOf(option));
         if (!data?.company) {
             return;
         }
@@ -64,6 +64,14 @@ export class PartnerAutoCompleteCharField extends CharField {
             const logoField = this.props.record.resModel === 'res.partner' ? 'image_1920' : 'logo';
             data.company[logoField] = data.logo;
         }
+
+        // Format the many2one fields
+        const many2oneFields = ['country_id', 'state_id'];
+        many2oneFields.forEach((field) => {
+            if (data.company[field]) {
+                data.company[field] = [data.company[field].id, data.company[field].display_name];
+            }
+        });
 
         // Save UNSPSC codes (tags)
         const unspsc_codes = data.company.unspsc_codes
@@ -79,11 +87,11 @@ export class PartnerAutoCompleteCharField extends CharField {
         // Add UNSPSC codes (tags)
         if (this.props.record.resModel === 'res.partner' && unspsc_codes && unspsc_codes.length !== 0) {
             // category id is fetched and then tags are created (many2many)
-            const category_id = await this.orm.call("res.partner", "iap_partner_autocomplete_get_tag_ids", [this.props.record.resId, unspsc_codes]);
+            const category_id = await this.orm.call("res.partner", "iap_partner_autocomplete_add_tags", [this.props.record.resId, unspsc_codes]);
             data.company['category_id'] = [[6, 0, category_id]];
         }
         await this.props.record.update(data.company);
-
+        
         if (this.props.setDirty) {
             this.props.setDirty(false);
         }

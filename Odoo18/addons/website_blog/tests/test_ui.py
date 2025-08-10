@@ -31,9 +31,6 @@ class TestWebsiteBlogUi(odoo.tests.HttpCase, TestWebsiteBlogCommon):
         })
 
     def test_admin(self):
-        self.env.ref('base.user_admin').write({
-            'email': 'mitchell.admin@example.com',
-        })
         # Ensure at least two blogs exist for the step asking to select a blog
         self.env['blog.blog'].create({'name': 'Travel'})
 
@@ -56,20 +53,6 @@ class TestWebsiteBlogUi(odoo.tests.HttpCase, TestWebsiteBlogCommon):
         self.env.ref('website_blog.opt_sidebar_blog_index_follow_us').active = False
         self.start_tour("/blog", 'blog_autocomplete_with_date')
 
-    def test_blog_context_and_social_media(self):
-        self.env.ref('website.default_website').write({
-            'social_facebook': "https://www.facebook.com/Odoo",
-            'social_twitter': 'https://twitter.com/Odoo',
-            'social_linkedin': 'https://www.linkedin.com/company/odoo',
-            'social_youtube': 'https://www.youtube.com/user/OpenERPonline',
-            'social_github': 'https://github.com/odoo',
-            'social_instagram': 'https://www.instagram.com/explore/tags/odoo/',
-            'social_tiktok': 'https://www.tiktok.com/@odoo',
-            'social_discord': 'https://discord.com/servers/discord-town-hall-169256939211980800',
-        })
-        self.env.ref('website_blog.opt_blog_sidebar_show').active = True
-        self.start_tour("/blog", "blog_context_and_social_media", login="admin")
-
     def test_avatar_comment(self):
         mail_message = self.env['mail.message'].create({
             'author_id': self.user_public.partner_id.id,
@@ -81,8 +64,8 @@ class TestWebsiteBlogUi(odoo.tests.HttpCase, TestWebsiteBlogCommon):
         response = self.url_open(portal_message[0]['author_avatar_url'])
         # Ensure that the avatar is visible
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.headers.get('Content-Type'), 'image/svg+xml; charset=utf-8')
-        self.assertRegex(response.headers.get('Content-Disposition', ''), r'mail_message-\d+-author_avatar\.svg')
+        self.assertEqual(response.headers.get('Content-Type'), 'image/png')
+        self.assertRegex(response.headers.get('Content-Disposition', ''), r'mail_message-\d+-author_avatar\.png')
 
     def test_sidebar_with_date_and_tag(self):
         Blog = self.env['blog.blog']

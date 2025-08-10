@@ -1,15 +1,20 @@
+# -*- coding:utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+from collections import defaultdict
 from datetime import datetime, time
 from dateutil.relativedelta import relativedelta
 
-from odoo import api, fields, models
+from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
+from odoo.osv.expression import AND
+from odoo.tools import format_date
 
 
 class HrLeaveType(models.Model):
     _inherit = 'hr.leave.type'
 
-    work_entry_type_id = fields.Many2one('hr.work.entry.type', string='Work Entry Type', index='btree_not_null')
+    work_entry_type_id = fields.Many2one('hr.work.entry.type', string='Work Entry Type')
 
 
 class HrLeave(models.Model):
@@ -39,7 +44,7 @@ class HrLeave(models.Model):
         # 1. Create a work entry for each leave
         work_entries_vals_list = []
         for leave in self:
-            contracts = leave.employee_id.sudo()._get_versions_with_contract_overlap_with_period(leave.date_from.date(), leave.date_to.date())
+            contracts = leave.employee_id.sudo()._get_contracts(leave.date_from, leave.date_to, states=['open', 'close'])
             for contract in contracts:
                 # Generate only if it has aleady been generated
                 if leave.date_to >= contract.date_generated_from and leave.date_from <= contract.date_generated_to:
@@ -116,6 +121,12 @@ class HrLeave(models.Model):
         with self.env['hr.work.entry']._error_checking(start=start, stop=stop, employee_ids=employee_ids):
             return super().create(vals_list)
 
+    def action_reset_confirm(self):
+        start = min(self.mapped('date_from'), default=False)
+        stop = max(self.mapped('date_to'), default=False)
+        with self.env['hr.work.entry']._error_checking(start=start, stop=stop, employee_ids=self.employee_id.ids):
+            return super().action_reset_confirm()
+
     def _get_leaves_on_public_holiday(self):
         return super()._get_leaves_on_public_holiday().filtered(
             lambda l: l.holiday_status_id.work_entry_type_id.code not in ['LEAVE110', 'LEAVE210', 'LEAVE280'])
@@ -134,7 +145,7 @@ class HrLeave(models.Model):
         self._regen_work_entries()
         return res
 
-    def _action_user_cancel(self, reason=None):
+    def _action_user_cancel(self, reason):
         res = super()._action_user_cancel(reason)
         self.sudo()._regen_work_entries()
         return res
@@ -149,7 +160,7 @@ class HrLeave(models.Model):
         # Re-create attendance work entries
         vals_list = []
         for work_entry in work_entries:
-            vals_list += work_entry.version_id._get_work_entries_values(work_entry.date_start, work_entry.date_stop)
+            vals_list += work_entry.contract_id._get_work_entries_values(work_entry.date_start, work_entry.date_stop)
         self.env['hr.work.entry'].create(vals_list)
 
     def _compute_can_cancel(self):

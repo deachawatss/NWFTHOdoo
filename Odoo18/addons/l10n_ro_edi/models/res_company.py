@@ -23,14 +23,7 @@ class ResCompany(models.Model):
     l10n_ro_edi_refresh_expiry_date = fields.Date(string='Refresh Token Expiry Date')
     l10n_ro_edi_callback_url = fields.Char(compute='_compute_l10n_ro_edi_callback_url')
     l10n_ro_edi_test_env = fields.Boolean(string='Use Test Environment', default=True)
-    l10n_ro_edi_anaf_imported_inv_journal_id = fields.Many2one(
-        comodel_name='account.journal',
-        string="Select journal for SPV imported bills",
-        domain="[('type', '=', 'purchase')]",
-        compute="_compute_l10n_ro_edi_anaf_imported_inv_journal",
-        store=True,
-        readonly=False,
-    )
+    l10n_ro_edi_oauth_error = fields.Char()  # Error field to be shown in case of error from the authentication process
 
     @api.depends('country_code')
     def _compute_l10n_ro_edi_callback_url(self):
@@ -40,16 +33,6 @@ class ResCompany(models.Model):
                 company.l10n_ro_edi_callback_url = url_join(request.httprequest.url_root, 'l10n_ro_edi/callback/%s' % company.id)
             else:
                 company.l10n_ro_edi_callback_url = False
-
-    @api.depends('country_code')
-    def _compute_l10n_ro_edi_anaf_imported_inv_journal(self):
-        for company in self:
-            company.l10n_ro_edi_anaf_imported_inv_journal_id = False
-            if company.country_code == 'RO':
-                company.l10n_ro_edi_anaf_imported_inv_journal_id = self.env['account.journal'].search([
-                    ('type', '=', 'purchase'),
-                    *self.env['account.journal']._check_company_domain(company.id),
-                ], limit=1)
 
     def _l10n_ro_edi_log_message(self, message: str, func: str):
         with self.pool.cursor() as cr:
@@ -89,6 +72,7 @@ class ResCompany(models.Model):
             'l10n_ro_edi_refresh_token': response_json['refresh_token'],
             'l10n_ro_edi_access_expiry_date': access_expiry_date,
             'l10n_ro_edi_refresh_expiry_date': refresh_expiry_date,
+            'l10n_ro_edi_oauth_error': False,
         })
 
     def _l10n_ro_edi_refresh_access_token(self, session):
@@ -150,22 +134,4 @@ class ResCompany(models.Model):
                 self._l10n_ro_edi_log_message(
                     message=f'{error_header}\n{error_cause}',
                     func='_cron_l10n_ro_edi_refresh_access_token',
-                )
-
-    def _cron_l10n_ro_edi_synchronize_invoices(self):
-        """
-        This CRON method will be run every 24 hours to synchronize the invoices and the bills with the ANAF
-        """
-        ro_companies = self.env['res.company'].sudo().search([
-            ('l10n_ro_edi_refresh_token', '!=', False),
-            ('l10n_ro_edi_client_id', '!=', False),
-            ('l10n_ro_edi_client_secret', '!=', False),
-        ])
-        for company in ro_companies:
-            try:
-                self.env['account.move'].with_company(company)._l10n_ro_edi_fetch_invoices()
-            except UserError as e:
-                self._l10n_ro_edi_log_message(
-                    message=f'{company.id}\n{e}',
-                    func='_cron_l10n_ro_edi_synchronize_invoices',
                 )

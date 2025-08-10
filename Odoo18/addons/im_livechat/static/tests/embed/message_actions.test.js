@@ -1,7 +1,9 @@
+import { LivechatButton } from "@im_livechat/embed/common/livechat_button";
 import {
     defineLivechatModels,
     loadDefaultEmbedConfig,
 } from "@im_livechat/../tests/livechat_test_helpers";
+import { describe, test } from "@odoo/hoot";
 import {
     click,
     contains,
@@ -10,8 +12,7 @@ import {
     startServer,
     triggerHotkey,
 } from "@mail/../tests/mail_test_helpers";
-import { describe, test } from "@odoo/hoot";
-import { asyncStep, waitForSteps } from "@web/../tests/web_test_helpers";
+import { asyncStep, mountWithCleanup, waitForSteps } from "@web/../tests/web_test_helpers";
 
 describe.current.tags("desktop");
 defineLivechatModels();
@@ -25,6 +26,7 @@ test("Only two quick actions are shown", async () => {
     env.services.bus_service.subscribe("discuss.channel/new_message", () =>
         asyncStep("discuss.channel/new_message")
     );
+    await mountWithCleanup(LivechatButton);
     await click(".o-livechat-LivechatButton");
     await contains(".o-mail-ChatWindow");
     await insertText(".o-mail-Composer-input", "Hello World!");
@@ -32,17 +34,16 @@ test("Only two quick actions are shown", async () => {
     // message data from post contains no reaction, wait now to avoid overriding newer value later
     await waitForSteps(["discuss.channel/new_message"]);
     await click("[title='Add a Reaction']");
-    await click(".o-mail-QuickReactionMenu button", { text: "😅" });
+    await click(".o-Emoji", { text: "😅" });
     await contains(".o-mail-MessageReaction", { text: "😅" });
     await contains(".o-mail-Message-actions i", { count: 3 });
     await contains("[title='Add a Reaction']");
-    await contains("[title='Edit']");
+    await contains("[title='Reply']");
     await contains("[title='Expand']");
     await click("[title='Expand']");
-    await contains(".o-dropdown-item:contains('Reply')");
-    await contains(".o-mail-Message-actions i, .o-mail-Message-moreMenu i", { count: 8 });
-    await contains(".o-dropdown-item:contains('View Reactions')");
-    await contains(".o-dropdown-item:contains('Mark as Unread')");
-    await contains(".o-dropdown-item:contains('Delete')");
-    await contains(".o-dropdown-item:contains('Copy Link')");
+    await contains(".o-mail-Message-actions i, .o-mail-Message-moreMenu i", { count: 7 });
+    await contains("[title='Copy Link']");
+    await contains("[title='Edit']");
+    await contains("[title='Delete']");
+    await contains("[title='View Reactions']");
 });

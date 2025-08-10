@@ -20,7 +20,6 @@ from . import stock_rule
 from . import stock_warehouse
 from . import stock_scrap
 from . import product
-from . import product_catalog_mixin
 from . import stock_package_level
 from . import stock_package_type
 from . import stock_storage_category

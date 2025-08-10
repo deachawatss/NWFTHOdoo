@@ -1,7 +1,9 @@
+/** @odoo-module **/
+
 import { queryAll, waitFor } from "@odoo/hoot-dom";
 import { rpc } from "@web/core/network/rpc";
 import { registry } from "@web/core/registry";
-import { stepUtils } from "@web_tour/tour_utils";
+import { stepUtils } from "@web_tour/tour_service/tour_utils";
 
 function openRoot() {
     return [{
@@ -110,15 +112,14 @@ registry.category("web_tour.tours").add('totp_tour_setup', {
             copyBtn.remove();
         }
         const token = await rpc('/totphook', {
-            secret: secret.textContent,
-            offset: 0,
+            secret: secret.textContent
         });
         await helpers.edit(token, '[name=code] input');
         document.querySelector("body").classList.add("got-token");
     }
 },
 {
-    trigger: ".modal button.btn-primary:contains(Enable Two-Factor Authentication)",
+    trigger: ".modal button.btn-primary:contains(Activate)",
     run: "click",
 },
 {
@@ -162,40 +163,10 @@ registry.category("web_tour.tours").add('totp_login_enabled', {
     trigger: 'label:contains(Authentication Code)',
     run: "click",
 }, {
-    content: "input incorrect code",
-    trigger: 'input[name=totp_token]',
-    async run(helpers) {
-        // set the offset in the past, so the token will be always wrong
-        await rpc("/totphook", { offset: -2 });
-        helpers.edit("123456");
-    }
-}, {
-    trigger: `button:contains("Log in")`,
-    run: "click",
-    expectUnloadPage: true,
-}, {
-    content: "using an incorrect token should fail",
-    trigger: "p.alert.alert-danger:contains(Verification failed, please double-check the 6-digit code)",
-}, {
-    content: "reuse same code",
-    trigger: 'input[name=totp_token]',
-    async run(helpers) {
-        // send the same token as the one last one from the setup tour
-        const token = await rpc("/totphook", { offset: 0 });
-        helpers.edit(token);
-    }
-}, {
-    trigger: `button:contains("Log in")`,
-    run: "click",
-    expectUnloadPage: true,
-}, {
-    content: "reusing the same token should fail",
-    trigger: "p.alert.alert-danger:contains(Verification failed, please use the latest 6-digit code)",
-}, {
     content: "input code",
     trigger: 'input[name=totp_token]',
     async run(helpers) {
-        const token = await rpc('/totphook', { offset: 1 });
+        const token = await rpc('/totphook');
         helpers.edit(token);
     }
 },
@@ -241,7 +212,7 @@ registry.category("web_tour.tours").add('totp_login_device', {
     content: "input code",
     trigger: 'input[name=totp_token]',
     async run(helpers) {
-        const token = await rpc('/totphook', { offset: 2 });
+        const token = await rpc('/totphook')
         helpers.edit(token);
     }
 },

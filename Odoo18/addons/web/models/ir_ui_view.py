@@ -3,7 +3,7 @@
 from odoo import models
 
 
-class IrUiView(models.Model):
+class View(models.Model):
     _inherit = 'ir.ui.view'
 
     def get_view_info(self):

@@ -4,8 +4,7 @@ import werkzeug.urls
 
 from odoo import models, fields, api
 
-
-class ResPartner(models.Model):
+class Partner(models.Model):
     _name = 'res.partner'
     _inherit = ['res.partner', 'website.published.multi.mixin']
 
@@ -35,12 +34,8 @@ class ResPartner(models.Model):
     @api.depends_context('display_website')
     def _compute_display_name(self):
         super()._compute_display_name()
-        if not self.env.context.get('display_website') or not self.env.user.has_group('website.group_multi_website'):
+        if not self._context.get('display_website') or not self.env.user.has_group('website.group_multi_website'):
             return
         for partner in self:
             if partner.website_id:
                 partner.display_name += f' [{partner.website_id.name}]'
-
-    def _compute_can_publish(self):
-        self2 = self.with_context(can_publish_unsudo_main_object=False)
-        super(ResPartner, self2)._compute_can_publish()

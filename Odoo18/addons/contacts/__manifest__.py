@@ -19,7 +19,6 @@ You can track your vendors, customers and other contacts.
         'data/mail_demo.xml',
     ],
     'application': True,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
     'assets': {
         'web.assets_tests': [

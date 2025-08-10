@@ -9,10 +9,14 @@ export const threadActionsRegistry = registry.category("mail.thread/actions");
 threadActionsRegistry
     .add("fold-chat-window", {
         condition(component) {
-            return component.props.chatWindow;
+            return (
+                component.props.chatWindow &&
+                component.props.chatWindow.thread &&
+                (component.env.services["im_livechat.livechat"] ||
+                    !component.env.services.ui.isSmall)
+            );
         },
-        icon: "oi oi-fw oi-minus",
-        iconLarge: "oi oi-fw fa-lg oi-minus",
+        icon: "fa fa-fw fa-minus",
         name(component) {
             return !component.props.chatWindow?.isOpen ? _t("Open") : _t("Fold");
         },
@@ -34,7 +38,6 @@ threadActionsRegistry
             );
         },
         icon: "fa fa-fw fa-pencil",
-        iconLarge: "fa fa-lg fa-fw fa-pencil",
         name: _t("Rename Thread"),
         open(component) {
             component.state.editingName = true;
@@ -47,7 +50,6 @@ threadActionsRegistry
             return component.props.chatWindow;
         },
         icon: "oi fa-fw oi-close",
-        iconLarge: "oi fa-lg fa-fw oi-close",
         name: _t("Close Chat Window (ESC)"),
         open(component) {
             component.close();
@@ -106,29 +108,20 @@ function transformAction(component, id, action) {
         },
         /** Condition to display this action. */
         get condition() {
-            return threadActionsInternal.condition(component, id, action);
+            if (action.condition === undefined) {
+                return true;
+            }
+            return action.condition(component);
         },
         /** Condition to disable the button of this action (but still display it). */
         get disabledCondition() {
             return action.disabledCondition?.(component);
         },
-        /** Determines whether this action opens a dropdown on selection. Value is shaped { template, menuClass } */
-        dropdown: action.dropdown,
-        /**
-         * Icon for the button this action.
-         * - When a string, this is considered an icon as classname (.fa and .oi).
-         * - When an object with property `template`, this is an icon rendered in template.
-         *   Template params are provided in `params` and passed to template as a `t-set="templateParams"`
-         */
+        /** Icon for the button this action. */
         get icon() {
             return typeof action.icon === "function" ? action.icon(component) : action.icon;
         },
-        /**
-         * Large icon for the button this action.
-         * - When a string, this is considered an icon as classname (.fa and .oi).
-         * - When an object with property `template`, this is an icon rendered in template.
-         *   Template params are provided in `params` and passed to template as a `t-set="templateParams"`
-         */
+        /** Large icon for the button this action. */
         get iconLarge() {
             return typeof action.iconLarge === "function"
                 ? action.iconLarge(component)
@@ -144,12 +137,6 @@ function transformAction(component, id, action) {
         get name() {
             const res = this.isActive && action.nameActive ? action.nameActive : action.name;
             return typeof res === "function" ? res(component) : res;
-        },
-        /** ClassName on name of this action */
-        get nameClass() {
-            return typeof action.nameClass === "function"
-                ? action.nameClass(component)
-                : action.nameClass;
         },
         /**
          * Action to execute when this action is selected (on or off).
@@ -194,21 +181,6 @@ function transformAction(component, id, action) {
                 ? action.panelOuterClass(component)
                 : action.panelOuterClass;
         },
-        /**
-         * - In action definition: indicate whether the action is elligible as partition actions. @see useThreadActions::partition
-         * - While action is being used: indicate that the action is being used as a partitioned action.
-         */
-        get partition() {
-            if (action._partition) {
-                return action._partition;
-            }
-            return typeof action.partition === "function"
-                ? action.partition(component)
-                : action.partition ?? true;
-        },
-        set partition(partition) {
-            action._partition = partition;
-        },
         /** Determines whether this is a popover linked to this action. */
         popover: null,
         /** Determines the order of this action (smaller first). */
@@ -227,13 +199,6 @@ function transformAction(component, id, action) {
                 ? action.sequenceQuick(component)
                 : action.sequenceQuick;
         },
-        /**
-         * - In action definition: indicate whether the action is elligible as sidebar actions. @see useThreadActions::sidebarActions
-         * - While action is being used: indicate that the action is being used as a sidebar action.
-         */
-        sidebar: action.sidebar ?? action.sidebarSequence ?? false,
-        sidebarSequence: action.sidebarSequence,
-        sidebarSequenceGroup: action.sidebarSequenceGroup,
         /** Component setup to execute when this action is registered. */
         setup: action.setup,
         /** Text for the button of this action */
@@ -241,19 +206,6 @@ function transformAction(component, id, action) {
         /** Determines whether this action is a one time effect or can be toggled (on or off). */
         toggle: action.toggle,
     };
-}
-
-export const threadActionsInternal = {
-    condition(component, id, action) {
-        if (action.condition === undefined) {
-            return true;
-        }
-        return action.condition(component);
-    },
-};
-
-function makeContextualAction(action, ctx) {
-    return Object.assign(Object.create(action), ctx);
 }
 
 export function useThreadActions() {
@@ -269,32 +221,11 @@ export function useThreadActions() {
     const state = useState({
         get actions() {
             return transformedActions
-                .filter((action) => action.condition && action.sequence !== undefined)
-                .map((action) => makeContextualAction(action, { partition: false, sidebar: false }))
+                .filter((action) => action.condition)
                 .sort((a1, a2) => a1.sequence - a2.sequence);
         },
-        get sidebarActions() {
-            const actions = transformedActions
-                .filter((action) => action.condition && action.sidebarSequence !== undefined)
-                .sort((action1, action2) => action1.sidebarSequence - action2.sidebarSequence)
-                .map((action) => makeContextualAction(action, { partition: false, sidebar: true }));
-            const groups = {};
-            for (const a of actions) {
-                if (!(a.sidebarSequenceGroup in groups)) {
-                    groups[a.sidebarSequenceGroup] = [];
-                }
-                groups[a.sidebarSequenceGroup].push(a);
-            }
-            const sortedGroups = Object.entries(groups).sort(([g1, g2]) => g1 - g2);
-            for (const [, actions] of sortedGroups) {
-                actions.sort((a1, a2) => a1.sidebarSequence - a2.sidebarSequence);
-            }
-            return sortedGroups.map(([g1, actions]) => actions);
-        },
         get partition() {
-            const actions = transformedActions
-                .filter((action) => action.condition && action.partition)
-                .map((action) => makeContextualAction(action, { partition: true, sidebar: false }));
+            const actions = transformedActions.filter((action) => action.condition);
             const quick = actions
                 .filter((a) => a.sequenceQuick)
                 .sort((a1, a2) => a1.sequenceQuick - a2.sequenceQuick);
@@ -314,7 +245,7 @@ export function useThreadActions() {
             }
             const group = sortedGroups.map(([groupId, actions]) => actions);
             const other = actions
-                .filter((a) => !a.sequenceQuick && !a.sequenceGroup)
+                .filter((a) => !a.sequenceQuick & !a.sequenceGroup)
                 .sort((a1, a2) => a1.sequence - a2.sequence);
             return { quick, group, other };
         },

@@ -16,7 +16,7 @@ import { getVisibleElements } from "../utils/ui";
  *  allow registration to perform no matter the UI active element
  * @property {() => HTMLElement} [area]
  *  adds a restricted operating area for this hotkey
- * @property {(target: HTMLElement) => boolean} [isAvailable]
+ * @property {() => boolean} [isAvailable]
  *  adds a validation before calling the hotkey registration's callback
  * @property {() => HTMLElement} [withOverlay]
  *  provides the element on which the overlay should be displayed
@@ -47,7 +47,7 @@ const NAV_KEYS = [
     "space",
 ];
 const MODIFIERS = ["alt", "control", "shift"];
-const AUTHORIZED_KEYS = [...ALPHANUM_KEYS, ...NAV_KEYS, "escape", "<", ">"];
+const AUTHORIZED_KEYS = [...ALPHANUM_KEYS, ...NAV_KEYS, "escape"];
 
 /**
  * Get the actual hotkey being pressed.
@@ -240,7 +240,7 @@ export const hotkeyService = {
                     (reg.allowRepeat || !isRepeated) &&
                     (reg.bypassEditableProtection || !shouldProtectEditable) &&
                     (reg.global || reg.activeElement === activeElement) &&
-                    (!reg.isAvailable || reg.isAvailable(target)) &&
+                    (!reg.isAvailable || reg.isAvailable()) &&
                     (!reg.area || (target && reg.area() && reg.area().contains(target)))
             );
 

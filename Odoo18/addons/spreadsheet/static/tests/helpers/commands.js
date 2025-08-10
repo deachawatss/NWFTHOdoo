@@ -25,19 +25,6 @@ export function selectCell(model, xc, sheetId = model.getters.getActiveSheetId()
 }
 
 /**
- * Add a global filter. Does not wait for the data sources to be reloaded
- * @param {import("@spreadsheet").OdooSpreadsheetModel} model
- * @param {CmdGlobalFilter} filter
- */
-export function addGlobalFilterWithoutReload(model, filter, fieldMatchings = {}) {
-    return model.dispatch("ADD_GLOBAL_FILTER", { filter, ...fieldMatchings });
-}
-
-export function setGlobalFilterValueWithoutReload(model, payload) {
-    return model.dispatch("SET_GLOBAL_FILTER_VALUE", payload);
-}
-
-/**
  * Add a global filter and ensure the data sources are completely reloaded
  * @param {import("@spreadsheet").OdooSpreadsheetModel} model
  * @param {CmdGlobalFilter} filter
@@ -167,20 +154,10 @@ export function deleteColumns(model, columns, sheetId = model.getters.getActiveS
 }
 
 /** Create a test chart in the active sheet*/
-export function createBasicChart(
-    model,
-    chartId,
-    definition,
-    sheetId = model.getters.getActiveSheetId()
-) {
+export function createBasicChart(model, chartId, sheetId = model.getters.getActiveSheetId()) {
     model.dispatch("CREATE_CHART", {
-        figureId: chartId,
-        col: 0,
-        row: 0,
-        offset: {
-            x: 0,
-            y: 0,
-        },
+        id: chartId,
+        position: { x: 0, y: 0 },
         sheetId: sheetId,
         definition: {
             title: { text: "test" },
@@ -190,7 +167,6 @@ export function createBasicChart(
             verticalAxisPosition: "left",
             legendPosition: "top",
             stackedBar: false,
-            ...definition,
         },
     });
 }
@@ -198,10 +174,8 @@ export function createBasicChart(
 /** Create a test scorecard chart in the active sheet*/
 export function createScorecardChart(model, chartId, sheetId = model.getters.getActiveSheetId()) {
     model.dispatch("CREATE_CHART", {
-        figureId: chartId,
-        col: 0,
-        row: 0,
-        offset: { x: 0, y: 0 },
+        id: chartId,
+        position: { x: 0, y: 0 },
         sheetId: sheetId,
         definition: {
             title: { text: "test" },
@@ -218,10 +192,8 @@ export function createScorecardChart(model, chartId, sheetId = model.getters.get
 /** Create a test scorecard chart in the active sheet*/
 export function createGaugeChart(model, chartId, sheetId = model.getters.getActiveSheetId()) {
     model.dispatch("CREATE_CHART", {
-        figureId: chartId,
-        col: 0,
-        row: 0,
-        offset: { x: 0, y: 0 },
+        id: chartId,
+        position: { x: 0, y: 0 },
         sheetId: sheetId,
         definition: {
             title: { text: "test" },
@@ -246,15 +218,6 @@ export function createGaugeChart(model, chartId, sheetId = model.getters.getActi
                 },
             },
         },
-    });
-}
-
-export function updateChart(model, chartId, partialDefinition) {
-    const definition = model.getters.getChartDefinition(chartId);
-    return model.dispatch("UPDATE_CHART", {
-        definition: { ...definition, ...partialDefinition },
-        figureId: chartId,
-        sheetId: model.getters.getActiveSheetId(),
     });
 }
 
@@ -302,15 +265,4 @@ export function updatePivotMeasureDisplay(model, pivotId, measureId, display) {
     const measure = measures.find((m) => m.id === measureId);
     measure.display = display;
     updatePivot(model, pivotId, { measures });
-}
-
-export function createSheet(model, data = {}) {
-    const sheetId = data.sheetId || model.uuidGenerator.smallUuid();
-    return model.dispatch("CREATE_SHEET", {
-        position: data.position !== undefined ? data.position : 1,
-        sheetId,
-        cols: data.cols,
-        rows: data.rows,
-        name: data.name,
-    });
 }

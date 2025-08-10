@@ -6,7 +6,6 @@ import time
 from markupsafe import Markup
 
 from odoo import api, fields, models, Command, _
-from odoo.tools import OrderedSet
 
 _logger = logging.getLogger(__name__)
 
@@ -25,10 +24,13 @@ class AccountMove(models.Model):
     purchase_order_count = fields.Integer(compute="_compute_origin_po_count", string='Purchase Order Count')
     purchase_order_name = fields.Char(compute='_compute_purchase_order_name')
     is_purchase_matched = fields.Boolean(compute='_compute_is_purchase_matched')  # 0: PO not required or partially linked. 1: All lines linked
-    purchase_warning_text = fields.Text(
-        "Purchase Warning",
-        help="Internal warning for the partner or the products as set by the user.",
-        compute='_compute_purchase_warning_text')
+
+    def _get_invoice_reference(self):
+        self.ensure_one()
+        vendor_refs = [ref for ref in set(self.invoice_line_ids.mapped('purchase_line_id.order_id.partner_ref')) if ref]
+        if self.ref:
+            return [ref for ref in self.ref.split(', ') if ref and ref not in vendor_refs] + vendor_refs
+        return vendor_refs
 
     @api.onchange('purchase_vendor_bill_id', 'purchase_id')
     def _onchange_purchase_auto_complete(self):
@@ -54,6 +56,7 @@ class AccountMove(models.Model):
         invoice_vals = self.purchase_id.with_company(self.purchase_id.company_id)._prepare_invoice()
         has_invoice_lines = bool(self.invoice_line_ids.filtered(lambda x: x.display_type not in ('line_note', 'line_section')))
         new_currency_id = self.currency_id if has_invoice_lines else invoice_vals.get('currency_id')
+        del invoice_vals['ref'], invoice_vals['payment_reference']
         del invoice_vals['company_id']  # avoid recomputing the currency
         if self.move_type == invoice_vals['move_type']:
             del invoice_vals['move_type'] # no need to be updated if it's same value, to avoid recomputes
@@ -67,6 +70,17 @@ class AccountMove(models.Model):
         # Compute invoice_origin.
         origins = set(self.invoice_line_ids.mapped('purchase_line_id.order_id.name'))
         self.invoice_origin = ','.join(list(origins))
+
+        # Compute ref.
+        refs = self._get_invoice_reference()
+        self.ref = ', '.join(refs)
+
+        # Compute payment_reference.
+        if not self.payment_reference:
+            if len(refs) == 1:
+                self.payment_reference = refs[0]
+            elif len(refs) > 1:
+                self.payment_reference = refs[-1]
 
         # Copy company_id (only changes if the id is of a child company (branch))
         if self.company_id != self.purchase_id.company_id:
@@ -119,20 +133,6 @@ class AccountMove(models.Model):
                 move.purchase_order_name = move.invoice_line_ids.purchase_order_id.display_name
             else:
                 move.purchase_order_name = False
-
-    @api.depends('partner_id.name', 'partner_id.purchase_warn_msg', 'invoice_line_ids.product_id.purchase_line_warn_msg', 'invoice_line_ids.product_id.display_name')
-    def _compute_purchase_warning_text(self):
-        for move in self:
-            if move.move_type != 'in_invoice':
-                move.purchase_warning_text = ''
-                continue
-            warnings = OrderedSet()
-            if partner_msg := move.partner_id.purchase_warn_msg:
-                warnings.add(move.partner_id.name + ' - ' + partner_msg)
-            for product in move.invoice_line_ids.product_id:
-                if product_msg := product.purchase_line_warn_msg:
-                    warnings.add(product.display_name + ' - ' + product_msg)
-            move.purchase_warning_text = '\n'.join(warnings)
 
     def action_purchase_matching(self):
         self.ensure_one()
@@ -360,7 +360,7 @@ class AccountMove(models.Model):
 
         common_domain = [
             ('company_id', '=', self.company_id.id),
-            ('state', '=', 'purchase'),
+            ('state', 'in', ('purchase', 'done')),
             ('invoice_status', 'in', ('to invoice', 'no'))
         ]
 
@@ -507,8 +507,6 @@ class AccountMove(models.Model):
                         'sequence': -1,
                     })]
 
-        if not any(line.purchase_order_id for line in self.line_ids):
-            self.invoice_origin = False
 
 
 class AccountMoveLine(models.Model):
@@ -518,7 +516,6 @@ class AccountMoveLine(models.Model):
     is_downpayment = fields.Boolean()
     purchase_line_id = fields.Many2one('purchase.order.line', 'Purchase Order Line', ondelete='set null', index='btree_not_null', copy=False)
     purchase_order_id = fields.Many2one('purchase.order', 'Purchase Order', related='purchase_line_id.order_id', readonly=True)
-    purchase_line_warn_msg = fields.Text(related='product_id.purchase_line_warn_msg')
 
     def _copy_data_extend_business_fields(self, values):
         # OVERRIDE to copy the 'purchase_line_id' field as well.
@@ -530,7 +527,7 @@ class AccountMoveLine(models.Model):
             {
                 'product_id': line.product_id.id,
                 'product_qty': line.quantity,
-                'product_uom_id': line.product_uom_id.id,
+                'product_uom': line.product_uom_id.id,
                 'price_unit': line.price_unit,
                 'discount': line.discount,
             }

@@ -4,7 +4,7 @@
     'name': "Sell Courses",
     'summary': 'Sell your courses online',
     'description': """Sell your courses using the e-commerce features of the website.""",
-    'category': 'Website/eLearning',
+    'category': 'Hidden',
     'version': '1.0',
 
     'depends': ['website_slides', 'website_sale'],
@@ -32,10 +32,6 @@
         'web.assets_tests': [
             'website_sale_slides/static/tests/tours/*.js',
         ],
-        'website.website_builder_assets': [
-            'website_sale_slides/static/src/website_builder/**/*',
-        ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

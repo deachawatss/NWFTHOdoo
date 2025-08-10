@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { ChatGPTDialog } from '@web_editor/js/wysiwyg/widgets/chatgpt_dialog';
 import { useState, status } from "@odoo/owl";
 

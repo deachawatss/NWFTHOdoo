@@ -2,7 +2,7 @@
 {
     'name': 'Purchase Agreements',
     'version': '0.1',
-    'category': 'Supply Chain/Purchase',
+    'category': 'Inventory/Purchase',
     'description': """
 This module allows you to manage your Purchase Agreements.
 ===========================================================
@@ -34,6 +34,5 @@ are agreements you have with vendors to benefit from a predetermined pricing.
             'purchase_requisition/static/src/*/**.xml',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

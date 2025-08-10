@@ -53,6 +53,7 @@ class TestReInvoice(TestCommonSaleTimesheet):
             'partner_invoice_id': cls.partner_a.id,
             'partner_shipping_id': cls.partner_a.id,
             'project_id': cls.project.id,
+            'pricelist_id': cls.company_data['default_pricelist'].id,
         })
 
         cls.Invoice = cls.env['account.move'].with_context(
@@ -63,18 +64,16 @@ class TestReInvoice(TestCommonSaleTimesheet):
     def test_at_cost(self):
         """ Test vendor bill at cost for product based on ordered and delivered quantities. """
         # Required for `analytic_distribution` to be visible in the view
-        self.env.user.group_ids += self.env.ref('analytic.group_analytic_accounting')
+        self.env.user.groups_id += self.env.ref('analytic.group_analytic_accounting')
         # create SO line and confirm SO (with only one line)
         sale_order_line1 = self.env['sale.order.line'].create({
             'product_id': self.company_data['product_order_cost'].id,
             'product_uom_qty': 2,
-            'product_uom_id': self.env.ref('uom.product_uom_hour').id,
             'order_id': self.sale_order.id,
         })
         sale_order_line2 = self.env['sale.order.line'].create({
             'product_id': self.company_data['product_delivery_cost'].id,
             'product_uom_qty': 4,
-            'product_uom_id': self.env.ref('uom.product_uom_hour').id,
             'order_id': self.sale_order.id,
         })
 
@@ -159,19 +158,17 @@ class TestReInvoice(TestCommonSaleTimesheet):
             second time, increment only the delivered so line.
         """
         # Required for `analytic_distribution` to be visible in the view
-        self.env.user.group_ids += self.env.ref('analytic.group_analytic_accounting')
+        self.env.user.groups_id += self.env.ref('analytic.group_analytic_accounting')
         # create SO line and confirm SO (with only one line)
         sale_order_line1 = self.env['sale.order.line'].create({
             'product_id': self.company_data['product_delivery_sales_price'].id,
             'product_uom_qty': 2,
-            'product_uom_id': self.env.ref('uom.product_uom_hour').id,
             'qty_delivered': 1,
             'order_id': self.sale_order.id,
         })
         sale_order_line2 = self.env['sale.order.line'].create({
             'product_id': self.company_data['product_order_sales_price'].id,
             'product_uom_qty': 3,
-            'product_uom_id': self.env.ref('uom.product_uom_hour').id,
             'qty_delivered': 1,
             'order_id': self.sale_order.id,
         })
@@ -250,12 +247,11 @@ class TestReInvoice(TestCommonSaleTimesheet):
     def test_no_expense(self):
         """ Test invoicing vendor bill with no policy. Check nothing happen. """
         # Required for `analytic_distribution` to be visible in the view
-        self.env.user.group_ids += self.env.ref('analytic.group_analytic_accounting')
+        self.env.user.groups_id += self.env.ref('analytic.group_analytic_accounting')
         # confirm SO
         sale_order_line = self.env['sale.order.line'].create({
             'product_id': self.company_data['product_order_no'].id,
             'product_uom_qty': 2,
-            'product_uom_id': self.env.ref('uom.product_uom_hour').id,
             'qty_delivered': 1,
             'order_id': self.sale_order.id,
         })

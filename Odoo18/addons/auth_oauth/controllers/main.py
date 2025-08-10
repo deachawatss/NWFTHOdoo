@@ -13,7 +13,7 @@ from werkzeug.exceptions import BadRequest
 from odoo import api, http, SUPERUSER_ID, _
 from odoo.exceptions import AccessDenied
 from odoo.http import request, Response
-from odoo.modules.registry import Registry
+from odoo import registry as registry_get
 from odoo.tools.misc import clean_context
 
 from odoo.addons.auth_signup.controllers.main import AuthSignupHome as Home
@@ -151,7 +151,7 @@ class OAuthController(http.Controller):
                 url = '/odoo?menu_id=%s' % menu
 
             credential = {'login': login, 'token': key, 'type': 'oauth_token'}
-            auth_info = request.session.authenticate(request.env, credential)
+            auth_info = request.session.authenticate(dbname, credential)
             resp = request.redirect(_get_login_redirect_url(auth_info['uid'], url), 303)
             resp.autocorrect_location_header = False
 
@@ -187,7 +187,7 @@ class OAuthController(http.Controller):
         if not http.db_filter([dbname]):
             raise BadRequest()
 
-        registry = Registry(dbname)
+        registry = registry_get(dbname)
         with registry.cursor() as cr:
             try:
                 env = api.Environment(cr, SUPERUSER_ID, {})

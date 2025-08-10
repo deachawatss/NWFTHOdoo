@@ -115,6 +115,7 @@ class TestSpeedscope(BaseCase):
     def test_converts_profile_no_end(self):
         profile = self.example_profile()
         profile['result'].pop()
+
         sp = Speedscope(init_stack_trace=profile['init_stack_trace'])
         sp.add('profile', profile['result'])
         sp.add_output(['profile'], complete=False)
@@ -207,49 +208,6 @@ class TestSpeedscope(BaseCase):
                 (10.35, 'C', 'do_stuff1'),
             (10.35, 'C', 'main'),
         ])
-
-    def test_following_queries_dont_merge(self):
-        sql_profile = self.example_profile()['result']
-        stack = sql_profile[1]['stack']
-        # make sql_profile two frames, separataed by some time
-        sql_profile = [
-            {
-                'start': 0.0,
-                'time': 1,
-                'query': 'SELECT 1',
-                'full_query': 'SELECT 1',
-                'stack': stack[:]
-            },
-            {
-                'start': 10.0,
-                'time': 1,
-                'query': 'SELECT 1',
-                'full_query': 'SELECT 1',
-                'stack': stack[:]
-            }
-        ]
-        sp = Speedscope(init_stack_trace=[])
-        sp.add('sql', sql_profile)
-        sp.add_output(['sql'], complete=False, hide_gaps=True)
-        res = sp.make()
-        sql_output = res['profiles'][0]
-        events = [
-            (e['at'], e['type'], res['shared']['frames'][e['frame']]['name'])
-            for e in sql_output['events']
-        ]
-        self.assertEqual(events, [
-            # pylint: disable=bad-continuation
-            (0.0, 'O', 'main'),
-                (0.0, 'O', 'do_stuff1'),
-                    (0.0, 'O', 'execute'),
-                        (0.0, 'O', "sql('SELECT 1')"),
-                        (2.0, 'C', "sql('SELECT 1')"),
-                    (2.0, 'C', 'execute'),
-                (2.0, 'C', 'do_stuff1'),
-            (2.0, 'C', 'main'),
-        ])
-
-
 
     def test_converts_context(self):
         stack = [
@@ -574,7 +532,8 @@ class TestProfiling(TransactionCase):
 
     def test_profiler_return(self):
         # Enter test mode to avoid the profiler to commit the result
-        self.registry_enter_test_mode()
+        self.registry.enter_test_mode(self.cr)
+        self.addCleanup(self.registry.leave_test_mode)
         # Trick: patch db_connect() to make it return the registry with the current test cursor
         # See `ProfilingHttpCase`
         self.startClassPatcher(patch('odoo.sql_db.db_connect', return_value=self.registry))

@@ -14,7 +14,6 @@ import odoo
 from odoo import api, fields, models
 from odoo.service.server import CommonServer
 from odoo.tools import json_default, SQL
-from odoo.tools.constants import GC_UNLINK_LIMIT
 from odoo.tools.misc import OrderedSet
 
 _logger = logging.getLogger(__name__)
@@ -83,9 +82,9 @@ def get_notify_payloads(channels):
                 get_notify_payloads(channels[pivot:]))
 
 
-class BusBus(models.Model):
-    _name = 'bus.bus'
+class ImBus(models.Model):
 
+    _name = 'bus.bus'
     _description = 'Communication Bus'
 
     channel = fields.Char('Channel')
@@ -99,9 +98,6 @@ class BusBus(models.Model):
             .get_param("bus.gc_retention_seconds", DEFAULT_GC_RETENTION_SECONDS)
         )
         timeout_ago = fields.Datetime.now() - datetime.timedelta(seconds=gc_retention_seconds)
-        # Direct SQL to avoid ORM overhead; this way we can delete millions of rows quickly.
-        # This is a low-level table with no expected references, and doing this avoids
-        # the need to split or reschedule this GC job.
         self.env.cr.execute("DELETE FROM bus_bus WHERE create_date < %s", (timeout_ago,))
 
     @api.model

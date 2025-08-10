@@ -7,13 +7,14 @@ from odoo.exceptions import UserError
 
 
 class ResPartner(models.Model):
+    _name = 'res.partner'
     _inherit = 'res.partner'
 
-    invoice_edi_format = fields.Selection(selection_add=[('it_edi_xml', 'FatturaPA')])
+    invoice_edi_format = fields.Selection(selection_add=[('it_edi_xml', 'Italy (Factura PA)')])
     l10n_it_pec_email = fields.Char(string="PEC e-mail")
     l10n_it_codice_fiscale = fields.Char(string="Codice Fiscale", size=16)
     l10n_it_pa_index = fields.Char(
-        string="Destination Code (SDI)",
+        string="Destination Code",
         size=7,
         help="Must contain the 6-character (or 7) code, present in the PA Index "
              "in the information relative to the electronic invoicing service, "
@@ -21,14 +22,15 @@ class ResPartner(models.Model):
              "with receiving (and processing) the invoice.",
     )
 
-    _l10n_it_codice_fiscale = models.Constraint(
-        "CHECK(l10n_it_codice_fiscale IS NULL OR l10n_it_codice_fiscale = '' OR LENGTH(l10n_it_codice_fiscale) >= 11)",
-        'Codice fiscale must have between 11 and 16 characters.',
-    )
-    _l10n_it_pa_index = models.Constraint(
-        "CHECK(l10n_it_pa_index IS NULL OR l10n_it_pa_index = '' OR LENGTH(l10n_it_pa_index) >= 6)",
-        'Destination Code (SDI) must have between 6 and 7 characters.',
-    )
+    _sql_constraints = [
+        ('l10n_it_codice_fiscale',
+            "CHECK(l10n_it_codice_fiscale IS NULL OR l10n_it_codice_fiscale = '' OR LENGTH(l10n_it_codice_fiscale) >= 11)",
+            "Codice fiscale must have between 11 and 16 characters."),
+
+        ('l10n_it_pa_index',
+            "CHECK(l10n_it_pa_index IS NULL OR l10n_it_pa_index = '' OR LENGTH(l10n_it_pa_index) >= 6)",
+            "Destination Code must have between 6 and 7 characters."),
+    ]
 
     def _l10n_it_edi_is_public_administration(self):
         """ Returns True if the destination of the FatturaPA belongs to the Public Administration. """
@@ -200,12 +202,6 @@ class ResPartner(models.Model):
     def _peppol_eas_endpoint_depends(self):
         # extends account_edi_ubl_cii
         return super()._peppol_eas_endpoint_depends() + ['l10n_it_codice_fiscale']
-
-    def _get_frontend_writable_fields(self):
-        frontend_writable_fields = super()._get_frontend_writable_fields()
-        frontend_writable_fields.update({'l10n_it_codice_fiscale', 'l10n_it_pa_index'})
-
-        return frontend_writable_fields
 
     def _get_suggested_invoice_edi_format(self):
         # EXTENDS 'account'

@@ -1,4 +1,3 @@
-import { delay } from "@odoo/hoot-dom";
 import { registry } from "@web/core/registry";
 
 /**
@@ -168,17 +167,9 @@ registry.category("web_tour.tours").add("course_member", {
             trigger: ".modal.modal_shown button:contains(review)",
             run: "click",
         },
-        {
-            content: "Wait the first review is closed before send the second",
-            trigger: "body:not(:has(.modal:visible))",
-        },
         // eLearning: edit the review
         {
             trigger: 'button[data-bs-target="#ratingpopupcomposer"]:contains("Edit Review")',
-            run: "click",
-        },
-        {
-            trigger: ".modal.modal_shown .modal-body i.fa.fa-star-o:eq(1)",
             run: "click",
         },
         {
@@ -187,10 +178,7 @@ registry.category("web_tour.tours").add("course_member", {
         },
         {
             trigger: ".modal.modal_shown button:contains(review)",
-            async run(helpers) {
-                await delay(500);
-                await helpers.click();
-            },
+            run: "click",
         },
         {
             trigger: 'a[id="review-tab"]',

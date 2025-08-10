@@ -1,7 +1,5 @@
-import { RPCError } from "@web/core/network/rpc";
 import { user } from "@web/core/user";
-import { Deferred, Race } from "@web/core/utils/concurrency";
-import { useService } from "@web/core/utils/hooks";
+import { useBus, useService } from "@web/core/utils/hooks";
 import { useSetupAction } from "@web/search/action_hook";
 import { SEARCH_KEYS } from "@web/search/with_search/with_search";
 import { buildSampleORM } from "./sample_server";
@@ -10,49 +8,37 @@ import {
     EventBus,
     onMounted,
     onWillStart,
-    onWillUnmount,
     onWillUpdateProps,
     status,
     useComponent,
 } from "@odoo/owl";
 
 /**
- * @typedef {import("@web/env").OdooEnv} OdooEnv
  * @typedef {import("@web/search/search_model").SearchParams} SearchParams
- * @typedef {import("services").ServiceFactories} Services
  */
 
 export class Model {
-    static services = [];
-
     /**
-     * @param {OdooEnv} env
-     * @param {SearchParams} params
-     * @param {Services} services
+     * @param {Object} env
+     * @param {Object} services
      */
     constructor(env, params, services) {
         this.env = env;
         this.orm = services.orm;
         this.bus = new EventBus();
-        this.isReady = false;
-        this.whenReady = new Deferred();
-        this.whenReady.then(() => {
-            this.isReady = true;
-            this.notify();
-        });
         this.setup(params, services);
     }
 
     /**
-     * @param {SearchParams} params
-     * @param {Services} services
+     * @param {Object} params
+     * @param {Object} services
      */
     setup(/* params, services */) {}
 
     /**
-     * @param {Partial<SearchParams>} _params
+     * @param {SearchParams} searchParams
      */
-    async load(_params) {}
+    async load(/* searchParams */) {}
 
     /**
      * This function is meant to be overriden by models that want to implement
@@ -81,9 +67,10 @@ export class Model {
         this.bus.trigger("update");
     }
 }
+Model.services = [];
 
 /**
- * @param {Record<string, unknown>} props
+ * @param {Object} props
  * @returns {SearchParams}
  */
 function getSearchParams(props) {
@@ -137,10 +124,9 @@ export function useModel(ModelClass, params, options = {}) {
     const model = new ModelClass(component.env, params, services);
     onWillStart(async () => {
         await options.beforeFirstLoad?.();
-        await model.load(getSearchParams(component.props));
-        model.whenReady.resolve();
+        return model.load(component.props);
     });
-    onWillUpdateProps((nextProps) => model.load(getSearchParams(nextProps)));
+    onWillUpdateProps((nextProps) => model.load(nextProps));
     return model;
 }
 
@@ -149,7 +135,9 @@ export function useModel(ModelClass, params, options = {}) {
  * @param {T} ModelClass
  * @param {Object} params
  * @param {Object} [options]
- * @param {Function} [options.lazy=false]
+ * @param {Function} [options.onUpdate]
+ * @param {Function} [options.onWillStart]
+ * @param {Function} [options.onWillStartAfterLoad]
  * @returns {InstanceType<T>}
  */
 export function useModelWithSampleData(ModelClass, params, options = {}) {
@@ -170,23 +158,26 @@ export function useModelWithSampleData(ModelClass, params, options = {}) {
 
     const model = new ModelClass(component.env, params, services);
 
-    const onUpdate = () => component.render(true);
-    model.bus.addEventListener("update", onUpdate);
-    onWillUnmount(() => model.bus.removeEventListener("update", onUpdate));
+    useBus(
+        model.bus,
+        "update",
+        options.onUpdate ||
+            (() => {
+                component.render(true); // FIXME WOWL reactivity
+            })
+    );
 
     const globalState = component.props.globalState || {};
     const localState = component.props.state || {};
     let useSampleModel =
         component.props.useSampleModel &&
         (!("useSampleModel" in globalState) || globalState.useSampleModel);
-    model.useSampleModel = false;
+    model.useSampleModel = useSampleModel;
     const orm = model.orm;
     let sampleORM = localState.sampleORM;
+    let started = false;
 
-    /**
-     * @param {Record<string, unknown>} props
-     */
-    async function _load(props) {
+    async function load(props) {
         const searchParams = getSearchParams(props);
         await model.load(searchParams);
         if (useSampleModel && !model.hasData()) {
@@ -196,31 +187,23 @@ export function useModelWithSampleData(ModelClass, params, options = {}) {
             model.orm = sampleORM;
             await model.load(searchParams);
             model.orm = orm;
-            model.useSampleModel = true;
         } else {
             useSampleModel = false;
             model.useSampleModel = useSampleModel;
         }
-        model.whenReady.resolve(); // resolve after the first successful load
-        if (status(component) === "mounted") {
+        if (started) {
             model.notify();
         }
     }
-    const race = new Race();
-    const load = (props) => race.add(_load(props));
-    onWillStart(() => {
-        const prom = load(component.props);
-        if (options.lazy) {
-            // in-house error handling as we're out of willStart
-            prom.catch((e) => {
-                if (e instanceof RPCError) {
-                    component.env.config.historyBack();
-                }
-                throw e;
-            });
-        } else {
-            return prom;
+    onWillStart(async () => {
+        if (options.onWillStart) {
+            await options.onWillStart();
         }
+        await load(component.props);
+        if (options.onWillStartAfterLoad) {
+            await options.onWillStartAfterLoad();
+        }
+        started = true;
     });
     onWillUpdateProps((nextProps) => {
         useSampleModel = false;
@@ -233,7 +216,9 @@ export function useModelWithSampleData(ModelClass, params, options = {}) {
                 return { useSampleModel };
             }
         },
-        getLocalState: () => ({ sampleORM }),
+        getLocalState: () => {
+            return { sampleORM };
+        },
     });
 
     return model;

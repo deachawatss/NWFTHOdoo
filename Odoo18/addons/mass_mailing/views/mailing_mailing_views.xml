@@ -19,7 +19,7 @@
                         domain="[('ab_testing_enabled', '=', True), ('ab_testing_winner_selection', '=', 'manual'), ('ab_testing_completed', '=', False)]"/>
                     <separator/>
                     <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
-                    <group string="Group By">
+                    <group expand="0" string="Group By">
                         <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
                         <filter string="Sent By" name="sent_by" domain="[]" context="{'group_by': 'email_from'}"/>
                         <filter string="Mailing List" name="group_by_contact_list_ids" domain="[]" context="{'group_by': 'contact_list_ids'}"/>
@@ -355,7 +355,7 @@
                                         </div>
                                         <label for="attachment_ids"/>
                                         <div name="attachment_ids_details">
-                                            <field name="attachment_ids"  widget="many2many_binary" string="Attach a file"
+                                            <field name="attachment_ids"  widget="many2many_binary" string="Attach a file" class="oe_inline"
                                                 readonly="state in ('sending', 'done')"/>
                                         </div>
                                     </group>
@@ -408,8 +408,10 @@
                             <t t-if="widget.deletable">
                                 <a role="menuitem" type="delete" class="dropdown-item">Delete</a>
                             </t>
-                            <a role="menuitem" type="object" name="action_archive" class="dropdown-item o_kanban_mailing_active" t-if="record.active.raw_value">Archive</a>
-                            <a role="menuitem" type="object" name="action_unarchive" class="dropdown-item o_kanban_mailing_active" t-if="!record.active.raw_value">Restore</a>
+                            <a role="menuitem" class="dropdown-item o_kanban_mailing_active" name="toggle_active" type="object">
+                                <t t-if="record.active.raw_value">Archive</t>
+                                <t t-if="!record.active.raw_value">Restore</t>
+                            </a>
                         </t>
                         <t t-name="card">
                             <field name="subject" class="my-1 text-truncate fs-3 fw-bold"/>

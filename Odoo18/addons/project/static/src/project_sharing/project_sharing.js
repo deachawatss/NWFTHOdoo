@@ -1,9 +1,11 @@
-import { browser } from "@web/core/browser/browser";
-import { useBus, useService } from "@web/core/utils/hooks";
+/** @odoo-module **/
+
+import { useBus, useService } from '@web/core/utils/hooks';
+import { ActionContainer } from '@web/webclient/actions/action_container';
 import { MainComponentsContainer } from "@web/core/main_components_container";
 import { useOwnDebugContext } from "@web/core/debug/debug_context";
-import { ActionContainer } from "@web/webclient/actions/action_container";
-import { Component, onMounted, useExternalListener, useState } from "@odoo/owl";
+import { session } from '@web/session';
+import { Component, useEffect, useExternalListener, useState } from "@odoo/owl";
 
 export class ProjectSharingWebClient extends Component {
     static props = {};
@@ -11,7 +13,8 @@ export class ProjectSharingWebClient extends Component {
     static template = "project.ProjectSharingWebClient";
 
     setup() {
-        this.actionService = useService("action");
+        window.parent.document.body.style.margin = "0"; // remove the margin in the parent body
+        this.actionService = useService('action');
         useOwnDebugContext({ categories: ["default"] });
         this.state = useState({
             fullscreen: false,
@@ -21,31 +24,33 @@ export class ProjectSharingWebClient extends Component {
                 this.state.fullscreen = mode === "fullscreen";
             }
         });
-        onMounted(() => {
-            this.loadRouterState();
-            // the chat window and dialog services listen to 'web_client_ready' event in
-            // order to initialize themselves:
-            this.env.bus.trigger("WEB_CLIENT_READY");
-        });
+        useEffect(
+            () => {
+                this._showView();
+            },
+            () => []
+        );
         useExternalListener(window, "click", this.onGlobalClick, { capture: true });
     }
 
-    async loadRouterState() {
-        // ** url-retrocompatibility **
-        const stateLoaded = await this.actionService.loadState();
-
-        // Scroll to anchor after the state is loaded
-        if (stateLoaded) {
-            if (browser.location.hash !== "") {
-                try {
-                    const el = document.querySelector(browser.location.hash);
-                    if (el !== null) {
-                        el.scrollIntoView(true);
-                    }
-                } catch {
-                    // do nothing if the hash is not a correct selector.
+    async _showView() {
+        const { action_name, action_context, project_id, project_name, open_task_action } = session;
+        const action = await this.actionService.loadAction(action_name, {
+            active_id: project_id,
+        });
+        action.display_name = project_name;
+        await this.actionService.doAction(
+            action,
+            {
+                clearBreadcrumbs: true,
+                additionalContext: {
+                    active_id: project_id,
+                    ...action_context,
                 }
             }
+        );
+        if (open_task_action) {
+            await this.actionService.doAction(open_task_action);
         }
     }
 
@@ -57,8 +62,7 @@ export class ProjectSharingWebClient extends Component {
         // we let the browser do the default behavior and
         // we do not want any other listener to execute.
         if (
-            (ev.ctrlKey || ev.metaKey) &&
-            !ev.target.isContentEditable &&
+            ev.ctrlKey &&
             ((ev.target instanceof HTMLAnchorElement && ev.target.href) ||
                 (ev.target instanceof HTMLElement && ev.target.closest("a[href]:not([href=''])")))
         ) {

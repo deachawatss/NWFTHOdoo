@@ -309,39 +309,6 @@ class TranslationToolsTestCase(BaseCase):
             f'translation {invalid!r} has non-translatable elements(elements not in TRANSLATED_ELEMENTS)',
         )
 
-    def test_translate_xml_fstring(self):
-        """ Test xml_translate() with formated string (ruby or jinja). """
-        terms = []
-        source = """<t t-name="stuff">
-                        <t t-set="first" t-value="33"/>
-                        <t t-set="second" t-valuef="no-translate-{{first}}"/>
-                        <t t-set="toto" t-valuef.translate="My ro-{{first}}"/>
-                        <span t-attf-title="Big #{toto} first {{first}} second:{{second}}"/>
-
-                        <div data-stuff.translate="cat"/>
-                    </t>"""
-        result = xml_translate(terms.append, source)
-        self.assertEqual(result, source)
-        self.assertItemsEqual(terms,
-            ['My ro-{{0}}', 'Big {{0}} first {{1}} second:{{2}}', 'cat'])
-
-        # try to insert malicious expression
-        malicous = {
-            'My ro-{{0}}': 'Translated ro-{{0}} and {{1+1}}',
-            'Big {{0}} first {{1}} second:{{2}}': 'Big Translated {{0}} second ({{2}}) first {{1+1}}',
-            'cat': 'dog',
-        }
-        result = xml_translate(malicous.get, source)
-
-        self.assertEqual(result, """<t t-name="stuff">
-                        <t t-set="first" t-value="33"/>
-                        <t t-set="second" t-valuef="no-translate-{{first}}"/>
-                        <t t-set="toto" t-valuef.translate="Translated ro-{{first}} and None"/>
-                        <span t-attf-title="Big Translated #{toto} second ({{second}}) first None"/>
-
-                        <div data-stuff.translate="dog"/>
-                    </t>""")
-
     def test_translate_html(self):
         """ Test html_translate(). """
         source = """<blockquote>A <h2>B</h2> C</blockquote>"""
@@ -376,7 +343,7 @@ class TestLanguageInstall(TransactionCase):
         def _load_module_terms(self, modules, langs, overwrite=False, imported_module=False):
             loaded.append((modules, langs, overwrite))
 
-        with patch('odoo.addons.base.models.ir_module.IrModuleModule._load_module_terms', _load_module_terms):
+        with patch('odoo.addons.base.models.ir_module.Module._load_module_terms', _load_module_terms):
             wizard.lang_install()
 
         # _load_module_terms is called once with lang='fr_FR' and overwrite=True
@@ -1167,7 +1134,7 @@ class TestXMLTranslation(TransactionCase):
     </div>
     <div class="s_table_of_content_main" data-name="Content">
         <section class="pb16">
-            <h1 data-anchor="true" id="table_of_content_heading_1672668075678_4">%s</h1>
+            <h1 data-anchor="true" class="o_default_snippet_text" id="table_of_content_heading_1672668075678_4">%s</h1>
         </section>
     </div>
 </form>'''
@@ -1217,7 +1184,7 @@ class TestXMLTranslation(TransactionCase):
     </div>
     <div class="s_table_of_content_main" data-name="Content">
         <section class="pb16">
-            <h1 data-anchor="true" id="table_of_content_heading_1672668075678_4">%s</h1>
+            <h1 data-anchor="true" class="o_default_snippet_text" id="table_of_content_heading_1672668075678_4">%s</h1>
         </section>
     </div>
 </form>'''
@@ -1817,7 +1784,7 @@ class TestLanguageInstallPerformance(TransactionCase):
         self.assertFalse(fr_BE.active)
 
         t0 = time.time()
-        fr_BE.action_unarchive()
+        fr_BE.toggle_active()
         t1 = time.time()
         _stats_logger.info("installed language fr_BE in %.3fs", t1 - t0)
 

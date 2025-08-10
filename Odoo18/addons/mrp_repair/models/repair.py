@@ -3,7 +3,7 @@
 from odoo import api, fields, models, _
 
 
-class RepairOrder(models.Model):
+class Repair(models.Model):
     _inherit = 'repair.order'
 
     production_count = fields.Integer(

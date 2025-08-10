@@ -25,6 +25,5 @@ Use Epson ePOS Printers without the IoT Box in the Point of Sale
             'pos_epson_printer/static/src/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

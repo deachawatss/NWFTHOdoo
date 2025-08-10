@@ -2,7 +2,7 @@
     position: relative;
 
     &:after {
-        content: attr(o-we-hint-text);
+        content: attr(placeholder);
         position: absolute;
         top: 0;
         left: 0;
@@ -12,11 +12,5 @@
         pointer-events: none;
         text-align: inherit;
         width: 100%;
-    }
-}
-
-div[class*="col-"][class*="o-we-hint"] {
-    &:after {
-        left: calc(var(--gutter-x, 0)* .5);
     }
 }

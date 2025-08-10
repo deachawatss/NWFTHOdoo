@@ -154,9 +154,17 @@ class PaymentTransaction(models.Model):
                 worldline_code = const.PAYMENT_METHODS_MAPPING.get(self.payment_method_id.code, 0)
                 payload['cardPaymentMethodSpecificInput']['paymentProductId'] = worldline_code
             else:
+                pm_codes = self.env['payment.method'].search([
+                    ('active', 'in', [True, False]),
+                    ('primary_payment_method_id', '=', self.payment_method_id.id),
+                ]).mapped('code')
+                worldline_codes = [
+                    const.PAYMENT_METHODS_MAPPING[code] for code in pm_codes
+                    if code in const.PAYMENT_METHODS_MAPPING
+                ]
                 payload['hostedCheckoutSpecificInput']['paymentProductFilters'] = {
                     'restrictTo': {
-                        'groups': ['cards'],
+                        'products': worldline_codes,
                     },
                 }
 
@@ -237,7 +245,7 @@ class PaymentTransaction(models.Model):
         if provider_code != 'worldline' or len(tx) == 1:
             return tx
 
-        # In case of failed payment, paymentResult could be given as a separate key
+        # In case of failed payment, paymentResult could be given as a seperate key
         payment_result = notification_data.get('paymentResult', notification_data)
         payment_output = payment_result.get('payment', {}).get('paymentOutput', {})
         reference = payment_output.get('references', {}).get('merchantReference', '')
@@ -254,28 +262,6 @@ class PaymentTransaction(models.Model):
 
         return tx
 
-    def _compare_notification_data(self, notification_data):
-        """ Override of `payment` to compare the transaction based on Worldline data.
-
-        :param dict notification_data: The notification data sent by the provider.
-        :return: None
-        :raise ValidationError: If the transaction's amount and currency don't match the
-            notification data.
-        """
-        if self.provider_code != 'worldline':
-            return super()._compare_notification_data(notification_data)
-
-        # In case of failed payment, paymentResult could be given as a separate key
-        payment_result = notification_data.get('paymentResult', notification_data)
-        amount_of_money = payment_result.get('payment', {}).get('paymentOutput', {}).get(
-            'amountOfMoney', {}
-        )
-        amount = payment_utils.to_major_currency_units(
-            amount_of_money.get('amount', 0), self.currency_id
-        )
-        currency_code = amount_of_money.get('currencyCode')
-        self._validate_amount_and_currency(amount, currency_code)
-
     def _process_notification_data(self, notification_data):
         """ Override of `payment' to process the transaction based on Worldline data.
 
@@ -289,7 +275,7 @@ class PaymentTransaction(models.Model):
         if self.provider_code != 'worldline':
             return
 
-        # In case of failed payment, paymentResult could be given as a separate key
+        # In case of failed payment, paymentResult could be given as a seperate key
         payment_result = notification_data.get('paymentResult', notification_data)
         payment_data = payment_result.get('payment', {})
 

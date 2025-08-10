@@ -1,11 +1,20 @@
+# -*- coding: utf-8 -*-
+import os
 from markupsafe import Markup
 from math import ceil
 
 from odoo import api, fields, models
-from odoo.addons.base.models.assetsbundle import ScssStylesheetAsset
+
 from odoo.addons.base.models.ir_qweb_fields import nl2br
 from odoo.tools import html2plaintext, is_html_empty, image as tools
+from odoo.tools.misc import file_path
 
+try:
+    import sass as libsass
+except ImportError:
+    # If the `sass` python library isn't found, we fallback on the
+    # `sassc` executable in the path.
+    libsass = None
 try:
     from PIL.Image import Resampling
 except ImportError:
@@ -104,7 +113,7 @@ class BaseDocumentLayout(models.TransientModel):
     @api.depends('logo')
     def _compute_logo_colors(self):
         for wizard in self:
-            if wizard.env.context.get('bin_size'):
+            if wizard._context.get('bin_size'):
                 wizard_for_image = wizard.with_context(bin_size=False)
             else:
                 wizard_for_image = wizard
@@ -202,7 +211,7 @@ class BaseDocumentLayout(models.TransientModel):
         :param white_threshold: arbitrary value defining the maximum value a color can reach
         :param mitigate: arbitrary value defining the maximum value a band can reach
 
-        :return: a 2-value tuple with hex values of primary and secondary colors
+        :return colors: hex values of primary and secondary colors
         """
         if not logo:
             return False, False
@@ -271,11 +280,46 @@ class BaseDocumentLayout(models.TransientModel):
         """
         Compile the scss into css.
         """
-        if not scss.strip():
+        css_code = self._compile_scss(scss)
+        return css_code
+
+    @api.model
+    def _compile_scss(self, scss_source):
+        """
+        This code will compile valid scss into css.
+        Parameters are the same from odoo/addons/base/models/assetsbundle.py
+        Simply copied and adapted slightly
+        """
+
+        def scss_importer(path, *args):
+            *parent_path, file = os.path.split(path)
+            try:
+                parent_path = file_path(os.path.join(*parent_path))
+            except FileNotFoundError:
+                parent_path = file_path(os.path.join(bootstrap_path, *parent_path))
+            return [(os.path.join(parent_path, file),)]
+
+        # No scss ? still valid, returns empty css
+        if not scss_source.strip():
             return ""
-        asset = ScssStylesheetAsset(None, inline='// css_for_preview')
-        css_code = asset.compile(scss)
-        return Markup(css_code) if isinstance(scss, Markup) else css_code
+
+        precision = 8
+        output_style = 'expanded'
+        bootstrap_path = file_path('web/static/lib/bootstrap/scss')
+
+        try:
+            compiled_css = libsass.compile(
+                string=scss_source,
+                include_paths=[
+                    bootstrap_path,
+                ],
+                importers=[(0, scss_importer)],
+                output_style=output_style,
+                precision=precision,
+            )
+            return Markup(compiled_css) if isinstance(compiled_css, Markup) else compiled_css
+        except libsass.CompileError as e:
+            raise libsass.CompileError(e.args[0])
 
     @api.depends('company_details')
     def _compute_empty_company_details(self):

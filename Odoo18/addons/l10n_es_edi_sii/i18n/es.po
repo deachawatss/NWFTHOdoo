@@ -73,17 +73,6 @@ msgid "Create the first certificate"
 msgstr "Crear el primer certificado"
 
 #. module: l10n_es_edi_sii
-#: model:ir.model.fields,field_description:l10n_es_edi_sii.field_account_edi_format__display_name
-#: model:ir.model.fields,field_description:l10n_es_edi_sii.field_account_move__display_name
-#: model:ir.model.fields,field_description:l10n_es_edi_sii.field_account_move_send__display_name
-#: model:ir.model.fields,field_description:l10n_es_edi_sii.field_account_resequence_wizard__display_name
-#: model:ir.model.fields,field_description:l10n_es_edi_sii.field_certificate_certificate__display_name
-#: model:ir.model.fields,field_description:l10n_es_edi_sii.field_res_company__display_name
-#: model:ir.model.fields,field_description:l10n_es_edi_sii.field_res_config_settings__display_name
-msgid "Display Name"
-msgstr "Nombre mostrado"
-
-#. module: l10n_es_edi_sii
 #: model:ir.model,name:l10n_es_edi_sii.model_account_edi_format
 msgid "EDI format"
 msgstr "Formato EDI"
@@ -97,17 +86,6 @@ msgstr "Hacienda Foral de Bizkaia"
 #: model:ir.model.fields.selection,name:l10n_es_edi_sii.selection__res_company__l10n_es_sii_tax_agency__gipuzkoa
 msgid "Hacienda Foral de Gipuzkoa"
 msgstr "Hacienda Foral de Gipuzkoa"
-
-#. module: l10n_es_edi_sii
-#: model:ir.model.fields,field_description:l10n_es_edi_sii.field_account_edi_format__id
-#: model:ir.model.fields,field_description:l10n_es_edi_sii.field_account_move__id
-#: model:ir.model.fields,field_description:l10n_es_edi_sii.field_account_move_send__id
-#: model:ir.model.fields,field_description:l10n_es_edi_sii.field_account_resequence_wizard__id
-#: model:ir.model.fields,field_description:l10n_es_edi_sii.field_certificate_certificate__id
-#: model:ir.model.fields,field_description:l10n_es_edi_sii.field_res_company__id
-#: model:ir.model.fields,field_description:l10n_es_edi_sii.field_res_config_settings__id
-msgid "ID"
-msgstr "ID"
 
 #. module: l10n_es_edi_sii
 #. odoo-python

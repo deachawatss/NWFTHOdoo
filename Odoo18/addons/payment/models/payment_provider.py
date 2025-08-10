@@ -8,7 +8,6 @@ from odoo.exceptions import UserError, ValidationError
 from odoo.addons.payment import utils as payment_utils
 from odoo.addons.payment.const import REPORT_REASONS_MAPPING
 
-
 _logger = logging.getLogger(__name__)
 
 
@@ -133,7 +132,7 @@ class PaymentProvider(models.Model):
         string="Pending Message",
         help="The message displayed if the order pending after the payment process",
         default=lambda self: _(
-            "Your payment has been processed but is waiting for approval."
+            "Your payment has been successfully processed but is waiting for approval."
         ), translate=True)
     auth_msg = fields.Html(
         string="Authorize Message", help="The message displayed if payment is authorized",
@@ -141,7 +140,7 @@ class PaymentProvider(models.Model):
     done_msg = fields.Html(
         string="Done Message",
         help="The message displayed if the order is successfully done after the payment process",
-        default=lambda self: _("Your payment has been processed."),
+        default=lambda self: _("Your payment has been successfully processed."),
         translate=True)
     cancel_msg = fields.Html(
         string="Cancelled Message",
@@ -294,46 +293,31 @@ class PaymentProvider(models.Model):
                 "You cannot change the company of a payment provider with existing transactions."
             ))
 
-    # === CONSTRAINT METHODS === #
-
-    @api.constrains('capture_manually')
-    def _check_manual_capture_supported_by_payment_methods(self):
-        if self.capture_manually:
-            incompatible_pms = self.payment_method_ids.filtered(
-                lambda method: method.active and method.support_manual_capture == 'none'
-            )
-            if incompatible_pms:
-                raise ValidationError(_(
-                    "The following payment methods must be disabled in order to enable manual"
-                    " capture: %s", ", ".join(incompatible_pms.mapped('name'))
-                ))
-
-
     #=== CRUD METHODS ===#
 
     @api.model_create_multi
-    def create(self, vals_list):
-        providers = super().create(vals_list)
+    def create(self, values_list):
+        providers = super().create(values_list)
         providers._check_required_if_provider()
         if any(provider.state != 'disabled' for provider in providers):
             self._toggle_post_processing_cron()
         return providers
 
-    def write(self, vals):
+    def write(self, values):
         # Handle provider state changes.
         deactivated_providers = self.env['payment.provider']
         activated_providers = self.env['payment.provider']
-        if 'state' in vals:
+        if 'state' in values:
             state_changed_providers = self.filtered(
-                lambda p: p.state not in ('disabled', vals['state'])
+                lambda p: p.state not in ('disabled', values['state'])
             )  # Don't handle providers being enabled or whose state is not updated.
             state_changed_providers._archive_linked_tokens()
-            if vals['state'] == 'disabled':
+            if values['state'] == 'disabled':
                 deactivated_providers = state_changed_providers
             else:  # 'enabled' or 'test'
                 activated_providers = self.filtered(lambda p: p.state == 'disabled')
 
-        result = super().write(vals)
+        result = super().write(values)
         self._check_required_if_provider()
 
         deactivated_providers._deactivate_unsupported_payment_methods()
@@ -683,19 +667,8 @@ class PaymentProvider(models.Model):
         return self.redirect_form_view_id
 
     @api.model
-    def _get_provider_domain(self, provider_code, **kwargs):
-        """ Return the payment provider domain.
-
-        :param str provider_code: The code of the provider to search for.
-        :param dict kwargs: Additional keyword arguments.
-        :return: The domain to search for the provider.
-        :rtype: list[tuple]
-        """
-        return [('code', '=', provider_code)]
-
-    @api.model
-    def _setup_provider(self, provider_code, **kwargs):
-        """ Perform module-specific and multi-company setup steps for the provider.
+    def _setup_provider(self, provider_code):
+        """ Perform module-specific setup steps for the provider.
 
         This method is called after the module of a provider is installed, with its code passed as
         `provider_code`.
@@ -703,11 +676,11 @@ class PaymentProvider(models.Model):
         :param str provider_code: The code of the provider to setup.
         :return: None
         """
-        main_provider = self.search(self._get_provider_domain(provider_code, **kwargs), limit=1)
-        for company in self.env['res.company'].search([]):
-            if company != main_provider.company_id and not company.parent_id:
-                # Create a copy of the provider for each company.
-                main_provider.copy({'company_id': company.id})
+        return
+
+    @api.model
+    def _get_removal_domain(self, provider_code, **kwargs):
+        return [('code', '=', provider_code)]
 
     @api.model
     def _remove_provider(self, provider_code, **kwargs):
@@ -716,7 +689,7 @@ class PaymentProvider(models.Model):
         :param str provider_code: The code of the provider whose data to remove.
         :return: None
         """
-        providers = self.search(self._get_provider_domain(provider_code, **kwargs))
+        providers = self.search(self._get_removal_domain(provider_code, **kwargs))
         providers.write(self._get_removal_values())
 
     def _get_removal_values(self):

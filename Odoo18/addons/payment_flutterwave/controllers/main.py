@@ -30,7 +30,7 @@ class FlutterwaveController(http.Controller):
 
         # Handle the notification data.
         if data.get('status') != 'cancelled':
-            self._verify_and_handle_notification_data(data)
+            request.env['payment.transaction'].sudo()._handle_notification_data('flutterwave', data)
         else:  # The customer cancelled the payment by clicking on the close button.
             pass  # Don't try to process this case because the transaction id was not provided.
 
@@ -38,12 +38,12 @@ class FlutterwaveController(http.Controller):
         return request.redirect('/payment/status')
 
     @http.route(_auth_return_url, type='http', methods=['GET'], auth='public')
-    def flutterwave_return_from_authorization(self, response=None):
+    def flutterwave_return_from_authorization(self, response):
         """ Process the response sent by Flutterwave after authorization.
 
         :param str response: The stringified JSON response.
         """
-        data = json.loads(response) if response else {}
+        data = json.loads(response)
         return self.flutterwave_return_from_checkout(**data)
 
     @http.route(_webhook_url, type='http', methods=['POST'], auth='public', csrf=False)
@@ -92,19 +92,3 @@ class FlutterwaveController(http.Controller):
         if not hmac.compare_digest(received_signature, expected_signature):
             _logger.warning("Received notification with invalid signature.")
             raise Forbidden()
-
-    @staticmethod
-    def _verify_and_handle_notification_data(data):
-        """ Verify and process the notification data sent by Flutterwave.
-
-        :param dict data: The notification data.
-        :return: None
-        """
-        tx_sudo = request.env['payment.transaction'].sudo()._get_tx_from_notification_data(
-            'flutterwave', data
-        )
-        # Verify the notification data.
-        verified_data = tx_sudo.provider_id._flutterwave_make_request(
-            'transactions/verify_by_reference', payload={'tx_ref': tx_sudo.reference}, method='GET',
-        )['data']
-        tx_sudo._handle_notification_data('flutterwave', verified_data)

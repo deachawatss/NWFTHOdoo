@@ -1,4 +1,4 @@
-import * as Order from "@point_of_sale/../tests/generic_helpers/order_widget_util";
+import * as Order from "@point_of_sale/../tests/tours/utils/generic_components/order_widget_util";
 
 export function clickOrderline(productName) {
     return Order.hasLine({ productName, run: "click" });
@@ -12,11 +12,11 @@ export function clickBack() {
         },
     ];
 }
-export function clickButton(name) {
+export function clickPay() {
     return [
         {
-            content: `click '${name}' button`,
-            trigger: `.splitbill-screen .pay-button button:contains("${name}")`,
+            content: "click pay button",
+            trigger: `.splitbill-screen .pay-button .button`,
             run: "click",
         },
     ];

@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { OdooViewsDataSource } from "@spreadsheet/data_sources/odoo_views_data_source";
 import { _t } from "@web/core/l10n/translation";
 import { GraphModel as ChartModel } from "@web/views/graph/graph_model";
@@ -41,21 +43,5 @@ export class ChartDataSource extends OdooViewsDataSource {
             return { datasets: [], labels: [] };
         }
         return this._model.data;
-    }
-
-    changeChartType(newMode) {
-        this._metaData.mode = newMode;
-        this._model?.updateMetaData({ mode: newMode });
-    }
-}
-
-export function chartTypeToDataSourceMode(chartType) {
-    switch (chartType) {
-        case "odoo_bar":
-        case "odoo_line":
-        case "odoo_pie":
-            return chartType.replace("odoo_", "");
-        default:
-            return "bar";
     }
 }

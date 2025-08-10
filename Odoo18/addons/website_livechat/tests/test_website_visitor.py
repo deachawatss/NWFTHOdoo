@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
-from odoo import Command, fields
+
 from odoo.addons.website.tests.test_website_visitor import WebsiteVisitorTestsCommon
-from odoo.tests import new_test_user, tagged
-from odoo.exceptions import AccessError
+from odoo.tests import tagged
 
 
 @tagged('website_visitor')
@@ -28,30 +27,19 @@ class WebsiteVisitorTestsLivechat(WebsiteVisitorTestsCommon):
     def _prepare_main_visitor_data(self):
         values = super()._prepare_main_visitor_data()
         test_partner = self.env['res.partner'].create({'name': 'John Doe'})
-        values.update(
-            {
-                "partner_id": test_partner.id,
-                "discuss_channel_ids": [
-                    Command.create({"name": "Conversation 1", "livechat_end_dt": fields.Datetime.now()}),
-                ],
-            }
-        )
+        values.update({
+            'partner_id': test_partner.id,
+            'discuss_channel_ids': [(0, 0, {
+                'name': 'Conversation 1'
+            })]
+        })
         return values
 
     def _prepare_linked_visitor_data(self):
         values = super()._prepare_linked_visitor_data()
-        values.update(
-            {
-                "discuss_channel_ids": [
-                    Command.create({"name": "Conversation 2", "livechat_end_dt": fields.Datetime.now()}),
-                ],
-            }
-        )
+        values.update({
+            'discuss_channel_ids': [(0, 0, {
+                'name': 'Conversation 2'
+            })]
+        })
         return values
-
-    def test_visitor_page_statistics_access(self):
-        operator = new_test_user(self.env, "operator", groups="im_livechat.im_livechat_group_user")
-        visitor = self._get_last_visitor()
-        visitor.with_user(operator).page_count
-        with self.assertRaises(AccessError):
-            visitor.with_user(operator).page_ids

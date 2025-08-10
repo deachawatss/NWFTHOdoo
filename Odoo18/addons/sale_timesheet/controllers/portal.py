@@ -1,11 +1,12 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from werkzeug.exceptions import NotFound
 
 from odoo import http, _
 from odoo.exceptions import AccessError, MissingError
-from odoo.fields import Domain
 from odoo.http import request
+from odoo.osv import expression
 
 from odoo.addons.account.controllers.portal import PortalAccount
 from odoo.addons.hr_timesheet.controllers.portal import TimesheetCustomerPortal
@@ -18,7 +19,7 @@ class PortalProjectAccount(PortalAccount, ProjectCustomerPortal):
     def _invoice_get_page_view_values(self, invoice, access_token, **kwargs):
         values = super()._invoice_get_page_view_values(invoice, access_token, **kwargs)
         domain = request.env['account.analytic.line']._timesheet_get_portal_domain()
-        domain = Domain.AND([
+        domain = expression.AND([
             domain,
             request.env['account.analytic.line']._timesheet_get_sale_domain(
                 invoice.mapped('line_ids.sale_line_ids'),
@@ -60,7 +61,7 @@ class SaleTimesheetCustomerPortal(TimesheetCustomerPortal):
 
     def _get_searchbar_inputs(self):
         return super()._get_searchbar_inputs() | {
-            'so': {'input': 'so', 'label': _('Search in Sales Order Item'), 'sequence': 50},
+            'so': {'input': 'so', 'label': _('Search in Sales Order'), 'sequence': 50},
             'invoice': {'input': 'invoice', 'label': _('Search in Invoice'), 'sequence': 80},
         }
 
@@ -72,10 +73,10 @@ class SaleTimesheetCustomerPortal(TimesheetCustomerPortal):
 
     def _get_search_domain(self, search_in, search):
         if search_in == 'so':
-            return Domain('so_line', 'ilike', search) | Domain('so_line.order_id.name', 'ilike', search)
+            return ['|', ('so_line', 'ilike', search), ('so_line.order_id.name', 'ilike', search)]
         elif search_in == 'invoice':
             invoices = request.env['account.move'].sudo().search(['|', ('name', 'ilike', search), ('id', 'ilike', search)])
-            return Domain(request.env['account.analytic.line']._timesheet_get_sale_domain(invoices.mapped('invoice_line_ids.sale_line_ids'), invoices))
+            return request.env['account.analytic.line']._timesheet_get_sale_domain(invoices.mapped('invoice_line_ids.sale_line_ids'), invoices)
         else:
             return super()._get_search_domain(search_in, search)
 

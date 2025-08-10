@@ -1,10 +1,10 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import api, fields, models, _
-from odoo.fields import Domain
+from odoo import api, fields, models
 
 
-class CalendarAlarm(models.Model):
+class Alarm(models.Model):
     _name = 'calendar.alarm'
     _description = 'Event Alarm'
 
@@ -26,7 +26,6 @@ class CalendarAlarm(models.Model):
         compute='_compute_mail_template_id', readonly=False, store=True,
         help="Template used to render mail reminder content.")
     body = fields.Text("Additional Message", help="Additional message that would be sent with the notification for the reminder")
-    notify_responsible = fields.Boolean("Notify Responsible", default=False)
 
     @api.depends('interval', 'duration')
     def _compute_duration_minutes(self):
@@ -49,14 +48,6 @@ class CalendarAlarm(models.Model):
                 alarm.mail_template_id = False
 
     def _search_duration_minutes(self, operator, value):
-        if operator == 'in':
-            # recursive call with operator '='
-            return Domain.OR(self._search_duration_minutes('=', v) for v in value)
-        elif operator == '=':
-            if not value:
-                return Domain('duration', '=', False)
-        elif operator not in ('>=', '<=', '<', '>'):
-            return NotImplemented
         return [
             '|', '|',
             '&', ('interval', '=', 'minutes'), ('duration', operator, value),
@@ -64,14 +55,10 @@ class CalendarAlarm(models.Model):
             '&', ('interval', '=', 'days'), ('duration', operator, value / 60 / 24),
         ]
 
-    @api.onchange('duration', 'interval', 'alarm_type', 'notify_responsible')
+    @api.onchange('duration', 'interval', 'alarm_type')
     def _onchange_duration_interval(self):
-        if self.notify_responsible and self.alarm_type in ('email', 'notification'):
-            self.notify_responsible = False
         display_interval = self._interval_selection.get(self.interval, '')
         display_alarm_type = {
             key: value for key, value in self._fields['alarm_type']._description_selection(self.env)
         }[self.alarm_type]
         self.name = "%s - %s %s" % (display_alarm_type, self.duration, display_interval)
-        if self.notify_responsible:
-            self.name += " - " + _("Notify Responsible")

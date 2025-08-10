@@ -1,16 +1,17 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import fields, models, api, _
 from odoo.exceptions import UserError
 
 
-class StockAddToWave(models.TransientModel):
+class StockPickingToWave(models.TransientModel):
     _name = 'stock.add.to.wave'
     _description = 'Wave Transfer Lines'
 
     @api.model
-    def default_get(self, fields):
-        res = super().default_get(fields)
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
         if self.env.context.get('active_model') == 'stock.move.line':
             lines = self.env['stock.move.line'].browse(self.env.context.get('active_ids'))
             res['line_ids'] = self.env.context.get('active_ids')
@@ -65,5 +66,4 @@ class StockAddToWave(models.TransientModel):
                 self.env.context,
                 picking_to_wave=self.picking_ids.ids,
                 active_wave_id=self.wave_id.id,
-                from_wave_form=self.env.context.get('from_wave_form'),
             )}

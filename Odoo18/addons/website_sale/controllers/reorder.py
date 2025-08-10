@@ -28,20 +28,14 @@ class CustomerPortal(sale_portal.CustomerPortal):
                 }
                 for pcav in line.product_custom_attribute_value_ids
             ],
-            'quantity': line.product_uom_qty,
+            'qty': line.product_uom_qty,
             'combinationInfo': line.product_id.product_tmpl_id.with_context(
                 **self._sale_reorder_get_line_context()
             )._get_combination_info(combination, line.product_id.id, line.product_uom_qty)
             if add_to_cart_allowed else {},
         }
 
-    @route(
-        '/my/orders/reorder_modal_content',
-        type='jsonrpc',
-        auth='public',
-        website=True,
-        readonly=True,
-    )
+    @route('/my/orders/reorder_modal_content', type='json', auth='public', website=True)
     def my_orders_reorder_modal_content(self, order_id, access_token):
         try:
             sale_order = self._document_check_access('sale.order', order_id, access_token=access_token)
@@ -63,7 +57,6 @@ class CustomerPortal(sale_portal.CustomerPortal):
                     selected_combo_items.append({
                         **self._get_common_order_line_data(linked_line),
                         'combo_item_id': linked_line.combo_item_id.id,
-                        'parent_product_template_id': line.product_id.product_tmpl_id.id,
                     })
 
             add_to_cart_allowed = line.with_user(request.env.user).sudo()._is_reorder_allowed()

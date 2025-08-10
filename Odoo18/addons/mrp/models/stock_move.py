@@ -1,9 +1,213 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from collections import defaultdict
+from dateutil.relativedelta import relativedelta
 from odoo import _, api, Command, fields, models
-from odoo.tools import OrderedSet
+from odoo.osv import expression
+from odoo.tools import float_compare, float_round, float_is_zero, OrderedSet
 from odoo.exceptions import ValidationError
+
+
+class StockMoveLine(models.Model):
+    _inherit = 'stock.move.line'
+
+    workorder_id = fields.Many2one('mrp.workorder', 'Work Order', check_company=True)
+    production_id = fields.Many2one('mrp.production', 'Production Order', check_company=True)
+    description_bom_line = fields.Char(related='move_id.description_bom_line')
+
+    @api.depends('production_id')
+    def _compute_picking_type_id(self):
+        line_to_remove = self.env['stock.move.line']
+        for line in self:
+            if not line.production_id:
+                continue
+            line.picking_type_id = line.production_id.picking_type_id
+            line_to_remove |= line
+        return super(StockMoveLine, self - line_to_remove)._compute_picking_type_id()
+
+    def _search_picking_type_id(self, operator, value):
+        res = super()._search_picking_type_id(operator=operator, value=value)
+        if operator in ['not in', '!=', 'not ilike']:
+            if value is False:
+                return expression.OR([[('production_id.picking_type_id', operator, value)], res])
+            else:
+                return expression.AND([[('production_id.picking_type_id', operator, value)], res])
+        else:
+            if value is False:
+                return expression.AND([[('production_id.picking_type_id', operator, value)], res])
+            else:
+                return expression.OR([[('production_id.picking_type_id', operator, value)], res])
+
+    @api.model_create_multi
+    def create(self, values):
+        res = super(StockMoveLine, self).create(values)
+        for line in res:
+            # If the line is added in a done production, we need to map it
+            # manually to the produced move lines in order to see them in the
+            # traceability report
+            if line.move_id.raw_material_production_id and line.state == 'done':
+                mo = line.move_id.raw_material_production_id
+                finished_lots = mo.lot_producing_id
+                finished_lots |= mo.move_finished_ids.filtered(lambda m: m.product_id != mo.product_id).move_line_ids.lot_id
+                if finished_lots:
+                    produced_move_lines = mo.move_finished_ids.move_line_ids.filtered(lambda sml: sml.lot_id in finished_lots)
+                    line.produce_line_ids = [(6, 0, produced_move_lines.ids)]
+                else:
+                    produced_move_lines = mo.move_finished_ids.move_line_ids
+                    line.produce_line_ids = [(6, 0, produced_move_lines.ids)]
+        return res
+
+    def _get_similar_move_lines(self):
+        lines = super(StockMoveLine, self)._get_similar_move_lines()
+        if self.move_id.production_id:
+            finished_moves = self.move_id.production_id.move_finished_ids
+            finished_move_lines = finished_moves.mapped('move_line_ids')
+            lines |= finished_move_lines.filtered(lambda ml: ml.product_id == self.product_id and (ml.lot_id or ml.lot_name))
+        if self.move_id.raw_material_production_id:
+            raw_moves = self.move_id.raw_material_production_id.move_raw_ids
+            raw_moves_lines = raw_moves.mapped('move_line_ids')
+            lines |= raw_moves_lines.filtered(lambda ml: ml.product_id == self.product_id and (ml.lot_id or ml.lot_name))
+        return lines
+
+    def write(self, vals):
+        for move_line in self:
+            production = move_line.move_id.production_id or move_line.move_id.raw_material_production_id
+            if production and move_line.state == 'done' and any(field in vals for field in ('lot_id', 'location_id', 'quantity')):
+                move_line._log_message(production, move_line, 'mrp.track_production_move_template', vals)
+        return super(StockMoveLine, self).write(vals)
+
+    def _get_aggregated_properties(self, move_line=False, move=False):
+        aggregated_properties = super()._get_aggregated_properties(move_line, move)
+        bom = aggregated_properties['move'].bom_line_id.bom_id
+        aggregated_properties['bom'] = bom or False
+        aggregated_properties['line_key'] += f'_{bom.id if bom else ""}'
+        return aggregated_properties
+
+    def _compute_product_packaging_qty(self):
+        # we catch kit lines where the packaging is still the one from the final product (it has
+        # not been changed to a packaging of a component)
+        kit_lines = self.filtered(lambda move_line: move_line.move_id.bom_line_id.bom_id.type == 'phantom' and
+        move_line.move_id.product_packaging_id and move_line.product_id != move_line.move_id.product_packaging_id.product_id)
+        for move_line in kit_lines:
+            move = move_line.move_id
+            bom_line = move.bom_line_id
+            kit_bom = bom_line.bom_id
+
+            # Convert the move line quantity to the product's move uom
+            qty_move_uom = move_line.product_uom_id._compute_quantity(move_line.quantity, move_line.move_id.product_uom)
+            # Convert the product's move uom to the bom line's uom
+            qty_bom_uom = move.product_uom._compute_quantity(qty_move_uom, bom_line.product_uom_id)
+            # calculate the bom's kit qty in kit product uom qty
+            bom_qty_product_uom = kit_bom.product_uom_id._compute_quantity(kit_bom.product_qty, kit_bom.product_tmpl_id.uom_id)
+            # calculate the comp/final_prod ratio of the BOM
+            kit_ratio = bom_line.product_qty / bom_qty_product_uom
+            # calculate the number of kit on the move line according to the number of comp
+            kit_qty = qty_bom_uom / kit_ratio
+            # calculate the quantity needed of packaging
+            move_line.product_packaging_qty = kit_qty / move_line.move_id.product_packaging_id.qty
+        super(StockMoveLine, self - kit_lines)._compute_product_packaging_qty()
+
+    @api.model
+    def _compute_packaging_qtys(self, aggregated_move_lines):
+        non_kit_ml = {}
+        kit_aggregated_ml = set()
+        kit_moves = defaultdict(lambda: self.env['stock.move'])
+        kit_qty = {}
+
+        for line in aggregated_move_lines.values():
+            if line['packaging']:
+                bom_id = line['bom']
+                if bom_id and bom_id.type == "phantom":
+                    kit_aggregated_ml.add(line['line_key'])
+                    kit_moves[bom_id] |= line['move']
+                else:
+                    non_kit_ml[line['line_key']] = line
+
+        filters = {'incoming_moves': lambda m: True, 'outgoing_moves': lambda m: False}
+        for bom, moves in kit_moves.items():
+            if moves.picking_id.backorder_ids:
+                kit_qty_ordered = (moves + moves.picking_id.backorder_ids.move_ids)._compute_kit_quantities(bom.product_id or bom.product_tmpl_id.product_variant_id, 1, bom, filters)
+                kit_qty_done = moves._compute_kit_quantities(bom.product_id or bom.product_tmpl_id.product_variant_id, 1, bom, filters)
+            else:
+                kit_qty_done = moves._compute_kit_quantities(bom.product_id or bom.product_tmpl_id.product_variant_id, 1, bom, filters)
+                kit_qty_ordered = kit_qty_done
+            kit_qty[bom.id] = (kit_qty_ordered, kit_qty_done)
+
+        for key in kit_aggregated_ml:
+            line = aggregated_move_lines[key]
+            bom_id = line['bom']
+            kit_qty_ordered, kit_qty_done = kit_qty[bom_id.id]
+            if line['packaging'].product_id == line['product']:
+                # If packaging has been set directly on the move
+                line['packaging_qty'] = line['packaging']._compute_qty(line['qty_ordered'], line['product_uom'])
+                line['packaging_quantity'] = line['packaging']._compute_qty(line['quantity'], line['product_uom'])
+            else:
+                # If packaging comes from the kit
+                line['packaging_qty'] = line['packaging']._compute_qty(kit_qty_ordered, bom_id.product_uom_id)
+                line['packaging_quantity'] = line['packaging']._compute_qty(kit_qty_done, bom_id.product_uom_id)
+            aggregated_move_lines[key] = line
+
+        non_kit_ml = super()._compute_packaging_qtys(non_kit_ml)
+        for line in non_kit_ml.values():
+            aggregated_move_lines[line['line_key']] = line
+
+        return aggregated_move_lines
+
+    def _get_aggregated_product_quantities(self, **kwargs):
+        """Returns dictionary of products and corresponding values of interest grouped by optional kit_name
+
+        Removes descriptions where description == kit_name. kit_name is expected to be passed as a
+        kwargs value because this is not directly stored in move_line_ids. Unfortunately because we
+        are working with aggregated data, we have to loop through the aggregation to do this removal.
+
+        arguments: kit_name (optional): string value of a kit name passed as a kwarg
+        returns: dictionary {same_key_as_super: {same_values_as_super, ...}
+        """
+        aggregated_move_lines = super()._get_aggregated_product_quantities(**kwargs)
+        kit_name = kwargs.get('kit_name')
+
+        to_be_removed = []
+        for aggregated_move_line in aggregated_move_lines:
+            bom = aggregated_move_lines[aggregated_move_line]['bom']
+            is_phantom = bom.type == 'phantom' if bom else False
+            if kit_name:
+                product = bom.product_id or bom.product_tmpl_id if bom else False
+                display_name = product.display_name if product else False
+                description = aggregated_move_lines[aggregated_move_line]['description']
+                if not is_phantom or display_name != kit_name:
+                    to_be_removed.append(aggregated_move_line)
+                elif description == kit_name:
+                    aggregated_move_lines[aggregated_move_line]['description'] = ""
+            elif not kwargs and is_phantom:
+                to_be_removed.append(aggregated_move_line)
+
+        for move_line in to_be_removed:
+            del aggregated_move_lines[move_line]
+
+        return aggregated_move_lines
+
+    def _prepare_stock_move_vals(self):
+        move_vals = super()._prepare_stock_move_vals()
+        if self.env['product.product'].browse(move_vals['product_id']).is_kits:
+            move_vals['location_id'] = self.location_id.id
+            move_vals['location_dest_id'] = self.location_dest_id.id
+        return move_vals
+
+    def _get_linkable_moves(self):
+        """ Don't linke move lines with kit products to moves with dissimilar locations so that
+        post `action_explode()` move lines will have accurate location data.
+        """
+        self.ensure_one()
+        if self.product_id and self.product_id.is_kits:
+            moves = self.picking_id.move_ids.filtered(lambda move:
+                move.product_id == self.product_id and
+                move.location_id == self.location_id and
+                move.location_dest_id == self.location_dest_id
+            )
+            return sorted(moves, key=lambda m: m.quantity < m.product_qty, reverse=True)
+        else:
+            return super()._get_linkable_moves()
 
 
 class StockMove(models.Model):
@@ -11,13 +215,13 @@ class StockMove(models.Model):
 
     created_production_id = fields.Many2one('mrp.production', 'Created Production Order', check_company=True, index=True)
     production_id = fields.Many2one(
-        'mrp.production', 'Production Order for finished products', check_company=True, index='btree_not_null', ondelete="cascade")
+        'mrp.production', 'Production Order for finished products', check_company=True, index='btree_not_null')
     raw_material_production_id = fields.Many2one(
-        'mrp.production', 'Production Order for components', check_company=True, index='btree_not_null', ondelete="cascade")
+        'mrp.production', 'Production Order for components', check_company=True, index='btree_not_null')
     unbuild_id = fields.Many2one(
-        'mrp.unbuild', 'Disassembly Order', check_company=True, index='btree_not_null')
+        'mrp.unbuild', 'Disassembly Order', check_company=True)
     consume_unbuild_id = fields.Many2one(
-        'mrp.unbuild', 'Consumed Disassembly Order', check_company=True, index='btree_not_null')
+        'mrp.unbuild', 'Consumed Disassembly Order', check_company=True)
     allowed_operation_ids = fields.One2many(
         'mrp.routing.workcenter', related='raw_material_production_id.bom_id.operation_ids')
     operation_id = fields.Many2one(
@@ -31,30 +235,20 @@ class StockMove(models.Model):
         'mrp.bom.byproduct', 'By-products', check_company=True,
         help="By-product line that generated the move in a manufacturing order")
     unit_factor = fields.Float('Unit Factor', compute='_compute_unit_factor', store=True)
-    order_finished_lot_id = fields.Many2one('stock.lot', string="Finished Lot/Serial Number", related="raw_material_production_id.lot_producing_id")
-    should_consume_qty = fields.Float('Quantity To Consume', compute='_compute_should_consume_qty', digits='Product Unit')
+    is_done = fields.Boolean(
+        'Done', compute='_compute_is_done', store=True)
+    order_finished_lot_id = fields.Many2one('stock.lot', string="Finished Lot/Serial Number", related="raw_material_production_id.lot_producing_id", store=True, index='btree_not_null')
+    should_consume_qty = fields.Float('Quantity To Consume', compute='_compute_should_consume_qty', digits='Product Unit of Measure')
     cost_share = fields.Float(
         "Cost Share (%)", digits=(5, 2),  # decimal = 2 is important for rounding calculations!!
         help="The percentage of the final production cost for this by-product. The total of all by-products' cost share must be smaller or equal to 100.")
     product_qty_available = fields.Float('Product On Hand Quantity', related='product_id.qty_available', depends=['product_id'])
     product_virtual_available = fields.Float('Product Forecasted Quantity', related='product_id.virtual_available', depends=['product_id'])
+    description_bom_line = fields.Char('Kit', compute='_compute_description_bom_line')
     manual_consumption = fields.Boolean(
         'Manual Consumption', compute='_compute_manual_consumption', store=True, readonly=False,
         help="When activated, then the registration of consumption for that component is recorded manually exclusively.\n"
              "If not activated, and any of the components consumption is edited manually on the manufacturing order, Odoo assumes manual consumption also.")
-
-    @api.depends('product_id.bom_ids', 'product_id.bom_ids.product_uom_id')
-    def _compute_allowed_uom_ids(self):
-        super()._compute_allowed_uom_ids()
-        for move in self:
-            move.allowed_uom_ids |= move.product_id.bom_ids.product_uom_id
-
-    @api.depends('production_id')
-    def _compute_packaging_uom_id(self):
-        super()._compute_packaging_uom_id()
-        for move in self:
-            if move.production_id:
-                move.packaging_uom_id = move.production_id.product_uom_id
 
     @api.depends('product_id')
     def _compute_manual_consumption(self):
@@ -90,21 +284,18 @@ class StockMove(models.Model):
         return super(StockMove, self.browse(ids_to_super))._compute_location_dest_id()
 
     @api.depends('bom_line_id')
-    def _compute_description_picking(self):
-        super()._compute_description_picking()
+    def _compute_description_bom_line(self):
         bom_line_description = {}
         for bom in self.bom_line_id.bom_id:
             if bom.type != 'phantom':
                 continue
-            # mapped('id') to keep NewId
             line_ids = self.bom_line_id.filtered(lambda line: line.bom_id == bom).mapped('id')
             total = len(line_ids)
             for i, line_id in enumerate(line_ids):
                 bom_line_description[line_id] = '%s - %d/%d' % (bom.display_name, i + 1, total)
 
         for move in self:
-            if not move.description_picking_manual and move.bom_line_id.id in bom_line_description:
-                move.description_picking += ('\n' if move.description_picking else '') + bom_line_description.get(move.bom_line_id.id)
+            move.description_bom_line = bom_line_description.get(move.bom_line_id.id, move.description_bom_line)
 
     @api.depends('raw_material_production_id.priority')
     def _compute_priority(self):
@@ -128,6 +319,11 @@ class StockMove(models.Model):
             if move.production_id:
                 move.is_locked = move.production_id.is_locked
 
+    @api.depends('state')
+    def _compute_is_done(self):
+        for move in self:
+            move.is_done = (move.state in ('done', 'cancel'))
+
     @api.depends('product_uom_qty',
         'raw_material_production_id', 'raw_material_production_id.product_qty', 'raw_material_production_id.qty_produced',
         'production_id', 'production_id.product_qty', 'production_id.qty_produced')
@@ -139,7 +335,7 @@ class StockMove(models.Model):
             else:
                 move.unit_factor = 1.0
 
-    @api.depends('raw_material_production_id', 'raw_material_production_id.name', 'production_id', 'production_id.name', 'unbuild_id', 'unbuild_id.name')
+    @api.depends('raw_material_production_id', 'raw_material_production_id.name', 'production_id', 'production_id.name')
     def _compute_reference(self):
         moves_with_reference = self.env['stock.move']
         for move in self:
@@ -148,9 +344,6 @@ class StockMove(models.Model):
                 moves_with_reference |= move
             if move.production_id and move.production_id.name:
                 move.reference = move.production_id.name
-                moves_with_reference |= move
-            if move.unbuild_id and move.unbuild_id.name:
-                move.reference = move.unbuild_id.name
                 moves_with_reference |= move
         super(StockMove, self - moves_with_reference)._compute_reference()
 
@@ -161,7 +354,7 @@ class StockMove(models.Model):
             if not mo or not move.product_uom:
                 move.should_consume_qty = 0
                 continue
-            move.should_consume_qty = move.product_uom.round((mo.qty_producing - mo.qty_produced) * move.unit_factor)
+            move.should_consume_qty = float_round((mo.qty_producing - mo.qty_produced) * move.unit_factor, precision_rounding=move.product_uom.rounding)
 
     @api.depends('byproduct_id')
     def _compute_show_info(self):
@@ -184,24 +377,24 @@ class StockMove(models.Model):
     def _onchange_product_uom_qty(self):
         if self.product_uom and self.raw_material_production_id and self.has_tracking == 'none':
             mo = self.raw_material_production_id
-            new_qty = self.product_uom.round((mo.qty_producing - mo.qty_produced) * self.unit_factor)
+            new_qty = float_round((mo.qty_producing - mo.qty_produced) * self.unit_factor, precision_rounding=self.product_uom.rounding)
             self.quantity = new_qty
 
     @api.onchange('quantity', 'product_uom', 'picked')
     def _onchange_quantity(self):
-        if self.raw_material_production_id and self.product_uom and self.product_uom.compare(self.product_uom_qty, self.quantity) != 0:
+        if self.raw_material_production_id and not self.manual_consumption and self.picked and self.product_uom and \
+           float_compare(self.product_uom_qty, self.quantity, precision_rounding=self.product_uom.rounding) != 0:
             self.manual_consumption = True
-            self.picked = True
 
     @api.constrains('quantity', 'raw_material_production_id')
     def _check_negative_quantity(self):
         for move in self:
-            if move.raw_material_production_id and move.product_uom.compare(move.quantity, 0) < 0:
+            if move.raw_material_production_id and float_compare(move.quantity, 0, precision_rounding=move.product_uom.rounding) < 0:
                 raise ValidationError(_("Please enter a positive quantity."))
 
     @api.model
-    def default_get(self, fields):
-        defaults = super().default_get(fields)
+    def default_get(self, fields_list):
+        defaults = super(StockMove, self).default_get(fields_list)
         if self.env.context.get('default_raw_material_production_id') or self.env.context.get('default_production_id'):
             production_id = self.env['mrp.production'].browse(self.env.context.get('default_raw_material_production_id') or self.env.context.get('default_production_id'))
             if production_id.state not in ('draft', 'cancel'):
@@ -226,7 +419,6 @@ class StockMove(models.Model):
         if self.env.context.get('force_manual_consumption'):
             for vals in vals_list:
                 vals['manual_consumption'] = True
-                vals['picked'] = True
         mo_id_to_mo = defaultdict(lambda: self.env['mrp.production'])
         product_id_to_product = defaultdict(lambda: self.env['product.product'])
         for values in vals_list:
@@ -237,6 +429,7 @@ class StockMove(models.Model):
                 if not mo:
                     mo = mo.browse(mo_id)
                     mo_id_to_mo[mo_id] = mo
+                values['name'] = mo.name
                 values['origin'] = mo._get_origin()
                 values['group_id'] = mo.procurement_group_id.id
                 values['propagate_cancel'] = mo.propagate_cancel
@@ -257,6 +450,8 @@ class StockMove(models.Model):
                 values['date_deadline'] = mo.date_deadline
                 if not values.get('location_dest_id'):
                     values['location_dest_id'] = mo.location_dest_id.id
+                if not values.get('location_final_id'):
+                    values['location_final_id'] = mo.warehouse_id.lot_stock_id.id
         return super().create(vals_list)
 
     def write(self, vals):
@@ -273,7 +468,6 @@ class StockMove(models.Model):
                 self = other_move + updated_product_move
         if self.env.context.get('force_manual_consumption'):
             vals['manual_consumption'] = True
-            vals['picked'] = True
         if 'product_uom_qty' in vals and 'move_line_ids' in vals:
             # first update lines then product_uom_qty as the later will unreserve
             # so possibly unlink lines
@@ -294,11 +488,11 @@ class StockMove(models.Model):
         to_assign = self.env['stock.move']
         self._adjust_procure_method()
         for move in self:
-            if move.product_uom.compare(move.product_uom_qty - old_qties.get(move.id, 0), 0) < 0\
+            if float_compare(move.product_uom_qty - old_qties.get(move.id, 0), 0, precision_rounding=move.product_uom.rounding) < 0\
                     and move.procure_method == 'make_to_order'\
                     and all(m.state == 'done' for m in move.move_orig_ids):
                 continue
-            if move.product_uom.compare(move.product_uom_qty, 0) > 0:
+            if float_compare(move.product_uom_qty, 0, precision_rounding=move.product_uom.rounding) > 0:
                 if move._should_bypass_reservation() \
                         or move.picking_type_id.reservation_method == 'at_confirm' \
                         or (move.reservation_date and move.reservation_date <= fields.Date.today()):
@@ -312,7 +506,7 @@ class StockMove(models.Model):
                 origin = move._prepare_procurement_origin()
                 procurements.append(self.env['procurement.group'].Procurement(
                     move.product_id, procurement_qty, move.product_uom,
-                    move.location_id, move.reference, origin, move.company_id, values))
+                    move.location_id, move.name, origin, move.company_id, values))
 
         to_assign._action_assign()
         if procurements:
@@ -326,11 +520,11 @@ class StockMove(models.Model):
                                                'workorder_id': move.workorder_id.id,})
         return res
 
-    def _action_confirm(self, merge=True, merge_into=False, create_proc=True):
+    def _action_confirm(self, merge=True, merge_into=False):
         moves = self.action_explode()
         merge_into = merge_into and merge_into.action_explode()
         # we go further with the list of ids potentially changed by action_explode
-        return super(StockMove, moves)._action_confirm(merge=merge, merge_into=merge_into, create_proc=create_proc)
+        return super(StockMove, moves)._action_confirm(merge=merge, merge_into=merge_into)
 
     def _action_done(self, cancel_backorder=False):
         # explode kit moves that avoided the action_explode of any confirmation process
@@ -358,13 +552,13 @@ class StockMove(models.Model):
             if not bom:
                 moves_ids_to_return.add(move.id)
                 continue
-            if move.product_uom.is_zero(move.product_uom_qty):
+            if float_is_zero(move.product_uom_qty, precision_rounding=move.product_uom.rounding):
                 factor = move.product_uom._compute_quantity(move.quantity, bom.product_uom_id) / bom.product_qty
             else:
                 factor = move.product_uom._compute_quantity(move.product_uom_qty, bom.product_uom_id) / bom.product_qty
             _dummy, lines = bom.sudo().explode(move.product_id, factor, picking_type=bom.picking_type_id, never_attribute_values=move.never_product_template_attribute_value_ids)
             for bom_line, line_data in lines:
-                if move.product_uom.is_zero(move.product_uom_qty) or self.env.context.get('is_scrap'):
+                if float_is_zero(move.product_uom_qty, precision_rounding=move.product_uom.rounding) or self.env.context.get('is_scrap'):
                     phantom_moves_vals_list += move._generate_move_phantom(bom_line, 0, line_data['qty'])
                 else:
                     phantom_moves_vals_list += move._generate_move_phantom(bom_line, line_data['qty'], 0)
@@ -385,13 +579,11 @@ class StockMove(models.Model):
         self.ensure_one()
         action = super().action_show_details()
         if self.raw_material_production_id:
-            action['name'] = _("Components")
             action['views'] = [(self.env.ref('mrp.view_stock_move_operations_raw').id, 'form')]
             action['context']['show_destination_location'] = False
             action['context']['force_manual_consumption'] = True
             action['context']['active_mo_id'] = self.raw_material_production_id.id
         elif self.production_id:
-            action['name'] = _("Move Byproduct")
             action['views'] = [(self.env.ref('mrp.view_stock_move_operations_finished').id, 'form')]
             action['context']['show_source_location'] = False
             action['context']['show_reserved_quantity'] = False
@@ -431,9 +623,9 @@ class StockMove(models.Model):
             'product_uom': bom_line.product_uom_id.id,
             'product_uom_qty': product_qty,
             'quantity': quantity_done,
+            'name': self.name,
             'picked': self.picked,
             'bom_line_id': bom_line.id,
-            'description_picking': self.product_id.display_name,
         }
 
     def _generate_move_phantom(self, bom_line, product_qty, quantity_done):
@@ -483,7 +675,9 @@ class StockMove(models.Model):
         if self.state in ('done', 'cancel'):
             return True
         # Do not update extra product quantities
-        return self.product_uom.is_zero(self.product_uom_qty)
+        if float_is_zero(self.product_uom_qty, precision_rounding=self.product_uom.rounding):
+            return True
+        return False
 
     def _prepare_move_line_vals(self, quantity=None, reserved_quant=None):
         vals = super()._prepare_move_line_vals(quantity, reserved_quant)
@@ -496,6 +690,12 @@ class StockMove(models.Model):
     def _key_assign_picking(self):
         keys = super(StockMove, self)._key_assign_picking()
         return keys + (self.created_production_id,)
+
+    def _get_moves_to_propagate_date_deadline(self):
+        res = super()._get_moves_to_propagate_date_deadline()
+        if self.production_id:
+            res |= self.production_id.move_finished_ids - self
+        return res
 
     @api.model
     def _prepare_merge_moves_distinct_fields(self):
@@ -533,7 +733,7 @@ class StockMove(models.Model):
             # skip service since we never deliver them
             if bom_line.product_id.type == 'service':
                 continue
-            if bom_line.product_uom_id.is_zero(bom_line_data['qty']):
+            if float_is_zero(bom_line_data['qty'], precision_rounding=bom_line.product_uom_id.rounding):
                 # As BoMs allow components with 0 qty, a.k.a. optionnal components, we simply skip those
                 # to avoid a division by zero.
                 continue
@@ -550,7 +750,7 @@ class StockMove(models.Model):
                 outgoing_qty = sum(bom_line_moves.filtered(filters['outgoing_moves']).mapped(get_qty))
                 qty_processed = incoming_qty - outgoing_qty
                 # We compute a ratio to know how many kits we can produce with this quantity of that specific component
-                qty_ratios.append(bom_line.product_id.uom_id.round(qty_processed / qty_per_kit))
+                qty_ratios.append(float_round(qty_processed / qty_per_kit, precision_rounding=bom_line.product_id.uom_id.rounding))
             else:
                 return 0.0
         if qty_ratios:
@@ -594,14 +794,14 @@ class StockMove(models.Model):
 
     @api.model
     def _determine_is_manual_consumption(self, bom_line):
-        return bom_line and bom_line.operation_id
+        return bom_line and (bom_line.manual_consumption or bom_line.operation_id)
 
     def _get_relevant_state_among_moves(self):
         res = super()._get_relevant_state_among_moves()
         if res == 'partially_available'\
                 and self.raw_material_production_id\
-                and all(move.should_consume_qty and move.product_uom.compare(move.quantity, move.should_consume_qty) >= 0
-                        or (move.product_uom.compare(move.quantity, move.product_uom_qty) >= 0 or (move.manual_consumption and move.picked))
+                and all(move.should_consume_qty and float_compare(move.quantity, move.should_consume_qty, precision_rounding=move.product_uom.rounding) >= 0
+                        or (float_compare(move.quantity, move.product_uom_qty, precision_rounding=move.product_uom.rounding) >= 0 or (move.manual_consumption and move.picked))
                         for move in self):
             res = 'assigned'
         return res

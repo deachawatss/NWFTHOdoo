@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import logging
@@ -7,14 +8,12 @@ from odoo import api, fields, models, Command
 from odoo.addons.google_calendar.utils.google_calendar import GoogleCalendarService, InvalidSyncToken
 from odoo.addons.google_calendar.models.google_sync import google_calendar_token
 from odoo.addons.google_account.models import google_service
-from odoo.exceptions import LockError
 from odoo.loglevels import exception_to_unicode
 from odoo.tools import str2bool
 
 _logger = logging.getLogger(__name__)
 
-
-class ResUsers(models.Model):
+class User(models.Model):
     _inherit = 'res.users'
 
     google_calendar_rtoken = fields.Char(related='res_users_settings_id.google_calendar_rtoken', groups="base.group_system")
@@ -101,10 +100,8 @@ class ResUsers(models.Model):
             return False
         # don't attempt to sync when another sync is already in progress, as we wouldn't be
         # able to commit the transaction anyway (row is locked)
-        self.ensure_one()
-        try:
-            self.lock_for_update(allow_referencing=True)
-        except LockError:
+        self.env.cr.execute("""SELECT id FROM res_users WHERE id = %s FOR NO KEY UPDATE SKIP LOCKED""", [self.id])
+        if not self.env.cr.rowcount:
             _logger.info("skipping calendar sync, locked user %s", self.login)
             return False
 
@@ -187,18 +184,4 @@ class ResUsers(models.Model):
             if sync_status == 'sync_active' and not self.sudo().google_calendar_rtoken:
                 sync_status = 'sync_stopped'
         res['google_calendar'] = sync_status
-        return res
-
-    def _has_any_active_synchronization(self):
-        """
-        Check if synchronization is active for Google Calendar.
-        This function retrieves the synchronization status from the user's environment
-        and checks if the Google Calendar synchronization is active.
-
-        :return: Action to delete the event
-        """
-        sync_status = self.check_synchronization_status()
-        res = super()._has_any_active_synchronization()
-        if sync_status.get('google_calendar') == 'sync_active':
-            return True
         return res

@@ -75,11 +75,11 @@ class TestOSSBelgium(AccountTestInvoicingCommon):
         # get the fiscal position for another eu country
         another_eu_country = (self.env.ref('base.europe').country_ids - self.company_data['company'].country_id)[0]
         fpos = self.env['account.fiscal.position'].search([('country_id', '=', another_eu_country.id)], limit=1)
-        original_name = fpos.tax_ids[0].name
+        original_name = fpos.tax_ids.tax_dest_id[0].name
         fpos.unlink()
         self.sub_child_company._map_eu_taxes()
         fpos = self.env['account.fiscal.position'].search([('country_id', '=', another_eu_country.id)], limit=1)
-        new_name = fpos.tax_ids[0].name
+        new_name = fpos.tax_ids.tax_dest_id[0].name
         self.assertEqual(new_name, f"{original_name} (Copy)", "The tax name should be the same as the original one with (Copy) appended to it.")
 
 

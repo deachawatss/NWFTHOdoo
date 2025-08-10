@@ -1,15 +1,12 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
+from odoo import Command
+from odoo.addons.account.tests.common import AccountTestInvoicingCommon
+from odoo.tests import tagged, freeze_time
 from odoo.exceptions import UserError
-from odoo.fields import Command
-from odoo.tests import freeze_time, tagged
-
-from odoo.addons.sale.tests.common import TestSaleCommon
 
 
 @freeze_time('2022-01-01')
 @tagged('post_install', '-at_install')
-class TestAccruedSaleOrders(TestSaleCommon):
+class TestAccruedSaleOrders(AccountTestInvoicingCommon):
 
     @classmethod
     def setUpClass(cls):
@@ -46,8 +43,9 @@ class TestAccruedSaleOrders(TestSaleCommon):
                     'name': cls.product_a.name,
                     'product_id': cls.product_a.id,
                     'product_uom_qty': 10.0,
+                    'product_uom': cls.product_a.uom_id.id,
                     'price_unit': cls.product_a.list_price,
-                    'tax_ids': False,
+                    'tax_id': False,
                     'analytic_distribution': {
                         cls.analytic_account_a.id : 80.0,
                         cls.analytic_account_b.id : 20.0,
@@ -57,8 +55,9 @@ class TestAccruedSaleOrders(TestSaleCommon):
                     'name': cls.product_b.name,
                     'product_id': cls.product_b.id,
                     'product_uom_qty': 10.0,
+                    'product_uom': cls.product_b.uom_id.id,
                     'price_unit': cls.product_b.list_price,
-                    'tax_ids': False,
+                    'tax_id': False,
                     'analytic_distribution': {
                         cls.analytic_account_b.id : 100.0,
                     },
@@ -148,9 +147,7 @@ class TestAccruedSaleOrders(TestSaleCommon):
             'amount': 50.0,
         }
         downpayment = self.env['sale.advance.payment.inv'].with_context(so_context).create(payment_params)
-        invoice = downpayment._create_invoices({
-            'sale_orders': so_context,
-        })
+        invoice = downpayment._create_invoices(self.sale_order)
         invoice.invoice_date = self.wizard.date
         invoice.action_post()
         self.wizard.create_entries()

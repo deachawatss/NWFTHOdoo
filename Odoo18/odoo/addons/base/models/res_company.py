@@ -1,27 +1,28 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import base64
 import logging
+import threading
+import warnings
 
-from odoo import api, fields, models, modules, tools
-from odoo.api import SUPERUSER_ID
+from odoo import api, fields, models, tools, _, Command, SUPERUSER_ID
 from odoo.exceptions import ValidationError, UserError
-from odoo.fields import Command, Domain
+from odoo.osv import expression
 from odoo.tools import html2plaintext, file_open, ormcache
-from odoo.tools.image import image_process
 
 _logger = logging.getLogger(__name__)
 
 
-class ResCompany(models.Model):
-    _name = 'res.company'
+class Company(models.Model):
+    _name = "res.company"
     _description = 'Companies'
     _order = 'sequence, name'
     _inherit = ['format.address.mixin', 'format.vat.label.mixin']
     _parent_store = True
 
     def copy(self, default=None):
-        raise UserError(self.env._('Duplicating a company is not allowed. Please create a new company instead.'))
+        raise UserError(_('Duplicating a company is not allowed. Please create a new company instead.'))
 
     def _get_logo(self):
         with file_open('base/static/img/res_company_logo.png', 'rb') as file:
@@ -39,7 +40,7 @@ class ResCompany(models.Model):
     parent_path = fields.Char(index=True)
     parent_ids = fields.Many2many('res.company', compute='_compute_parent_ids', compute_sudo=True)
     root_id = fields.Many2one('res.company', compute='_compute_parent_ids', compute_sudo=True)
-    partner_id = fields.Many2one('res.partner', string='Partner', required=True, index=True)
+    partner_id = fields.Many2one('res.partner', string='Partner', required=True)
     report_header = fields.Html(string='Company Tagline', translate=True, help="Company tagline, which is included in a printed document's header or footer (depending on the selected layout).")
     report_footer = fields.Html(string='Report Footer', translate=True, help="Footer text displayed at the bottom of all reports.")
     company_details = fields.Html(string='Company Details', translate=True, help="Header text displayed at the top of all reports.")
@@ -65,10 +66,10 @@ class ResCompany(models.Model):
     country_code = fields.Char(related='country_id.code', depends=['country_id'])
     email = fields.Char(related='partner_id.email', store=True, readonly=False)
     phone = fields.Char(related='partner_id.phone', store=True, readonly=False)
+    mobile = fields.Char(related='partner_id.mobile', store=True, readonly=False)
     website = fields.Char(related='partner_id.website', readonly=False)
     vat = fields.Char(related='partner_id.vat', string="Tax ID", readonly=False)
     company_registry = fields.Char(related='partner_id.company_registry', string="Company ID", readonly=False)
-    company_registry_placeholder = fields.Char(related='partner_id.company_registry_placeholder')
     paperformat_id = fields.Many2one('report.paperformat', 'Paper format', default=lambda self: self.env.ref('base.paperformat_euro', raise_if_not_found=False))
     external_report_layout_id = fields.Many2one('ir.ui.view', 'Document Template')
     font = fields.Selection([("Lato", "Lato"), ("Roboto", "Roboto"), ("Open_Sans", "Open Sans"), ("Montserrat", "Montserrat"), ("Oswald", "Oswald"), ("Raleway", "Raleway"), ('Tajawal', 'Tajawal'), ('Fira_Mono', 'Fira Mono')], default="Lato")
@@ -78,18 +79,16 @@ class ResCompany(models.Model):
     layout_background = fields.Selection([('Blank', 'Blank'), ('Demo logo', 'Demo logo'), ('Custom', 'Custom')], default="Blank", required=True)
     layout_background_image = fields.Binary("Background Image")
     uninstalled_l10n_module_ids = fields.Many2many('ir.module.module', compute='_compute_uninstalled_l10n_module_ids')
-
-    _name_uniq = models.Constraint(
-        'unique (name)',
-        "The company name must be unique!",
-    )
+    _sql_constraints = [
+        ('name_uniq', 'unique (name)', 'The company name must be unique!')
+    ]
 
     def init(self):
         for company in self.search([('paperformat_id', '=', False)]):
             paperformat_euro = self.env.ref('base.paperformat_euro', False)
             if paperformat_euro:
                 company.write({'paperformat_id': paperformat_euro.id})
-        sup = super()
+        sup = super(Company, self)
         if hasattr(sup, 'init'):
             sup.init()
 
@@ -154,7 +153,7 @@ class ResCompany(models.Model):
     def _compute_logo_web(self):
         for company in self:
             img = company.partner_id.image_1920
-            company.logo_web = img and base64.b64encode(image_process(base64.b64decode(img), size=(180, 0)))
+            company.logo_web = img and base64.b64encode(tools.image_process(base64.b64decode(img), size=(180, 0)))
 
     @api.depends('partner_id.image_1920')
     def _compute_uses_default_logo(self):
@@ -230,8 +229,7 @@ class ResCompany(models.Model):
         is_ready_and_not_test = (
             not tools.config['test_enable']
             and (self.env.registry.ready or not self.env.registry._init)
-            and not modules.module.current_test
-            and not self.env.context.get('install_mode')  # due to savepoint when importing the file
+            and not getattr(threading.current_thread(), 'testing', False)
         )
         if uninstalled_modules and is_ready_and_not_test:
             return uninstalled_modules.button_immediate_install()
@@ -250,18 +248,27 @@ class ResCompany(models.Model):
     def _search_display_name(self, operator, value):
         context = dict(self.env.context)
         newself = self
-        constraint = Domain.TRUE
+        constraint = []
         if context.pop('user_preference', None):
             # We browse as superuser. Otherwise, the user would be able to
             # select only the currently visible companies (according to rules,
             # which are probably to allow to see the child companies) even if
             # she belongs to some other companies.
             companies = self.env.user.company_ids
-            constraint = Domain('id', 'in', companies.ids)
+            constraint = [('id', 'in', companies.ids)]
             newself = newself.sudo()
         newself = newself.with_context(context)
-        domain = super(ResCompany, newself)._search_display_name(operator, value)
-        return domain & constraint
+        domain = super(Company, newself)._search_display_name(operator, value)
+        return expression.AND([domain, constraint])
+
+    @api.model
+    @api.returns('self', lambda value: value.id)
+    def _company_default_get(self, object=False, field=False):
+        """ Returns the user's company
+            - Deprecated
+        """
+        _logger.warning("The method '_company_default_get' on res.company is deprecated and shouldn't be used anymore")
+        return self.env.company
 
     @api.depends('company_details')
     def _compute_empty_company_details(self):
@@ -338,39 +345,40 @@ class ResCompany(models.Model):
         self.env.registry.clear_cache()
         return res
 
-    def write(self, vals):
+    def write(self, values):
         invalidation_fields = self.cache_invalidation_fields()
         asset_invalidation_fields = {'font', 'primary_color', 'secondary_color', 'external_report_layout_id'}
 
         companies_needs_l10n = (
-            vals.get('country_id')
+            values.get('country_id')
             and self.filtered(lambda company: not company.country_id)
-        ) or self.browse()
-        if not invalidation_fields.isdisjoint(vals):
+            or self.browse()
+        )
+        if not invalidation_fields.isdisjoint(values):
             self.env.registry.clear_cache()
 
-        if not asset_invalidation_fields.isdisjoint(vals):
+        if not asset_invalidation_fields.isdisjoint(values):
             # this is used in the content of an asset (see asset_styles_company_report)
             # and thus needs to invalidate the assets cache when this is changed
             self.env.registry.clear_cache('assets')  # not 100% it is useful a test is missing if it is the case
 
-        if 'parent_id' in vals:
-            raise UserError(self.env._("The company hierarchy cannot be changed."))
+        if 'parent_id' in values:
+            raise UserError(_("The company hierarchy cannot be changed."))
 
-        if vals.get('currency_id'):
-            currency = self.env['res.currency'].browse(vals['currency_id'])
+        if values.get('currency_id'):
+            currency = self.env['res.currency'].browse(values['currency_id'])
             if not currency.active:
                 currency.write({'active': True})
 
-        res = super().write(vals)
+        res = super(Company, self).write(values)
 
         # Archiving a company should also archive all of its branches
-        if vals.get('active') is False:
+        if values.get('active') is False:
             self.child_ids.active = False
 
         for company in self:
             # Copy modified delegated fields from root to branches
-            if (changed := set(vals) & set(self._get_company_root_delegated_field_names())) and not company.parent_id:
+            if (changed := set(values) & set(self._get_company_root_delegated_field_names())) and not company.parent_id:
                 branches = self.sudo().search([
                     ('id', 'child_of', company.id),
                     ('id', '!=', company.id),
@@ -383,7 +391,7 @@ class ResCompany(models.Model):
 
         # invalidate company cache to recompute address based on updated partner
         company_address_fields = self._get_company_address_field_names()
-        company_address_fields_upd = set(company_address_fields) & set(vals.keys())
+        company_address_fields_upd = set(company_address_fields) & set(values.keys())
         if company_address_fields_upd:
             self.invalidate_model(company_address_fields)
         return res
@@ -398,7 +406,7 @@ class ResCompany(models.Model):
                 ])
                 if company_active_users:
                     # You cannot disable companies with active users
-                    raise ValidationError(self.env._(
+                    raise ValidationError(_(
                         'The company %(company_name)s cannot be archived because it is still used '
                         'as the default company of %(active_users)s users.',
                         company_name=company.name,
@@ -412,7 +420,7 @@ class ResCompany(models.Model):
                 for fname in company._get_company_root_delegated_field_names():
                     if company[fname] != company.parent_id[fname]:
                         description = self.env['ir.model.fields']._get("res.company", fname).field_description
-                        raise ValidationError(self.env._("The %s of a subsidiary must be the same as it's root company.", description))
+                        raise ValidationError(_("The %s of a subsidiary must be the same as it's root company.", description))
 
     @api.model
     def _get_main_company(self):
@@ -459,7 +467,7 @@ class ResCompany(models.Model):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': self.env._('Branches'),
+            'name': _('Branches'),
             'res_model': 'res.company',
             'domain': [('parent_id', '=', self.id)],
             'context': {
@@ -472,7 +480,7 @@ class ResCompany(models.Model):
     def _get_public_user(self):
         self.ensure_one()
         # We need sudo to be able to see public users from others companies too
-        public_users = self.env.ref('base.group_public').sudo().with_context(active_test=False).all_user_ids
+        public_users = self.env.ref('base.group_public').sudo().with_context(active_test=False).users
         public_users_for_company = public_users.filtered(lambda user: user.company_id == self)
 
         if public_users_for_company:

@@ -11,13 +11,12 @@ class TestPosHrHttpCommon(TestPointOfSaleHttpCommon):
     def setUpClass(cls):
         super().setUpClass()
 
-        cls.env.user.group_ids += cls.env.ref('hr.group_hr_user')
+        cls.env.user.groups_id += cls.env.ref('hr.group_hr_user')
 
         cls.main_pos_config.write({"module_pos_hr": True})
 
         # Admin employee
         cls.admin = cls.env.ref("hr.employee_admin").sudo().copy({
-            "date_version": '2000-01-01',
             "company_id": cls.env.company.id,
             "user_id": cls.pos_admin.id,
             "name": "Mitchell Admin",
@@ -61,7 +60,7 @@ class TestPosHrHttpCommon(TestPointOfSaleHttpCommon):
 class TestUi(TestPosHrHttpCommon):
     def test_01_pos_hr_tour(self):
         self.pos_admin.write({
-            "group_ids": [
+            "groups_id": [
                 (4, self.env.ref('account.group_account_invoice').id)
             ]
         })
@@ -76,7 +75,7 @@ class TestUi(TestPosHrHttpCommon):
         self.main_pos_config.with_user(self.pos_admin).open_ui()
 
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config.id,
+            "/pos/ui?config_id=%d" % self.main_pos_config.id,
             "CashierStayLogged",
             login="pos_admin",
         )
@@ -87,7 +86,7 @@ class TestUi(TestPosHrHttpCommon):
         self.main_pos_config.with_user(self.pos_admin).open_ui()
 
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config.id,
+            "/pos/ui?config_id=%d" % self.main_pos_config.id,
             "CashierCanSeeProductInfo",
             login="pos_admin",
         )
@@ -101,7 +100,7 @@ class TestUi(TestPosHrHttpCommon):
         self.main_pos_config.with_user(self.pos_admin).open_ui()
 
         self.start_tour(
-            "/pos/ui/%d" % self.main_pos_config.id,
+            "/pos/ui?config_id=%d" % self.main_pos_config.id,
             "CashierCannotClose",
             login="pos_user",
         )
@@ -121,18 +120,6 @@ class TestUi(TestPosHrHttpCommon):
             "/pos/ui?config_id=%d" % self.main_pos_config.id,
             "test_basic_user_can_change_price",
             login="pos_user",
-        )
-
-    def test_change_on_rights_reflected_directly(self):
-        """When changes in employee rights (advanced/basic/minimal) should
-        be reflected directly and not read from the cache."""
-
-        self.main_pos_config.advanced_employee_ids = self.pos_admin.employee_id
-        self.main_pos_config.with_user(self.pos_admin).open_ui()
-        self.start_tour(
-            "/pos/ui?config_id=%d" % self.main_pos_config.id,
-            "test_change_on_rights_reflected_directly",
-            login="pos_admin",
         )
 
     def test_cashier_changed_in_receipt(self):

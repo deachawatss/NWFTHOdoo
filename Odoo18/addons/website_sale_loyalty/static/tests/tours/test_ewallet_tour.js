@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
 import * as wsTourUtils from "@website_sale/js/tours/tour_utils";
 
@@ -8,7 +10,7 @@ registry.category("web_tour.tours").add("shop_sale_ewallet", {
         ...wsTourUtils.addToCart({ productName: "TEST - Gift Card", expectUnloadPage: true }),
         wsTourUtils.goToCart(),
         {
-            trigger: 'a[name="o_loyalty_claim"]:contains("Use")',
+            trigger: 'a:contains("Pay with eWallet")',
             async run(helpers) {
                 const rewards = document.querySelectorAll('form[name="claim_reward"]');
                 if (rewards.length === 1) {
@@ -32,7 +34,7 @@ registry.category("web_tour.tours").add("shop_sale_ewallet", {
             expectUnloadPage: true,
         },
         {
-            trigger: 'div h3:contains("Thank you for your order.")'
+            trigger: 'div[id="introduction"] h2:contains("Sales Order")',
         },
         {
             trigger: 'a[href="/shop/cart"]',

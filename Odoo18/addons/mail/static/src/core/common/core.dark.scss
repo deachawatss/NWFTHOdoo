@@ -1,5 +1,5 @@
 .o-mail-discussSidebarBgColor {
-    background-color: mix($white, $o-webclient-background-color, 15%) !important;
+    background-color: mix($o-gray-100, $o-gray-200, 15%);
 }
 
 a.o_mail_redirect, a.o_channel_redirect {
@@ -14,8 +14,4 @@ a.o-discuss-mention {
     &:hover, &.show {
         background-color: $white;
     }
-}
-
-.o-secondary {
-    --o-secondary: #{$o-gray-700};
 }

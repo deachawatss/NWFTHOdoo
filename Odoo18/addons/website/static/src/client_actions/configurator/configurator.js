@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { browser } from "@web/core/browser/browser";
 const sessionStorage = browser.sessionStorage;
 import { AutoComplete } from "@web/core/autocomplete/autocomplete";
@@ -145,9 +147,24 @@ export class WelcomeScreen extends Component {
     }
 }
 
+export class IndustrySelectionAutoComplete extends AutoComplete {
+    static timeout = 400;
+
+    get dropdownOptions() {
+        return {
+            ...super.dropdownOptions,
+            position: "bottom-fit",
+        };
+    }
+
+    get ulDropdownClass() {
+        return `${super.ulDropdownClass} custom-ui-autocomplete shadow-lg border-0 o_configurator_show_fast o_configurator_industry_dropdown`;
+    }
+}
+
 export class DescriptionScreen extends Component {
     static template = 'website.Configurator.DescriptionScreen';
-    static components = { SkipButton, AutoComplete };
+    static components = { SkipButton, AutoComplete: IndustrySelectionAutoComplete };
     static props = {
         navigate: Function,
         skip: Function,
@@ -168,10 +185,10 @@ export class DescriptionScreen extends Component {
      * and update the selected industry.
      *
      * @private
-     * @param {string} label
-     * @param {number} id
+     * @param {Object} suggestion an industry
      */
-    _setSelectedIndustry(label, id) {
+    _setSelectedIndustry(suggestion) {
+        const { label, id } = Object.getPrototypeOf(suggestion);
         this.state.selectIndustry(label, id);
         this.checkDescriptionCompletion();
     }
@@ -199,6 +216,7 @@ export class DescriptionScreen extends Component {
     _autocompleteSearch(term) {
         const terms = term.toLowerCase().split(/[|,\n]+/);
         const limit = 30;
+        const sortLimit = 7;
         // `this.state.industries` is already sorted by hit count (from IAP).
         // That order should be kept after manipulating the recordset.
         let matches = this.state.industries.filter((val, index) => {
@@ -210,20 +228,6 @@ export class DescriptionScreen extends Component {
                 }
             }
         });
-        // Sort the matches by hit_count_total in order to suggest the most used
-        // matches first.
-        // FIXME, we made ffad59a1b7f36a141c6a32162a4254f5bd864a3b (on IAP) but:
-        // 1. hit_count_total seems to be 0 for all industries.
-        // 2. it is defined as the sum of the hit_count of 3 suggested themes
-        //    for that industry but... we can choose any theme with any industry
-        //    so that old field does not make sense anyway.
-        // 3. the order should just be done server-side and kept while matching
-        //    to given terms here client-side.
-        // So:
-        // - Remove this line
-        // - Review hit_count_total server side
-        // - Make sure it is retrieved ordered, and stay ordered
-        matches = matches.sort(match => match['hit_count_total']);
         if (matches.length > limit) {
             // Keep matches with the least number of words so that e.g.
             // "restaurant" remains available even if there are 30 specific
@@ -232,11 +236,11 @@ export class DescriptionScreen extends Component {
                              .slice(0, limit)
                              .sort((x, y) => x.hitCountOrder - y.hitCountOrder);
         }
-        matches = matches.length ? matches : [{ label: term, id: -1 }];
-        return matches.map((match) => ({
-            label: match.label,
-            onSelect: () => this._setSelectedIndustry(match.label, match.id),
-        }));
+        if (matches.length <= sortLimit) {
+            // Sort results by ascending label if few of them.
+            matches = matches.sort((x, y) => (x.label < y.label ? -1 : x.label > y.label ? 1 : 0));
+        }
+        return matches.length ? matches : [{ label: term, id: -1 }];
     }
 
     selectWebsiteType(id) {
@@ -427,9 +431,20 @@ export class ApplyConfiguratorScreen extends Component {
                     this.state.selectedPalette.color5,
                 ];
             }
-            const resp = await attemptConfiguratorApply(this.getConfigurationData(
-                selectedFeatures, selectedPalette, themeName,
-            ));
+
+            const data = {
+                'selected_features': selectedFeatures,
+                'industry_id': this.state.selectedIndustry.id,
+                'industry_name': this.state.selectedIndustry.label.toLowerCase(),
+                'selected_palette': selectedPalette,
+                'theme_name': themeName,
+                'website_purpose': WEBSITE_PURPOSES[
+                    this.state.selectedPurpose || this.state.formerSelectedPurpose
+                ].name,
+                'website_type': WEBSITE_TYPES[this.state.selectedType].name,
+                'logo_attachment_id': this.state.logoAttachmentId,
+            };
+            const resp = await attemptConfiguratorApply(data);
 
             this.props.clearStorage();
 
@@ -440,42 +455,16 @@ export class ApplyConfiguratorScreen extends Component {
             redirect(`/odoo/action-website.website_preview?website_id=${encodeURIComponent(resp.website_id)}`);
         }
     }
-
-    getConfigurationData(selectedFeatures, selectedPalette, themeName) {
-        return {
-            'selected_features': selectedFeatures,
-            'industry_id': this.state.selectedIndustry.id,
-            'industry_name': this.state.selectedIndustry.label.toLowerCase(),
-            'selected_palette': selectedPalette,
-            'theme_name': themeName,
-            'website_purpose': WEBSITE_PURPOSES[
-                this.state.selectedPurpose || this.state.formerSelectedPurpose
-            ].name,
-            'website_type': WEBSITE_TYPES[this.state.selectedType].name,
-            'logo_attachment_id': this.state.logoAttachmentId,
-        };
-    }
 }
 
-export class FeaturesSelectionScreen extends Component {
+export class FeaturesSelectionScreen extends ApplyConfiguratorScreen {
     static components = {SkipButton};
     static template = 'website.Configurator.FeatureSelection';
-    static props = {
-        navigate: Function,
-        skip: Function,
-    };
     setup() {
         super.setup();
-        this.state = useStore();
-    }
 
-    /**
-     * Return the theme selection screen as the next step, unless overridden.
-     *
-     * @return {int} Next step route.
-     */
-    static nextStep() {
-        return ROUTES.themeSelectionScreen;
+        this.orm = useService("orm");
+        this.state = useStore();
     }
 
     async buildWebsite() {
@@ -483,8 +472,14 @@ export class FeaturesSelectionScreen extends Component {
         if (!industryId) {
             return this.props.navigate(ROUTES.descriptionScreen);
         }
+        const themes = await getRecommendedThemes(this.orm, this.state);
 
-        this.props.navigate(FeaturesSelectionScreen.nextStep());
+        if (!themes.length) {
+            await this.applyConfigurator('theme_default');
+        } else {
+            this.state.updateRecommendedThemes(themes);
+            this.props.navigate(ROUTES.themeSelectionScreen);
+        }
     }
 }
 
@@ -506,14 +501,6 @@ export class ThemeSelectionScreen extends ApplyConfiguratorScreen {
         for (let i = 0; i < this.maxNbrDisplayExtraThemes; i++) {
             this.extraThemeSVGPreviews.push(useRef(`ExtraThemePreview${i}`));
         }
-        onWillStart(async () => {
-            const themes = await getRecommendedThemes(this.orm, this.state);
-            if (!themes.length) {
-                await this.applyConfigurator('theme_default');
-            } else {
-                this.state.updateRecommendedThemes(themes);
-            }
-        });
 
         onMounted(() => {
             this.blockUiDuringImageLoading(this.state.themes, this.themeSVGPreviews);
@@ -723,7 +710,7 @@ export class Store {
     }
 }
 
-export function useStore() {
+function useStore() {
     const env = useEnv();
     return useState(env.store);
 }
@@ -742,7 +729,6 @@ export class Configurator extends Component {
     setup() {
         this.orm = useService('orm');
         this.action = useService('action');
-        this.website = useService("website");
 
         // Using the back button must update the router state.
         useExternalListener(window, "popstate", (ev) => {
@@ -754,7 +740,7 @@ export class Configurator extends Component {
             }
         });
 
-        const initialStep = router.current.step;
+        const initialStep = this.props.action.context.params && this.props.action.context.params.step;
         const store = reactive(new Store(), () => this.updateStorage(store));
 
         this.state = useState({
@@ -764,11 +750,17 @@ export class Configurator extends Component {
         useSubEnv({ store });
 
         onWillStart(async () => {
-            this.websiteId = (await this.orm.call('website', 'get_current_website'))[0];
+            this.websiteId = (await this.orm.call('website', 'get_current_website')).match(/\d+/)[0];
 
             await store.start(() => this.getInitialState());
             this.updateStorage(store);
-            if (!store.industries || store.configurator_done) {
+            if (store.redirect_url) {
+                // If redirect_url exists, it means configurator_done is already
+                // true, so we can skip the configurator flow.
+                this.clearStorage();
+                await this.action.doAction(store.redirect_url);
+            }
+            if (!store.industries) {
                 await this.skipConfigurator();
             }
         });
@@ -796,30 +788,6 @@ export class Configurator extends Component {
         history.pushState({ skipRouteChange: true, configuratorStep: this.state.currentStep }, '', this.pathname);
     }
 
-    get currentComponent() {
-        if (this.state.currentStep === ROUTES.descriptionScreen) {
-            return DescriptionScreen;
-        } else if (this.state.currentStep === ROUTES.paletteSelectionScreen) {
-            return PaletteSelectionScreen;
-        } else if (this.state.currentStep === ROUTES.featuresSelectionScreen) {
-            return FeaturesSelectionScreen;
-        } else if (this.state.currentStep === ROUTES.themeSelectionScreen) {
-            return ThemeSelectionScreen;
-        }
-        return WelcomeScreen;
-    }
-
-    get componentProps() {
-        const props = {
-            skip: this.skipConfigurator.bind(this),
-            navigate: this.navigate.bind(this),
-        };
-        if (this.state.currentStep === ROUTES.themeSelectionScreen) {
-            props.clearStorage = this.clearStorage.bind(this);
-        }
-        return props;
-    }
-
     navigate(step, reload = false) {
         this.state.currentStep = step;
         if (reload) {
@@ -839,7 +807,7 @@ export class Configurator extends Component {
         const r = {
             industries: results.industries,
             logo: results.logo ? 'data:image/png;base64,' + results.logo : false,
-            configurator_done: results.configurator_done,
+            redirect_url: results.redirect_url,
         };
         r.industries = r.industries.map((industry, index) => ({
             ...industry,
@@ -922,13 +890,11 @@ export class Configurator extends Component {
     }
 
     async skipConfigurator() {
-        this.website.showLoader({ showTips: true });
-        const redirectUrl = await this.orm.call("website", "configurator_skip");
+        await this.orm.call('website', 'configurator_skip');
         this.clearStorage();
-        // Here the website service goToWebsite method is not used because
-        // the web client needs to be reloaded after the new modules have
-        // been installed.
-        await this.action.doAction(redirectUrl);
+        this.action.doAction('website.theme_install_kanban_action', {
+            clearBreadcrumbs: true,
+        });
     }
 }
 

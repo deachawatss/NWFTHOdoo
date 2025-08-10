@@ -7,7 +7,7 @@ from odoo import _, api, fields, models
 from odoo.tools.float_utils import float_is_zero
 
 
-class StockPackage_Level(models.Model):
+class StockPackageLevel(models.Model):
     _name = 'stock.package_level'
     _description = 'Stock Package Level'
     _check_company_auto = True
@@ -15,7 +15,7 @@ class StockPackage_Level(models.Model):
     package_id = fields.Many2one(
         'stock.quant.package', 'Package', required=True, check_company=True,
         domain="[('location_id', 'child_of', parent.location_id), '|', ('company_id', '=', False), ('company_id', '=', company_id)]")
-    picking_id = fields.Many2one('stock.picking', 'Picking', check_company=True, index='btree_not_null')
+    picking_id = fields.Many2one('stock.picking', 'Picking', check_company=True)
     move_ids = fields.One2many('stock.move', 'package_level_id')
     move_line_ids = fields.One2many('stock.move.line', 'package_level_id')
     location_id = fields.Many2one('stock.location', 'From', compute='_compute_location_id', check_company=True)
@@ -64,7 +64,7 @@ class StockPackage_Level(models.Model):
                                 qty = min(to_dispatch, ml.move_id.product_qty) if len(corresponding_mls) > 1 else to_dispatch
                                 to_dispatch = to_dispatch - qty
                                 ml_update_dict[ml] += qty
-                                if ml.product_id.uom_id.is_zero(to_dispatch):
+                                if float_is_zero(to_dispatch, precision_rounding=ml.product_id.uom_id.rounding):
                                     break
                         else:
                             corresponding_move = package_level.move_ids.filtered(lambda m: m.product_id == quant.product_id)[:1]
@@ -141,6 +141,7 @@ class StockPackage_Level(models.Model):
                 for quant in package_level.package_id.quant_ids:
                     self.env['stock.move'].create({
                         'picking_id': package_level.picking_id.id,
+                        'name': quant.product_id.display_name,
                         'product_id': quant.product_id.id,
                         'product_uom_qty': quant.quantity,
                         'product_uom': quant.product_id.uom_id.id,
@@ -160,7 +161,7 @@ class StockPackage_Level(models.Model):
         return package_levels
 
     def write(self, vals):
-        result = super().write(vals)
+        result = super(StockPackageLevel, self).write(vals)
         if vals.get('location_dest_id'):
             self.mapped('move_line_ids').write({'location_dest_id': vals['location_dest_id']})
             self.mapped('move_ids').write({'location_dest_id': vals['location_dest_id']})
@@ -169,7 +170,7 @@ class StockPackage_Level(models.Model):
     def unlink(self):
         self.mapped('move_ids').write({'package_level_id': False})
         self.mapped('move_line_ids').write({'result_package_id': False})
-        return super().unlink()
+        return super(StockPackageLevel, self).unlink()
 
     def _check_move_lines_map_quant_package(self, package, only_picked=False):
         mls = self.move_line_ids
@@ -209,4 +210,5 @@ class StockPackage_Level(models.Model):
             'view_id': view.id,
             'target': 'new',
             'res_id': self.id,
+            'flags': {'mode': 'readonly'},
         }

@@ -1,56 +1,69 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
-import functools
-import io
-import json
-import logging
-import os
-import re
-import subprocess
-import tempfile
-import typing
-import unittest
 from ast import literal_eval
-from collections import OrderedDict
-from contextlib import closing, ExitStack
-from itertools import islice
+from contextlib import ExitStack
+from markupsafe import Markup
 from urllib.parse import urlparse
 
-import lxml.html
-from PIL import Image, ImageFile
-from lxml import etree
-from markupsafe import Markup
-
-from odoo import api, fields, models, modules, tools, _
+from odoo import api, fields, models, tools, SUPERUSER_ID, _
 from odoo.exceptions import UserError, AccessError, RedirectWarning
-from odoo.fields import Domain
 from odoo.service import security
-from odoo.http import request, root
-from odoo.tools import config, is_html_empty, parse_version, split_every
-from odoo.tools.barcode import check_barcode_encoding, createBarcodeDrawing, get_barcode_font
-from odoo.tools.misc import find_in_path
-from odoo.tools.pdf import PdfFileReader, PdfFileWriter, PdfReadError
 from odoo.tools.safe_eval import safe_eval, time
+from odoo.tools.misc import find_in_path
+from odoo.tools import check_barcode_encoding, config, is_html_empty, parse_version, split_every
+from odoo.http import request, root
+from odoo.tools.pdf import PdfFileWriter, PdfFileReader, PdfReadError
+from odoo.osv.expression import NEGATIVE_TERM_OPERATORS, FALSE_DOMAIN
+
+import io
+import logging
+import os
+import lxml.html
+import tempfile
+import subprocess
+import re
+import json
+
+from lxml import etree
+from contextlib import closing
+from reportlab.graphics.barcode import createBarcodeDrawing
+from reportlab.pdfbase.pdfmetrics import getFont, TypeFace
+from collections import OrderedDict
+from collections.abc import Iterable
+from PIL import Image, ImageFile
+from itertools import islice
 
 # Allow truncated images
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 _logger = logging.getLogger(__name__)
 
+# A lock occurs when the user wants to print a report having multiple barcode while the server is
+# started in threaded-mode. The reason is that reportlab has to build a cache of the T1 fonts
+# before rendering a barcode (done in a C extension) and this part is not thread safe. We attempt
+# here to init the T1 fonts cache at the start-up of Odoo so that rendering of barcode in multiple
+# thread does not lock the server.
+_DEFAULT_BARCODE_FONT = 'Courier'
+try:
+    available = TypeFace(_DEFAULT_BARCODE_FONT).findT1File()
+    if not available:
+        substitution_font = 'NimbusMonoPS-Regular'
+        fnt = getFont(substitution_font)
+        if fnt:
+            _DEFAULT_BARCODE_FONT = substitution_font
+            fnt.ascent = 629
+            fnt.descent = -157
+    createBarcodeDrawing('Code128', value='foo', format='png', width=100, height=100, humanReadable=1, fontName=_DEFAULT_BARCODE_FONT).asString('png')
+except Exception:
+    pass
 
-def _run_wkhtmltopdf(args):
-    """
-    Runs the given arguments against the wkhtmltopdf binary.
 
-    Returns:
-        The process
-    """
-    bin_path = _wkhtml().bin
-    return subprocess.run(
-        [bin_path, *args],
-        capture_output=True,
-        encoding='utf-8',
-        check=False,
-    )
+def _get_wkhtmltopdf_bin():
+    return find_in_path('wkhtmltopdf')
+
+
+def _get_wkhtmltoimage_bin():
+    return find_in_path('wkhtmltoimage')
 
 
 def _split_table(tree, max_rows):
@@ -73,85 +86,58 @@ def _split_table(tree, max_rows):
             prev.addnext(sibling)
             prev = sibling
 
-
-class WkhtmlInfo(typing.NamedTuple):
-    state: typing.Literal['install', 'ok']
-    dpi_zoom_ratio: bool
-    bin: str
-    version: str
-    wkhtmltoimage_bin: str
-    wkhtmltoimage_version: tuple[str, ...] | None
-
-
-@functools.lru_cache(1)
-def _wkhtml() -> WkhtmlInfo:
-    state = 'install'
-    bin_path = 'wkhtmltopdf'
-    version = ''
-    dpi_zoom_ratio = False
-    try:
-        bin_path = find_in_path('wkhtmltopdf')
-        process = subprocess.Popen(
-            [bin_path, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
-    except OSError:
-        _logger.info('You need Wkhtmltopdf to print a pdf version of the reports.')
-    else:
-        _logger.info('Will use the Wkhtmltopdf binary at %s', bin_path)
-        out, _err = process.communicate()
-        version = out.decode('ascii')
-        match = re.search(r'([0-9.]+)', version)
-        if match:
-            version = match.group(0)
-            if parse_version(version) < parse_version('0.12.0'):
-                _logger.info('Upgrade Wkhtmltopdf to (at least) 0.12.0')
-                state = 'upgrade'
-            else:
-                state = 'ok'
-            if parse_version(version) >= parse_version('0.12.2'):
-                dpi_zoom_ratio = True
-
-            if config['workers'] == 1:
-                _logger.info('You need to start Odoo with at least two workers to print a pdf version of the reports.')
-                state = 'workers'
-        else:
-            _logger.info('Wkhtmltopdf seems to be broken.')
-            state = 'broken'
-
-    wkhtmltoimage_version = None
-    image_bin_path = 'wkhtmltoimage'
-    try:
-        image_bin_path = find_in_path('wkhtmltoimage')
-        process = subprocess.Popen(
-            [image_bin_path, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
-    except OSError:
-        _logger.info('You need Wkhtmltoimage to generate images from html.')
-    else:
-        _logger.info('Will use the Wkhtmltoimage binary at %s', image_bin_path)
-        out, _err = process.communicate()
-        match = re.search(rb'([0-9.]+)', out)
-        if match:
-            wkhtmltoimage_version = parse_version(match.group(0).decode('ascii'))
-            if config['workers'] == 1:
-                _logger.info('You need to start Odoo with at least two workers to convert images to html.')
-        else:
-            _logger.info('Wkhtmltoimage seems to be broken.')
-
-    return WkhtmlInfo(
-        state=state,
-        dpi_zoom_ratio=dpi_zoom_ratio,
-        bin=bin_path,
-        version=version,
-        wkhtmltoimage_bin=image_bin_path,
-        wkhtmltoimage_version=wkhtmltoimage_version,
+# Check the presence of Wkhtmltopdf and return its version at Odoo start-up
+wkhtmltopdf_state = 'install'
+wkhtmltopdf_dpi_zoom_ratio = False
+try:
+    process = subprocess.Popen(
+        [_get_wkhtmltopdf_bin(), '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
+except (OSError, IOError):
+    _logger.info('You need Wkhtmltopdf to print a pdf version of the reports.')
+else:
+    _logger.info('Will use the Wkhtmltopdf binary at %s' % _get_wkhtmltopdf_bin())
+    out, err = process.communicate()
+    match = re.search(b'([0-9.]+)', out)
+    if match:
+        version = match.group(0).decode('ascii')
+        if parse_version(version) < parse_version('0.12.0'):
+            _logger.info('Upgrade Wkhtmltopdf to (at least) 0.12.0')
+            wkhtmltopdf_state = 'upgrade'
+        else:
+            wkhtmltopdf_state = 'ok'
+        if parse_version(version) >= parse_version('0.12.2'):
+            wkhtmltopdf_dpi_zoom_ratio = True
 
+        if config['workers'] == 1:
+            _logger.info('You need to start Odoo with at least two workers to print a pdf version of the reports.')
+            wkhtmltopdf_state = 'workers'
+    else:
+        _logger.info('Wkhtmltopdf seems to be broken.')
+        wkhtmltopdf_state = 'broken'
+
+wkhtmltoimage_version = None
+try:
+    process = subprocess.Popen(
+        [_get_wkhtmltoimage_bin(), '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+except OSError:
+    _logger.info('You need Wkhtmltoimage to generate images from html.')
+else:
+    _logger.info('Will use the Wkhtmltoimage binary at %s', _get_wkhtmltoimage_bin())
+    out, err = process.communicate()
+    match = re.search(b'([0-9.]+)', out)
+    if match:
+        wkhtmltoimage_version = parse_version(match.group(0).decode('ascii'))
+        if config['workers'] == 1:
+            _logger.info('You need to start Odoo with at least two workers to convert images to html.')
+    else:
+        _logger.info('Wkhtmltoimage seems to be broken.')
 
 class IrActionsReport(models.Model):
     _name = 'ir.actions.report'
     _description = 'Report Action'
-    _inherit = ['ir.actions.actions']
+    _inherit = 'ir.actions.actions'
     _table = 'ir_act_report_xml'
     _order = 'name, id'
     _allow_sudo_commands = False
@@ -173,10 +159,10 @@ class IrActionsReport(models.Model):
     report_name = fields.Char(string='Template Name', required=True)
     report_file = fields.Char(string='Report File', required=False, readonly=False, store=True,
                               help="The path to the main report file (depending on Report Type) or empty if the content is in another field")
-    group_ids = fields.Many2many('res.groups', 'res_groups_report_rel', 'uid', 'gid', string='Groups')
+    groups_id = fields.Many2many('res.groups', 'res_groups_report_rel', 'uid', 'gid', string='Groups')
     multi = fields.Boolean(string='On Multiple Doc.', help="If set to true, the action will not be displayed on the right toolbar of a form view.")
 
-    paperformat_id = fields.Many2one('report.paperformat', 'Paper Format', index='btree_not_null')
+    paperformat_id = fields.Many2one('report.paperformat', 'Paper Format')
     print_report_name = fields.Char('Printed Report Name', translate=True,
                                     help="This is the filename of the report going to download. Keep empty to not change the report filename. You can use a python expression with the 'object' and 'time' variables.")
     attachment_use = fields.Boolean(string='Reload from Attachment',
@@ -191,24 +177,28 @@ class IrActionsReport(models.Model):
             action.model_id = self.env['ir.model']._get(action.model).id
 
     def _search_model_id(self, operator, value):
-        if Domain.is_negative_operator(operator):
-            return NotImplemented
-        models = self.env['ir.model']
+        ir_model_ids = None
         if isinstance(value, str):
-            models = models.search(Domain('display_name', operator, value))
-        elif isinstance(value, Domain):
-            models = models.search(value)
-        elif operator == 'any!':
-            models = models.sudo().search(Domain('id', operator, value))
-        elif operator == 'any' or isinstance(value, int):
-            models = models.search(Domain('id', operator, value))
-        elif operator == 'in':
-            models = models.search(Domain.OR(
-                Domain('id' if isinstance(v, int) else 'display_name', operator, v)
-                for v in value
-                if v
-            ))
-        return Domain('model', 'in', models.mapped('model'))
+            names = self.env['ir.model'].name_search(value, operator=operator)
+            ir_model_ids = [n[0] for n in names]
+
+        elif operator in ('any', 'not any'):
+            ir_model_ids = self.env['ir.model']._search(value)
+
+        elif isinstance(value, Iterable):
+            ir_model_ids = value
+
+        elif isinstance(value, int) and not isinstance(value, bool):
+            ir_model_ids = [value]
+
+        if ir_model_ids:
+            operator = 'not in' if operator in NEGATIVE_TERM_OPERATORS else 'in'
+            ir_model = self.env['ir.model'].browse(ir_model_ids)
+            return [('model', operator, ir_model.mapped('model'))]
+        elif isinstance(value, bool) or value is None:
+            return [('model', operator, value)]
+        else:
+            return FALSE_DOMAIN
 
     def _get_readable_fields(self):
         return super()._get_readable_fields() | {
@@ -277,7 +267,7 @@ class IrActionsReport(models.Model):
 
         :return: wkhtmltopdf_state
         '''
-        return _wkhtml().state
+        return wkhtmltopdf_state
 
     def get_paperformat(self):
         return self.paperformat_id or self.env.company.paperformat_id
@@ -342,7 +332,7 @@ class IrActionsReport(models.Model):
                     dpi = paperformat_id.dpi
             if dpi:
                 command_args.extend(['--dpi', str(dpi)])
-                if _wkhtml().dpi_zoom_ratio:
+                if wkhtmltopdf_dpi_zoom_ratio:
                     command_args.extend(['--zoom', str(96.0 / dpi)])
 
             if specific_paperformat_args and specific_paperformat_args.get('data-report-header-spacing'):
@@ -380,6 +370,13 @@ class IrActionsReport(models.Model):
         The idea is to put all headers/footers together. Then, we will use a javascript trick
         (see minimal_layout template) to set the right header/footer during the processing of wkhtmltopdf.
         This allows the computation of multiple reports in a single call to wkhtmltopdf.
+
+        :param html: The html rendered by render_qweb_html.
+        :type: bodies: list of string representing each one a html body.
+        :type header: string representing the html header.
+        :type footer: string representing the html footer.
+        :type specific_paperformat_args: dictionary of prioritized paperformat values.
+        :return: bodies, header, footer, specific_paperformat_args
         '''
 
         # Return empty dictionary if 'web.minimal_layout' not found.
@@ -464,9 +461,8 @@ class IrActionsReport(models.Model):
         :param image_format union['jpg', 'png']: format of the image
         :return list[bytes|None]:
         """
-        if (modules.module.current_test or tools.config['test_enable']) and not self.env.context.get('force_image_rendering'):
+        if (tools.config['test_enable'] or tools.config['test_file']) and not self.env.context.get('force_image_rendering'):
             return [None] * len(bodies)
-        wkhtmltoimage_version = _wkhtml().wkhtmltoimage_version
         if not wkhtmltoimage_version or wkhtmltoimage_version < parse_version('0.12.0'):
             raise UserError(_('wkhtmltoimage 0.12.0^ is required in order to render images from html'))
         command_args = [
@@ -486,7 +482,7 @@ class IrActionsReport(models.Model):
             for input_file, output_file in files:
                 # smaller bodies may be held in a python buffer until close, force flush
                 input_file.flush()
-                wkhtmltoimage = [_wkhtml().wkhtmltoimage_bin, *command_args, input_file.name, output_file.name]
+                wkhtmltoimage = [_get_wkhtmltoimage_bin()] + command_args + [input_file.name, output_file.name]
                 # start and block, no need for parallelism for now
                 completed_process = subprocess.run(wkhtmltoimage, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=False)
                 if completed_process.returncode:
@@ -514,7 +510,7 @@ class IrActionsReport(models.Model):
         '''Execute wkhtmltopdf as a subprocess in order to convert html given in input into a pdf
         document.
 
-        :param Iterable[str] bodies: The html bodies of the report, one per page.
+        :param list[str] bodies: The html bodies of the report, one per page.
         :param report_ref: report reference that is needed to get report paperformat.
         :param str header: The html header of the report containing all headers.
         :param str footer: The html footer of the report containing all footers.
@@ -534,107 +530,107 @@ class IrActionsReport(models.Model):
             set_viewport_size=set_viewport_size)
 
         files_command_args = []
+        temporary_files = []
+        temp_session = None
 
-        def delete_file(file_path):
-            try:
-                os.unlink(file_path)
-            except OSError:
-                _logger.error('Error when trying to remove file %s', file_path)
+        # Passing the cookie to wkhtmltopdf in order to resolve internal links.
+        if request and request.db:
+            # Create a temporary session which will not create device logs
+            temp_session = root.session_store.new()
+            temp_session.update({
+                **request.session,
+                'debug': '',
+                '_trace_disable': True,
+            })
+            if temp_session.uid:
+                temp_session.session_token = security.compute_session_token(temp_session, self.env)
+            root.session_store.save(temp_session)
 
-        with ExitStack() as stack:
+            base_url = self._get_report_url()
+            domain = urlparse(base_url).hostname
+            cookie = f'session_id={temp_session.sid}; HttpOnly; domain={domain}; path=/;'
+            cookie_jar_file_fd, cookie_jar_file_path = tempfile.mkstemp(suffix='.txt', prefix='report.cookie_jar.tmp.')
+            temporary_files.append(cookie_jar_file_path)
+            with closing(os.fdopen(cookie_jar_file_fd, 'wb')) as cookie_jar_file:
+                cookie_jar_file.write(cookie.encode())
+            command_args.extend(['--cookie-jar', cookie_jar_file_path])
 
-            # Passing the cookie to wkhtmltopdf in order to resolve internal links.
-            if request and request.db:
-                # Create a temporary session which will not create device logs
-                temp_session = root.session_store.new()
-                temp_session.update({
-                    **request.session,
-                    'debug': '',
-                    '_trace_disable': True,
-                })
-                if temp_session.uid:
-                    temp_session.session_token = security.compute_session_token(temp_session, self.env)
-                root.session_store.save(temp_session)
-                stack.callback(root.session_store.delete, temp_session)
+        if header:
+            head_file_fd, head_file_path = tempfile.mkstemp(suffix='.html', prefix='report.header.tmp.')
+            with closing(os.fdopen(head_file_fd, 'wb')) as head_file:
+                head_file.write(header.encode())
+            temporary_files.append(head_file_path)
+            files_command_args.extend(['--header-html', head_file_path])
+        if footer:
+            foot_file_fd, foot_file_path = tempfile.mkstemp(suffix='.html', prefix='report.footer.tmp.')
+            with closing(os.fdopen(foot_file_fd, 'wb')) as foot_file:
+                foot_file.write(footer.encode())
+            temporary_files.append(foot_file_path)
+            files_command_args.extend(['--footer-html', foot_file_path])
 
-                base_url = self._get_report_url()
-                domain = urlparse(base_url).hostname
-                cookie = f'session_id={temp_session.sid}; HttpOnly; domain={domain}; path=/;'
-                cookie_jar_file_fd, cookie_jar_file_path = tempfile.mkstemp(suffix='.txt', prefix='report.cookie_jar.tmp.')
-                stack.callback(delete_file, cookie_jar_file_path)
-                with closing(os.fdopen(cookie_jar_file_fd, 'wb')) as cookie_jar_file:
-                    cookie_jar_file.write(cookie.encode())
-                command_args.extend(['--cookie-jar', cookie_jar_file_path])
+        paths = []
+        for i, body in enumerate(bodies):
+            prefix = '%s%d.' % ('report.body.tmp.', i)
+            body_file_fd, body_file_path = tempfile.mkstemp(suffix='.html', prefix=prefix)
+            with closing(os.fdopen(body_file_fd, 'wb')) as body_file:
+                # HACK: wkhtmltopdf doesn't like big table at all and the
+                #       processing time become exponential with the number
+                #       of rows (like 1H for 250k rows).
+                #
+                #       So we split the table into multiple tables containing
+                #       500 rows each. This reduce the processing time to 1min
+                #       for 250k rows. The number 500 was taken from opw-1689673
+                if len(body) < 4 * 1024 * 1024: # 4Mib
+                    body_file.write(body.encode())
+                else:
+                    tree = lxml.html.fromstring(body)
+                    _split_table(tree, 500)
+                    body_file.write(lxml.html.tostring(tree))
+            paths.append(body_file_path)
+            temporary_files.append(body_file_path)
 
-            if header:
-                head_file_fd, head_file_path = tempfile.mkstemp(suffix='.html', prefix='report.header.tmp.')
-                with closing(os.fdopen(head_file_fd, 'wb')) as head_file:
-                    head_file.write(header.encode())
-                stack.callback(delete_file, head_file_path)
-                files_command_args.extend(['--header-html', head_file_path])
-            if footer:
-                foot_file_fd, foot_file_path = tempfile.mkstemp(suffix='.html', prefix='report.footer.tmp.')
-                with closing(os.fdopen(foot_file_fd, 'wb')) as foot_file:
-                    foot_file.write(footer.encode())
-                stack.callback(delete_file, foot_file_path)
-                files_command_args.extend(['--footer-html', foot_file_path])
+        pdf_report_fd, pdf_report_path = tempfile.mkstemp(suffix='.pdf', prefix='report.tmp.')
+        os.close(pdf_report_fd)
+        temporary_files.append(pdf_report_path)
 
-            paths = []
-            body_idx = 0
-            for body_idx, body in enumerate(bodies):
-                prefix = f'report.body.tmp.{body_idx}.'
-                body_file_fd, body_file_path = tempfile.mkstemp(suffix='.html', prefix=prefix)
-                with closing(os.fdopen(body_file_fd, 'wb')) as body_file:
-                    # HACK: wkhtmltopdf doesn't like big table at all and the
-                    #       processing time become exponential with the number
-                    #       of rows (like 1H for 250k rows).
-                    #
-                    #       So we split the table into multiple tables containing
-                    #       500 rows each. This reduce the processing time to 1min
-                    #       for 250k rows. The number 500 was taken from opw-1689673
-                    if len(body) < 4 * 1024 * 1024:  # 4Mib
-                        body_file.write(body.encode())
-                    else:
-                        tree = lxml.html.fromstring(body)
-                        _split_table(tree, 500)
-                        body_file.write(lxml.html.tostring(tree))
-                paths.append(body_file_path)
-                stack.callback(delete_file, body_file_path)
+        try:
+            wkhtmltopdf = [_get_wkhtmltopdf_bin()] + command_args + files_command_args + paths + [pdf_report_path]
+            process = subprocess.Popen(wkhtmltopdf, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8")
+            _out, err = process.communicate()
 
-            pdf_report_fd, pdf_report_path = tempfile.mkstemp(suffix='.pdf', prefix='report.tmp.')
-            os.close(pdf_report_fd)
-            stack.callback(delete_file, pdf_report_path)
-
-            process = _run_wkhtmltopdf(command_args + files_command_args + paths + [pdf_report_path])
-            err = process.stderr
-
-            match process.returncode:
-                case 0:
-                    pass
-                case 1:
-                    if body_idx:
-                        wk_version = _wkhtml().version
-                        if '(with patched qt)' not in wk_version:
-                            if modules.module.current_test:
-                                raise unittest.SkipTest("Unable to convert multiple documents via wkhtmltopdf using unpatched QT")
-                            raise UserError(_("Tried to convert multiple documents in wkhtmltopdf using unpatched QT"))
-
-                    _logger.warning("wkhtmltopdf: %s", err)
-                case c:
+            if process.returncode not in [0, 1]:
+                if process.returncode == -11:
                     message = _(
                         'Wkhtmltopdf failed (error code: %(error_code)s). Memory limit too low or maximum file number of subprocess reached. Message : %(message)s',
-                        error_code=c,
-                        message=err[-1000:],
-                    ) if c == -11 else _(
-                        'Wkhtmltopdf failed (error code: %(error_code)s). Message: %(message)s',
-                        error_code=c,
+                        error_code=process.returncode,
                         message=err[-1000:],
                     )
-                    _logger.warning(message)
-                    raise UserError(message)
+                else:
+                    message = _(
+                        'Wkhtmltopdf failed (error code: %(error_code)s). Message: %(message)s',
+                        error_code=process.returncode,
+                        message=err[-1000:],
+                    )
+                _logger.warning(message)
+                raise UserError(message)
+            else:
+                if err:
+                    _logger.warning('wkhtmltopdf: %s' % err)
+        except:
+            raise
+        finally:
+            if temp_session:
+                root.session_store.delete(temp_session)
 
-            with open(pdf_report_path, 'rb') as pdf_document:
-                pdf_content = pdf_document.read()
+        with open(pdf_report_path, 'rb') as pdf_document:
+            pdf_content = pdf_document.read()
+
+        # Manual cleanup of the temporary files
+        for temporary_file in temporary_files:
+            try:
+                os.unlink(temporary_file)
+            except (OSError, IOError):
+                _logger.error('Error when trying to remove file %s' % temporary_file)
 
         return pdf_content
 
@@ -651,9 +647,7 @@ class IrActionsReport(models.Model):
     @api.model
     def _get_report(self, report_ref):
         """Get the report (with sudo) from a reference
-
-        :param report_ref: can be one of
-
+        report_ref: can be one of
             - ir.actions.report id
             - ir.actions.report record
             - ir.model.data reference to ir.actions.report
@@ -696,7 +690,10 @@ class IrActionsReport(models.Model):
         kwargs = {k: validator(kwargs.get(k, v)) for k, (v, validator) in defaults.items()}
         kwargs['humanReadable'] = kwargs.pop('humanreadable')
         if kwargs['humanReadable']:
-            kwargs['fontName'] = get_barcode_font()
+            kwargs['fontName'] = _DEFAULT_BARCODE_FONT
+
+        if kwargs['width'] * kwargs['height'] > 1200000 or max(kwargs['width'], kwargs['height']) > 10000:
+            raise ValueError("Barcode too large")
 
         if barcode_type == 'UPCA' and len(value) in (11, 12, 13):
             barcode_type = 'EAN13'
@@ -708,8 +705,7 @@ class IrActionsReport(models.Model):
         elif barcode_type == 'QR':
             # for `QR` type, `quiet` is not supported. And is simply ignored.
             # But we can use `barBorder` to get a similar behaviour.
-            # quiet=True & barBorder=4 by default cf above, remove border only if quiet=False
-            if not kwargs['quiet']:
+            if kwargs['quiet']:
                 kwargs['barBorder'] = 0
 
         if barcode_type in ('EAN8', 'EAN13') and not check_barcode_encoding(value, barcode_type):
@@ -743,12 +739,10 @@ class IrActionsReport(models.Model):
     @api.model
     def get_available_barcode_masks(self):
         """ Hook for extension.
-
         This function returns the available QR-code masks, in the form of a
         list of (code, mask_function) elements, where code is a string identifying
         the mask uniquely, and mask_function is a function returning a reportlab
         Drawing object with the result of the mask, and taking as parameters:
-
             - width of the QR-code, in pixels
             - height of the QR-code, in pixels
             - reportlab Drawing object containing the barcode to apply the mask on
@@ -816,7 +810,7 @@ class IrActionsReport(models.Model):
 
                 stream = None
                 attachment = None
-                if not has_duplicated_ids and report_sudo.attachment and not self.env.context.get("report_pdf_no_attachment"):
+                if not has_duplicated_ids and report_sudo.attachment and not self._context.get("report_pdf_no_attachment"):
                     attachment = report_sudo.retrieve_attachment(record)
 
                     # Extract the stream from the attachment.
@@ -876,9 +870,9 @@ class IrActionsReport(models.Model):
                 report_ref=report_ref,
                 header=header,
                 footer=footer,
-                landscape=self.env.context.get('landscape'),
+                landscape=self._context.get('landscape'),
                 specific_paperformat_args=specific_paperformat_args,
-                set_viewport_size=self.env.context.get('set_viewport_size'),
+                set_viewport_size=self._context.get('set_viewport_size'),
             )
             pdf_content_stream = io.BytesIO(pdf_content)
 
@@ -1005,7 +999,7 @@ class IrActionsReport(models.Model):
         data.setdefault('report_type', 'pdf')
         # In case of test environment without enough workers to perform calls to wkhtmltopdf,
         # fallback to render_html.
-        if (modules.module.current_test or tools.config['test_enable']) and not self.env.context.get('force_report_rendering'):
+        if (tools.config['test_enable'] or tools.config['test_file']) and not self.env.context.get('force_report_rendering'):
             return self._render_qweb_html(report_ref, res_ids, data=data)
 
         self = self.with_context(webp_as_jpg=True)
@@ -1028,7 +1022,7 @@ class IrActionsReport(models.Model):
         report_sudo = self._get_report(report_ref)
 
         # Generate the ir.attachment if needed.
-        if not has_duplicated_ids and report_sudo.attachment and not self.env.context.get("report_pdf_no_attachment"):
+        if not has_duplicated_ids and report_sudo.attachment and not self._context.get("report_pdf_no_attachment"):
             attachment_vals_list = self._prepare_pdf_report_attachment_vals_list(report_sudo, collected_streams)
             if attachment_vals_list:
                 attachment_names = ', '.join(x['name'] for x in attachment_vals_list)

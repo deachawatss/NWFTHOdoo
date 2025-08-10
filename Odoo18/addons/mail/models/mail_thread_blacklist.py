@@ -6,7 +6,7 @@ from odoo.exceptions import AccessError, UserError
 from odoo.tools import SQL
 
 
-class MailThreadBlacklist(models.AbstractModel):
+class MailBlackListMixin(models.AbstractModel):
     """ Mixin that is inherited by all model with opt out. This mixin stores a normalized
     email based on primary_email field.
 
@@ -51,13 +51,17 @@ class MailThreadBlacklist(models.AbstractModel):
 
     @api.model
     def _search_is_blacklisted(self, operator, value):
-        if operator not in ('in', 'not in'):
-            return NotImplemented
+        # Assumes operator is '=' or '!=' and value is True or False
         self.flush_model(['email_normalized'])
         self.env['mail.blacklist'].flush_model(['email', 'active'])
         self._assert_primary_email()
+        if operator != '=':
+            if operator == '!=' and isinstance(value, bool):
+                value = not value
+            else:
+                raise NotImplementedError()
 
-        if operator == 'in':
+        if value:
             sql = SQL("""
                 SELECT m.id
                     FROM mail_blacklist bl
@@ -73,8 +77,8 @@ class MailThreadBlacklist(models.AbstractModel):
                     WHERE bl.id IS NULL
             """, SQL.identifier(self._table))
 
-        self.env.cr.execute(SQL("%s FETCH FIRST ROW ONLY", sql))
-        res = self.env.cr.fetchall()
+        self._cr.execute(SQL("%s FETCH FIRST ROW ONLY", sql))
+        res = self._cr.fetchall()
         if not res:
             return [(0, '=', 1)]
         return [('id', 'in', SQL("(%s)", sql))]
@@ -97,14 +101,14 @@ class MailThreadBlacklist(models.AbstractModel):
     def _message_receive_bounce(self, email, partner):
         """ Override of mail.thread generic method. Purpose is to increment the
         bounce counter of the record. """
-        super()._message_receive_bounce(email, partner)
+        super(MailBlackListMixin, self)._message_receive_bounce(email, partner)
         for record in self:
             record.message_bounce = record.message_bounce + 1
 
     def _message_reset_bounce(self, email):
         """ Override of mail.thread generic method. Purpose is to reset the
         bounce counter of the record. """
-        super()._message_reset_bounce(email)
+        super(MailBlackListMixin, self)._message_reset_bounce(email)
         self.write({'message_bounce': 0})
 
     def mail_action_blacklist_remove(self):

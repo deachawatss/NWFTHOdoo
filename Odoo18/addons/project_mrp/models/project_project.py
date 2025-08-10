@@ -64,22 +64,23 @@ class ProjectProject(models.Model):
     def _get_stat_buttons(self):
         buttons = super()._get_stat_buttons()
         if self.env.user.has_group('mrp.group_mrp_user'):
+            self_sudo = self.sudo()
             buttons.extend([{
                 'icon': 'flask',
                 'text': self.env._('Bills of Materials'),
-                'number': self.bom_count,
+                'number': self_sudo.bom_count,
                 'action_type': 'object',
                 'action': 'action_view_mrp_bom',
-                'show': self.bom_count > 0,
+                'show': self_sudo.bom_count > 0,
                 'sequence': 35,
             },
             {
                 'icon': 'wrench',
                 'text': self.env._('Manufacturing Orders'),
-                'number': self.production_count,
+                'number': self_sudo.production_count,
                 'action_type': 'object',
                 'action': 'action_view_mrp_production',
-                'show': self.production_count > 0,
+                'show': self_sudo.production_count > 0,
                 'sequence': 46,
             }])
         return buttons

@@ -43,7 +43,7 @@ class IrModelFields(models.Model):
 
         # set 'serialization_field_id' on sparse fields; it is done here to
         # ensure that the serialized field is reflected already
-        cr = self.env.cr
+        cr = self._cr
 
         # retrieve existing values
         query = """
@@ -89,7 +89,7 @@ class IrModelFields(models.Model):
         return attrs
 
 
-class Sparse_FieldsTest(models.TransientModel):
+class TestSparse(models.TransientModel):
     _name = 'sparse_fields.test'
     _description = 'Sparse fields Test'
 

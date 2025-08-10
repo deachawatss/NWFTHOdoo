@@ -112,7 +112,7 @@
                         "title": "Scorecard chart",
                         "type": "scorecard",
                         "background": "#FFFFFF",
-                        "baselineDescr": { "text": "Scorecard description"},
+                        "baselineDescr": "Scorecard description",
                         "keyValue": "A6"
                     }
                 },

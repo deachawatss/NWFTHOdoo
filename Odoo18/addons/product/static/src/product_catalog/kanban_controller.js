@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { KanbanController } from "@web/views/kanban/kanban_controller";
 import { onWillStart } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
@@ -9,17 +11,13 @@ export class ProductCatalogKanbanController extends KanbanController {
 
     setup() {
         super.setup();
+        this.action = useService("action");
         this.orm = useService("orm");
         this.orderId = this.props.context.order_id;
         this.orderResModel = this.props.context.product_catalog_order_model;
         this.backToQuotationDebounced = useDebounced(this.backToQuotation, 500)
 
-        onWillStart(() => this.onWillStart());
-    }
-
-    async onWillStart() {
-        await this.setOrderStateInfo();
-        this._defineButtonContent();
+        onWillStart(async () => this._defineButtonContent());
     }
 
     // Force the slot for the "Back to Quotation" button to always be shown.
@@ -27,20 +25,12 @@ export class ProductCatalogKanbanController extends KanbanController {
         return true;
     }
 
-    get stateFiels() {
-        return ["state"];
-    }
-
-    async setOrderStateInfo() {
-        const orderData = await this.orm.searchRead(
-            this.orderResModel, [["id", "=", this.orderId]], this.stateFiels
-        );
-        this.orderStateInfo = orderData[0] || {};
-    }
-
-    _defineButtonContent() {
+    async _defineButtonContent() {
         // Define the button's label depending of the order's state.
-        const orderIsQuotation = ["draft", "sent"].includes(this.orderStateInfo.state);
+        const orderStateInfo = await this.orm.searchRead(
+            this.orderResModel, [["id", "=", this.orderId]], ["state"]
+        );
+        const orderIsQuotation = ["draft", "sent"].includes(orderStateInfo[0].state);
         if (orderIsQuotation) {
             this.buttonString = _t("Back to Quotation");
         } else {
@@ -53,9 +43,9 @@ export class ProductCatalogKanbanController extends KanbanController {
         // If, for some weird reason, the user reloads the page then the breadcrumbs are
         // lost, and we fall back to the form view ourselves.
         if (this.env.config.breadcrumbs.length > 1) {
-            await this.actionService.restore();
+            await this.action.restore();
         } else {
-            await this.actionService.doAction({
+            await this.action.doAction({
                 type: "ir.actions.act_window",
                 res_model: this.orderResModel,
                 views: [[false, "form"]],

@@ -5,10 +5,15 @@ import { AutoresizeInput } from "@mail/core/common/autoresize_input";
 import { CountryFlag } from "@mail/core/common/country_flag";
 import { useThreadActions } from "@mail/core/common/thread_actions";
 import { ThreadIcon } from "@mail/core/common/thread_icon";
-import { useHover, useMessageScrolling } from "@mail/utils/common/hooks";
+import {
+    useHover,
+    useMessageEdition,
+    useMessageHighlight,
+    useMessageToReplyTo,
+} from "@mail/utils/common/hooks";
 import { isEventHandled } from "@web/core/utils/misc";
 
-import { Component, toRaw, useChildSubEnv, useRef, useState, useSubEnv } from "@odoo/owl";
+import { Component, toRaw, useChildSubEnv, useRef, useState } from "@odoo/owl";
 
 import { Dropdown } from "@web/core/dropdown/dropdown";
 import { DropdownItem } from "@web/core/dropdown/dropdown_item";
@@ -17,7 +22,6 @@ import { _t } from "@web/core/l10n/translation";
 import { useService } from "@web/core/utils/hooks";
 import { Typing } from "@mail/discuss/typing/common/typing";
 import { getActiveHotkey } from "@web/core/hotkeys/hotkey_service";
-import { isMobileOS } from "@web/core/browser/feature_detection";
 
 /**
  * @typedef {Object} Props
@@ -42,30 +46,32 @@ export class ChatWindow extends Component {
 
     setup() {
         super.setup();
-        useSubEnv({ inChatWindow: true });
-        this.store = useService("mail.store");
-        this.messageHighlight = useMessageScrolling();
+        this.store = useState(useService("mail.store"));
+        this.messageEdition = useMessageEdition();
+        this.messageHighlight = useMessageHighlight();
+        this.messageToReplyTo = useMessageToReplyTo();
         this.state = useState({
+            actionsDisabled: false,
             actionsMenuOpened: false,
             jumpThreadPresent: 0,
             editingGuestName: false,
             editingName: false,
         });
-        this.ui = useService("ui");
+        this.ui = useState(useService("ui"));
         this.contentRef = useRef("content");
         this.threadActions = useThreadActions();
         this.actionsMenuButtonHover = useHover("actionsMenuButton");
         this.parentChannelHover = useHover("parentChannel");
-        this.isMobileOS = isMobileOS();
 
         useChildSubEnv({
             closeActionPanel: () => this.threadActions.activeAction?.close(),
+            inChatWindow: true,
             messageHighlight: this.messageHighlight,
         });
     }
 
     get composerType() {
-        if (this.thread.model !== "discuss.channel") {
+        if (this.thread && this.thread.model !== "discuss.channel") {
             return "note";
         }
         return undefined;
@@ -82,17 +88,6 @@ export class ChatWindow extends Component {
 
     get thread() {
         return this.props.chatWindow.thread;
-    }
-
-    get showImStatus() {
-        return this.thread?.channel_type === "chat" && this.thread.correspondent;
-    }
-
-    get attClass() {
-        return {
-            'w-100 h-100 o-mobile': this.ui.isSmall,
-            'rounded-4 border border-dark mb-2': !this.ui.isSmall,
-        };
     }
 
     get style() {
@@ -131,21 +126,26 @@ export class ChatWindow extends Component {
             case "tab": {
                 const index = this.store.chatHub.opened.findIndex((cw) => cw.eq(chatWindow));
                 if (index === this.store.chatHub.opened.length - 1) {
-                    this.store.chatHub.opened[0].focus({ jumpToNewMessage: true });
+                    this.store.chatHub.opened[0].focus();
                 } else {
-                    this.store.chatHub.opened[index + 1].focus({ jumpToNewMessage: true });
+                    this.store.chatHub.opened[index + 1].focus();
                 }
                 break;
             }
             case "control+k":
-                this.store.env.services.command.openMainPalette({ searchValue: "@" });
+                this.store.env.services.command.openMainPalette();
                 ev.preventDefault();
                 break;
         }
     }
 
     onClickHeader() {
-        if (this.ui.isSmall || this.state.editingName || this.props.chatWindow.actionsDisabled) {
+        if (
+            this.ui.isSmall ||
+            this.state.editingName ||
+            !this.thread ||
+            this.state.actionsDisabled
+        ) {
             return;
         }
         this.toggleFold();
@@ -159,9 +159,9 @@ export class ChatWindow extends Component {
         chatWindow.fold();
     }
 
-    close(options) {
+    async close(options) {
         const chatWindow = toRaw(this.props.chatWindow);
-        chatWindow.close(options);
+        await chatWindow.close(options);
     }
 
     get actionsMenuTitleText() {

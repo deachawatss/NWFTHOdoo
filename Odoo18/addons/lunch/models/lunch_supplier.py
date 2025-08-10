@@ -9,7 +9,7 @@ from textwrap import dedent
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
-from odoo.fields import Domain
+from odoo.osv import expression
 from odoo.tools import float_round
 
 from odoo.addons.base.models.res_partner import _tz_get
@@ -29,7 +29,6 @@ def float_to_time(hours, moment='am'):
 
 def time_to_float(t):
     return float_round(t.hour + t.minute/60 + t.second/3600, precision_digits=2)
-
 
 class LunchSupplier(models.Model):
     _name = 'lunch.supplier'
@@ -51,7 +50,7 @@ class LunchSupplier(models.Model):
     country_id = fields.Many2one('res.country', related='partner_id.country_id', readonly=False)
     company_id = fields.Many2one('res.company', related='partner_id.company_id', readonly=False, store=True)
 
-    responsible_id = fields.Many2one('res.users', string="Responsible", domain=lambda self: [('all_group_ids', 'in', self.env.ref('lunch.group_lunch_manager').id)],
+    responsible_id = fields.Many2one('res.users', string="Responsible", domain=lambda self: [('groups_id', 'in', self.env.ref('lunch.group_lunch_manager').id)],
                                      default=lambda self: self.env.user,
                                      help="The responsible is the person that will order lunch for everyone. It will be used as the 'from' when sending the automatic email.")
 
@@ -113,10 +112,11 @@ class LunchSupplier(models.Model):
     show_order_button = fields.Boolean(compute='_compute_buttons')
     show_confirm_button = fields.Boolean(compute='_compute_buttons')
 
-    _automatic_email_time_range = models.Constraint(
-        'CHECK(automatic_email_time >= 0 AND automatic_email_time <= 12)',
-        'Automatic Email Sending Time should be between 0 and 12',
-    )
+    _sql_constraints = [
+        ('automatic_email_time_range',
+         'CHECK(automatic_email_time >= 0 AND automatic_email_time <= 12)',
+         'Automatic Email Sending Time should be between 0 and 12'),
+    ]
 
     @api.depends('phone')
     def _compute_display_name(self):
@@ -186,8 +186,7 @@ class LunchSupplier(models.Model):
         suppliers._sync_cron()
         return suppliers
 
-    def write(self, vals):
-        values = vals
+    def write(self, values):
         for topping in values.get('topping_ids_2', []):
             topping_values = topping[2] if len(topping) > 2 else False
             if topping_values:
@@ -199,12 +198,6 @@ class LunchSupplier(models.Model):
         if values.get('company_id'):
             self.env['lunch.order'].search([('supplier_id', 'in', self.ids)]).write({'company_id': values['company_id']})
         res = super().write(values)
-        if 'active' in values:
-            active_suppliers = self.filtered(lambda s: s.active)
-            inactive_suppliers = self - active_suppliers
-            Product = self.env['lunch.product'].with_context(active_test=False)
-            Product.search([('supplier_id', 'in', active_suppliers.ids)]).write({'active': True})
-            Product.search([('supplier_id', 'in', inactive_suppliers.ids)]).write({'active': False})
         if not CRON_DEPENDS.isdisjoint(values):
             # flush automatic_email_time field to call _sql_constraints
             if 'automatic_email_time' in values:
@@ -221,6 +214,16 @@ class LunchSupplier(models.Model):
         res = super().unlink()
         crons.unlink()
         server_actions.unlink()
+        return res
+
+    def toggle_active(self):
+        """ Archiving related lunch product """
+        res = super().toggle_active()
+        active_suppliers = self.filtered(lambda s: s.active)
+        inactive_suppliers = self - active_suppliers
+        Product = self.env['lunch.product'].with_context(active_test=False)
+        Product.search([('supplier_id', 'in', active_suppliers.ids)]).write({'active': True})
+        Product.search([('supplier_id', 'in', inactive_suppliers.ids)]).write({'active': False})
         return res
 
     def _cancel_future_days(self, weekdays):
@@ -321,17 +324,23 @@ class LunchSupplier(models.Model):
                 supplier.order_deadline_passed = not supplier.available_today
 
     def _search_available_today(self, operator, value):
-        if operator not in ('in', 'not in'):
-            return NotImplemented
+        if (not operator in ['=', '!=']) or (not value in [True, False]):
+            return []
 
-        today = fields.Date.context_today(self)
-        fieldname = WEEKDAY_TO_NAME[today.weekday()]
-        truth = operator == 'in'
+        searching_for_true = (operator == '=' and value) or (operator == '!=' and not value)
 
-        recurrency_domain = Domain('recurrency_end_date', '=', False) \
-            | Domain('recurrency_end_date', '>' if truth else '<', today)
+        now = fields.Datetime.now().replace(tzinfo=pytz.UTC).astimezone(pytz.timezone(self.env.user.tz or 'UTC'))
+        fieldname = WEEKDAY_TO_NAME[now.weekday()]
 
-        return recurrency_domain & Domain(fieldname, operator, value)
+        recurrency_domain = expression.OR([
+            [('recurrency_end_date', '=', False)],
+            [('recurrency_end_date', '>' if searching_for_true else '<', now)]
+        ])
+
+        return expression.AND([
+            recurrency_domain,
+            [(fieldname, operator, value)]
+        ])
 
     def _compute_buttons(self):
         self.env.cr.execute("""

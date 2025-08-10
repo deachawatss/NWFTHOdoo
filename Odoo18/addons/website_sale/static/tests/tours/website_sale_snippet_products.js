@@ -1,6 +1,8 @@
+/** @odoo-module */
+
 import { queryFirst } from '@odoo/hoot-dom';
 import {
-    changeOptionInPopover,
+    changeOption,
     clickOnSave,
     clickOnSnippet,
     insertSnippet,
@@ -8,7 +10,8 @@ import {
 } from '@website/js/tours/tour_utils';
 import { goToCart } from '@website_sale/js/tours/tour_utils';
 
-const productsSnippet = {id: "s_dynamic_snippet_products", name: "Products", groupName: "Catalog"};
+const optionBlock = 'dynamic_snippet_products';
+const productsSnippet = {id: "s_dynamic_snippet_products", name: "Products", groupName: "Products"};
 const templates = [
     "dynamic_filter_template_product_product_add_to_cart",
     "dynamic_filter_template_product_product_view_detail",
@@ -27,7 +30,8 @@ const templates = [
 function changeTemplate(templateKey) {
     const templateClass = templateKey.replace(/dynamic_filter_template_/, "s_");
     return [
-        ...changeOptionInPopover("Products", "Template", `div[data-action-param*="${templateKey}"]`),
+        changeOption(optionBlock, 'we-select[data-name="template_opt"] we-toggler', 'template'),
+        changeOption(optionBlock, `we-button[data-select-data-attribute="website_sale.${templateKey}"]`),
         {
             content: 'Check the template is applied',
             trigger: `:iframe .s_dynamic_snippet_products.${templateClass} .carousel`,
@@ -66,7 +70,8 @@ registerWebsitePreviewTour('website_sale.products_snippet_recently_viewed', {
     ...insertSnippet(productsSnippet),
     ...clickOnSnippet(productsSnippet),
     ...changeTemplate('dynamic_filter_template_product_product_add_to_cart'),
-    ...changeOptionInPopover("Products", "Filter", "Recently Viewed"),
+    changeOption(optionBlock, 'we-select[data-name="filter_opt"] we-toggler', 'filter'),
+    changeOption(optionBlock, 'we-select[data-name="filter_opt"] we-button:contains("Recently Viewed")', 'filter'),
     ...clickOnSave(),
     {
         content: 'make delete icon appear',

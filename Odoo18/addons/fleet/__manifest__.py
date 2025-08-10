@@ -37,7 +37,6 @@ Main Features
         'views/fleet_board_view.xml',
         'views/mail_activity_views.xml',
         'views/res_config_settings_views.xml',
-        'views/fleet_vehicle_odometer_report.xml',
         'data/fleet_cars_data.xml',
         'data/fleet_data.xml',
         'data/mail_message_subtype_data.xml',
@@ -54,6 +53,5 @@ Main Features
             'fleet/static/src/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

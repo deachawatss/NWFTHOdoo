@@ -10,5 +10,4 @@ class MailActivityType(models.Model):
         info['hr_holidays.mail_act_leave_approval'] = {'res_model': 'hr.leave', 'unlink': False}
         info['hr_holidays.mail_act_leave_second_approval'] = {'res_model': 'hr.leave', 'unlink': False}
         info['hr_holidays.mail_act_leave_allocation_approval'] = {'res_model': 'hr.leave.allocation', 'unlink': False}
-        info['hr_holidays.mail_act_leave_allocation_second_approval'] = {'res_model': 'hr.leave.allocation', 'unlink': False}
         return info

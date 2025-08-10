@@ -46,11 +46,11 @@ class TestItAccountMoveSend(TestItEdi, TestAccountMoveSendCommon):
         self.assertEqual((invoice1 + invoice2).mapped('sending_data'), [False, False])
         self.assertEqual(1, len(self.get_attachments(invoice1.id)))
         self.assertTrue(invoice1.invoice_pdf_report_id)
-        self.assertFalse(invoice1.l10n_it_edi_attachment_file)
+        self.assertFalse(invoice1.l10n_it_edi_attachment_id)
         self.assertFalse(invoice1.is_being_sent)
         self.assertEqual(1, len(self.get_attachments(invoice2.id)))
         self.assertTrue(invoice2.invoice_pdf_report_id)
-        self.assertFalse(invoice2.l10n_it_edi_attachment_file)
+        self.assertFalse(invoice2.l10n_it_edi_attachment_id)
         self.assertFalse(invoice2.is_being_sent)
 
     def test_invoice_multi_with_l10n_it_edi_xml_export(self):
@@ -66,17 +66,17 @@ class TestItAccountMoveSend(TestItEdi, TestAccountMoveSendCommon):
                 'odoo.addons.account.models.account_move_send.AccountMoveSend._get_default_extra_edis',
                 _get_default_extra_edis
         ):
-            self.env['account.move.send']._generate_and_send_invoices(invoice1 + invoice2, sending_methods=['email'])
+            self.env['account.move.send']._generate_and_send_invoices(invoice1 + invoice2)
 
         # Asserts
         self.assertEqual((invoice1 + invoice2).mapped('sending_data'), [False, False])
         self.assertEqual(2, len(self.get_attachments(invoice1.id)))
         self.assertTrue(invoice1.invoice_pdf_report_id)
-        self.assertTrue(invoice1.l10n_it_edi_attachment_file)
+        self.assertTrue(invoice1.l10n_it_edi_attachment_id)
         self.assertFalse(invoice1.is_being_sent)
         self.assertEqual(2, len(self.get_attachments(invoice2.id)))
         self.assertTrue(invoice2.invoice_pdf_report_id)
-        self.assertTrue(invoice2.l10n_it_edi_attachment_file)
+        self.assertTrue(invoice2.l10n_it_edi_attachment_id)
         self.assertFalse(invoice2.is_being_sent)
 
     def test_invoice_with_cig_or_cup_or_both(self):
@@ -127,6 +127,7 @@ class TestItAccountMoveSend(TestItEdi, TestAccountMoveSendCommon):
         second_company.write({
             'vat': 'IT12345670017',
             'phone': '0266766700',
+            'mobile': '+393288088988',
             'email': 'test@test.it',
             'street': '1234 Test Street',
             'zip': '12345',
@@ -154,7 +155,7 @@ class TestItAccountMoveSend(TestItEdi, TestAccountMoveSendCommon):
         )
 
         with patch('odoo.addons.l10n_it_edi.models.account_move.AccountMove._l10n_it_edi_upload', return_value={}, autospec=True) as mock_check:
-            self.env['account.move.send'].with_context(allowed_company_ids=[second_company.id, self.company.id])._generate_and_send_invoices(invoice2 + invoice1, sending_methods=['email'])
+            self.env['account.move.send'].with_context(allowed_company_ids=[second_company.id, self.company.id])._generate_and_send_invoices(invoice2 + invoice1)
             self.assertEqual(mock_check.call_count, 2)
             res_call_invoice1, res_call_invoice2 = mock_check.call_args_list
             res_invoice1, res_invoice2 = res_call_invoice2[0][0], res_call_invoice1[0][0]

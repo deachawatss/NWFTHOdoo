@@ -11,6 +11,7 @@ DEFAULT_PAYMENT_METHOD_CODES = {
     'card',
     'bancontact',
     'eps',
+    'giropay',
     'ideal',
     'p24',
     # Brand payment methods.

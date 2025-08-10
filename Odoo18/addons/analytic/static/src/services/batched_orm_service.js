@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
 import { ORM } from "@web/core/orm_service";
 import { unique } from "@web/core/utils/arrays";
@@ -73,7 +75,7 @@ export const batchedOrmService = {
         "create",
         "nameGet",
         "read",
-        "formattedReadGroup",
+        "readGroup",
         "search",
         "searchRead",
         "unlink",

@@ -4,16 +4,16 @@
 # 
 # Translators:
 # Pak Wai Ho, 2025
-# Tony Ng, 2025
 # Wil Odoo, 2025
+# Tony Ng, 2025
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~18.3\n"
+"Project-Id-Version: Odoo Server 18.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-06-06 18:36+0000\n"
-"PO-Revision-Date: 2025-05-06 12:04+0000\n"
-"Last-Translator: Wil Odoo, 2025\n"
+"POT-Creation-Date: 2025-07-11 18:39+0000\n"
+"PO-Revision-Date: 2024-09-25 09:41+0000\n"
+"Last-Translator: Tony Ng, 2025\n"
 "Language-Team: Chinese (Taiwan) (https://app.transifex.com/odoo/teams/41243/zh_TW/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -133,53 +133,14 @@ msgid ""
 "        <br/>\n"
 "        Do not hesitate to contact us if you have any questions.\n"
 "        <t t-if=\"not is_html_empty(object.user_id.signature)\" data-o-mail-quote-container=\"1\">\n"
-"            <div data-o-mail-quote=\"1\">--<br data-o-mail-quote=\"1\"/><t t-out=\"object.user_id.signature or ''\" data-o-mail-quote=\"1\">Mitchell Admin</t></div>\n"
+"            <br/><br/>\n"
+"            <t t-out=\"object.user_id.signature or ''\" data-o-mail-quote=\"1\">--<br data-o-mail-quote=\"1\"/>Mitchell Admin</t>\n"
 "        </t>\n"
+"        <br/><br/>\n"
 "    </p>\n"
 "</div>\n"
 "            "
 msgstr ""
-"<div style=\"margin: 0px; padding: 0px;\">\n"
-"    <p style=\"margin: 0px; padding: 0px; font-size: 12px;\">\n"
-"        <t t-set=\"transaction_sudo\" t-value=\"object.get_portal_last_transaction()\"/>\n"
-"        你好！\n"
-"        <br/><br/>\n"
-"        一筆付款（參考：\n"
-"        <span style=\"font-weight:bold;\" t-out=\"transaction_sudo.reference or ''\">SOOO49</span>\n"
-"        ，金額為\n"
-"        <span style=\"font-weight:bold;\" t-out=\"format_amount(transaction_sudo.amount, object.currency_id) or ''\">$ 10.00</span>\n"
-"        ，你的相關訂單為\n"
-"        <span style=\"font-weight:bold;\" t-out=\"object.name or ''\">S00049</span>）\n"
-"        <t t-if=\"transaction_sudo and transaction_sudo.state == 'pending'\">\n"
-"            正等待處理。\n"
-"            <br/>\n"
-"            <t t-if=\"object.currency_id.compare_amounts(object.amount_paid + transaction_sudo.amount, object.amount_total) &gt;= 0 and object.state in ('draft', 'sent')\">\n"
-"                付款確認後，你的訂單會即時確認。\n"
-"            </t>\n"
-"            <t t-else=\"\">\n"
-"                確認後，仍有\n"
-"                <span style=\"font-weight:bold;\" t-out=\"format_amount(object.amount_total - object.amount_paid - transaction_sudo.amount, object.currency_id) or ''\">$ 10.00</span>\n"
-"                款項待繳。\n"
-"            </t>\n"
-"        </t>\n"
-"        <t t-else=\"\">\n"
-"            已獲確認。\n"
-"            <t t-if=\"object.currency_id.compare_amounts(object.amount_paid, object.amount_total) &lt; 0\">\n"
-"                <br/>\n"
-"                訂單仍有 <span style=\"font-weight:bold;\" t-out=\"format_amount(object.amount_total - object.amount_paid, object.currency_id) or ''\">$ 10.00</span>\n"
-"                款項待繳。\n"
-"            </t>\n"
-"        </t>\n"
-"        <br/><br/>\n"
-"        感謝你的信任！\n"
-"        <br/>\n"
-"        如有任何疑問，歡迎聯絡我們。\n"
-"        <t t-if=\"not is_html_empty(object.user_id.signature)\" data-o-mail-quote-container=\"1\">\n"
-"            <div data-o-mail-quote=\"1\">--<br data-o-mail-quote=\"1\"/><t t-out=\"object.user_id.signature or ''\" data-o-mail-quote=\"1\">Mitchell Admin</t></div>\n"
-"        </t>\n"
-"    </p>\n"
-"</div>\n"
-"            "
 
 #. module: sale
 #: model:mail.template,body_html:sale.mail_template_sale_confirmation
@@ -221,8 +182,10 @@ msgid ""
 "        <br/>\n"
 "        Do not hesitate to contact us if you have any questions.\n"
 "        <t t-if=\"not is_html_empty(object.user_id.signature)\" data-o-mail-quote-container=\"1\">\n"
-"            <div data-o-mail-quote=\"1\">--<br data-o-mail-quote=\"1\"/><t t-out=\"object.user_id.signature or ''\" data-o-mail-quote=\"1\">Mitchell Admin</t></div>\n"
+"            <br/><br/>\n"
+"            <t t-out=\"object.user_id.signature or ''\" data-o-mail-quote=\"1\">--<br data-o-mail-quote=\"1\"/>Mitchell Admin</t>\n"
 "        </t>\n"
+"        <br/><br/>\n"
 "    </p>\n"
 "<t t-if=\"hasattr(object, 'website_id') and object.website_id\">\n"
 "    <div style=\"margin: 0px; padding: 0px;\">\n"
@@ -439,8 +402,10 @@ msgstr ""
 "        <br/>\n"
 "        如有任何疑問，歡迎聯絡我們。\n"
 "        <t t-if=\"not is_html_empty(object.user_id.signature)\" data-o-mail-quote-container=\"1\">\n"
-"            <div data-o-mail-quote=\"1\">--<br data-o-mail-quote=\"1\"/><t t-out=\"object.user_id.signature or ''\" data-o-mail-quote=\"1\">Mitchell Admin</t></div>\n"
+"            <br/><br/>\n"
+"            <t t-out=\"object.user_id.signature or ''\" data-o-mail-quote=\"1\">--<br data-o-mail-quote=\"1\"/>Mitchell Admin</t>\n"
 "        </t>\n"
+"        <br/><br/>\n"
 "    </p>\n"
 "<t t-if=\"hasattr(object, 'website_id') and object.website_id\">\n"
 "    <div style=\"margin: 0px; padding: 0px;\">\n"
@@ -628,11 +593,21 @@ msgid ""
 "        <t t-set=\"doc_name\" t-value=\"'quotation' if object.state in ('draft', 'sent') else 'order'\"/>\n"
 "        Hello,\n"
 "        <br/><br/>\n"
-"        Your <t t-out=\"doc_name or ''\">quotation</t> <span style=\"font-weight: bold;\" t-out=\"object.name or ''\"/>\n"
-"        <t t-if=\"object.origin\">\n"
-"            (with reference: <t t-out=\"object.origin or ''\">S00052</t> )\n"
+"        Your\n"
+"        <t t-if=\"ctx.get('proforma')\">\n"
+"            Pro forma invoice for <t t-out=\"doc_name or ''\">quotation</t> <span style=\"font-weight: bold;\" t-out=\"object.name or ''\">S00052</span>\n"
+"            <t t-if=\"object.origin\">\n"
+"                (with reference: <t t-out=\"object.origin or ''\"/> )\n"
+"            </t>\n"
+"            amounting in <span style=\"font-weight: bold;\" t-out=\"format_amount(object.amount_total, object.currency_id) or ''\">$ 10.00</span> is available.\n"
 "        </t>\n"
-"        amounting in <span style=\"font-weight: bold;\" t-out=\"format_amount(object.amount_total, object.currency_id) or ''\">$ 10.00</span> is ready for review.\n"
+"        <t t-else=\"\">\n"
+"            <t t-out=\"doc_name or ''\">quotation</t> <span style=\"font-weight: bold;\" t-out=\"object.name or ''\">S00052</span>\n"
+"            <t t-if=\"object.origin\">\n"
+"                (with reference: <t t-out=\"object.origin or ''\">S00052</t> )\n"
+"            </t>\n"
+"            amounting in <span style=\"font-weight: bold;\" t-out=\"format_amount(object.amount_total, object.currency_id) or ''\">$ 10.00</span> is ready for review.\n"
+"        </t>\n"
 "        <br/>\n"
 "        <t t-set=\"documents\" t-value=\"object._get_product_documents()\"/>\n"
 "        <t t-if=\"documents\">\n"
@@ -654,86 +629,52 @@ msgid ""
 "        <br/>\n"
 "        Do not hesitate to contact us if you have any questions.\n"
 "        <t t-if=\"not is_html_empty(object.user_id.signature)\" data-o-mail-quote-container=\"1\">\n"
-"            <div data-o-mail-quote=\"1\">--<br data-o-mail-quote=\"1\"/><t t-out=\"object.user_id.signature or ''\" data-o-mail-quote=\"1\">Mitchell Admin</t></div>\n"
+"            <br/><br/>\n"
+"            <t t-out=\"object.user_id.signature or ''\" data-o-mail-quote=\"1\">--<br data-o-mail-quote=\"1\"/>Mitchell Admin</t>\n"
 "        </t>\n"
+"        <br/><br/>\n"
 "    </p>\n"
 "</div>\n"
 "            "
 msgstr ""
-"<div style=\"margin: 0px; padding: 0px;\">\n"
-"    <p style=\"margin: 0px; padding: 0px; font-size: 13px;\">\n"
-"        <t t-set=\"doc_name\" t-value=\"'quotation' if object.state in ('draft', 'sent') else 'order'\"/>\n"
-"        你好！\n"
-"        <br/><br/>\n"
-"        你的<t t-out=\"doc_name or ''\">報價單</t> <span style=\"font-weight: bold;\" t-out=\"object.name or ''\"/>\n"
-"        <t t-if=\"object.origin\">\n"
-"            （參考編號： <t t-out=\"object.origin or ''\">S00052</t>）\n"
-"        </t>\n"
-"        （金額為 <span style=\"font-weight: bold;\" t-out=\"format_amount(object.amount_total, object.currency_id) or ''\">$ 10.00</span>）現已準備好，可供審閱。\n"
-"        <br/>\n"
-"        <t t-set=\"documents\" t-value=\"object._get_product_documents()\"/>\n"
-"        <t t-if=\"documents\">\n"
-"            <br/> \n"
-"            <t t-if=\"len(documents)&gt;1\">\n"
-"                以下是你可能會感興趣的一些其他文件：\n"
-"            </t>\n"
-"            <t t-else=\"\">\n"
-"                以下是你可能會感興趣的另一份文件：\n"
-"            </t>\n"
-"            <ul style=\"margin-bottom: 0;\">\n"
-"                <t t-foreach=\"documents\" t-as=\"document\">\n"
-"                    <li style=\"font-size: 13px;\">\n"
-"                        <a t-out=\"document.ir_attachment_id.name\" t-att-href=\"object.get_portal_url('/document/' + str(document.id))\" t-att-target=\"target\"/>\n"
-"                    </li>\n"
-"                </t>\n"
-"            </ul>\n"
-"        </t>\n"
-"        <br/>\n"
-"        如有任何疑問，歡迎隨時聯絡我們。\n"
-"        <t t-if=\"not is_html_empty(object.user_id.signature)\" data-o-mail-quote-container=\"1\">\n"
-"            <div data-o-mail-quote=\"1\">--<br data-o-mail-quote=\"1\"/><t t-out=\"object.user_id.signature or ''\" data-o-mail-quote=\"1\">Mitchell Admin</t></div>\n"
-"        </t>\n"
-"    </p>\n"
-"</div>\n"
-"            "
 
 #. module: sale
-#: model:mail.template,body_html:sale.email_template_proforma
+#: model:mail.template,body_html:sale.mail_template_sale_cancellation
 msgid ""
 "<div style=\"margin: 0px; padding: 0px;\">\n"
 "    <p style=\"margin: 0px; padding: 0px; font-size: 13px;\">\n"
-"        <t t-set=\"doc_name\" t-value=\"'quotation' if object.state in ('draft', 'sent') else 'order'\"/>\n"
-"        Hello,\n"
+"        <t t-set=\"doc_name\" t-value=\"object.type_name\"/>\n"
+"        Dear <t t-out=\"object.partner_id.name or ''\">user</t>,\n"
 "        <br/><br/>\n"
-"        Your Pro forma invoice for <t t-out=\"doc_name or ''\">quotation</t> <span style=\"font-weight: bold;\" t-out=\"object.name or ''\">S00052</span>\n"
+"        Please be advised that your\n"
+"        <t t-out=\"doc_name or ''\">quotation</t> <strong t-out=\"object.name or ''\">S00052</strong>\n"
 "        <t t-if=\"object.origin\">\n"
-"            (with reference: <t t-out=\"object.origin or ''\"/> )\n"
+"            (with reference: <t t-out=\"object.origin or ''\">S00052</t> )\n"
 "        </t>\n"
-"        amounting in <span style=\"font-weight: bold;\" t-out=\"format_amount(object.amount_total, object.currency_id) or ''\">$ 10.00</span> is available.\n"
+"        has been cancelled. Therefore, you should not be charged further for this order.\n"
+"        If any refund is necessary, this will be executed at best convenience.\n"
 "        <br/><br/>\n"
 "        Do not hesitate to contact us if you have any questions.\n"
-"        <t t-if=\"not is_html_empty(object.user_id.signature)\" data-o-mail-quote-container=\"1\">\n"
-"            <div data-o-mail-quote=\"1\">--<br data-o-mail-quote=\"1\"/><t t-out=\"object.user_id.signature or ''\" data-o-mail-quote=\"1\">Mitchell Admin</t></div>\n"
-"        </t>\n"
+"        <br/>\n"
 "    </p>\n"
 "</div>\n"
 "            "
 msgstr ""
 "<div style=\"margin: 0px; padding: 0px;\">\n"
 "    <p style=\"margin: 0px; padding: 0px; font-size: 13px;\">\n"
-"        <t t-set=\"doc_name\" t-value=\"'報價單' if object.state in ('draft', 'sent') else '訂單'\"/>\n"
-"        你好！\n"
+"        <t t-set=\"doc_name\" t-value=\"object.type_name\"/>\n"
+"        親愛的 <t t-out=\"object.partner_id.name or ''\">用戶</t>：\n"
 "        <br/><br/>\n"
-"        你的形式發票（相關<t t-out=\"doc_name or ''\">報價單</t>：<span style=\"font-weight: bold;\" t-out=\"object.name or ''\">S00052</span>，\n"
+"        請注意，你的\n"
+"        <t t-out=\"doc_name or ''\">報價單</t> <strong t-out=\"object.name or ''\">S00052</strong>\n"
 "        <t t-if=\"object.origin\">\n"
-"            參考編號： <t t-out=\"object.origin or ''\"/>，\n"
+"            （參考： <t t-out=\"object.origin or ''\">S00052</t>）\n"
 "        </t>\n"
-"        款項總額為 <span style=\"font-weight: bold;\" t-out=\"format_amount(object.amount_total, object.currency_id) or ''\">$ 10.00</span>）現可供查閱。\n"
+"        已被取消。因此，你應該不會再就此訂單被進一步收費。\n"
+"        若需要任何退款，我們將在最方便的情況下執行。\n"
 "        <br/><br/>\n"
-"        如有任何疑問，歡迎聯絡我們。\n"
-"        <t t-if=\"not is_html_empty(object.user_id.signature)\" data-o-mail-quote-container=\"1\">\n"
-"            <div data-o-mail-quote=\"1\">--<br data-o-mail-quote=\"1\"/><t t-out=\"object.user_id.signature or ''\" data-o-mail-quote=\"1\">Mitchell Admin</t></div>\n"
-"        </t>\n"
+"        如有任何疑問，歡迎隨時聯絡我們。\n"
+"        <br/>\n"
 "    </p>\n"
 "</div>\n"
 "            "
@@ -801,6 +742,13 @@ msgstr "<i class=\"fa fa-print me-1\"/> 查看詳情"
 #: model_terms:ir.ui.view,arch_db:sale.sale_order_portal_template
 msgid "<i class=\"fa fa-times\"/> Reject"
 msgstr "<i class=\"fa fa-times\"/> 拒絕"
+
+#. module: sale
+#: model_terms:ir.ui.view,arch_db:sale.crm_lead_partner_kanban_view
+msgid ""
+"<i class=\"fa fa-usd me-1\" role=\"img\" aria-label=\"Sale orders\" "
+"title=\"Sales orders\"/>"
+msgstr "<i class=\"fa fa-usd me-1\" role=\"img\" aria-label=\"銷售訂單\" title=\"銷售訂單\"/>"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.sale_order_portal_template
@@ -871,6 +819,17 @@ msgstr ""
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.view_sale_advance_payment_inv
 msgid ""
+"<span invisible=\"1\" class=\"oe_inline text-danger\" title=\"The Down Payment is greater than the amount remaining to be invoiced.\">\n"
+"                            <i class=\"fa fa-warning\"/>\n"
+"                        </span>"
+msgstr ""
+"<span invisible=\"1\" class=\"oe_inline text-danger\" title=\"首期付款金額大於剩餘需要開立發票的金額。\">\n"
+"                            <i class=\"fa fa-warning\"/>\n"
+"                        </span>"
+
+#. module: sale
+#: model_terms:ir.ui.view,arch_db:sale.view_sale_advance_payment_inv
+msgid ""
 "<span invisible=\"advance_payment_method != 'percentage'\" "
 "class=\"oe_inline\">% </span>"
 msgstr ""
@@ -891,6 +850,19 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:sale.sale_order_portal_content
 msgid "<span>Amount</span>"
 msgstr "<span>金額</span>"
+
+#. module: sale
+#: model_terms:ir.ui.view,arch_db:sale.sale_order_cancel_view_form
+msgid ""
+"<span>Are you sure you want to cancel this order? <br/></span>\n"
+"                        <span id=\"display_invoice_alert\" invisible=\"not display_invoice_alert\">\n"
+"                            Draft invoices for this order will be cancelled. <br/>\n"
+"                        </span>"
+msgstr ""
+"<span>確定取消此訂單？<br/></span>\n"
+"                        <span id=\"display_invoice_alert\" invisible=\"not display_invoice_alert\">\n"
+"                            此訂單的草稿發票將會被取消。<br/>\n"
+"                        </span>"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.report_saleorder_document
@@ -1018,6 +990,13 @@ msgid "A warning can be set on a product or a customer (Sale)"
 msgstr "可以在產品或客戶上設定警告(銷售)"
 
 #. module: sale
+#: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
+msgid ""
+"Ability to select a package type in sales orders and to force a quantity "
+"that is a multiple of the number of units per package."
+msgstr "能夠選擇銷售訂單中的包裝類型，並強制為每個包裝數量的倍數."
+
+#. module: sale
 #. odoo-python
 #: code:addons/sale/models/sale_order.py:0
 msgid "Accept & Pay Quotation"
@@ -1086,11 +1065,6 @@ msgid "Activities"
 msgstr "活動"
 
 #. module: sale
-#: model_terms:ir.ui.view,arch_db:sale.view_sales_order_filter
-msgid "Activities of"
-msgstr "活動："
-
-#. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__activity_exception_decoration
 msgid "Activity Exception Decoration"
 msgstr "活動異常圖示"
@@ -1124,11 +1098,6 @@ msgid ""
 msgstr ""
 "「活動計劃」用於簡易分配一系列活動，按幾下便完成。\n"
 "                （例如：送貨排程、訂單付款跟進等）"
-
-#. module: sale
-#: model_terms:ir.ui.view,arch_db:sale.view_sales_order_filter
-msgid "Activity type"
-msgstr "活動類型"
 
 #. module: sale
 #. odoo-javascript
@@ -1182,16 +1151,6 @@ msgstr "加入分段標題"
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
 msgid "Add several variants to an order from a grid"
 msgstr "從矩陣在訂單增加多個產品變體"
-
-#. module: sale
-#: model:ir.actions.act_window,name:sale.mail_followers_edit_action_from_sale
-msgid "Add/Remove Followers"
-msgstr "加入/移除關注者"
-
-#. module: sale
-#: model:ir.model.fields,field_description:sale.field_sale_order_line__allowed_uom_ids
-msgid "Allowed Uom"
-msgstr "允許的計量單位"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
@@ -1249,6 +1208,16 @@ msgstr "金額"
 #: model:ir.model.fields,field_description:sale.field_sale_order__amount_undiscounted
 msgid "Amount Before Discount"
 msgstr "折扣前金額"
+
+#. module: sale
+#: model:ir.model.fields,field_description:sale.field_crm_team__quotations_amount
+msgid "Amount of quotations to invoice"
+msgstr "待開立應收憑單的報價金額"
+
+#. module: sale
+#: model:ir.model.fields,field_description:sale.field_sale_advance_payment_inv__amount_to_invoice
+msgid "Amount to invoice"
+msgstr "待開立發票金額"
 
 #. module: sale
 #: model_terms:ir.actions.act_window,help:sale.action_orders_upselling
@@ -1312,13 +1281,6 @@ msgstr "確定要取消所選項目？"
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.view_order_form
 msgid ""
-"Are you sure you want to cancel this order? This may affect related "
-"documents or processes."
-msgstr "確定要取消此訂單？這可能會影響相關文件或流程。"
-
-#. module: sale
-#: model_terms:ir.ui.view,arch_db:sale.view_order_form
-msgid ""
 "Are you sure you want to void the authorized transaction? This action can't "
 "be undone."
 msgstr "請問您是否確定要取消授權交易嗎？此操作經確定後無法撤消。"
@@ -1331,17 +1293,6 @@ msgid ""
 msgstr ""
 "舉個例子: "
 "超市裡，客人從貨架拿了瓶茅台到前台買單結賬，而此時你收銀系統裡卻顯示茅台庫存為0，系統顯示沒庫存了，你不可能告訴客人說這瓶茅台不賣讓客人別買。當然53度飛天除外。賬實不符，庫存不准，這些都是真實存在的，存在即合理，odoo預設允許超賣，有個模組，可以禁止超賣。都是開放原始碼的，自己找吧."
-
-#. module: sale
-#. odoo-python
-#: code:addons/sale/models/product_product.py:0
-msgid ""
-"As other units of measure (ex : %(problem_uom)s) than %(uom)s have already "
-"been used for this product, the change of unit of measure can not be done.If"
-" you want to change it, please archive the product and create a new one."
-msgstr ""
-"由於此產品已經使用其他計量單位（例如：%(problem_uom)s），而非使用 "
-"%(uom)s，現已無法更改計量單位。如需更改，請將產品封存，然後建立一項新的產品。"
 
 #. module: sale
 #: model:ir.model.fields.selection,name:sale.selection__product_template__expense_policy__cost
@@ -1363,6 +1314,11 @@ msgstr "屬性值"
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
 msgid "Attributes"
 msgstr "屬性"
+
+#. module: sale
+#: model:ir.model.fields,field_description:sale.field_sale_order_cancel__author_id
+msgid "Author"
+msgstr "作者"
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__authorized_transaction_ids
@@ -1404,6 +1360,17 @@ msgstr "依據文件參照"
 #: model_terms:ir.actions.act_window,help:sale.action_quotations_with_onboarding
 msgid "Beat competitors with stunning quotations!"
 msgstr "以震撼的報價，擊敗競爭對手！"
+
+#. module: sale
+#: model:ir.model.fields.selection,name:sale.selection__product_template__sale_line_warn__block
+#: model:ir.model.fields.selection,name:sale.selection__res_partner__sale_warn__block
+msgid "Blocking Message"
+msgstr "受阻消息"
+
+#. module: sale
+#: model:ir.model.fields,field_description:sale.field_sale_order_cancel__body_has_template_value
+msgid "Body content is the same as the template"
+msgstr "正文內容與範本相同"
 
 #. module: sale
 #: model_terms:ir.actions.act_window,help:sale.action_quotations
@@ -1453,6 +1420,11 @@ msgid "Campaign"
 msgstr "行銷活動"
 
 #. module: sale
+#: model:ir.model.fields,field_description:sale.field_sale_order_cancel__can_edit_body
+msgid "Can Edit Body"
+msgstr "允許編輯內文"
+
+#. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order_line__product_updatable
 msgid "Can Edit Product"
 msgstr "允許編輯"
@@ -1463,11 +1435,18 @@ msgstr "允許編輯"
 #: code:addons/sale/static/src/js/product_configurator_dialog/product_configurator_dialog.xml:0
 #: model:ir.actions.act_window,name:sale.action_mass_cancel_orders
 #: model_terms:ir.ui.view,arch_db:sale.mass_cancel_orders_view_form
+#: model_terms:ir.ui.view,arch_db:sale.sale_order_cancel_view_form
 #: model_terms:ir.ui.view,arch_db:sale.sale_order_portal_template
 #: model_terms:ir.ui.view,arch_db:sale.view_order_form
 #: model_terms:ir.ui.view,arch_db:sale.view_sale_advance_payment_inv
 msgid "Cancel"
 msgstr "取消"
+
+#. module: sale
+#. odoo-python
+#: code:addons/sale/models/sale_order.py:0
+msgid "Cancel %s"
+msgstr "取消 %s"
 
 #. module: sale
 #: model:ir.model,name:sale.model_sale_mass_cancel_orders
@@ -1520,9 +1499,14 @@ msgid "Catalog"
 msgstr "目錄"
 
 #. module: sale
-#: model:ir.ui.menu,name:sale.menu_product_categories
-msgid "Categories"
+#: model:ir.model.fields,field_description:sale.field_sale_order_line__product_uom_category_id
+msgid "Category"
 msgstr "類別"
+
+#. module: sale
+#: model:product.template,name:sale.product_product_1_product_template
+msgid "Chair floor protection"
+msgstr "椅子地板保護"
 
 #. module: sale
 #. odoo-python
@@ -1604,8 +1588,10 @@ msgstr "公司文件格式"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
-msgid "Compute shipping costs and ship with DHL"
-msgstr "計算運輸成本並用DHL裝運"
+msgid ""
+"Compute shipping costs and ship with DHL<br/>\n"
+"                                    <strong>(please go to Home&gt;Apps to install)</strong>"
+msgstr ""
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
@@ -1614,13 +1600,10 @@ msgstr "計算運輸成本並用Easypost裝運"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
-msgid "Compute shipping costs and ship with Envia.com"
-msgstr "計算運費並使用 Envia.com 發貨"
-
-#. module: sale
-#: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
-msgid "Compute shipping costs and ship with FedEx"
-msgstr "計算運輸成本並用FedEx裝運"
+msgid ""
+"Compute shipping costs and ship with FedEx<br/>\n"
+"                                    <strong>(please go to Home&gt;Apps to install)</strong>"
+msgstr ""
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
@@ -1639,13 +1622,17 @@ msgstr "計算運送成本，並以 Starshipit 送貨"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
-msgid "Compute shipping costs and ship with UPS"
-msgstr "計算運輸成本並用USPS裝運"
+msgid ""
+"Compute shipping costs and ship with UPS<br/>\n"
+"                                    <strong>(please go to Home&gt;Apps to install)</strong>"
+msgstr ""
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
-msgid "Compute shipping costs and ship with USPS"
-msgstr "計算運輸成本並用USPS裝運"
+msgid ""
+"Compute shipping costs and ship with USPS<br/>\n"
+"                                    <strong>(please go to Home&gt;Apps to install)</strong>"
+msgstr ""
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
@@ -1702,6 +1689,18 @@ msgid "Contact"
 msgstr "聯絡人"
 
 #. module: sale
+#: model:ir.model.fields,field_description:sale.field_sale_order_cancel__body
+msgid "Contents"
+msgstr "內容"
+
+#. module: sale
+#: model:ir.model.fields,help:sale.field_sale_order_line__product_uom_category_id
+msgid ""
+"Conversion between Units of Measure can only occur if they belong to the "
+"same category. The conversion will be made based on the ratios."
+msgstr "量度單位必須屬於相同類別，才可進行換算。單位換算會按照比例計算。"
+
+#. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__country_code
 msgid "Country code"
 msgstr "國家代碼"
@@ -1731,11 +1730,6 @@ msgstr "建立發票"
 #: model_terms:ir.ui.view,arch_db:sale.sale_order_tree
 msgid "Create Invoices"
 msgstr "建立發票"
-
-#. module: sale
-#: model:ir.model,website_form_label:sale.model_res_partner
-msgid "Create a Customer"
-msgstr "建立客戶"
 
 #. module: sale
 #: model_terms:ir.actions.act_window,help:sale.mail_activity_plan_action_sale_order
@@ -1780,14 +1774,15 @@ msgstr "由訂單建立"
 #. module: sale
 #: model:ir.model.fields,help:sale.field_sale_advance_payment_inv__consolidated_billing
 msgid ""
-"Create one invoice for all orders related to same customer, same invoicing "
-"address and same delivery address."
-msgstr "為同一客戶使用同一發票地址及送貨地址的所有訂單，建立單一張整合發票。"
+"Create one invoice for all orders related to same customer and same "
+"invoicing address"
+msgstr "為與同一客戶和同一開票地址相關的所有訂單, 創建一張發票"
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_advance_payment_inv__create_uid
 #: model:ir.model.fields,field_description:sale.field_sale_mass_cancel_orders__create_uid
 #: model:ir.model.fields,field_description:sale.field_sale_order__create_uid
+#: model:ir.model.fields,field_description:sale.field_sale_order_cancel__create_uid
 #: model:ir.model.fields,field_description:sale.field_sale_order_discount__create_uid
 #: model:ir.model.fields,field_description:sale.field_sale_order_line__create_uid
 #: model:ir.model.fields,field_description:sale.field_sale_payment_provider_onboarding_wizard__create_uid
@@ -1797,6 +1792,7 @@ msgstr "建立人員"
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_advance_payment_inv__create_date
 #: model:ir.model.fields,field_description:sale.field_sale_mass_cancel_orders__create_date
+#: model:ir.model.fields,field_description:sale.field_sale_order_cancel__create_date
 #: model:ir.model.fields,field_description:sale.field_sale_order_discount__create_date
 #: model:ir.model.fields,field_description:sale.field_sale_order_line__create_date
 #: model:ir.model.fields,field_description:sale.field_sale_payment_provider_onboarding_wizard__create_date
@@ -1839,6 +1835,11 @@ msgid "Currency Rate"
 msgstr "匯率"
 
 #. module: sale
+#: model:product.attribute.value,name:sale.product_attribute_value_7
+msgid "Custom"
+msgstr "自訂"
+
+#. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order_line__product_custom_attribute_value_ids
 msgid "Custom Values"
 msgstr "自訂值"
@@ -1849,6 +1850,8 @@ msgid "Custom payment instructions"
 msgstr "自訂付款說明"
 
 #. module: sale
+#. odoo-python
+#: code:addons/sale/models/sale_order.py:0
 #: model:ir.model.fields,field_description:sale.field_sale_order__partner_id
 #: model:ir.model.fields,field_description:sale.field_sale_order_line__order_partner_id
 #: model:ir.model.fields,field_description:sale.field_sale_report__partner_id
@@ -1910,6 +1913,11 @@ msgstr "客戶至少需要支付 %(amount)s,才可確認訂單。"
 #: model:ir.ui.menu,name:sale.res_partner_menu
 msgid "Customers"
 msgstr "客戶"
+
+#. module: sale
+#: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
+msgid "DHL Connector"
+msgstr ""
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_res_config_settings__module_delivery_dhl
@@ -2025,6 +2033,11 @@ msgstr ""
 "交貨日期，您可以向客戶承諾，在服務產品的情況下，從訂單行的最短提前期計算。在裝運的情況下，將考慮訂單的裝運策略，以使用訂單行的最短或最長提前期。"
 
 #. module: sale
+#: model:product.template,name:sale.advance_product_0_product_template
+msgid "Deposit"
+msgstr "訂金"
+
+#. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order_line__name
 #: model_terms:ir.ui.view,arch_db:sale.report_saleorder_document
 #: model_terms:ir.ui.view,arch_db:sale.view_order_form
@@ -2038,6 +2051,7 @@ msgstr "折扣%"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.mass_cancel_orders_view_form
+#: model_terms:ir.ui.view,arch_db:sale.sale_order_cancel_view_form
 #: model_terms:ir.ui.view,arch_db:sale.sale_order_line_wizard_form
 msgid "Discard"
 msgstr "捨棄"
@@ -2120,35 +2134,19 @@ msgid "Display Draft Invoice Warning"
 msgstr "顯示草稿發票警告"
 
 #. module: sale
-#: model:ir.model.fields,field_description:sale.field_account_analytic_applicability__display_name
-#: model:ir.model.fields,field_description:sale.field_account_analytic_line__display_name
-#: model:ir.model.fields,field_description:sale.field_account_chart_template__display_name
-#: model:ir.model.fields,field_description:sale.field_account_invoice_report__display_name
-#: model:ir.model.fields,field_description:sale.field_account_move__display_name
-#: model:ir.model.fields,field_description:sale.field_account_move_line__display_name
-#: model:ir.model.fields,field_description:sale.field_base_document_layout__display_name
-#: model:ir.model.fields,field_description:sale.field_crm_team__display_name
-#: model:ir.model.fields,field_description:sale.field_ir_config_parameter__display_name
-#: model:ir.model.fields,field_description:sale.field_payment_link_wizard__display_name
-#: model:ir.model.fields,field_description:sale.field_payment_provider__display_name
-#: model:ir.model.fields,field_description:sale.field_payment_transaction__display_name
-#: model:ir.model.fields,field_description:sale.field_product_attribute_custom_value__display_name
-#: model:ir.model.fields,field_description:sale.field_product_category__display_name
-#: model:ir.model.fields,field_description:sale.field_product_document__display_name
-#: model:ir.model.fields,field_description:sale.field_product_pricelist_item__display_name
-#: model:ir.model.fields,field_description:sale.field_product_product__display_name
-#: model:ir.model.fields,field_description:sale.field_product_template__display_name
-#: model:ir.model.fields,field_description:sale.field_res_company__display_name
-#: model:ir.model.fields,field_description:sale.field_res_config_settings__display_name
-#: model:ir.model.fields,field_description:sale.field_res_partner__display_name
+#: model:ir.model.fields,field_description:sale.field_sale_advance_payment_inv__display_invoice_amount_warning
+msgid "Display Invoice Amount Warning"
+msgstr "顯示發票金額警告"
+
+#. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_advance_payment_inv__display_name
 #: model:ir.model.fields,field_description:sale.field_sale_mass_cancel_orders__display_name
 #: model:ir.model.fields,field_description:sale.field_sale_order__display_name
+#: model:ir.model.fields,field_description:sale.field_sale_order_cancel__display_name
 #: model:ir.model.fields,field_description:sale.field_sale_order_discount__display_name
 #: model:ir.model.fields,field_description:sale.field_sale_order_line__display_name
 #: model:ir.model.fields,field_description:sale.field_sale_payment_provider_onboarding_wizard__display_name
 #: model:ir.model.fields,field_description:sale.field_sale_report__display_name
-#: model:ir.model.fields,field_description:sale.field_utm_campaign__display_name
 msgid "Display Name"
 msgstr "顯示名稱"
 
@@ -2161,6 +2159,11 @@ msgstr "顯示類型"
 #: model:ir.model.fields,field_description:sale.field_sale_order_line__distribution_analytic_account_ids
 msgid "Distribution Analytic Account"
 msgstr "分佈分析賬戶"
+
+#. module: sale
+#: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
+msgid "Documentation"
+msgstr "系統使用說明"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.sale_order_portal_content
@@ -2288,6 +2291,11 @@ msgid "Email"
 msgstr "電郵"
 
 #. module: sale
+#: model:ir.model,name:sale.model_mail_compose_message
+msgid "Email composition wizard"
+msgstr "電郵撰寫精靈"
+
+#. module: sale
 #: model:ir.model.fields,help:sale.field_res_config_settings__invoice_mail_template_id
 msgid "Email sent to the customer once the invoice is available."
 msgstr "應收憑單完成後發送給客戶的電子郵件."
@@ -2297,11 +2305,6 @@ msgstr "應收憑單完成後發送給客戶的電子郵件."
 #: code:addons/sale/static/src/js/product_template_attribute_line/product_template_attribute_line.js:0
 msgid "Enter a customized value"
 msgstr "輸入自訂值"
-
-#. module: sale
-#: model:ir.model.fields,field_description:sale.field_res_config_settings__module_delivery_envia
-msgid "Envia.com Connector"
-msgstr "Envia.com 連接器"
 
 #. module: sale
 #. odoo-python
@@ -2341,11 +2344,6 @@ msgid "Extended Filters"
 msgstr "擴展篩選"
 
 #. module: sale
-#: model:ir.model.fields,field_description:sale.field_sale_order_line__extra_tax_data
-msgid "Extra Tax Data"
-msgstr "額外稅務數據"
-
-#. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order_line__product_no_variant_attribute_value_ids
 msgid "Extra Values"
 msgstr "額外數值"
@@ -2357,7 +2355,8 @@ msgid "Extra line with %s"
 msgstr "帶有 %s 的其他明細"
 
 #. module: sale
-#: model:ir.model.fields,field_description:sale.field_res_config_settings__module_delivery_fedex_rest
+#: model:ir.model.fields,field_description:sale.field_res_config_settings__module_delivery_fedex
+#: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
 msgid "FedEx Connector"
 msgstr "FedEx連接器"
 
@@ -2430,11 +2429,6 @@ msgstr "已全數開立發票"
 #: model_terms:ir.ui.view,arch_db:sale.view_sales_order_filter
 msgid "Future Activities"
 msgstr "未來活動"
-
-#. module: sale
-#: model:ir.model.fields,field_description:sale.field_res_config_settings__module_sale_gelato
-msgid "Gelato"
-msgstr "Gelato"
 
 #. module: sale
 #: model:ir.model,name:sale.model_payment_link_wizard
@@ -2541,35 +2535,14 @@ msgid "Hidden"
 msgstr "隱藏"
 
 #. module: sale
-#: model:ir.model.fields,field_description:sale.field_account_analytic_applicability__id
-#: model:ir.model.fields,field_description:sale.field_account_analytic_line__id
-#: model:ir.model.fields,field_description:sale.field_account_chart_template__id
-#: model:ir.model.fields,field_description:sale.field_account_invoice_report__id
-#: model:ir.model.fields,field_description:sale.field_account_move__id
-#: model:ir.model.fields,field_description:sale.field_account_move_line__id
-#: model:ir.model.fields,field_description:sale.field_base_document_layout__id
-#: model:ir.model.fields,field_description:sale.field_crm_team__id
-#: model:ir.model.fields,field_description:sale.field_ir_config_parameter__id
-#: model:ir.model.fields,field_description:sale.field_payment_link_wizard__id
-#: model:ir.model.fields,field_description:sale.field_payment_provider__id
-#: model:ir.model.fields,field_description:sale.field_payment_transaction__id
-#: model:ir.model.fields,field_description:sale.field_product_attribute_custom_value__id
-#: model:ir.model.fields,field_description:sale.field_product_category__id
-#: model:ir.model.fields,field_description:sale.field_product_document__id
-#: model:ir.model.fields,field_description:sale.field_product_pricelist_item__id
-#: model:ir.model.fields,field_description:sale.field_product_product__id
-#: model:ir.model.fields,field_description:sale.field_product_template__id
-#: model:ir.model.fields,field_description:sale.field_res_company__id
-#: model:ir.model.fields,field_description:sale.field_res_config_settings__id
-#: model:ir.model.fields,field_description:sale.field_res_partner__id
 #: model:ir.model.fields,field_description:sale.field_sale_advance_payment_inv__id
 #: model:ir.model.fields,field_description:sale.field_sale_mass_cancel_orders__id
 #: model:ir.model.fields,field_description:sale.field_sale_order__id
+#: model:ir.model.fields,field_description:sale.field_sale_order_cancel__id
 #: model:ir.model.fields,field_description:sale.field_sale_order_discount__id
 #: model:ir.model.fields,field_description:sale.field_sale_order_line__id
 #: model:ir.model.fields,field_description:sale.field_sale_payment_provider_onboarding_wizard__id
 #: model:ir.model.fields,field_description:sale.field_sale_report__id
-#: model:ir.model.fields,field_description:sale.field_utm_campaign__id
 msgid "ID"
 msgstr "識別號"
 
@@ -2609,6 +2582,11 @@ msgid ""
 msgstr "如果銷售被鎖定，您不能再修改它. 但是，您仍然可以開應收憑單或交付."
 
 #. module: sale
+#: model:ir.model.fields,help:sale.field_product_packaging__sales
+msgid "If true, the packaging can be used for sales orders"
+msgstr "如果為 真，包裝可用於銷售訂單"
+
+#. module: sale
 #: model:ir.model.fields,help:sale.field_sale_order__pricelist_id
 msgid "If you change the pricelist, only newly added lines will be affected."
 msgstr "如果更改價目表，則只會影響新增加的產品明細."
@@ -2624,24 +2602,10 @@ msgid "Import Amazon orders and sync deliveries"
 msgstr "匯入Amazon訂單並同步交貨"
 
 #. module: sale
-#: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
-msgid "Import Shopee orders and sync deliveries"
-msgstr "匯入蝦皮訂單，同步送貨資料"
-
-#. module: sale
 #. odoo-python
 #: code:addons/sale/models/product_template.py:0
 msgid "Import Template for Products"
 msgstr "產品匯入範本"
-
-#. module: sale
-#: model_terms:ir.ui.view,arch_db:sale.product_pricelist_item_form
-msgid ""
-"In sale order line original price is unit price and discount is in\n"
-"                                discount column."
-msgstr ""
-"在銷售單資料行內，原價為單價，\n"
-"                                而折扣是在折扣欄。"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.product_view_search_catalog
@@ -2652,13 +2616,6 @@ msgstr "在訂單內"
 #: model_terms:ir.ui.view,arch_db:sale.sale_order_portal_template
 msgid "Incl. tax)"
 msgstr "連稅）"
-
-#. module: sale
-#: model:ir.model.fields,help:sale.field_account_bank_statement_line__sale_warning_text
-#: model:ir.model.fields,help:sale.field_account_move__sale_warning_text
-#: model:ir.model.fields,help:sale.field_sale_order__sale_warning_text
-msgid "Internal warning for the partner or the products as set by the user."
-msgstr "由使用者為合作夥伴或產品設定的內部警告。"
 
 #. module: sale
 #. odoo-python
@@ -2688,6 +2645,11 @@ msgstr "發票 %s 已付款"
 #: model:ir.model.fields,field_description:sale.field_sale_order__partner_invoice_id
 msgid "Invoice Address"
 msgstr "發票地址"
+
+#. module: sale
+#: model:ir.model.fields,field_description:sale.field_sale_order_cancel__display_invoice_alert
+msgid "Invoice Alert"
+msgstr "發票警示"
 
 #. module: sale
 #: model:mail.message.subtype,name:sale.mt_salesteam_invoice_confirmed
@@ -2806,6 +2768,7 @@ msgid "Invoices Statistics"
 msgstr "發票統計"
 
 #. module: sale
+#: model_terms:ir.ui.view,arch_db:sale.crm_team_view_kanban_dashboard
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
 #: model_terms:ir.ui.view,arch_db:sale.view_order_form
 msgid "Invoicing"
@@ -2844,6 +2807,11 @@ msgstr "發票及送貨地址"
 #: model:ir.model.fields,field_description:sale.field_account_move_line__is_downpayment
 msgid "Is Downpayment"
 msgstr "是首期付款"
+
+#. module: sale
+#: model:ir.model.fields,field_description:sale.field_sale_order_cancel__is_mail_template_editor
+msgid "Is Editor"
+msgstr "是編輯器"
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__is_expired
@@ -2907,6 +2875,11 @@ msgid "Journal Item"
 msgstr "日記賬項目"
 
 #. module: sale
+#: model:ir.model.fields,field_description:sale.field_sale_order_cancel__lang
+msgid "Language"
+msgstr "語言"
+
+#. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.sale_order_portal_content
 msgid "Last Invoices"
 msgstr "最新發票"
@@ -2915,6 +2888,7 @@ msgstr "最新發票"
 #: model:ir.model.fields,field_description:sale.field_sale_advance_payment_inv__write_uid
 #: model:ir.model.fields,field_description:sale.field_sale_mass_cancel_orders__write_uid
 #: model:ir.model.fields,field_description:sale.field_sale_order__write_uid
+#: model:ir.model.fields,field_description:sale.field_sale_order_cancel__write_uid
 #: model:ir.model.fields,field_description:sale.field_sale_order_discount__write_uid
 #: model:ir.model.fields,field_description:sale.field_sale_order_line__write_uid
 #: model:ir.model.fields,field_description:sale.field_sale_payment_provider_onboarding_wizard__write_uid
@@ -2925,6 +2899,7 @@ msgstr "最後更新者"
 #: model:ir.model.fields,field_description:sale.field_sale_advance_payment_inv__write_date
 #: model:ir.model.fields,field_description:sale.field_sale_mass_cancel_orders__write_date
 #: model:ir.model.fields,field_description:sale.field_sale_order__write_date
+#: model:ir.model.fields,field_description:sale.field_sale_order_cancel__write_date
 #: model:ir.model.fields,field_description:sale.field_sale_order_discount__write_date
 #: model:ir.model.fields,field_description:sale.field_sale_order_line__write_date
 #: model:ir.model.fields,field_description:sale.field_sale_payment_provider_onboarding_wizard__write_date
@@ -2987,6 +2962,11 @@ msgstr "已鎖定"
 #: model:ir.model.fields,help:sale.field_sale_order__locked
 msgid "Locked orders cannot be modified."
 msgstr "已鎖定訂單不可修改。"
+
+#. module: sale
+#: model:ir.model.fields,field_description:sale.field_sale_order_cancel__template_id
+msgid "Mail Template"
+msgstr "郵件範本"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
@@ -3056,6 +3036,12 @@ msgid "Medium"
 msgstr "媒體"
 
 #. module: sale
+#: model_terms:ir.ui.view,arch_db:sale.product_template_form_view
+#: model_terms:ir.ui.view,arch_db:sale.res_partner_view_buttons
+msgid "Message"
+msgstr "消息"
+
+#. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__message_has_error
 msgid "Message Delivery error"
 msgstr "訊息遞送錯誤"
@@ -3067,10 +3053,8 @@ msgid "Message for Sales Order"
 msgstr "銷售訂單訊息"
 
 #. module: sale
-#: model:ir.model.fields,field_description:sale.field_account_move_line__sale_line_warn_msg
 #: model:ir.model.fields,field_description:sale.field_product_product__sale_line_warn_msg
 #: model:ir.model.fields,field_description:sale.field_product_template__sale_line_warn_msg
-#: model:ir.model.fields,field_description:sale.field_sale_order_line__sale_line_warn_msg
 msgid "Message for Sales Order Line"
 msgstr "銷售訂單資料行訊息"
 
@@ -3090,11 +3074,6 @@ msgid "Method to update delivered qty"
 msgstr "更新數量的方法"
 
 #. module: sale
-#: model_terms:ir.ui.view,arch_db:sale.product_pricelist_item_form
-msgid "Min Qty"
-msgstr "最小數量"
-
-#. module: sale
 #: model:ir.model.constraint,message:sale.constraint_sale_order_line_accountable_required_fields
 msgid "Missing required fields on accountable sale order line."
 msgstr "銷售訂單項目缺少必要欄位."
@@ -3103,11 +3082,6 @@ msgstr "銷售訂單項目缺少必要欄位."
 #: model_terms:ir.ui.view,arch_db:sale.report_saleorder_document
 msgid "Mitchell Admin"
 msgstr "Mitchell Admin"
-
-#. module: sale
-#: model_terms:ir.ui.view,arch_db:sale.view_sales_order_filter
-msgid "My Activities"
-msgstr "我的活動"
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__my_activity_date_deadline
@@ -3164,6 +3138,12 @@ msgstr "下一活動類型"
 #: model:ir.model.fields.selection,name:sale.selection__product_template__expense_policy__no
 msgid "No"
 msgstr "否"
+
+#. module: sale
+#: model:ir.model.fields.selection,name:sale.selection__product_template__sale_line_warn__no-message
+#: model:ir.model.fields.selection,name:sale.selection__res_partner__sale_warn__no-message
+msgid "No Message"
+msgstr "沒消息"
 
 #. module: sale
 #. odoo-python
@@ -3236,6 +3216,21 @@ msgstr "需要採取行動的訊息數目"
 #: model:ir.model.fields,help:sale.field_sale_order__message_has_error_counter
 msgid "Number of messages with delivery error"
 msgstr "有發送錯誤的郵件數量"
+
+#. module: sale
+#: model:ir.model.fields,field_description:sale.field_crm_team__quotations_count
+msgid "Number of quotations to invoice"
+msgstr "待開立應收憑單報價單數量"
+
+#. module: sale
+#: model:ir.model.fields,field_description:sale.field_crm_team__sales_to_invoice_count
+msgid "Number of sales to invoice"
+msgstr "待開立應收憑單銷售訂單數量"
+
+#. module: sale
+#: model:product.template,description_sale:sale.product_product_1_product_template
+msgid "Office chairs can harm your floor: protect it."
+msgstr "辦公椅可以磨損地板，記得保護它。"
 
 #. module: sale
 #: model:ir.model.fields.selection,name:sale.selection__sale_order_discount__discount_type__sol_discount
@@ -3324,8 +3319,20 @@ msgstr "每個銷售訂單明細之每個屬性值只允許一個自訂值."
 
 #. module: sale
 #. odoo-python
+#: code:addons/sale/models/product_product.py:0
+msgid "Operation not supported"
+msgstr "不支援該操作"
+
+#. module: sale
+#. odoo-python
 #: code:addons/sale/models/sale_order_line.py:0
 msgid "Option for: %s"
+msgstr "選項： %s"
+
+#. module: sale
+#. odoo-python
+#: code:addons/sale/models/sale_order_line.py:0
+msgid "Option: %s"
 msgstr "選項： %s"
 
 #. module: sale
@@ -3341,6 +3348,17 @@ msgid ""
 "Optional Products are suggested whenever the customer hits *Add to Cart* "
 "(cross-sell strategy, e.g. for computers: warranty, software, etc.)."
 msgstr "每當客戶點選 *加入購物車* 時，就會出現建議選配產品（交叉銷售策略，例如，就電腦而言：保修、軟體等）。"
+
+#. module: sale
+#: model:ir.model.fields,help:sale.field_sale_order_cancel__lang
+msgid ""
+"Optional translation language (ISO code) to select when sending out an "
+"email. If not set, the english version will be used. This should usually be "
+"a placeholder expression that provides the appropriate language, e.g. {{ "
+"object.partner_id.lang }}."
+msgstr ""
+"發送電子郵件時要選擇的可選翻譯語言（ISO 代碼）。如果未設置，將使用英文版本。這通常應該是提供適當語言的佔位符表達式，例如{{ "
+"object.partner_id.lang }}。"
 
 #. module: sale
 #. odoo-python
@@ -3409,10 +3427,20 @@ msgid "Order Status"
 msgstr "訂單狀態"
 
 #. module: sale
+#: model:mail.activity.type,name:sale.mail_act_sale_upsell
+msgid "Order Upsell"
+msgstr "超售訂單"
+
+#. module: sale
 #. odoo-python
 #: code:addons/sale/controllers/portal.py:0
 msgid "Order signed by %s"
 msgstr "訂單由%s簽名"
+
+#. module: sale
+#: model_terms:ir.ui.view,arch_db:sale.crm_team_view_kanban_dashboard
+msgid "Order to Invoice"
+msgstr "訂單至發票"
 
 #. module: sale
 #. odoo-python
@@ -3444,6 +3472,7 @@ msgstr "訂單"
 #. module: sale
 #: model:ir.actions.act_window,name:sale.action_orders_to_invoice
 #: model:ir.ui.menu,name:sale.menu_sale_order_invoice
+#: model_terms:ir.ui.view,arch_db:sale.crm_team_view_kanban_dashboard
 msgid "Orders to Invoice"
 msgstr "待開立發票訂單"
 
@@ -3478,6 +3507,16 @@ msgstr "PDF 報價生成器"
 #: model:ir.actions.report,name:sale.action_report_pro_forma_invoice
 msgid "PRO-FORMA Invoice"
 msgstr "形式發票"
+
+#. module: sale
+#: model:ir.model.fields,field_description:sale.field_sale_order_line__product_packaging_id
+msgid "Packaging"
+msgstr "包裝"
+
+#. module: sale
+#: model:ir.model.fields,field_description:sale.field_sale_order_line__product_packaging_qty
+msgid "Packaging Quantity"
+msgstr "包裝數量"
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__partner_credit_warning
@@ -3567,19 +3606,9 @@ msgid "Payment terms"
 msgstr "付款條件"
 
 #. module: sale
-#: model:ir.model.fields,field_description:sale.field_sale_order__pending_email_template_id
-msgid "Pending Email Template"
-msgstr "待處理電郵範本"
-
-#. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order_discount__discount_percentage
 msgid "Percentage"
 msgstr "百分比"
-
-#. module: sale
-#: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
-msgid "Place orders through Gelato's print-on-demand service"
-msgstr "透過 Gelato 的按需列印服務下單"
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__access_url
@@ -3633,11 +3662,6 @@ msgid "Pricelist Item"
 msgstr "價格表項目"
 
 #. module: sale
-#: model:ir.model,name:sale.model_product_pricelist_item
-msgid "Pricelist Rule"
-msgstr "價格表規則"
-
-#. module: sale
 #: model:ir.ui.menu,name:sale.menu_product_pricelist_main
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
 msgid "Pricelists"
@@ -3647,11 +3671,6 @@ msgstr "價格表"
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
 msgid "Pricing"
 msgstr "價目表"
-
-#. module: sale
-#: model_terms:ir.ui.view,arch_db:sale.view_order_form
-msgid "Print"
-msgstr "列印"
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_res_config_settings__group_proforma_sales
@@ -3698,6 +3717,11 @@ msgid "Product Catalog Product Is In Sale Order"
 msgstr "產品目錄產品在銷售訂單中"
 
 #. module: sale
+#: model:ir.ui.menu,name:sale.menu_product_categories
+msgid "Product Categories"
+msgstr "產品類別"
+
+#. module: sale
 #: model:ir.model,name:sale.model_product_category
 #: model:ir.model.fields,field_description:sale.field_sale_report__categ_id
 #: model_terms:ir.ui.view,arch_db:sale.view_order_product_search
@@ -3715,6 +3739,11 @@ msgstr "產品文件"
 #: code:addons/sale/static/src/js/product_card/product_card.xml:0
 msgid "Product Image"
 msgstr "產品圖片"
+
+#. module: sale
+#: model:ir.model,name:sale.model_product_packaging
+msgid "Product Packaging"
+msgstr "產品包裝"
 
 #. module: sale
 #: model:ir.ui.menu,name:sale.menu_product_tags
@@ -3842,6 +3871,7 @@ msgstr "數量："
 #: code:addons/sale/models/sale_order.py:0
 #: model:ir.model.fields.selection,name:sale.selection__sale_order__state__draft
 #: model:ir.model.fields.selection,name:sale.selection__sale_report__state__draft
+#: model_terms:ir.ui.view,arch_db:sale.crm_team_view_kanban_dashboard
 #: model_terms:ir.ui.view,arch_db:sale.product_document_search
 msgid "Quotation"
 msgstr "報價"
@@ -3905,6 +3935,7 @@ msgstr "客戶檢視之報價單%s"
 #: model:ir.actions.act_window,name:sale.action_quotations_salesteams
 #: model:ir.actions.act_window,name:sale.action_quotations_with_onboarding
 #: model:ir.ui.menu,name:sale.menu_sale_quotations
+#: model_terms:ir.ui.view,arch_db:sale.crm_team_view_kanban_dashboard
 #: model_terms:ir.ui.view,arch_db:sale.portal_my_home_menu_sale
 #: model_terms:ir.ui.view,arch_db:sale.portal_my_quotations
 #: model_terms:ir.ui.view,arch_db:sale.sale_order_view_search_inherit_quotation
@@ -3953,6 +3984,11 @@ msgid "Re-Invoice Policy visible"
 msgstr "顯示重新開立發票政策"
 
 #. module: sale
+#: model:ir.model.fields,field_description:sale.field_sale_order_cancel__recipient_ids
+msgid "Recipients"
+msgstr "收件者"
+
+#. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.product_template_view_form
 msgid "Recommend when 'Adding to Cart' or quotation"
 msgstr "推薦在「加入至購物車」或報價時使用"
@@ -3993,6 +4029,11 @@ msgstr "移除"
 #: code:addons/sale/static/src/js/quantity_buttons/quantity_buttons.xml:0
 msgid "Remove one"
 msgstr "移除一項"
+
+#. module: sale
+#: model:ir.model.fields,field_description:sale.field_sale_order_cancel__render_model
+msgid "Rendering Model"
+msgstr "呈現模型"
 
 #. module: sale
 #: model:ir.ui.menu,name:sale.menu_sale_report
@@ -4078,6 +4119,7 @@ msgstr "銷售資料"
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_advance_payment_inv__sale_order_ids
+#: model:ir.model.fields,field_description:sale.field_sale_order_cancel__order_id
 #: model:ir.model.fields,field_description:sale.field_sale_order_discount__sale_order_id
 #: model:ir.model.fields.selection,name:sale.selection__account_analytic_applicability__business_domain__sale_order
 msgid "Sale Order"
@@ -4102,8 +4144,6 @@ msgid "Sale Order Warnings"
 msgstr "銷售訂單警告"
 
 #. module: sale
-#. odoo-python
-#: code:addons/sale/models/res_partner.py:0
 #: model_terms:ir.ui.view,arch_db:sale.account_invoice_form
 msgid "Sale Orders"
 msgstr "銷售訂單"
@@ -4117,13 +4157,6 @@ msgstr "銷售訂單數目"
 #: model:ir.model,name:sale.model_sale_payment_provider_onboarding_wizard
 msgid "Sale Payment provider onboarding wizard"
 msgstr "銷售付款服務商新手簡介精靈"
-
-#. module: sale
-#: model:ir.model.fields,field_description:sale.field_account_bank_statement_line__sale_warning_text
-#: model:ir.model.fields,field_description:sale.field_account_move__sale_warning_text
-#: model:ir.model.fields,field_description:sale.field_sale_order__sale_warning_text
-msgid "Sale Warning"
-msgstr "銷售警告"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
@@ -4141,6 +4174,7 @@ msgid "Sale orders to cancel"
 msgstr "要取消的銷售訂單"
 
 #. module: sale
+#: model:ir.model.fields,field_description:sale.field_product_packaging__sales
 #: model:ir.ui.menu,name:sale.menu_reporting_sales
 #: model:ir.ui.menu,name:sale.sale_menu_root
 #: model_terms:ir.ui.view,arch_db:sale.crm_team_view_kanban_dashboard
@@ -4210,6 +4244,11 @@ msgid "Sales Order"
 msgstr "銷售訂單"
 
 #. module: sale
+#: model:ir.model,name:sale.model_sale_order_cancel
+msgid "Sales Order Cancel"
+msgstr "銷售訂單取消"
+
+#. module: sale
 #: model:mail.message.subtype,name:sale.mt_order_confirmed
 #: model:mail.message.subtype,name:sale.mt_salesteam_order_confirmed
 msgid "Sales Order Confirmed"
@@ -4224,6 +4263,8 @@ msgstr "銷售訂單項目"
 #. module: sale
 #: model:ir.model,name:sale.model_sale_order_line
 #: model:ir.model.fields,field_description:sale.field_product_attribute_custom_value__sale_order_line_id
+#: model:ir.model.fields,field_description:sale.field_product_product__sale_line_warn
+#: model:ir.model.fields,field_description:sale.field_product_template__sale_line_warn
 msgid "Sales Order Line"
 msgstr "銷售訂單明細"
 
@@ -4261,7 +4302,6 @@ msgstr "銷售訂單"
 #: model_terms:ir.ui.view,arch_db:sale.portal_my_home_menu_sale
 #: model_terms:ir.ui.view,arch_db:sale.sale_order_tree
 #: model_terms:ir.ui.view,arch_db:sale.sale_order_view_search_inherit_quotation
-#: model_terms:ir.ui.view,arch_db:sale.sale_order_view_search_inherit_sale
 #: model_terms:ir.ui.view,arch_db:sale.view_order_product_search
 #: model_terms:ir.ui.view,arch_db:sale.view_order_tree
 #: model_terms:ir.ui.view,arch_db:sale.view_sale_order_calendar
@@ -4291,6 +4331,12 @@ msgid "Sales Teams"
 msgstr "銷售團隊"
 
 #. module: sale
+#: model:ir.model.fields,field_description:sale.field_res_partner__sale_warn
+#: model:ir.model.fields,field_description:sale.field_res_users__sale_warn
+msgid "Sales Warnings"
+msgstr "銷售警告"
+
+#. module: sale
 #: model:ir.model.fields,help:sale.field_account_analytic_line__so_line
 msgid ""
 "Sales order item to which the time spent will be added in order to be "
@@ -4304,6 +4350,11 @@ msgid "Sales price"
 msgstr "銷售價格"
 
 #. module: sale
+#: model:mail.template,name:sale.mail_template_sale_cancellation
+msgid "Sales: Order Cancellation"
+msgstr "銷售：訂單取消"
+
+#. module: sale
 #: model:mail.template,name:sale.mail_template_sale_confirmation
 msgid "Sales: Order Confirmation"
 msgstr "銷售：訂單確認"
@@ -4314,19 +4365,9 @@ msgid "Sales: Payment Done"
 msgstr "銷售：付款完成"
 
 #. module: sale
-#: model:mail.template,name:sale.email_template_proforma
-msgid "Sales: Send Proforma"
-msgstr "銷售：傳送形式發票"
-
-#. module: sale
 #: model:mail.template,name:sale.email_template_edi_sale
 msgid "Sales: Send Quotation"
 msgstr "銷售：傳送報價單"
-
-#. module: sale
-#: model:ir.actions.server,name:sale.send_pending_emails_cron_ir_actions_server
-msgid "Sales: Send pending emails"
-msgstr "銷售：發送待處理電郵"
 
 #. module: sale
 #. odoo-python
@@ -4348,6 +4389,11 @@ msgstr "銷售人員"
 #: model:ir.ui.menu,name:sale.menu_reporting_salespeople
 msgid "Salespersons"
 msgstr "銷售人員"
+
+#. module: sale
+#: model:ir.model,name:sale.model_mail_scheduled_message
+msgid "Scheduled Message"
+msgstr "已預定訊息"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.view_sales_order_filter
@@ -4388,21 +4434,30 @@ msgid "Selected Combo Items"
 msgstr "已選取組合項目"
 
 #. module: sale
+#: model:ir.model.fields,help:sale.field_product_product__sale_line_warn
+#: model:ir.model.fields,help:sale.field_product_template__sale_line_warn
+#: model:ir.model.fields,help:sale.field_res_partner__sale_warn
+#: model:ir.model.fields,help:sale.field_res_users__sale_warn
+msgid ""
+"Selecting the \"Warning\" option will notify user with the message, "
+"Selecting \"Blocking Message\" will throw an exception with the message and "
+"block the flow. The Message has to be written in the next field."
+msgstr "選擇此 \"警告\" 選項，將通知使用者此消息, 選擇 \"受阻消息\" 選項，將在流程受阻時將拋出一個消息. 消息寫入下一個欄位."
+
+#. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
-msgid "Sell and purchase products in different units of measure or packagings"
-msgstr "使用不同計量單位或包裝單位，去銷售及採購產品"
+msgid "Sell and purchase products in different units of measure"
+msgstr "在不同的度量單位產品中採購和銷售"
+
+#. module: sale
+#: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
+msgid "Sell products by multiple of unit # per package"
+msgstr "可在每個包裝中多個單位銷售產品"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
 msgid "Sell variants of a product using attributes (size, color, etc.)"
 msgstr "使用屬性(尺寸、顏色等)建立銷售產品的變體"
-
-#. module: sale
-#. odoo-python
-#: code:addons/sale/models/sale_order.py:0
-#: model_terms:ir.ui.view,arch_db:sale.view_order_form
-msgid "Send"
-msgstr "傳送"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.view_order_form
@@ -4420,6 +4475,16 @@ msgid "Send an email"
 msgstr "傳送電郵"
 
 #. module: sale
+#: model_terms:ir.ui.view,arch_db:sale.sale_order_cancel_view_form
+msgid "Send and cancel"
+msgstr "發送並取消"
+
+#. module: sale
+#: model_terms:ir.ui.view,arch_db:sale.view_order_form
+msgid "Send by Email"
+msgstr "通過信件發送"
+
+#. module: sale
 #: model:ir.model.fields,field_description:sale.field_res_config_settings__module_delivery_sendcloud
 msgid "Sendcloud Connector"
 msgstr "Sendcloud 連接器"
@@ -4432,6 +4497,11 @@ msgid ""
 "and set the email template from the product detail form (in Accounting tab)."
 msgstr ""
 "如果你需要分享有關產品的特定資訊或內容（使用說明、規則、連結、多媒體等），以電郵發送會很有用。你可從產品詳細資料表單（在「會計」分頁內）建立並設定電子郵件範本。"
+
+#. module: sale
+#: model:mail.template,description:sale.mail_template_sale_cancellation
+msgid "Sent automatically to customers when you cancel an order"
+msgstr "當您取消訂單時自動發送給客戶"
 
 #. module: sale
 #: model:mail.template,description:sale.mail_template_sale_confirmation
@@ -4488,14 +4558,9 @@ msgid "Shiprocket Connector"
 msgstr "Shiprocket連接器"
 
 #. module: sale
-#: model:ir.model.fields,field_description:sale.field_res_config_settings__module_sale_shopee
-msgid "Shopee Sync"
-msgstr "Shopee 同步"
-
-#. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.view_sales_order_filter
-msgid "Show all records whose next activity date is past"
-msgstr "顯示下一活動日期已過的所有記錄"
+msgid "Show all records which has next action date is before today"
+msgstr "顯示在今天之前的下一個行動日期的所有記錄"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
@@ -4616,6 +4681,12 @@ msgid "Stripe"
 msgstr "Stripe"
 
 #. module: sale
+#: model:ir.model.fields,field_description:sale.field_sale_order_cancel__subject
+#: model_terms:ir.ui.view,arch_db:sale.sale_order_cancel_view_form
+msgid "Subject"
+msgstr "主題"
+
+#. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order_line__price_subtotal
 msgid "Subtotal"
 msgstr "小計"
@@ -4701,10 +4772,16 @@ msgstr "稅金計算的捨入方法"
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__amount_tax
-#: model:ir.model.fields,field_description:sale.field_sale_order_line__tax_ids
+#: model:ir.model.fields,field_description:sale.field_sale_order_discount__tax_ids
+#: model:ir.model.fields,field_description:sale.field_sale_order_line__tax_id
 #: model_terms:ir.ui.view,arch_db:sale.report_saleorder_document
 msgid "Taxes"
 msgstr "稅項"
+
+#. module: sale
+#: model:ir.model.fields,help:sale.field_sale_order_discount__tax_ids
+msgid "Taxes to add on the discount line."
+msgstr "要加至折扣資料行的稅項。"
 
 #. module: sale
 #. odoo-python
@@ -4790,6 +4867,11 @@ msgstr "登記開支之前，要重新開立發票的銷售訂單 %(order)s 必�
 #: code:addons/sale/controllers/portal.py:0
 msgid "The access token is invalid."
 msgstr "存取權杖(token)無效。"
+
+#. module: sale
+#: model:ir.model.fields,help:sale.field_sale_advance_payment_inv__amount_to_invoice
+msgid "The amount to invoice = Sale Order Total - Confirmed Down Payments."
+msgstr "需開立發票金額 = 銷售訂單總額 減 已確認的首期付款。"
 
 #. module: sale
 #. odoo-python
@@ -4999,6 +5081,15 @@ msgid "This payment will confirm the quotation."
 msgstr "此付款將確認報價。"
 
 #. module: sale
+#. odoo-python
+#: code:addons/sale/models/sale_order_line.py:0
+msgid ""
+"This product is packaged by %(pack_size).2f %(pack_name)s. You should sell "
+"%(quantity).2f %(unit)s."
+msgstr ""
+"此產品由 %(pack_size).2f %(pack_name)s.包裝.你應該賣 %(quantity).2f %(unit)s.單位."
+
+#. module: sale
 #: model_terms:ir.actions.act_window,help:sale.action_order_report_all
 #: model_terms:ir.actions.act_window,help:sale.action_order_report_customers
 #: model_terms:ir.actions.act_window,help:sale.action_order_report_products
@@ -5072,7 +5163,8 @@ msgid ""
 "To send invitations in B2B mode, open a contact or select several ones in "
 "list view and click on 'Portal Access Management' option in the dropdown "
 "menu *Action*."
-msgstr "要在 B2B 模式下發出邀請，請開啟一個聯絡人或在清單檢視中選取多人，然後在*動作*下拉選單中點擊「入口網站存取管理」選項."
+msgstr ""
+"若要在 B2B 模式中傳送邀請，請開啟一個聯絡人，或在列表檢視畫面中選擇多個聯絡人，然後在 *動作* 下拉式選單中，按一下「門戶網站存取管理」選項。"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.view_sales_order_filter
@@ -5128,9 +5220,20 @@ msgid "Transactions"
 msgstr "交易"
 
 #. module: sale
+#: model:ir.model.fields,field_description:sale.field_sale_order_line__translated_product_name
+msgid "Translated Product Name"
+msgstr "產品名稱翻譯"
+
+#. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__type_name
 msgid "Type Name"
 msgstr "類型名稱"
+
+#. module: sale
+#: model_terms:ir.ui.view,arch_db:sale.product_template_form_view
+#: model_terms:ir.ui.view,arch_db:sale.res_partner_view_buttons
+msgid "Type a message..."
+msgstr "輸入訊息..."
 
 #. module: sale
 #: model:ir.model.fields,help:sale.field_sale_order__activity_exception_decoration
@@ -5148,12 +5251,14 @@ msgid "Type to find a product..."
 msgstr "開始輸入以搜尋產品⋯"
 
 #. module: sale
-#: model:ir.model.fields,field_description:sale.field_res_config_settings__module_delivery_ups_rest
+#: model:ir.model.fields,field_description:sale.field_res_config_settings__module_delivery_ups
+#: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
 msgid "UPS Connector"
 msgstr "UPS 連接器"
 
 #. module: sale
-#: model:ir.model.fields,field_description:sale.field_res_config_settings__module_delivery_usps_rest
+#: model:ir.model.fields,field_description:sale.field_res_config_settings__module_delivery_usps
+#: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
 msgid "USPS Connector"
 msgstr "USPS 連接器"
 
@@ -5169,12 +5274,6 @@ msgid "Un-invoiced Balance"
 msgstr "未開立發票結餘"
 
 #. module: sale
-#: model:ir.model.fields,field_description:sale.field_sale_order_line__product_uom_id
-#: model:ir.model.fields,field_description:sale.field_sale_report__product_uom_id
-msgid "Unit"
-msgstr "單位"
-
-#. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order_line__price_unit
 #: model:ir.model.fields,field_description:sale.field_sale_report__price_unit
 #: model_terms:ir.ui.view,arch_db:sale.report_saleorder_document
@@ -5188,10 +5287,23 @@ msgid "Unit Price:"
 msgstr "單價:"
 
 #. module: sale
+#: model:ir.model.fields,field_description:sale.field_sale_order_line__product_uom
+#: model:ir.model.fields,field_description:sale.field_sale_report__product_uom
+#: model_terms:ir.ui.view,arch_db:sale.view_order_line_tree
+msgid "Unit of Measure"
+msgstr "量度單位"
+
+#. module: sale
 #: model:ir.ui.menu,name:sale.menu_product_uom_form_action
+#: model:ir.ui.menu,name:sale.next_id_16
 #: model_terms:ir.ui.view,arch_db:sale.res_config_settings_view_form
-msgid "Units & Packagings"
-msgstr "單位及包裝"
+msgid "Units of Measure"
+msgstr "量度單位"
+
+#. module: sale
+#: model:ir.ui.menu,name:sale.menu_product_uom_categ_form_action
+msgid "Units of Measure Categories"
+msgstr "量度單位類型"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.view_order_form
@@ -5226,6 +5338,11 @@ msgstr "未連稅總額"
 
 #. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.view_order_form
+msgid "UoM"
+msgstr "計量單位"
+
+#. module: sale
+#: model_terms:ir.ui.view,arch_db:sale.view_order_form
 msgid "Update Prices"
 msgstr "更新價格"
 
@@ -5249,11 +5366,6 @@ msgid "Upselling Opportunity"
 msgstr "超售商機"
 
 #. module: sale
-#: model:mail.template,description:sale.email_template_proforma
-msgid "Used by salespeople when they send proforma to prospects"
-msgstr "銷售人員向潛在客戶傳送形式發票時使用"
-
-#. module: sale
 #: model:mail.template,description:sale.email_template_edi_sale
 msgid "Used by salespeople when they send quotations or proforma to prospects"
 msgstr "銷售人員在向潛在客戶發送報價或形式時使用"
@@ -5275,11 +5387,6 @@ msgid ""
 "Validated expenses, vendor bills, or stock pickings (set up to track costs) "
 "can be invoiced to the customer at either cost or sales price."
 msgstr "已驗證的開支、供應商賬單或庫存提取（若已設置為追蹤成本），可按成本或銷售價格，向客戶開立發票。"
-
-#. module: sale
-#: model_terms:ir.ui.view,arch_db:sale.product_pricelist_item_form
-msgid "Validity Period"
-msgstr "有效期間"
 
 #. module: sale
 #: model:ir.model.fields,help:sale.field_sale_order__validity_date
@@ -5323,9 +5430,21 @@ msgstr "訂購數量"
 #. odoo-python
 #: code:addons/sale/models/product_product.py:0
 #: code:addons/sale/models/product_template.py:0
+#: code:addons/sale/models/sale_order_line.py:0
 #: code:addons/sale/wizard/res_config_settings.py:0
+#: model:ir.model.fields.selection,name:sale.selection__product_template__sale_line_warn__warning
+#: model:ir.model.fields.selection,name:sale.selection__res_partner__sale_warn__warning
+#: model_terms:ir.ui.view,arch_db:sale.product_template_form_view
 msgid "Warning"
 msgstr "警告"
+
+#. module: sale
+#. odoo-python
+#: code:addons/sale/models/product_template.py:0
+#: code:addons/sale/models/sale_order.py:0
+#: code:addons/sale/models/sale_order_line.py:0
+msgid "Warning for %s"
+msgstr "%s 的警告"
 
 #. module: sale
 #. odoo-python
@@ -5334,14 +5453,14 @@ msgid "Warning for the change of your quotation's company"
 msgstr "報價單公司變更警告"
 
 #. module: sale
-#: model_terms:ir.ui.view,arch_db:sale.product_template_form_view
-msgid "Warning on Sales Orders"
-msgstr "銷售單警告"
+#: model_terms:ir.ui.view,arch_db:sale.res_partner_view_buttons
+msgid "Warning on the Sales Order"
+msgstr "銷售訂單警告"
 
 #. module: sale
-#: model_terms:ir.ui.view,arch_db:sale.res_partner_view_buttons
-msgid "Warning on Sales Orders and Invoices"
-msgstr "銷售單及發票警告"
+#: model_terms:ir.ui.view,arch_db:sale.product_template_form_view
+msgid "Warning when Selling this Product"
+msgstr "銷售這產品時的警告"
 
 #. module: sale
 #: model:ir.model.fields,field_description:sale.field_sale_order__website_message_ids
@@ -5354,15 +5473,10 @@ msgid "Website communication history"
 msgstr "網站溝通記錄"
 
 #. module: sale
-#: model_terms:ir.ui.view,arch_db:sale.product_pricelist_item_form
-msgid ""
-"When prices are calculated through formula or fixed, original price is NOT\n"
-"                                displayed in sale order lines. Calculated/fixed price is set as unit price\n"
-"                                with 0% discount."
-msgstr ""
-"若價格固定，或透過算式計算，銷售單資料行不會顯示原始價格。\n"
-"                                固定價格/經計算得出的價格，會設為單價，\n"
-"                                並套用 0% 折扣。"
+#. odoo-python
+#: code:addons/sale/models/product_template.py:0
+msgid "You can invoice goods before they are delivered."
+msgstr "你可在交貨前，便為貨物開立發票。"
 
 #. module: sale
 #. odoo-python
@@ -5520,16 +5634,6 @@ msgid "days"
 msgstr "天"
 
 #. module: sale
-#: model_terms:ir.ui.view,arch_db:sale.res_partner_view_buttons
-msgid "e.g. This customer has reported recurring issues with previous orders."
-msgstr "例：客戶回報先前的訂單反覆出現問題。"
-
-#. module: sale
-#: model_terms:ir.ui.view,arch_db:sale.product_template_form_view
-msgid "e.g. This product is defective."
-msgstr "例：產品有缺陷。"
-
-#. module: sale
 #: model_terms:ir.ui.view,arch_db:sale.sale_order_portal_template
 msgid "for the"
 msgstr "因"
@@ -5587,19 +5691,21 @@ msgstr ""
 "== 'pending') and '待處理訂單' or '訂單' }} （參考： {{ object.name or '不適用' }}）"
 
 #. module: sale
-#: model:mail.template,subject:sale.email_template_proforma
-msgid ""
-"{{ object.company_id.name }} {{ object.state in ('draft', 'sent') and "
-"'Proforma' or 'Order'}} (Ref {{ object.name or 'n/a' }})"
-msgstr ""
-"{{ object.company_id.name }} {{ object.state in ('draft', 'sent') and '形式訂單'"
-" or '訂單' }}（編號：{{ object.name or '不適用' }}）"
-
-#. module: sale
 #: model:mail.template,subject:sale.email_template_edi_sale
 msgid ""
 "{{ object.company_id.name }} {{ object.state in ('draft', 'sent') and "
-"'Quotation' or 'Order' }} (Ref {{ object.name or 'n/a' }})"
+"(ctx.get('proforma') and 'Proforma' or 'Quotation') or 'Order' }} (Ref {{ "
+"object.name or 'n/a' }})"
 msgstr ""
-"{{ object.company_id.name }} {{ object.state in ('draft', 'sent') and '報價單' "
-"or '訂單' }}（編號：{{ object.name or '不適用' }}）"
+"{{ object.company_id.name }} {{ object.state in ('draft', 'sent') and "
+"(ctx.get('proforma') and '形式訂單' or '報價單') or '訂單' }} （參考： {{ object.name or "
+"'不適用' }}）"
+
+#. module: sale
+#: model:mail.template,subject:sale.mail_template_sale_cancellation
+msgid ""
+"{{ object.company_id.name }} {{ object.type_name }} Cancelled (Ref {{ "
+"object.name or 'n/a' }})"
+msgstr ""
+"{{ object.company_id.name }} {{ object.type_name }} 已取消 （參考： {{ object.name "
+"or 'n/a' }}）"

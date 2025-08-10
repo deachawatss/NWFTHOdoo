@@ -48,7 +48,7 @@ def new_get_soap_client(wsdlurl, timeout=30):
     return _soap_clients[(wsdlurl, timeout)]
 
 
-def patch_module():
+def patch_stdnum():
     try:
         from stdnum import util
     except ImportError:

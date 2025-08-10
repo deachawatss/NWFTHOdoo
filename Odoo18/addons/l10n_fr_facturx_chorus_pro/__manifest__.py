@@ -17,6 +17,5 @@ Add support to fill three optional fields used when using Chorus Pro, especially
     'data': [
         'views/account_move_views.xml',
     ],
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

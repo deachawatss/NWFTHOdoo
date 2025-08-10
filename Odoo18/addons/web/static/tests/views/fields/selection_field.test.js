@@ -65,13 +65,7 @@ class Product extends models.Model {
         },
     ];
 }
-class User extends models.Model {
-    _name = "res.users";
-    has_group() {
-        return true;
-    }
-}
-defineModels([Partner, Product, User]);
+defineModels([Partner, Product]);
 
 test("SelectionField in a list view", async () => {
     Partner._records.forEach((r) => (r.color = "red"));
@@ -242,24 +236,72 @@ test("required selection widget should not have blank option", async () => {
                 </form>`,
     });
 
-    expect(queryAll(".o_field_widget[name='color'] option").map((n) => n.value)).toEqual([
-        "false",
-        '"red"',
-        '"black"',
+    expect(queryAll(".o_field_widget[name='color'] option").map((n) => n.style.display)).toEqual([
+        "",
+        "",
+        "",
     ]);
 
-    expect(queryAll(".o_field_widget[name='feedback_value'] option").map((n) => n.value)).toEqual([
-        '"good"',
-        '"bad"',
-    ]);
+    expect(
+        queryAll(".o_field_widget[name='feedback_value'] option").map((n) => n.style.display)
+    ).toEqual(["none", "", ""]);
 
     // change value to update widget modifier values
     await click(".o_field_widget[name='feedback_value'] select");
     await select('"bad"');
     await animationFrame();
-    expect(queryAll(".o_field_widget[name='color'] option").map((n) => n.value)).toEqual([
-        '"red"',
-        '"black"',
+    expect(queryAll(".o_field_widget[name='color'] option").map((n) => n.style.display)).toEqual([
+        "none",
+        "",
+        "",
+    ]);
+});
+
+test("required selection widget should have only one blank option", async () => {
+    Partner._fields.feedback_value = fields.Selection({
+        required: true,
+        selection: [
+            ["good", "Good"],
+            ["bad", "Bad"],
+        ],
+        default: "good",
+        string: "Good",
+    });
+
+    Partner._fields.color = fields.Selection({
+        selection: [
+            [false, ""],
+            ["red", "Red"],
+            ["black", "Black"],
+        ],
+        default: "red",
+        string: "Color",
+    });
+
+    await mountView({
+        type: "form",
+        resModel: "partner",
+        resId: 1,
+        arch: /* xml */ `
+                <form>
+                    <field name="feedback_value" />
+                    <field name="color" required="feedback_value == 'bad'" />
+                </form>`,
+    });
+
+    expect(".o_field_widget[name='color'] option").toHaveCount(3, {
+        message: "Three options in non required field (one blank option)",
+    });
+
+    // change value to update widget modifier values
+    await click(".o_field_widget[name='feedback_value'] select");
+    await select('"bad"');
+    await animationFrame();
+
+    expect(queryAll(".o_field_widget[name='color'] option").map((n) => n.style.display)).toEqual([
+        "none",
+        "",
+        "",
     ]);
 });
 
@@ -272,26 +314,6 @@ test("selection field with placeholder", async () => {
 
     expect(".o_field_widget[name='trululu'] select option:first").toHaveText("Placeholder");
     expect(".o_field_widget[name='trululu'] select option:first").toHaveValue("false");
-    expect(".o_field_widget[name='trululu'] select option:first").toHaveClass("d-none");
-    await click(".o_field_widget[name='trululu'] select");
-    await select(1);
-    await animationFrame();
-    expect(".o_field_widget[name='trululu'] select option:first").not.toHaveClass("d-none");
-});
-
-test("placeholder_field shows as placeholder", async () => {
-    Partner._fields.char = fields.Char({
-        default: "My Placeholder",
-    });
-    await mountView({
-        type: "form",
-        resModel: "partner",
-        arch: `<form>
-            <field name="trululu" widget="selection" options="{'placeholder_field' : 'char'}"/>
-            <field name="char"/>
-        </form>`,
-    });
-    expect(`.o_field_widget[name='trululu'] select option:first`).toHaveText("My Placeholder");
 });
 
 test("SelectionField in kanban view", async () => {

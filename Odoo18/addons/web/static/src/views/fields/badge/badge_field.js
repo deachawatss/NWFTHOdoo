@@ -11,7 +11,6 @@ export class BadgeField extends Component {
     static props = {
         ...standardFieldProps,
         decorations: { type: Object, optional: true },
-        colorField: { type: String, optional: true },
     };
     static defaultProps = {
         decorations: {},
@@ -24,10 +23,7 @@ export class BadgeField extends Component {
         });
     }
 
-    get badgeClass() {
-        if (this.props.colorField) {
-            return `o_badge_color_${this.props.record.data[this.props.colorField]}`;
-        }
+    get classFromDecoration() {
         const evalContext = this.props.record.evalContextWithVirtualIds;
         for (const decorationName in this.props.decorations) {
             if (evaluateBooleanExpr(this.props.decorations[decorationName], evalContext)) {
@@ -46,20 +42,8 @@ export const badgeField = {
     component: BadgeField,
     displayName: _t("Badge"),
     supportedTypes: ["selection", "many2one", "char"],
-    supportedOptions: [
-        {
-            label: _t("Color field"),
-            name: "color_field",
-            type: "field",
-            availableTypes: ["integer"],
-            help: _t("Set an integer field to use colors with the badge."),
-        },
-    ],
-    extractProps: ({ decorations, options }) => {
-        return {
-            decorations,
-            colorField: options.color_field,
-        };
+    extractProps: ({ decorations }) => {
+        return { decorations };
     },
 };
 

@@ -1,12 +1,7 @@
-import { AND, fields, Record } from "@mail/core/common/record";
+import { AND, Record } from "@mail/core/common/record";
 import { imageUrl } from "@web/core/utils/urls";
 import { rpc } from "@web/core/network/rpc";
 import { debounce } from "@web/core/utils/timing";
-import { Store } from "@mail/core/common/store_service";
-
-const TRANSPARENT_AVATAR =
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAQAAABpN6lAAAAAqElEQVR42u3QMQEAAAwCoNm/9GJ4CBHIjYsAAQIECBAgQIAAAQIECBAgQIAAAQIECBAgQIAAAQIECBAgQIAAAQIECBAgQIAAAQIECBAgQIAAAQIECBAgQIAAAQIECBAgQIAAAQIECBAgQIAAAQIECBAgQIAAAQIECBAgQIAAAQIECBAgQIAAAQIECBAgQIAAAQIECBAgQIAAAQIECBAgQIAAAQIECBDQ9+KgAIHd5IbMAAAAAElFTkSuQmCC";
-const { DateTime } = luxon;
 
 /**
  * @typedef {'offline' | 'bot' | 'online' | 'away' | 'im_partner' | undefined} ImStatus
@@ -20,110 +15,105 @@ const { DateTime } = luxon;
 
 export class Persona extends Record {
     static id = AND("type", "id");
+    /** @type {Object.<number, import("models").Persona>} */
+    static records = {};
+    /** @returns {import("models").Persona} */
+    static get(data) {
+        return super.get(data);
+    }
+    /** @returns {import("models").Persona|import("models").Persona[]} */
+    static insert(data) {
+        return super.insert(...arguments);
+    }
     static new() {
         const record = super.new(...arguments);
         record.debouncedSetImStatus = debounce(
             (newStatus) => record.updateImStatus(newStatus),
-            Store.IM_STATUS_DEBOUNCE_DELAY
+            this.IM_STATUS_DEBOUNCE_DELAY
         );
         return record;
     }
+    static IM_STATUS_DEBOUNCE_DELAY = 1000;
 
     /** @type {string} */
     avatar_128_access_token;
-    /** @type {string} */
-    commercial_company_name;
-    /**
-     * function = job position (Frenchism)
-     *
-     * @type {string}
-     */
-    function;
+    channelMembers = Record.many("ChannelMember");
     /** @type {number} */
     id;
     /** @type {boolean | undefined} */
     is_company;
     /** @type {string} */
-    phone;
+    landlineNumber;
+    /** @type {string} */
+    mobileNumber;
     debouncedSetImStatus;
-    displayName = fields.Attr(undefined, {
+    storeAsTrackedImStatus = Record.one("Store", {
+        /** @this {import("models").Persona} */
         compute() {
-            return this._computeDisplayName();
-        },
-    });
-    main_user_id = fields.One("res.users");
-    monitorPresence = fields.Attr(false, {
-        compute() {
-            if (!this.store.env.services.bus_service.isActive || this.id <= 0) {
-                return false;
-            }
-            return (
+            if (
                 this.type === "guest" ||
                 (this.type === "partner" && this.im_status !== "im_partner" && !this.is_public)
-            );
-        },
-    });
-    _triggerPresenceSubscription = fields.Attr(null, {
-        compute() {
-            return this.monitorPresence && this.presenceChannel;
-        },
-        onUpdate() {
-            if (this.previousPresencechannel) {
-                this.store.env.services.bus_service.deleteChannel(this.previousPresencechannel);
+            ) {
+                return this.store;
             }
-            if (this._triggerPresenceSubscription) {
-                this.store.env.services.bus_service.addChannel(this.presenceChannel);
+        },
+        onAdd() {
+            if (!this.store.env.services.bus_service.isActive) {
+                return;
             }
-            this.previousPresencechannel = this.presenceChannel;
+            const model = this.type === "partner" ? "res.partner" : "mail.guest";
+            this.store.env.services.bus_service.addChannel(`odoo-presence-${model}_${this.id}`);
+        },
+        onDelete() {
+            if (!this.store.env.services.bus_service.isActive) {
+                return;
+            }
+            const model = this.type === "partner" ? "res.partner" : "mail.guest";
+            this.store.env.services.bus_service.deleteChannel(`odoo-presence-${model}_${this.id}`);
         },
         eager: true,
+        inverse: "imStatusTrackedPersonas",
     });
+    signature = Record.attr("", { html: true });
     /** @type {'partner' | 'guest'} */
     type;
     /** @type {string} */
     name;
-    country_id = fields.One("res.country");
+    country = Record.one("Country");
     /** @type {string} */
     email;
+    /** @type {number} */
+    userId;
     /** @type {ImStatus} */
-    im_status = fields.Attr(null, {
+    im_status = Record.attr(null, {
         onUpdate() {
             if (this.eq(this.store.self) && this.im_status === "offline") {
                 this.store.env.services.im_status.updateBusPresence();
             }
         },
     });
-    /** @type {string|undefined} */
-    im_status_access_token;
-
+    /** @type {'email' | 'inbox'} */
+    notification_preference;
+    isAdmin = false;
+    isInternalUser = false;
     /** @type {luxon.DateTime} */
-    offline_since = fields.Datetime();
-    /** @type {string|undefined} */
-    previousPresencechannel;
-    presenceChannel = fields.Attr(null, {
-        compute() {
-            const parts = [
-                "odoo-presence",
-                `${this.type === "partner" ? "res.partner" : "mail.guest"}_${this.id}`,
-            ];
-            if (this.im_status_access_token) {
-                parts.push(this.im_status_access_token);
-            }
-            return parts.join("-");
-        },
-    });
-    /** @type {boolean} */
-    is_public;
-    write_date = fields.Datetime();
-    group_ids = fields.Many("res.groups", { inverse: "personas" });
+    write_date = Record.attr(undefined, { type: "datetime" });
+    groups_id = Record.many("res.groups", { inverse: "personas" });
 
-    _computeDisplayName() {
-        return this.name;
+    /**
+     * @returns {boolean}
+     */
+    get hasPhoneNumber() {
+        return Boolean(this.mobileNumber || this.landlineNumber);
+    }
+
+    get emailWithoutDomain() {
+        return this.email.substring(0, this.email.lastIndexOf("@"));
     }
 
     get avatarUrl() {
         const accessTokenParam = {};
-        if (this.store.self.main_user_id?.share !== false) {
+        if (!this.store.self.isInternalUser) {
             accessTokenParam.access_token = this.avatar_128_access_token;
         }
         if (this.type === "partner") {
@@ -133,16 +123,13 @@ export class Persona extends Record {
             });
         }
         if (this.type === "guest") {
-            if (this.id === -1) {
-                return TRANSPARENT_AVATAR;
-            }
             return imageUrl("mail.guest", this.id, "avatar_128", {
                 ...accessTokenParam,
                 unique: this.write_date,
             });
         }
-        if (this.main_user_id) {
-            return imageUrl("res.users", this.main_user_id.id, "avatar_128", {
+        if (this.userId) {
+            return imageUrl("res.users", this.userId, "avatar_128", {
                 unique: this.write_date,
             });
         }
@@ -163,14 +150,7 @@ export class Persona extends Record {
     }
 
     updateImStatus(newStatus) {
-        if (newStatus === "offline") {
-            this.offline_since = DateTime.now();
-        }
         this.im_status = newStatus;
-    }
-
-    _getActualModelName() {
-        return this.type === "partner" ? "res.partner" : "mail.guest";
     }
 }
 

@@ -3,7 +3,7 @@
 from odoo import models
 
 
-class ResUsers(models.Model):
+class Users(models.Model):
     _inherit = 'res.users'
 
     def _get_default_warehouse_id(self):

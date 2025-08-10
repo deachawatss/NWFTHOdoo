@@ -45,12 +45,12 @@
                 <field name="group_id" optional="hide" groups="stock.group_adv_location"/>
                 <field name="product_min_qty" string="Min" optional="show"/>
                 <field name="product_max_qty" string="Max" optional="show"/>
-                <field name="replenishment_uom_id" options="{'no_create': True}" optional="hide"/>
+                <field name="qty_multiple" optional="hide"/>
                 <field name="qty_to_order" readonly="trigger == 'auto'"/>
                 <field name="qty_to_order_manual" column_invisible="True"/>
                 <button name="action_remove_manual_qty_to_order" type="object" icon="fa-undo" title="Remove manually entered value and replace by the quantity to order based on the forecasted quantities" invisible="not qty_to_order_manual"/>
                 <button name="action_remove_manual_qty_to_order" type="object" icon="fa-undo" title="-" class="disabled opacity-0" invisible="qty_to_order_manual"/>
-                <field name="product_uom_name" string="Unit" groups="uom.group_uom"/>
+                <field name="product_uom_name" string="UoM" groups="uom.group_uom"/>
                 <field name="company_id" optional="hide" readonly="1" groups="base.group_multi_company"/>
                 <button name="action_replenish" string="Order" type="object" class="o_replenish_buttons" icon="fa-truck"
                     invisible="qty_to_order &lt;= 0.0"/>
@@ -79,7 +79,7 @@
                 <filter string="To Reorder" name="filter_to_reorder" domain="[('qty_to_order', '&gt;', 0.0)]"/>
                 <separator/>
                 <filter string="Not Snoozed" name="filter_not_snoozed" domain="['|', ('snoozed_until', '=', False), ('snoozed_until', '&lt;=', datetime.date.today().strftime('%Y-%m-%d'))]"/>
-                <group string="Group By">
+                <group expand="0" string="Group By">
                     <filter string="Warehouse" name="groupby_warehouse" domain="[]"  context="{'group_by': 'warehouse_id'}" groups="stock.group_stock_multi_warehouses"/>
                     <filter string="Location" name="groupby_location" domain="[]" context="{'group_by': 'location_id'}" groups="stock.group_stock_multi_locations"/>
                     <filter string="Product" name="groupby_product" domain="[]" context="{'group_by': 'product_id'}"/>
@@ -107,7 +107,7 @@
                 <field name="warehouse_id" groups="stock.group_stock_multi_warehouses"/>
                 <field name="location_id" groups="stock.group_stock_multi_locations"/>
                 <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
-                <group string="Group By">
+                <group expand="0" string="Group By">
                     <filter string="Warehouse" name="warehouse" domain="[]"  context="{'group_by': 'warehouse_id'}" groups="stock.group_stock_multi_warehouses"/>
                     <filter string="Location" name="location" domain="[]" context="{'group_by': 'location_id'}" groups="stock.group_stock_multi_locations"/>
                     <filter string="Product" name="product" domain="[]" context="{'group_by': 'product_id'}"/>
@@ -145,7 +145,7 @@
                                 <field name="product_max_qty"/>
                                 <field name="product_uom_name"/>
                             </div>
-                            <field name="replenishment_uom_id" options="{'no_create': True}"/>
+                            <field name="qty_multiple" string="Quantity Multiple"/>
                         </group>
                         <group>
                             <field name="allowed_location_ids" invisible="1"/>
@@ -204,7 +204,6 @@
         <field name="path">replenishment</field>
         <field name="code">
             action = model.with_context(
-                search_default_filter_to_reorder=True,
                 search_default_filter_not_snoozed=True,
                 default_trigger='manual',
                 searchpanel_default_trigger='manual'

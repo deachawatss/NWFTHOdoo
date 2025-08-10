@@ -17,21 +17,20 @@ class TestMrpSubcontractingCommon(TransactionCase):
             'company_id': cls.env.ref('base.main_company').id,
         })
         # 2. Create a BOM of subcontracting type
-        cls.product_category = cls.env.ref('product.product_category_goods')
         cls.comp1 = cls.env['product.product'].create({
             'name': 'Component1',
             'is_storable': True,
-            'categ_id': cls.product_category.id,
+            'categ_id': cls.env.ref('product.product_category_all').id,
         })
         cls.comp2 = cls.env['product.product'].create({
             'name': 'Component2',
             'is_storable': True,
-            'categ_id': cls.product_category.id,
+            'categ_id': cls.env.ref('product.product_category_all').id,
         })
         cls.finished = cls.env['product.product'].create({
             'name': 'finished',
             'is_storable': True,
-            'categ_id': cls.product_category.id,
+            'categ_id': cls.env.ref('product.product_category_all').id,
         })
         bom_form = Form(cls.env['mrp.bom'])
         bom_form.type = 'subcontract'
@@ -50,7 +49,7 @@ class TestMrpSubcontractingCommon(TransactionCase):
         cls.comp2comp = cls.env['product.product'].create({
             'name': 'component for Component2',
             'is_storable': True,
-            'categ_id': cls.product_category.id,
+            'categ_id': cls.env.ref('product.product_category_all').id,
         })
         bom_form = Form(cls.env['mrp.bom'])
         bom_form.product_tmpl_id = cls.comp2.product_tmpl_id
@@ -85,7 +84,7 @@ class TestMrpSubcontractingCommon(TransactionCase):
             'code': 'STJTEST',
             'type': 'general',
         })
-        product_category_all = self.env.ref('product.product_category_goods')
+        product_category_all = self.env.ref('product.product_category_all')
         product_category_all.property_stock_account_input_categ_id = a_in
         product_category_all.property_stock_account_output_categ_id = a_out
         product_category_all.property_stock_valuation_account_id = a_val

@@ -234,7 +234,7 @@ class MyInvoisDocumentPoS(models.Model):
                 builder._l10n_my_edi_make_validation_error(constraints, 'tax_ids_required', line['id'], item_vals['name'])
 
             for classified_tax_category_val in item_vals['cac:ClassifiedTaxCategory']:
-                if classified_tax_category_val['cbc:ID']['_text'] == 'E' and not classified_tax_category_val['cbc:TaxExemptionReason']['_text']:
+                if classified_tax_category_val['cbc:TaxExemptionReasonCode']['_text'] == 'E' and not classified_tax_category_val['cbc:TaxExemptionReason']['_text']:
                     # We don't have a name here, so the % will have to do
                     builder._l10n_my_edi_make_validation_error(constraints, 'tax_exemption_required_on_tax', classified_tax_category_val['id'], classified_tax_category_val['percent'])
 

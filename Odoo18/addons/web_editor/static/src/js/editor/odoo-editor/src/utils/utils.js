@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 export const DIRECTIONS = {
     LEFT: false,
     RIGHT: true,
@@ -1283,7 +1285,8 @@ export const formatSelection = (editor, formatName, {applyStyle, formatProps} = 
 
     const selectedNodes = getSelectedNodes(editor.editable).filter(
         (n) =>
-            ((n.nodeType === Node.TEXT_NODE && (isVisibleTextNode(n) || isZWS(n))) ||
+            ((n.nodeType === Node.TEXT_NODE &&
+                (isVisibleTextNode(n) || isZWS(n) || (/^\n+$/.test(n.nodeValue) && !applyStyle))) ||
                 n.nodeName === "BR") &&
             closestElement(n).isContentEditable
     );
@@ -1666,8 +1669,12 @@ export function hasAnyFontSizeClass(node) {
  * @returns {boolean}
  */
 export function isSelectionFormat(editable, format) {
-    const selectedNodes = getTraversedNodes(editable)
-        .filter((n) => n.nodeType === Node.TEXT_NODE && n.nodeValue.replaceAll(ZWNBSP_CHAR, '').length);
+    const selectedNodes = getTraversedNodes(editable).filter(
+        (n) =>
+            n.nodeType === Node.TEXT_NODE &&
+            n.nodeValue.replaceAll(ZWNBSP_CHAR, "").length &&
+            (!/^\n+$/.test(n.nodeValue) || !isBlock(closestElement(n)))
+    );
     const isFormatted =
         format === "setFontSizeClassName" ? hasAnyFontSizeClass : formatsSpecs[format].isFormatted;
     return selectedNodes.length && selectedNodes.every(n => isFormatted(n, editable));
@@ -1707,7 +1714,8 @@ export function isUnremovable(node) {
             (node.classList.contains('o_editable') || node.getAttribute('t-set') || node.getAttribute('t-call'))) ||
         (node.classList && node.classList.contains('oe_unremovable')) ||
         (node.nodeName === 'SPAN' && node.parentElement && node.parentElement.getAttribute('data-oe-type') === 'monetary') ||
-        (node.ownerDocument && node.ownerDocument.defaultWindow && !ancestors(node).find(ancestor => ancestor.oid === 'root')) // Node is in DOM but not in editable.
+        (node.ownerDocument && node.ownerDocument.defaultWindow && !ancestors(node).find(ancestor => ancestor.oid === 'root')) || // Node is in DOM but not in editable.
+        (node.dataset && node.dataset.bsToggle === 'tab')
     );
 }
 
@@ -1853,18 +1861,6 @@ export function getColumnIndex(td) {
     }
     const tdSiblings = [...tdParent.children].filter(child => child.nodeName === 'TD' || child.nodeName === 'TH');
     return tdSiblings.findIndex(child => child === td);
-}
-
-/**
- * Get all the cells of given table
- * (excluding nested table cells).
- *
- * @param {HTMLTableElement} table
- * @returns {Array<HTMLTableCellElement>}
- */
-export function getTableCells(table) {
-    return [...table.querySelectorAll('td')]
-        .filter(td => closestElement(td, 'table') === table);
 }
 
 // This is a list of "paragraph-related elements", defined as elements that

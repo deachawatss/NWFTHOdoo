@@ -1,12 +1,11 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import _, api, fields, models
+from odoo import Command, _, api, fields, models
 from odoo.exceptions import ValidationError
-from odoo.fields import Command
 
 
 class SaleOrderTemplate(models.Model):
-    _name = 'sale.order.template'
+    _name = "sale.order.template"
     _description = "Quotation Template"
     _order = 'sequence, id'
 

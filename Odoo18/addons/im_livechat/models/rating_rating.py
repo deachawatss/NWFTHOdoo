@@ -4,7 +4,8 @@
 from odoo import api, models
 
 
-class RatingRating(models.Model):
+class Rating(models.Model):
+
     _inherit = "rating.rating"
 
     @api.depends('res_model', 'res_id')
@@ -16,10 +17,10 @@ class RatingRating(models.Model):
                 current_object = self.env[rating.res_model].sudo().browse(rating.res_id)
                 rating.res_name = ('%s / %s') % (current_object.livechat_channel_id.name, current_object.id)
             else:
-                super(RatingRating, rating)._compute_res_name()
+                super(Rating, rating)._compute_res_name()
 
     def action_open_rated_object(self):
-        action = super().action_open_rated_object()
+        action = super(Rating, self).action_open_rated_object()
         if self.res_model == 'discuss.channel':
             if self.env[self.res_model].browse(self.res_id):
                 ctx = self.env.context.copy()

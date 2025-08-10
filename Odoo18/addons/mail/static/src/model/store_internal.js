@@ -1,14 +1,17 @@
 /** @typedef {import("./record").Record} Record */
 /** @typedef {import("./record_list").RecordList} RecordList */
 
-import { htmlEscape, markup, toRaw } from "@odoo/owl";
+import { markup, toRaw } from "@odoo/owl";
 import { RecordInternal } from "./record_internal";
 import { deserializeDate, deserializeDateTime } from "@web/core/l10n/dates";
-import { IS_DELETING_SYM, isCommand, isMany } from "./misc";
-
-const Markup = markup().constructor;
+import { IS_DELETING_SYM, Markup, isCommand, isMany } from "./misc";
 
 export class StoreInternal extends RecordInternal {
+    /**
+     * Determines whether the inserts are considered trusted or not.
+     * Useful to auto-markup html fields when this is set
+     */
+    trusted = false;
     /** @type {Map<import("./record").Record, Map<string, true>>} */
     FC_QUEUE = new Map(); // field-computes
     /** @type {Map<import("./record").Record, Map<string, true>>} */
@@ -25,7 +28,6 @@ export class StoreInternal extends RecordInternal {
     RD_QUEUE = new Map(); // record-deletes
     /** @type {Map<Record, true>} */
     RHD_QUEUE = new Map(); // record-hard-deletes
-    ERRORS = [];
     UPDATE = 0;
 
     /**
@@ -168,18 +170,11 @@ export class StoreInternal extends RecordInternal {
             shouldChange = !record[fieldName] || !value.equals(record[fieldName]);
         }
         let newValue = value;
-        if (fieldHtml) {
-            newValue =
-                Array.isArray(value) && value[0] === "markup"
-                    ? value[1]
-                        ? markup(value[1])
-                        : ""
-                    : value
-                    ? htmlEscape(value)
-                    : "";
+        if (fieldHtml && this.trusted) {
             shouldChange =
-                record[fieldName]?.toString() !== newValue?.toString() ||
-                record[fieldName] instanceof Markup != newValue instanceof Markup;
+                record[fieldName]?.toString() !== value?.toString() ||
+                !(record[fieldName] instanceof Markup);
+            newValue = typeof value === "string" ? markup(value) : value;
         }
         if (shouldChange) {
             record._.updatingAttrs.set(fieldName, true);

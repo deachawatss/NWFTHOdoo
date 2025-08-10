@@ -3,7 +3,7 @@
 
 {
     'name': 'Sales Timesheet',
-    'category': 'Sales/Sales',
+    'category': 'Hidden',
     'summary': 'Sell based on timesheets',
     'description': """
 Allows to sell timesheets in your sales order
@@ -22,6 +22,7 @@ have real delivered quantities in sales orders.
         'views/sale_order_views.xml',
         'views/product_views.xml',
         'views/project_task_views.xml',
+        'views/project_update_templates.xml',
         'views/hr_timesheet_views.xml',
         'views/res_config_settings_views.xml',
         'views/sale_timesheet_portal_templates.xml',
@@ -30,6 +31,7 @@ have real delivered quantities in sales orders.
         'report/timesheets_analysis_views.xml',
         'report/report_timesheet_templates.xml',
         'report/project_report_view.xml',
+        'wizard/project_create_invoice_views.xml',
         'wizard/sale_make_invoice_advance_views.xml',
     ],
     'demo': [
@@ -52,11 +54,7 @@ have real delivered quantities in sales orders.
             'sale_timesheet/static/tests/**/*',
             ('remove', 'sale_timesheet/static/tests/tours/**/*'),
         ],
-        'project.webclient': [
-            'sale_timesheet/static/src/components/so_line_field/*',
-        ]
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
     'post_init_hook': '_sale_timesheet_post_init',
 }

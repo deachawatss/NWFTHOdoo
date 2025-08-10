@@ -15,6 +15,5 @@
         'data/l10n_mx_hr_demo.xml',
     ],
     'installable': True,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

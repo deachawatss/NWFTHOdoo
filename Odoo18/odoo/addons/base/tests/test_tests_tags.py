@@ -17,6 +17,7 @@ class TestSetTags(TransactionCase):
 
         fc = FakeClass()
 
+        self.assertTrue(hasattr(fc, 'test_tags'))
         self.assertEqual(fc.test_tags, {'at_install', 'standard'})
         self.assertEqual(fc.test_module, 'base')
 
@@ -28,6 +29,7 @@ class TestSetTags(TransactionCase):
 
         fc = FakeClass()
 
+        self.assertTrue(hasattr(fc, 'test_tags'))
         self.assertEqual(fc.test_tags, {'at_install', 'standard'})
         self.assertEqual(fc.test_module, 'base')
 
@@ -163,7 +165,7 @@ class TestSelector(TransactionCase):
         self.assertEqual(set(), tags.exclude)
 
         tags = TagsSelector('/module/tests/test_file.py')  # all standard test of a module
-        self.assertEqual({('standard', None, None, None, '/module/tests/test_file.py'), }, tags.include)
+        self.assertEqual({('standard', None, None, None, 'module.tests.test_file'), }, tags.include)
         self.assertEqual(set(), tags.exclude)
 
         tags = TagsSelector('*/module')  # all tests of a module
@@ -209,17 +211,6 @@ class TestSelector(TransactionCase):
         tags = TagsSelector('*/module,-standard')  # all non standard test of a module
         self.assertEqual({(None, 'module', None, None, None), }, tags.include)  # all in module
         self.assertEqual({('standard', None, None, None, None), }, tags.exclude)  # exept standard ones
-
-        tags = TagsSelector('*/some-paths/with-dash/addons/account/test/test_file.py')  # a filepath with dashes
-        self.assertEqual({(None, None, None, None, '/some-paths/with-dash/addons/account/test/test_file.py'), }, tags.include)
-        tags = TagsSelector('/some/absolute/path/v.3/module.py')
-        self.assertEqual({('standard', None, None, None, '/some/absolute/path/v.3/module.py'), }, tags.include)  # all in module
-
-        tags = TagsSelector('/some/absolute/path/v.3/module.py')
-        self.assertEqual({('standard', None, None, None, '/some/absolute/path/v.3/module.py'), }, tags.include)  # all in module
-
-        tags = TagsSelector('/module.method')
-        self.assertEqual({('standard', 'module', None, 'method', None), }, tags.include)  # all in module
 
 
 @tagged('nodatabase')
@@ -363,21 +354,6 @@ class TestSelectorSelection(TransactionCase):
         tags = TagsSelector('standard')
         position = TagsSelector('post_install')
         self.assertTrue(tags.check(post_install_obj) and position.check(post_install_obj))
-
-        # module part
-        tags = TagsSelector('/base')
-        self.assertTrue(tags.check(no_tags_obj), 'Test should match is module path')
-        tags = TagsSelector('/base/tests/test_tests_tags.py')
-        self.assertTrue(tags.check(no_tags_obj), 'Test should match is module path with file')
-
-        tags = TagsSelector('/account/tests/test_tests_tags.py')
-        self.assertFalse(tags.check(no_tags_obj), 'Test should not match another module path with file')
-
-        # absolute path case (used by test-file)
-        tags = TagsSelector(__file__)  # todo fix if . in path
-        self.assertTrue(tags.check(no_tags_obj), 'Test should match its absolute file path')
-        tags = TagsSelector(__file__)
-        self.assertTrue(tags.check(no_tags_obj), 'Test should its absolute file path')
 
     def test_selector_parser_parameters(self):
         tags = ','.join([

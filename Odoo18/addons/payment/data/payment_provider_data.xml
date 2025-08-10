@@ -28,6 +28,7 @@
                          ref('payment.payment_method_eps'),
                          ref('payment.payment_method_fpx'),
                          ref('payment.payment_method_gcash'),
+                         ref('payment.payment_method_giropay'),
                          ref('payment.payment_method_gopay'),
                          ref('payment.payment_method_hipercard'),
                          ref('payment.payment_method_ideal'),
@@ -196,6 +197,7 @@
                          ref('payment.payment_method_billink'),
                          ref('payment.payment_method_kbc_cbc'),
                          ref('payment.payment_method_belfius'),
+                         ref('payment.payment_method_giropay'),
                          ref('payment.payment_method_p24'),
                          ref('payment.payment_method_poste_pay'),
                          ref('payment.payment_method_eps'),
@@ -209,19 +211,6 @@
         <field name="sequence">40</field>
         <field name="image_128" type="base64" file="payment_demo/static/description/icon.png"/>
         <field name="module_id" ref="base.module_payment_demo"/>
-    </record>
-
-    <record id="payment_provider_dpo" model="payment.provider">
-        <field name="name">DPO Pay</field>
-        <field name="image_128" type="base64" file="payment_dpo/static/description/icon.png"/>
-        <field name="module_id" ref="base.module_payment_dpo"/>
-        <!-- https://dpogroup.com/Payment-methods/ -->
-        <field
-            name="payment_method_ids"
-            eval="[Command.set([
-                      ref('payment.payment_method_dpo'),
-                  ])]"
-        />
     </record>
 
     <record id="payment_provider_flutterwave" model="payment.provider">
@@ -276,13 +265,13 @@
                          ref('payment.payment_method_belfius'),
                          ref('payment.payment_method_card'),
                          ref('payment.payment_method_eps'),
+                         ref('payment.payment_method_giropay'),
                          ref('payment.payment_method_ideal'),
                          ref('payment.payment_method_kbc_cbc'),
                          ref('payment.payment_method_paypal'),
                          ref('payment.payment_method_paysafecard'),
                          ref('payment.payment_method_p24'),
                          ref('payment.payment_method_sofort'),
-                         ref('payment.payment_method_trustly'),
                          ref('payment.payment_method_twint'),
                      ])]"
         />
@@ -308,37 +297,6 @@
         />
     </record>
 
-    <record id="payment_provider_paymob" model="payment.provider">
-        <field name="name">Paymob</field>
-        <field name="image_128" type="base64" file="payment_paymob/static/description/icon.png"/>
-        <field name="module_id" ref="base.module_payment_paymob"/>
-        <!-- For each country available payment methods are different but card is common for all-->
-        <!-- https://developers.paymob.com/egypt/payment-methods -->
-        <field
-            name="payment_method_ids"
-            eval="[Command.set([
-                    ref('payment_method_aman'),
-                    ref('payment.payment_method_card'),
-                    ref('payment_method_contact'),
-                    ref('payment_method_easypaisa'),
-                    ref('payment_method_forsa'),
-                    ref('payment_method_halan'),
-                    ref('payment_method_installments_eg'),
-                    ref('payment_method_jazzcash'),
-                    ref('payment_method_kiosk'),
-                    ref('payment_method_mobile_wallet_eg'),
-                    ref('payment_method_omannet'),
-                    ref('payment_method_premium_card'),
-                    ref('payment_method_souhoola'),
-                    ref('payment_method_stcpay'),
-                    ref('payment_method_sympl'),
-                    ref('payment_method_tabby'),
-                    ref('payment_method_tamara'),
-                    ref('payment_method_valu'),
-                ])]"
-        />
-    </record>
-
     <record id="payment_provider_paypal" model="payment.provider">
         <field name="name">PayPal</field>
         <field name="image_128" type="base64" file="payment_paypal/static/description/icon.png"/>
@@ -359,13 +317,11 @@
         <field name="payment_method_ids"
                eval="[Command.set([
                          ref('payment.payment_method_card'),
-                         ref('payment.payment_method_emi_india'),
-                         ref('payment.payment_method_fpx'),
                          ref('payment.payment_method_netbanking'),
-                         ref('payment.payment_method_paylater_india'),
-                         ref('payment.payment_method_paynow'),
                          ref('payment.payment_method_upi'),
                          ref('payment.payment_method_wallets_india'),
+                         ref('payment.payment_method_paylater_india'),
+                         ref('payment.payment_method_emi_india'),
                      ])]"
         />
     </record>
@@ -398,7 +354,6 @@
                          ref('payment.payment_method_affirm'),
                          ref('payment.payment_method_afterpay'),
                          ref('payment.payment_method_alipay'),
-                         ref('payment.payment_method_amazon_pay'),
                          ref('payment.payment_method_bacs_direct_debit'),
                          ref('payment.payment_method_bancontact'),
                          ref('payment.payment_method_becs_direct_debit'),
@@ -408,6 +363,7 @@
                          ref('payment.payment_method_clearpay'),
                          ref('payment.payment_method_eps'),
                          ref('payment.payment_method_fpx'),
+                         ref('payment.payment_method_giropay'),
                          ref('payment.payment_method_grabpay'),
                          ref('payment.payment_method_ideal'),
                          ref('payment.payment_method_klarna'),
@@ -421,7 +377,6 @@
                          ref('payment.payment_method_revolut_pay'),
                          ref('payment.payment_method_sepa_direct_debit'),
                          ref('payment.payment_method_sofort'),
-                         ref('payment.payment_method_twint'),
                          ref('payment.payment_method_upi'),
                          ref('payment.payment_method_wechat_pay'),
                          ref('payment.payment_method_zip'),

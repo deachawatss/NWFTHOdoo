@@ -194,7 +194,6 @@ class TestCustomSnippet(TransactionCase):
 
 @tagged('post_install', '-at_install')
 class TestHttpCustomSnippet(HttpCase):
-
     def test_editable_root_as_custom_snippet(self):
         View = self.env['ir.ui.view']
         Page = self.env['website.page']

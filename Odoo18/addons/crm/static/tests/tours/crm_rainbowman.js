@@ -1,5 +1,7 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
-import { stepUtils } from "@web_tour/tour_utils";
+import { stepUtils } from "@web_tour/tour_service/tour_utils";
 
 registry.category("web_tour.tours").add("crm_rainbowman", {
     url: "/odoo",
@@ -11,7 +13,7 @@ registry.category("web_tour.tours").add("crm_rainbowman", {
             run: "click",
         },
         {
-            trigger: "body:has(.o_kanban_renderer) .o-kanban-button-new",
+            trigger: ".o-kanban-button-new",
             content: "click create",
             run: "click",
         },

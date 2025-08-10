@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { _t } from "@web/core/l10n/translation";
 import { useService } from "@web/core/utils/hooks";
 
@@ -85,7 +87,7 @@ export function useSpreadsheetPrint(model) {
         };
         frozenPrintState = {
             viewRect,
-            offset: model().getters.getActiveSheetScrollInfo(),
+            offset: model().getters.getActiveSheetDOMScrollInfo(),
             mode: model().config.mode,
         };
         model().updateMode("dashboard");

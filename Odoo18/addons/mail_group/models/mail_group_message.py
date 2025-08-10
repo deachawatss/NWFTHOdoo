@@ -7,7 +7,7 @@ from markupsafe import Markup
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
-from odoo.fields import Domain
+from odoo.osv import expression
 from odoo.tools.mail import email_normalize, append_content_to_html
 
 _logger = logging.getLogger(__name__)
@@ -37,11 +37,11 @@ class MailGroupMessage(models.Model):
     # Thread
     mail_group_id = fields.Many2one(
         'mail.group', string='Group',
-        required=True, index=True, ondelete='cascade')
+        required=True, ondelete='cascade')
     mail_message_id = fields.Many2one('mail.message', 'Mail Message', required=True, ondelete='cascade', index=True, copy=False)
     # Parent and children
     group_message_parent_id = fields.Many2one(
-        'mail.group.message', string='Parent', store=True, index=True)
+        'mail.group.message', string='Parent', store=True)
     group_message_child_ids = fields.One2many('mail.group.message', 'group_message_parent_id', string='Children')
     # Moderation
     author_moderation = fields.Selection([('ban', 'Banned'), ('allow', 'Whitelisted')], string='Author Moderation Status',
@@ -87,8 +87,8 @@ class MailGroupMessage(models.Model):
                 raise AccessError(_('The record of the message should be the group.'))
 
     @api.model_create_multi
-    def create(self, vals_list):
-        for vals in vals_list:
+    def create(self, values_list):
+        for vals in values_list:
             if not vals.get('mail_message_id'):
                 vals.update({
                     'res_id': vals.get('mail_group_id'),
@@ -100,7 +100,7 @@ class MailGroupMessage(models.Model):
                     if field in vals
                     and field in self.env['mail.thread']._get_message_create_valid_field_names()
                 }).id
-        return super().create(vals_list)
+        return super(MailGroupMessage, self).create(values_list)
 
     def copy_data(self, default=None):
         vals_list = super().copy_data(default)
@@ -167,13 +167,15 @@ class MailGroupMessage(models.Model):
     def _get_pending_same_author_same_group(self):
         """Return the pending messages of the same authors in the same groups."""
         return self.search(
-            Domain.OR([
-                [
-                    ('mail_group_id', '=', message.mail_group_id.id),
-                    ('email_from_normalized', '=', message.email_from_normalized),
-                ] for message in self
+            expression.AND([
+                expression.OR([
+                    [
+                        ('mail_group_id', '=', message.mail_group_id.id),
+                        ('email_from_normalized', '=', message.email_from_normalized),
+                    ] for message in self
+                ]),
+                [('moderation_status', '=', 'pending_moderation')],
             ])
-            & Domain('moderation_status', '=', 'pending_moderation')
         )
 
     def _create_moderation_rule(self, status):
@@ -190,7 +192,7 @@ class MailGroupMessage(models.Model):
                 raise UserError(_('The email "%s" is not valid.', message.email_from))
 
         existing_moderation = self.env['mail.group.moderation'].search(
-            Domain.OR([
+            expression.OR([
                 [
                     ('email', '=', email_normalize(message.email_from)),
                     ('mail_group_id', '=', message.mail_group_id.id)

@@ -35,7 +35,5 @@ class AccountChartTemplate(models.AbstractModel):
                 'account_production_wip_overhead_account_id': 'l10n_cn_large_bis_account_140502',
                 'account_sale_tax_id': 'l10n_cn_tax_large_bis_sales_excluded_13',
                 'account_purchase_tax_id': 'l10n_cn_purchase_excluded_13',
-                'expense_account_id': 'l10n_cn_large_bis_account_6401',
-                'income_account_id': 'l10n_cn_large_bis_account_6001',
             },
         }

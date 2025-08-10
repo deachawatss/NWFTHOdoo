@@ -2,115 +2,17 @@ import { Range, RangeData } from "@odoo/o-spreadsheet";
 import { DomainListRepr } from "@web/core/domain";
 
 declare module "@spreadsheet" {
-    export type DateDefaultValue =
-        | "today"
-        | "yesterday"
-        | "last_7_days"
-        | "last_30_days"
-        | "last_90_days"
-        | "month_to_date"
+    export type RangeType = "fixedPeriod" | "relative" | "from_to";
+    export type FixedPeriods = "quarter" | "month";
+    export type RelativePeriod =
         | "last_month"
-        | "this_month"
-        | "this_quarter"
-        | "last_12_months"
-        | "this_year"
+        | "last_week"
+        | "last_three_months"
+        | "last_six_months"
+        | "last_year"
+        | "last_three_years"
         | "year_to_date";
-
-    export interface MonthDateValue {
-        type: "month";
-        year: number;
-        month: number; // 1-12
-    }
-
-    export interface QuarterDateValue {
-        type: "quarter";
-        year: number;
-        quarter: number; // 1-4
-    }
-
-    export interface YearDateValue {
-        type: "year";
-        year: number;
-    }
-
-    export interface RelativeDateValue {
-        type: "relative";
-        period:
-            | "today"
-            | "yesterday"
-            | "last_7_days"
-            | "last_30_days"
-            | "last_90_days"
-            | "month_to_date"
-            | "last_month"
-            | "last_12_months"
-            | "year_to_date";
-    }
-
-    export interface DateRangeValue {
-        type: "range";
-        from?: string;
-        to?: string;
-    }
-
-    export type DateValue =
-        | MonthDateValue
-        | QuarterDateValue
-        | YearDateValue
-        | RelativeDateValue
-        | DateRangeValue;
-
-    interface SetValue {
-        operator: "set" | "not_set";
-    }
-
-    interface RelationIdsValue {
-        operator: "in" | "not in" | "child_of";
-        ids: number[];
-    }
-
-    interface RelationContainsValue {
-        operator: "ilike" | "not ilike" | "starts_with" | "ends_with";
-        strings: string[];
-    }
-
-    interface CurrentUser {
-        operator: "in" | "not in";
-        ids: "current_user";
-    }
-
-    export type RelationValue = RelationIdsValue | SetValue | RelationContainsValue;
-    type RelationDefaultValue = RelationValue | CurrentUser;
-
-    interface NumericUnaryValue {
-        operator: "=" | "!=" | "<" | ">";
-        operand: number;
-    }
-
-    interface NumericRangeValue {
-        operator: "between" | "not_between";
-        min: number;
-        max: number;
-    }
-
-    export type NumericValue = NumericUnaryValue | NumericRangeValue | SetValue;
-
-    interface TextInValue {
-        operator: "in" | "not in";
-        strings: string[];
-    }
-
-    interface TextContainsValue {
-        operator: "ilike" | "not ilike" | "starts_with";
-        text: string;
-    }
-
-    export type TextValue = TextInValue | TextContainsValue | SetValue;
-
-    interface SelectionInValue {
-        operator: "in" | "not in";
-        selectionValues: string[];
-    }
+    export type DateFilterTimePeriod = RelativePeriod | "this_month" | "this_quarter" | "this_year";
 
     export interface FieldMatching {
         chain: string;
@@ -122,29 +24,40 @@ declare module "@spreadsheet" {
         type: "text";
         id: string;
         label: string;
-        rangesOfAllowedValues?: Range[];
-        defaultValue?: TextValue;
-    }
-
-    export interface SelectionGlobalFilter {
-        type: "selection";
-        id: string;
-        label: string;
-        resModel: string;
-        selectionField: string;
-        defaultValue?: SelectionInValue;
+        rangeOfAllowedValues?: Range;
+        defaultValue?: string;
     }
 
     export interface CmdTextGlobalFilter extends TextGlobalFilter {
-        rangesOfAllowedValues?: RangeData[];
+        rangeOfAllowedValues?: RangeData;
     }
 
-    export interface DateGlobalFilter {
+    export interface DateGlobalFilterCommon {
         type: "date";
         id: string;
         label: string;
-        defaultValue?: DateDefaultValue;
     }
+
+    export interface FromToDateGlobalFilter extends DateGlobalFilterCommon {
+        rangeType: "from_to";
+        defaultValue?: number[];
+    }
+
+    export interface RelativeDateGlobalFilter extends DateGlobalFilterCommon {
+        rangeType: "relative";
+        defaultValue?: DateFilterTimePeriod;
+    }
+
+    export interface FixedPeriodDateGlobalFilter extends DateGlobalFilterCommon {
+        rangeType: "fixedPeriod";
+        defaultValue?: { period?: string; yearOffset?: number };
+        disabledPeriods?: FixedPeriods[];
+    }
+
+    export type DateGlobalFilter =
+        | FromToDateGlobalFilter
+        | RelativeDateGlobalFilter
+        | FixedPeriodDateGlobalFilter;
 
     export interface RelationalGlobalFilter {
         type: "relation";
@@ -152,17 +65,10 @@ declare module "@spreadsheet" {
         label: string;
         modelName: string;
         includeChildren: boolean;
-        defaultValue?: RelationDefaultValue;
+        defaultValue?: "current_user" | number[];
         domainOfAllowedValues?: DomainListRepr | string;
     }
 
-    export interface BooleanGlobalFilter {
-        type: "boolean";
-        id: string;
-        label: string;
-        defaultValue?: SetValue;
-    }
-
-    export type GlobalFilter = TextGlobalFilter | DateGlobalFilter | RelationalGlobalFilter | BooleanGlobalFilter | SelectionGlobalFilter;
-    export type CmdGlobalFilter = CmdTextGlobalFilter | DateGlobalFilter | RelationalGlobalFilter | BooleanGlobalFilter | SelectionGlobalFilter;
+    export type GlobalFilter = TextGlobalFilter | DateGlobalFilter | RelationalGlobalFilter;
+    export type CmdGlobalFilter = CmdTextGlobalFilter | DateGlobalFilter | RelationalGlobalFilter;
 }

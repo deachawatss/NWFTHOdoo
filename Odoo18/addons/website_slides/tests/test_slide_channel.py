@@ -41,7 +41,7 @@ class TestSlidesManagement(slides_common.SlidesCase):
             self.assertTrue(slide.active, "All slide should be archived when a channel is archived")
             self.assertTrue(slide.is_published, "All slide should be unpublished when a channel is archived")
 
-        self.channel.action_archive()
+        self.channel.toggle_active()
         self.assertFalse(self.channel.active)
         self.assertFalse(self.channel.is_published)
         # channel_partner should still NOT be marked as completed
@@ -174,8 +174,7 @@ class TestSlidesManagement(slides_common.SlidesCase):
             })],
             'completed_template_id': mail_template.id
         })
-        # sudo because creator has no rights to modify templates
-        self.channel.sudo().completed_template_id.body_html = '<p>TestBodyTemplate</p>'
+        self.channel.completed_template_id.body_html = '<p>TestBodyTemplate</p>'
 
         all_channels = self.channel | channel_2
         all_channels.sudo()._action_add_members(self.user_officer.partner_id)
@@ -251,7 +250,7 @@ class TestSlidesManagement(slides_common.SlidesCase):
             return 13.37
 
         with patch(
-            'odoo.addons.website_slides.models.slide_slide.SlideSlide._get_completion_time_pdf',
+            'odoo.addons.website_slides.models.slide_slide.Slide._get_completion_time_pdf',
             new=_get_completion_time_pdf
         ):
             slides_1 = self.env['slide.slide'].create({

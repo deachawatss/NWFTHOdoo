@@ -3,7 +3,7 @@
 from odoo import api, models
 
 
-class HrExpense(models.Model):
+class Expense(models.Model):
     _inherit = "hr.expense"
 
     @api.depends('sale_order_id')
@@ -14,16 +14,3 @@ class HrExpense(models.Model):
                 if not self.sale_order_id:
                     continue
                 expense.analytic_distribution = expense.sale_order_id.project_id._get_analytic_distribution()
-
-    def action_post(self):
-        """ When creating the move of the expense, if the AA is given in the project of the SO, we take it as reference in the distribution.
-            Otherwise, we create a AA for the project of the SO and set the distribution to it.
-        """
-        for expense in self:
-            project = expense.sale_order_id.project_id
-            if not project or expense.analytic_distribution:
-                continue
-            if not project.account_id:
-                project._create_analytic_account()
-            expense.analytic_distribution = project._get_analytic_distribution()
-        return super().action_post()

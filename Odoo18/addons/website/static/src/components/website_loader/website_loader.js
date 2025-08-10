@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { rpc } from "@web/core/network/rpc";
 import { useBus, useService } from "@web/core/utils/hooks";
 import { sprintf } from "@web/core/utils/strings";
@@ -73,7 +75,7 @@ export class WebsiteLoader extends Component {
             () => [this.state.selectedFeatures]
         );
 
-        // Cycle through the waitingMessages every 6s
+        // Cycle through the waitingMessages every 10s
         useEffect(
             () => {
                 if (this.state.showWaitingMessages) {
@@ -137,9 +139,6 @@ export class WebsiteLoader extends Component {
             this.state.showLoader = props && props.showLoader !== false;
         });
         useBus(this.props.bus, "HIDE-WEBSITE-LOADER", () => {
-            if (!this.state.isVisible) {
-                return;
-            }
             for (const key of Object.keys(initialState)) {
                 this.state[key] = initialState[key];
             }
@@ -159,9 +158,6 @@ export class WebsiteLoader extends Component {
      * Initializes the progress bar.
      */
     initProgressBar() {
-        if (this.updateProgressInterval) {
-            return;
-        }
         // The progress speed decreases as it approaches its limit. This way,
         // users have the feeling that the website creation progressing is fast
         // and we prevent them from leaving the page too early (because they
@@ -276,7 +272,9 @@ export class WebsiteLoader extends Component {
         const messagesList = websiteFeaturesMessages.filter((msg) => {
             if (filteredIds.includes(msg.id)) {
                 if (msg.name) {
-                    const highlight = markup`<span class="o_website_loader_text_highlight">${msg.name}</span>`;
+                    const highlight = sprintf(
+                        '<span class="o_website_loader_text_highlight">%s</span>', msg.name
+                    );
                     msg.description = markup(sprintf(msg.description, highlight));
                 }
                 return true;

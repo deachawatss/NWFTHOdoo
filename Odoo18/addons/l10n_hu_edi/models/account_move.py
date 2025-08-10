@@ -6,10 +6,11 @@ import logging
 import re
 
 from lxml import etree
+from psycopg2.errors import LockNotAvailable
 
 from odoo import fields, models, api, _
 from odoo.http import request
-from odoo.exceptions import LockError, UserError, ValidationError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tools import formatLang, float_compare, float_is_zero, float_round, float_repr, cleanup_xml_node, groupby
 from odoo.tools.misc import split_every
 from odoo.addons.base_iban.models.res_partner_bank import normalize_iban
@@ -210,7 +211,7 @@ class AccountMove(models.Model):
         for invoice in invoices_to_query:
             # Log invoice status in chatter.
             formatted_message = self.env['account.move.send']._format_error_html(invoice.l10n_hu_edi_messages)
-            invoice.message_post(body=formatted_message)
+            invoice.with_context(no_new_invoice=True).message_post(body=formatted_message)
 
         if self.env['account.move.send']._can_commit():
             self.env.cr.commit()
@@ -307,15 +308,18 @@ class AccountMove(models.Model):
 
     def _l10n_hu_edi_acquire_lock(self):
         """ Acquire a write lock on the invoices in self. """
+        if not self:
+            return
         try:
-            self.lock_for_update()
-        except LockError:
+            with self.env.cr.savepoint(flush=False):
+                self.env.cr.execute('SELECT * FROM account_move WHERE id = ANY(%s) FOR UPDATE NOWAIT', [self.ids])
+        except LockNotAvailable:
             raise UserError(_('Could not acquire lock on invoices - is another user performing operations on them?')) from None
 
     # === EDI: Flow === #
 
     def _l10n_hu_edi_check_invoices(self):
-        hu_vat_regex = re.compile(r'(HU)?\d{8}-[1-5]-\d{2}')
+        hu_vat_regex = re.compile(r'\d{8}-[1-5]-\d{2}')
         hu_bank_account_regex = re.compile(r'\d{8}-\d{8}-\d{8}|\d{8}-\d{8}|[A-Z]{2}\d{2}[0-9A-Za-z]{11,30}')
 
         # This contains all the advance invoices that correspond to final invoices in `self`.
@@ -451,6 +455,7 @@ class AccountMove(models.Model):
                 'action_text': _('Open Accounting Settings'),
                 'action': self.env.ref('account.action_account_config').with_company(companies_missing_credentials[0])._get_action_dict(),
             }
+
         return errors
 
     def _l10n_hu_edi_upload(self, connection):

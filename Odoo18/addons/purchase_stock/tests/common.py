@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from datetime import timedelta
 
-from odoo import Command, fields
+from odoo import fields
 from odoo.addons.stock.tests.common import TestStockCommon
 from odoo import tools
 
@@ -13,7 +13,7 @@ class PurchaseTestCommon(TestStockCommon):
         order_values = {
             'warehouse_id': self.warehouse_1,
             'action': 'pull_push',
-            'date_planned': date_planned or fields.Datetime.to_string(fields.Datetime.now() + timedelta(days=10)),  # 10 days added to current date of procurement to get future schedule date and order date of purchase order.
+            'date_planned': date_planned or fields.Datetime.to_string(fields.datetime.now() + timedelta(days=10)),  # 10 days added to current date of procurement to get future schedule date and order date of purchase order.
             'group_id': self.env['procurement.group'],
         }
         return ProcurementGroup.run([self.env['procurement.group'].Procurement(
@@ -24,38 +24,34 @@ class PurchaseTestCommon(TestStockCommon):
     @classmethod
     def setUpClass(cls):
         super(PurchaseTestCommon, cls).setUpClass()
-        cls.route_mto.active = True
+        cls.env.ref('stock.route_warehouse0_mto').active = True
 
-        cls.route_buy = cls.warehouse_1.buy_pull_id.route_id
-        cls.categ_id = cls.env.ref('product.product_category_goods').id
+        cls.route_buy = cls.warehouse_1.buy_pull_id.route_id.id
+        cls.route_mto = cls.warehouse_1.mto_pull_id.route_id.id
 
         # Update product_1 with type, route and Delivery Lead Time
         cls.product_1.write({
             'is_storable': True,
-            'route_ids': [Command.set([cls.route_buy.id, cls.route_mto.id])],
-            'seller_ids': [Command.create({'partner_id': cls.partner_1.id, 'delay': 5})],
-            'categ_id': cls.categ_id,
-        })
+            'route_ids': [(6, 0, [cls.route_buy, cls.route_mto])],
+            'seller_ids': [(0, 0, {'partner_id': cls.partner_1.id, 'delay': 5})]})
 
         cls.t_shirt = cls.env['product.product'].create({
             'name': 'T-shirt',
             'description': 'Internal Notes',
-            'route_ids': [Command.set([cls.route_buy.id, cls.route_mto.id])],
-            'seller_ids': [Command.create({'partner_id': cls.partner_1.id, 'delay': 5})]
+            'route_ids': [(6, 0, [cls.route_buy, cls.route_mto])],
+            'seller_ids': [(0, 0, {'partner_id': cls.partner_1.id, 'delay': 5})]
         })
 
         # Update product_2 with type, route and Delivery Lead Time
         cls.product_2.write({
             'is_storable': True,
-            'route_ids': [Command.set([cls.route_buy.id, cls.route_mto.id])],
-            'seller_ids': [Command.create({'partner_id': cls.partner_1.id, 'delay': 2})],
-            'categ_id': cls.categ_id,
-        })
+            'route_ids': [(6, 0, [cls.route_buy, cls.route_mto])],
+            'seller_ids': [(0, 0, {'partner_id': cls.partner_1.id, 'delay': 2})]})
 
         cls.res_users_purchase_user = cls.env['res.users'].create({
             'company_id': cls.env.ref('base.main_company').id,
             'name': "Purchase User",
             'login': "pu",
             'email': "purchaseuser@yourcompany.com",
-            'group_ids': [Command.set([cls.env.ref('purchase.group_purchase_user').id])],
-        })
+            'groups_id': [(6, 0, [cls.env.ref('purchase.group_purchase_user').id])],
+            })

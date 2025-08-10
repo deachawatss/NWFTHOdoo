@@ -276,9 +276,9 @@ class AccountMove(models.Model):
         # The content of the inner zip is a xsl file as well as a xml file.
         # In our case the xsl file is not important, so we can simply ignore it.
         with zipfile.ZipFile(io.BytesIO(file_bytes)) as zip_file:
-            inner_zip_bytes = zip_file.read(zip_file.infolist()[0])
+            inner_zip_bytes = zip_file.read(zip_file.filelist[0])
             with zipfile.ZipFile(io.BytesIO(inner_zip_bytes)) as inner_zip:
-                for file in inner_zip.infolist():
+                for file in inner_zip.filelist:
                     if file.filename.endswith('.xml'):
                         return {
                             'name': file.filename,
@@ -371,7 +371,7 @@ class AccountMove(models.Model):
             invoice.l10n_vn_edi_invoice_state = 'sent'
 
             if self._can_commit():
-                self.env.cr.commit()
+                self._cr.commit()
 
     def _l10n_vn_need_cancel_request(self):
         return self._l10n_vn_edi_is_sent() and self.l10n_vn_edi_invoice_state != 'canceled'
@@ -479,7 +479,7 @@ class AccountMove(models.Model):
         })
 
         if self._can_commit():
-            self.env.cr.commit()
+            self._cr.commit()
 
     def _l10n_vn_edi_cancel_invoice(self, reason, agreement_document_name, agreement_document_date):
         """ Send a request to cancel the invoice. """
@@ -522,17 +522,17 @@ class AccountMove(models.Model):
 
             self.button_cancel()
 
-            self.message_post(
+            self.with_context(no_new_invoice=True).message_post(
                 body=_('The invoice has been canceled for reason: %(reason)s', reason=reason),
             )
         except UserError as e:
-            self.message_post(
+            self.with_context(no_new_invoice=True).message_post(
                 body=_('The invoice has been canceled on sinvoice for reason: %(reason)s'
                        'But the cancellation in Odoo failed with error: %(error)s', reason=reason, error=e),
             )
 
         if self._can_commit():
-            self.env.cr.commit()
+            self._cr.commit()
 
     def button_draft(self):
         # EXTEND account
@@ -628,8 +628,7 @@ class AccountMove(models.Model):
             'buyerAddressLine': self.partner_id.street,
             'buyerPhoneNumber': commercial_partner_phone or '',
             'buyerEmail': self.commercial_partner_id.email or '',
-            'buyerDistrictName': self.partner_id.state_id.name,
-            'buyerCityName': self.partner_id.city,
+            'buyerCityName': self.partner_id.city or self.partner_id.state_id.name,
             'buyerCountryCode': self.partner_id.country_id.code,
             'buyerNotGetInvoice': 0,  # Set to 1 to no send the invoice to the buyer.
         }
@@ -701,15 +700,15 @@ class AccountMove(models.Model):
                 'unitPrice': line.price_unit * sign,
                 'quantity': line.quantity,
                 # This amount should be without discount applied.
-                'itemTotalAmountWithoutTax': line.currency_id.round(line.price_unit * line.quantity) * sign,
+                'itemTotalAmountWithoutTax': line.currency_id.round(line.price_unit * line.quantity),
                 # In Vietnam a line will always have only one tax.
                 # Values are either: -2 (no tax), -1 (not declaring/paying taxes), 0,5,8,10 (the tax %)
                 # Most use cases will be -2 or a tax percentage, so we limit the support to these.
                 'taxPercentage': line.tax_ids and line.tax_ids[0].amount or -2,
-                'taxAmount': (line.price_total - line.price_subtotal) * sign,
+                'taxAmount': (line.price_total - line.price_subtotal),
                 'discount': line.discount,
-                'itemTotalAmountAfterDiscount': line.price_subtotal * sign,
-                'itemTotalAmountWithTax': line.price_total * sign,
+                'itemTotalAmountAfterDiscount': line.price_subtotal,
+                'itemTotalAmountWithTax': line.price_total,
             }
             if line.display_type in code_map:
                 item_information['selection'] = code_map[line.display_type]

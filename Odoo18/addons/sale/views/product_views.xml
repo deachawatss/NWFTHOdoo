@@ -25,10 +25,13 @@
             </field>
             <group name="description" position="after">
                 <t groups="sales_team.group_sale_salesman">
-                    <group string="Warning on Sales Orders" groups="sale.group_warning_sale">
+                    <group string="Warning when Selling this Product" groups="sale.group_warning_sale">
+                        <field name="sale_line_warn" string="Warning"/>
                         <field name="sale_line_warn_msg"
-                               placeholder="e.g. This product is defective."
-                               nolabel="1" colspan="2"/>
+                               string="Message"
+                               placeholder="Type a message..."
+                               invisible="sale_line_warn == 'no-message'"
+                               required="sale_line_warn != 'no-message'"/>
                     </group>
                 </t>
                 <group name="expense_info" string="Expense" invisible="not visible_expense_policy">
@@ -92,11 +95,8 @@
         <field name="name">Products</field>
         <field name="res_model">product.template</field>
         <field name="path">products</field>
-        <field name="view_ids" eval="[Command.clear(),
-            Command.create({'view_mode': 'kanban'}),
-            Command.create({'view_mode': 'list', 'view_id': ref('account.product_template_list_view_sellable_inherit')}),
-            Command.create({'view_mode': 'form'}),
-            Command.create({'view_mode': 'activity'})]"/>
+        <field name="view_mode">kanban,list,form,activity</field>
+        <field name="view_id" ref="product.product_template_kanban_view"/>
         <field name="search_view_id" ref="product.product_template_search_view"/>
         <field name="context">{"search_default_filter_to_sell":1, "sale_multi_pricelist_product_template": 1}</field>
         <field name="help" type="html">
@@ -128,9 +128,20 @@
             <filter name="goods" position="after">
                 <filter string="In the Order"
                         invisible="context.get('active_model', '') != 'sale.order.line'"
-                        name="products_in_sale_order"
+                        name="products_in_order"
                         domain="[('product_catalog_product_is_in_sale_order', '=', True)]"/>
             </filter>
+        </field>
+    </record>
+
+    <record id="view_category_property_form" model="ir.ui.view">
+        <field name="name">product.category.property.form.inherit.sale</field>
+        <field name="model">product.category</field>
+        <field name="inherit_id" ref="product.product_category_form_view"/>
+        <field name="arch" type="xml">
+            <field name="property_account_expense_categ_id" position="after">
+                <field name="property_account_downpayment_categ_id"/>
+            </field>
         </field>
     </record>
 

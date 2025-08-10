@@ -1,7 +1,9 @@
-import { _t } from "@web/core/l10n/translation";
-import { registry } from '@web/core/registry';
+/** @odoo-module **/
 
-registry.category("website.form_editor_actions").add('send_mail', {
+import { _t } from "@web/core/l10n/translation";
+import FormEditorRegistry from "@website/js/form_editor_registry";
+
+FormEditorRegistry.add('send_mail', {
     formFields: [{
         type: 'char',
         custom: true,

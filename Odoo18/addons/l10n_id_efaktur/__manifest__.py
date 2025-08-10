@@ -41,6 +41,5 @@ you have not already sent to the government to reuse its number.
     ],
     'installable': True,
     'auto_install': True,
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

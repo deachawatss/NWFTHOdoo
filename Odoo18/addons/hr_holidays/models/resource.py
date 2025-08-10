@@ -2,12 +2,11 @@
 
 from odoo import fields, models, api, _
 from odoo.exceptions import ValidationError
-from odoo.fields import Domain
+from odoo.osv import expression
 import pytz
 from datetime import datetime
 
-
-class ResourceCalendarLeaves(models.Model):
+class CalendarLeaves(models.Model):
     _inherit = "resource.calendar.leaves"
 
     holiday_id = fields.Many2one("hr.leave", string='Time Off Request')
@@ -33,14 +32,15 @@ class ResourceCalendarLeaves(models.Model):
                     raise ValidationError(_('Two public holidays cannot overlap each other for the same working hours.'))
 
     def _get_domain(self, time_domain_dict):
-        return Domain.OR(
+        domain = expression.OR([
             [
                 ('employee_company_id', '=', date['company_id']),
                 ('date_to', '>', date['date_from']),
                 ('date_from', '<', date['date_to']),
             ]
             for date in time_domain_dict
-        ) & Domain('state', 'not in', ['refuse', 'cancel'])
+        ])
+        return expression.AND([domain, [('state', 'not in', ['refuse', 'cancel'])]])
 
     def _get_time_domain_dict(self):
         return [{
@@ -65,18 +65,18 @@ class ResourceCalendarLeaves(models.Model):
         })
         self.env.add_to_compute(self.env['hr.leave']._fields['number_of_days'], leaves)
         self.env.add_to_compute(self.env['hr.leave']._fields['duration_display'], leaves)
-        sick_time_status = self.env.ref('hr_holidays.leave_type_sick_time_off', raise_if_not_found=False)
+        sick_time_status = self.env.ref('hr_holidays.holiday_status_sl', raise_if_not_found=False)
         leaves_to_recreate = self.env['hr.leave']
         for previous_duration, leave, state in zip(previous_durations, leaves, previous_states):
             duration_difference = previous_duration - leave.number_of_days
             message = False
-            if duration_difference > 0 and leave.holiday_status_id.requires_allocation:
+            if duration_difference > 0 and leave.holiday_status_id.requires_allocation == 'yes':
                 message = _("Due to a change in global time offs, you have been granted %s day(s) back.", duration_difference)
             if leave.number_of_days > previous_duration\
                     and (not sick_time_status or leave.holiday_status_id not in sick_time_status):
                 message = _("Due to a change in global time offs, %s extra day(s) have been taken from your allocation. Please review this leave if you need it to be changed.", -1 * duration_difference)
             try:
-                leave.sudo().write({'state': state})  # sudo in order to skip _check_approval_update
+                leave.write({'state': state})
                 leave._check_validity()
                 if leave.state == 'validate':
                     # recreate the resource leave that were removed by writing state to draft
@@ -158,7 +158,6 @@ class ResourceCalendarLeaves(models.Model):
 
         return res
 
-
 class ResourceCalendar(models.Model):
     _inherit = "resource.calendar"
 
@@ -166,7 +165,7 @@ class ResourceCalendar(models.Model):
 
     def _compute_associated_leaves_count(self):
         leaves_read_group = self.env['resource.calendar.leaves']._read_group(
-            [('resource_id', '=', False), ('calendar_id', 'in', self.ids)],
+            [('resource_id', '=', False), ('calendar_id', 'in', [False, *self.ids])],
             ['calendar_id'],
             ['__count'],
         )
@@ -174,9 +173,3 @@ class ResourceCalendar(models.Model):
         global_leave_count = result.get('global', 0)
         for calendar in self:
             calendar.associated_leaves_count = result.get(calendar.id, 0) + global_leave_count
-
-
-class ResourceResource(models.Model):
-    _inherit = "resource.resource"
-
-    leave_date_to = fields.Date(related="user_id.leave_date_to")

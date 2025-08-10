@@ -24,9 +24,9 @@ export const overlayService = {
             props: { overlays },
         });
 
-        const remove = async (id, onRemove = () => {}, removeParams) => {
+        const remove = (id, onRemove = () => {}) => {
             if (id in overlays) {
-                await onRemove(removeParams);
+                onRemove();
                 delete overlays[id];
             }
         };
@@ -39,8 +39,7 @@ export const overlayService = {
          */
         const add = (component, props, options = {}) => {
             const id = ++nextId;
-            const removeCurrentOverlay = (removeParams) =>
-                remove(id, options.onRemove, removeParams);
+            const removeCurrentOverlay = () => remove(id, options.onRemove);
             overlays[id] = {
                 id,
                 component,

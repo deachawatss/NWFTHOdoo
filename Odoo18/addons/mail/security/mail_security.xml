@@ -15,14 +15,20 @@
                     "|",
                         "&amp;",
                             ("channel_type", "!=", "channel"),
-                            "|",
-                                ("is_member", "=", True),
-                                ("parent_channel_id.is_member", "=", True),
+                            ("is_member", "=", True),
                         "&amp;",
                             ("channel_type", "=", "channel"),
                             "|",
-                                ("group_public_id", "=", False),
-                                ("group_public_id", "in", user.all_group_ids.ids),
+                                "&amp;",
+                                    ("parent_channel_id", "=", False),
+                                    "|",
+                                        ("group_public_id", "=", False),
+                                        ("group_public_id", "in", user.groups_id.ids),
+                                "&amp;",
+                                    ("parent_channel_id", "!=", False),
+                                    "|",
+                                        ("parent_channel_id.group_public_id", "=", False),
+                                        ("parent_channel_id.group_public_id", "in", user.groups_id.ids),
                 ]
             </field>
         </record>
@@ -50,8 +56,16 @@
                     "|",
                         ("channel_id.channel_type", "!=", "channel"),
                         "|",
-                            ("channel_id.group_public_id", "=", False),
-                            ("channel_id.group_public_id", "in", user.all_group_ids.ids),
+                            "&amp;",
+                                ("channel_id.parent_channel_id", "=", False),
+                                "|",
+                                    ("channel_id.group_public_id", "=", False),
+                                    ("channel_id.group_public_id", "in", user.groups_id.ids),
+                            "&amp;",
+                                ("channel_id.parent_channel_id", "!=", False),
+                                "|",
+                                    ("channel_id.parent_channel_id.group_public_id", "=", False),
+                                    ("channel_id.parent_channel_id.group_public_id", "in", user.groups_id.ids),
                 ]
             </field>
             <!--
@@ -81,14 +95,20 @@
                     "|",
                         "&amp;",
                             ("channel_id.channel_type", "!=", "channel"),
-                            "|",
-                                ("channel_id.is_member", "=", True),
-                                ("channel_id.parent_channel_id.is_member", "=", True),
+                            ("channel_id.is_member", "=", True),
                         "&amp;",
                             ("channel_id.channel_type", "=", "channel"),
                             "|",
-                                ("channel_id.group_public_id", "=", False),
-                                ("channel_id.group_public_id", "in", user.all_group_ids.ids),
+                                "&amp;",
+                                    ("channel_id.parent_channel_id", "=", False),
+                                    "|",
+                                        ("channel_id.group_public_id", "=", False),
+                                        ("channel_id.group_public_id", "in", user.groups_id.ids),
+                                "&amp;",
+                                    ("channel_id.parent_channel_id", "!=", False),
+                                    "|",
+                                        ("channel_id.parent_channel_id.group_public_id", "=", False),
+                                        ("channel_id.parent_channel_id.group_public_id", "in", user.groups_id.ids),
                 ]
             </field>
             <field name="perm_create" eval="False"/>
@@ -112,7 +132,7 @@
                     ('channel_id.channel_type', '=', 'channel'),
                     '|',
                         ('channel_id.group_public_id', '=', False),
-                        ('channel_id.group_public_id', 'in', user.all_group_ids.ids)
+                        ('channel_id.group_public_id', 'in', user.groups_id.ids)
                 ]
             </field>
             <!--
@@ -134,7 +154,7 @@
                     ('channel_id.channel_type', '=', 'channel'),
                     '|',
                         ('channel_id.group_public_id', '=', False),
-                        ('channel_id.group_public_id', 'in', user.all_group_ids.ids)
+                        ('channel_id.group_public_id', 'in', user.groups_id.ids)
                 ]
             </field>
             <field name="perm_read" eval="False"/>
@@ -158,36 +178,6 @@
                 contains its data, which means allowing 'is_self' would allow any user to add themselves in any channel.
             -->
             <field name="perm_read" eval="False"/>
-            <field name="perm_write" eval="False"/>
-            <field name="perm_unlink" eval="False"/>
-        </record>
-
-        <record id="ir_rule_discuss_call_history_read_all" model="ir.rule">
-            <field name="name">discuss.call.history: read call history of accessible channels</field>
-            <field name="model_id" ref="mail.model_discuss_call_history"/>
-            <field name="groups"
-                eval="[
-                    Command.link(ref('base.group_user')),
-                    Command.link(ref('base.group_portal')),
-                    Command.link(ref('base.group_public')),
-                ]"
-            />
-            <field name="domain_force">
-                [
-                    "|",
-                        "&amp;",
-                            ("channel_id.channel_type", "!=", "channel"),
-                            "|",
-                                ("channel_id.is_member", "=", True),
-                                ("channel_id.parent_channel_id.is_member", "=", True),
-                        "&amp;",
-                            ("channel_id.channel_type", "=", "channel"),
-                            "|",
-                                ("channel_id.group_public_id", "=", False),
-                                ("channel_id.group_public_id", "in", user.all_group_ids.ids),
-                ]
-            </field>
-            <field name="perm_create" eval="False"/>
             <field name="perm_write" eval="False"/>
             <field name="perm_unlink" eval="False"/>
         </record>
@@ -329,7 +319,7 @@
             <field name="name">Canned response: User read: own or in groups</field>
             <field name="model_id" ref="model_mail_canned_response"/>
             <field name="groups" eval="[Command.link(ref('base.group_user'))]"/>
-            <field name="domain_force">['|', ('create_uid', '=', user.id), ('group_ids', 'in', user.all_group_ids.ids)]</field>
+            <field name="domain_force">['|', ('create_uid', '=', user.id), ('group_ids', 'in', user.groups_id.ids)]</field>
             <field name="perm_write" eval="False"/>
             <field name="perm_create" eval="False"/>
             <field name="perm_unlink" eval="False"/>

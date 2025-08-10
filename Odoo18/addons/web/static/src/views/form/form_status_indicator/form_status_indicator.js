@@ -26,7 +26,7 @@ export class FormStatusIndicator extends Component {
                     this.saveButton.el.removeAttribute("disabled");
                 }
             },
-            () => [this.props.model.root.isValid, this.state.fieldIsDirty]
+            () => [this.props.model.root.isValid]
         );
 
         this.saveButton = useRef("save");
@@ -37,12 +37,15 @@ export class FormStatusIndicator extends Component {
     }
 
     get indicatorMode() {
-        const { isNew, isValid } = this.props.model.root;
-        const isDirty = this.props.model.root.dirty || this.state.fieldIsDirty;
-        if (isNew || isDirty) {
-            return isValid ? "dirty" : "invalid";
+        if (this.props.model.root.isNew) {
+            return this.props.model.root.isValid ? "dirty" : "invalid";
+        } else if (!this.props.model.root.isValid) {
+            return "invalid";
+        } else if (this.props.model.root.dirty || this.state.fieldIsDirty) {
+            return "dirty";
+        } else {
+            return "saved";
         }
-        return "saved";
     }
 
     async discard() {

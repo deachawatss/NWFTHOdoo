@@ -8,14 +8,17 @@
                 <form string="Scheduled Message">
                     <sheet>
                         <group>
-                            <field name="composition_comment_option" invisible="1"/>
                             <label for="partner_ids" string="To" invisible="is_note"/>
-                            <div invisible="is_note" class="d-flex gap-3">
-                                <field name="partner_ids" widget="many2many_tags_email" class="w-auto flex-grow-1"
+                            <div invisible="is_note">
+                                <field name="model" invisible="1"/>
+                                <field name="res_id" invisible="1"/>
+                                <widget name="mail_composer_recipient_list" thread_model_field="model" thread_id_field="res_id"/>
+                                <field name="partner_ids" widget="many2many_tags_email"
                                     placeholder="Add contacts to notify..."
-                                    options="{'edit_tags': True}"
-                                    context="{'force_email': True, 'show_email': True, 'form_view_ref': 'base.view_partner_simple_form'}"/>
+                                    options="{'no_quick_create': True}"
+                                    context="{'show_email': True, 'form_view_ref': 'base.view_partner_simple_form'}"/>
                             </div>
+                            <field name="scheduled_date" options="{'min_date': 'today'}"/>
                             <field name="subject" required="True"/>
                         </group>
                         <group col="1">
@@ -26,12 +29,12 @@
                         </group>
                     </sheet>
                     <footer>
-                        <button string="Save" class="btn-primary" special="save" invisible="not scheduled_date" data-hotkey="S"/>
+                        <button string="Save" class="btn-primary" special="save" data-hotkey="S"/>
                         <button string="Send Now" invisible="is_note" type="object" name="post_message" data-hotkey="q"/>
                         <button string="Log Now" invisible="not is_note" type="object" name="post_message" data-hotkey="q"/>
                         <button string="Discard" class="btn-secondary" special="cancel" data-hotkey="x"/>
                         <field name="attachment_ids" widget="mail_composer_attachment_selector"/>
-                        <field name="scheduled_date" widget="datetime_scheduled_date"/>
+                        <field name="body" widget="mail_composer_chatgpt"/> 
                     </footer>
                 </form>
             </field>

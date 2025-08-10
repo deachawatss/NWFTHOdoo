@@ -1,10 +1,13 @@
+# -*- coding: utf-8 -*-
 from odoo import models, fields, api, _, Command
 from odoo.exceptions import UserError, ValidationError
+from odoo.tools.misc import format_date, formatLang
+from odoo.tools import create_index
 from odoo.tools import SQL
 
 
 class AccountPayment(models.Model):
-    _name = 'account.payment'
+    _name = "account.payment"
     _inherit = ['mail.thread.main.attachment', 'mail.activity.mixin']
     _description = "Payments"
     _order = "date desc, name desc"
@@ -194,12 +197,29 @@ class AccountPayment(models.Model):
     duplicate_payment_ids = fields.Many2many(comodel_name='account.payment', compute='_compute_duplicate_payment_ids')
     attachment_ids = fields.One2many('ir.attachment', 'res_id', string='Attachments')
 
-    _check_amount_not_negative = models.Constraint(
-        'CHECK(amount >= 0.0)',
-        'The payment amount cannot be negative.',
-    )
-    _journal_id_company_id_idx = models.Index("(journal_id, company_id)")
-    _unmatched_idx = models.Index("(journal_id, company_id) WHERE is_matched IS NOT TRUE")
+    _sql_constraints = [
+        (
+            'check_amount_not_negative',
+            'CHECK(amount >= 0.0)',
+            "The payment amount cannot be negative.",
+        ),
+    ]
+
+    def init(self):
+        super().init()
+        create_index(
+            self.env.cr,
+            indexname='account_payment_journal_id_company_id_idx',
+            tablename='account_payment',
+            expressions=['journal_id', 'company_id']
+        )
+        create_index(
+            self.env.cr,
+            indexname='account_payment_unmatched_idx',
+            tablename='account_payment',
+            expressions=['journal_id', 'company_id'],
+            where="NOT is_matched OR is_matched IS NULL"
+        )
 
     # -------------------------------------------------------------------------
     # HELPERS
@@ -556,13 +576,8 @@ class AccountPayment(models.Model):
         for pay in self:
             pay.currency_id = pay.journal_id.currency_id or pay.journal_id.company_id.currency_id
 
-    @api.depends('journal_id')
     def _compute_partner_id(self):
-        for pay in self:
-            if pay.partner_id == pay.journal_id.company_id.partner_id:
-                pay.partner_id = False
-            else:
-                pay.partner_id = pay.partner_id
+        pass
 
     @api.depends('payment_method_line_id')
     def _compute_outstanding_account_id(self):
@@ -581,6 +596,7 @@ class AccountPayment(models.Model):
                     pay.destination_account_id = self.env['account.account'].with_company(pay.company_id).search([
                         *self.env['account.account']._check_company_domain(pay.company_id),
                         ('account_type', '=', 'asset_receivable'),
+                        ('deprecated', '=', False),
                     ], limit=1)
             elif pay.partner_type == 'supplier':
                 # Send money to pay a bill or receive money to refund it.
@@ -590,6 +606,7 @@ class AccountPayment(models.Model):
                     pay.destination_account_id = self.env['account.account'].with_company(pay.company_id).search([
                         *self.env['account.account']._check_company_domain(pay.company_id),
                         ('account_type', '=', 'liability_payable'),
+                        ('deprecated', '=', False),
                     ], limit=1)
 
     @api.depends('partner_bank_id', 'amount', 'memo', 'currency_id', 'journal_id', 'move_id.state',
@@ -639,7 +656,7 @@ class AccountPayment(models.Model):
         self.env['account.move.line'].flush_model(fnames=['move_id', 'account_id', 'statement_line_id'])
         self.env['account.partial.reconcile'].flush_model(fnames=['debit_move_id', 'credit_move_id'])
 
-        self.env.cr.execute('''
+        self._cr.execute('''
             SELECT
                 payment.id,
                 ARRAY_AGG(DISTINCT invoice.id) AS invoice_ids,
@@ -665,7 +682,7 @@ class AccountPayment(models.Model):
         ''', {
             'payment_ids': tuple(stored_payments.ids)
         })
-        query_res = self.env.cr.dictfetchall()
+        query_res = self._cr.dictfetchall()
 
         for pay in self:
             pay.reconciled_invoice_ids = pay.invoice_ids.filtered(lambda m: m.is_sale_document(True))
@@ -682,7 +699,7 @@ class AccountPayment(models.Model):
             pay.reconciled_invoices_count = len(pay.reconciled_invoice_ids)
             pay.reconciled_bills_count = len(pay.reconciled_bill_ids)
 
-        query_res = dict(self.env.execute_query(SQL('''
+        self._cr.execute('''
             SELECT
                 payment.id,
                 ARRAY_AGG(DISTINCT counterpart_line.statement_line_id) AS statement_line_ids
@@ -703,8 +720,10 @@ class AccountPayment(models.Model):
                 AND line.id != counterpart_line.id
                 AND counterpart_line.statement_line_id IS NOT NULL
             GROUP BY payment.id
-        ''', payment_ids=tuple(stored_payments.ids)
-        )))
+        ''', {
+            'payment_ids': tuple(stored_payments.ids)
+        })
+        query_res = dict((payment_id, statement_line_ids) for payment_id, statement_line_ids in self._cr.fetchall())
 
         for pay in self:
             statement_line_ids = query_res.get(pay.id, [])
@@ -786,6 +805,15 @@ class AccountPayment(models.Model):
             payment_id: self.env['account.payment'].browse(duplicate_ids)
             for payment_id, duplicate_ids in self.env.execute_query(query)
         }
+
+    # -------------------------------------------------------------------------
+    # ONCHANGE METHODS
+    # -------------------------------------------------------------------------
+
+    def _inverse_partner_id(self):
+        # todo: remove in master
+        pass
+
 
     # -------------------------------------------------------------------------
     # CONSTRAINT METHODS
@@ -932,6 +960,8 @@ class AccountPayment(models.Model):
             return
 
         for pay in self:
+            if pay.move_id.state == 'posted':
+                continue
             liquidity_lines, counterpart_lines, writeoff_lines = pay._seek_for_lines()
             # Make sure to preserve the write-off amount.
             # This allows to create a new payment with custom 'line_ids'.
@@ -956,17 +986,19 @@ class AccountPayment(models.Model):
                 line_ids_commands.append((0, 0, extra_line_vals))
             # Update the existing journal items.
             # If dealing with multiple write-off lines, they are dropped and a new one is generated.
-            pay.move_id \
-                .with_context(skip_invoice_sync=True) \
-                .write({
-                'name': '/',  # Set the name to '/' to allow it to be changed
+            to_write = {
                 'date': pay.date,
                 'partner_id': pay.partner_id.id,
                 'currency_id': pay.currency_id.id,
                 'partner_bank_id': pay.partner_bank_id.id,
                 'line_ids': line_ids_commands,
-                'journal_id': pay.journal_id.id,
-            })
+            }
+            if 'journal_id' in changed_fields:
+                to_write.update({
+                    'name': '/',  # Set the name to '/' to allow it to be changed
+                    'journal_id': pay.journal_id.id
+                })
+            pay.move_id.with_context(skip_invoice_sync=True).write(to_write)
 
     @api.model
     def _get_trigger_fields_to_synchronize(self):
@@ -1146,10 +1178,9 @@ class AccountPayment(models.Model):
 
 
 # For optimization purpose, creating the reverse relation of m2o in _inherits saves
-
-
 # a lot of SQL queries
 class AccountMove(models.Model):
-    _inherit = 'account.move'
+    _name = "account.move"
+    _inherit = ['account.move']
 
     payment_ids = fields.One2many('account.payment', 'move_id', string='Payments')

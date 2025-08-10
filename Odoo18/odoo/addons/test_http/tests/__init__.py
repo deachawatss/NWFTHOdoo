@@ -1,4 +1,3 @@
-from . import test_captcha
 from . import test_common
 from . import test_device
 from . import test_echo_reply
@@ -12,5 +11,4 @@ from . import test_session
 from . import test_static
 from . import test_web_server
 from . import test_webjson
-from . import test_webjson2
 from . import test_xss

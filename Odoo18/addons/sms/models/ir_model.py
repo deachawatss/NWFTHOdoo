@@ -25,8 +25,6 @@ class IrModel(models.Model):
             model.is_mail_thread_sms = False
 
     def _search_is_mail_thread_sms(self, operator, value):
-        if operator != 'in':
-            return NotImplemented
         thread_models = self.search([('is_mail_thread', '=', True)])
         valid_models = self.env['ir.model']
         for model in thread_models:
@@ -37,4 +35,7 @@ class IrModel(models.Model):
             if any(fname in ModelObject._fields for fname in potential_fields):
                 valid_models |= model
 
-        return [('id', 'in', valid_models.ids)]
+        search_sms = (operator == '=' and value) or (operator == '!=' and not value)
+        if search_sms:
+            return [('id', 'in', valid_models.ids)]
+        return [('id', 'not in', valid_models.ids)]

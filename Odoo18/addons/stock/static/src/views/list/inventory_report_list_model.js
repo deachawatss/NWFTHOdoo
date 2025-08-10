@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
 import { DynamicRecordList } from "@web/model/relational_model/dynamic_record_list";
 import { RelationalModel } from "@web/model/relational_model/relational_model";

@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 import { checkFileSize, DEFAULT_MAX_FILE_SIZE } from "@web/core/utils/files";
@@ -264,11 +266,8 @@ export class BaseImportModel {
             const error = await this._executeImportStep(isTest, importRes);
             if (error) {
                 const errorData = error.data || {};
-                const message =
-                    (errorData.arguments && (errorData.arguments[1] || errorData.arguments[0])) ||
-                    _t(
-                        "An unknown issue occurred during import (possibly lost connection, data limit exceeded or memory limits exceeded). Please retry in case the issue is transient. If the issue still occurs, try to split the file rather than import it at once."
-                    );
+                const message = errorData.arguments && (errorData.arguments[1] || errorData.arguments[0])
+                    || _t("An unknown issue occurred during import (possibly lost connection, data limit exceeded or memory limits exceeded). Please retry in case the issue is transient. If the issue still occurs, try to split the file rather than import it at once.");
 
                 if (error.message) {
                     this._addMessage("danger", [error.message, message]);
@@ -609,16 +608,16 @@ export class BaseImportModel {
         }
 
         if (this.importOptions.has_headers && res.headers && res.preview.length > 0) {
-            return res.headers.flatMap((header, index) =>
-                this._createColumn(
+            return res.headers.flatMap((header, index) => {
+                return this._createColumn(
                     res,
                     getId(res, index),
                     header,
                     index,
                     res.preview[index],
                     res.preview[index][0]
-                )
-            );
+                );
+            });
         } else if (res.preview && res.preview.length >= 2) {
             return res.preview.flatMap((preview, index) =>
                 this._createColumn(
@@ -740,7 +739,7 @@ export class BaseImportModel {
 
             // Fields of type "char", "text" or "many2many" can be specified multiple
             // times and they will be concatenated, fields of other types must be unique.
-            if (["char", "text", "html", "many2many"].includes(column.fieldInfo.type)) {
+            if (["char", "text", "many2many"].includes(column.fieldInfo.type)) {
                 if (column.fieldInfo.type === "many2many") {
                     column.comments.push({
                         type: "info",

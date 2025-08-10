@@ -3,10 +3,10 @@
 import json
 
 from odoo import fields, models, _
-from odoo.fields import Domain
+from odoo.osv import expression
 
 
-class ProjectProject(models.Model):
+class Project(models.Model):
     _inherit = "project.project"
 
     purchase_orders_count = fields.Integer('# Purchase Orders', compute='_compute_purchase_orders_count', groups='purchase.group_purchase_user', export_string_translation=False)
@@ -77,9 +77,9 @@ class ProjectProject(models.Model):
     def action_profitability_items(self, section_name, domain=None, res_id=False):
         if section_name == 'purchase_order':
             action = {
-                'name': self.env._('Purchase Orders'),
+                'name': self.env._('Purchase Order Items'),
                 'type': 'ir.actions.act_window',
-                'res_model': 'purchase.order',
+                'res_model': 'purchase.order.line',
                 'views': [[False, 'list'], [False, 'form']],
                 'domain': domain,
                 'context': {
@@ -104,21 +104,22 @@ class ProjectProject(models.Model):
     # ----------------------------
 
     def _get_stat_buttons(self):
-        buttons = super()._get_stat_buttons()
+        buttons = super(Project, self)._get_stat_buttons()
         if self.env.user.has_group('purchase.group_purchase_user'):
+            self_sudo = self.sudo()
             buttons.append({
                 'icon': 'credit-card',
                 'text': self.env._('Purchase Orders'),
-                'number': self.purchase_orders_count,
+                'number': self_sudo.purchase_orders_count,
                 'action_type': 'object',
                 'action': 'action_open_project_purchase_orders',
-                'show': self.purchase_orders_count > 0,
+                'show': self_sudo.purchase_orders_count > 0,
                 'sequence': 36,
             })
         return buttons
 
     def _get_profitability_aal_domain(self):
-        return Domain.AND([
+        return expression.AND([
             super()._get_profitability_aal_domain(),
             ['|', ('move_line_id', '=', False), ('move_line_id.purchase_line_id', '=', False)],
         ])
@@ -139,52 +140,39 @@ class ProjectProject(models.Model):
     def _get_profitability_items(self, with_action=True):
         profitability_items = super()._get_profitability_items(with_action)
         if self.account_id:
-            purchase_lines = self.env['purchase.order.line'].sudo().search([
+            invoice_lines = self.env['account.move.line'].sudo().search_fetch([
+                ('parent_state', 'in', ['draft', 'posted']),
                 ('analytic_distribution', 'in', self.account_id.ids),
-                ('state', 'in', 'purchase')
-            ])
+                ('purchase_line_id', '!=', False),
+            ], ['parent_state', 'currency_id', 'price_subtotal', 'analytic_distribution'])
             purchase_order_line_invoice_line_ids = self._get_already_included_profitability_invoice_line_ids()
             with_action = with_action and (
                 self.env.user.has_group('purchase.group_purchase_user')
                 or self.env.user.has_group('account.group_account_invoice')
                 or self.env.user.has_group('account.group_account_readonly')
             )
-            if purchase_lines:
+            if invoice_lines:
                 amount_invoiced = amount_to_invoice = 0.0
-                purchase_order_line_invoice_line_ids.extend(purchase_lines.invoice_lines.ids)
-                for purchase_line in purchase_lines:
-                    if purchase_line.invoice_lines:
-                        for line in purchase_line.invoice_lines:
-                            price_subtotal = line.currency_id._convert(line.price_subtotal, self.currency_id, self.company_id)
-                            if not line.analytic_distribution:
-                                continue
-                            # an analytic account can appear several time in an analytic distribution with different repartition percentage
-                            analytic_contribution = sum(
-                                percentage for ids, percentage in line.analytic_distribution.items()
-                                if str(self.account_id.id) in ids.split(',')
-                            ) / 100.
-                            cost = price_subtotal * analytic_contribution * (-1 if line.is_refund else 1)
-                            if line.parent_state == 'posted':
-                                amount_invoiced -= cost
-                            else:
-                                amount_to_invoice -= cost
+                purchase_order_line_invoice_line_ids.extend(invoice_lines.ids)
+                for line in invoice_lines:
+                    price_subtotal = line.currency_id._convert(line.price_subtotal, self.currency_id, self.company_id)
+                    # an analytic account can appear several time in an analytic distribution with different repartition percentage
+                    analytic_contribution = sum(
+                        percentage for ids, percentage in line.analytic_distribution.items()
+                        if str(self.account_id.id) in ids.split(',')
+                    ) / 100.
+                    cost = price_subtotal * analytic_contribution * (-1 if line.is_refund else 1)
+                    if line.parent_state == 'posted':
+                        amount_invoiced -= cost
                     else:
-                        price_subtotal = purchase_line.currency_id._convert(purchase_line.price_subtotal, self.currency_id, self.company_id)
-                        # an analytic account can appear several time in an analytic distribution with different repartition percentage
-                        analytic_contribution = sum(
-                            percentage for ids, percentage in purchase_line.analytic_distribution.items()
-                            if str(self.account_id.id) in ids.split(',')
-                        ) / 100.
-                        amount_to_invoice -= price_subtotal * analytic_contribution
-
+                        amount_to_invoice -= cost
                 costs = profitability_items['costs']
                 section_id = 'purchase_order'
                 purchase_order_costs = {'id': section_id, 'sequence': self._get_profitability_sequence_per_invoice_type()[section_id], 'billed': amount_invoiced, 'to_bill': amount_to_invoice}
                 if with_action:
-                    purchase_order = purchase_lines.order_id
-                    args = [section_id, [('id', 'in', purchase_order.ids)]]
-                    if len(purchase_order) == 1:
-                        args.append(purchase_order.id)
+                    args = [section_id, [('id', 'in', invoice_lines.purchase_line_id.ids)]]
+                    if len(invoice_lines.purchase_line_id) == 1:
+                        args.append(invoice_lines.purchase_line_id.id)
                     action = {'name': 'action_profitability_items', 'type': 'object', 'args': json.dumps(args)}
                     purchase_order_costs['action'] = action
                 costs['data'].append(purchase_order_costs)

@@ -97,7 +97,7 @@ class TestMassSMSInternals(TestMassSMSCommon):
         nr2_partner = self.env['res.partner'].create({
             'name': 'Partner_nr2',
             'country_id': country_be_id,
-            'phone': '0456449999',
+            'mobile': '0456449999',
         })
         new_record_2 = self.env['mail.test.sms'].create({
             'name': 'MassSMSTest_nr2',
@@ -107,27 +107,17 @@ class TestMassSMSInternals(TestMassSMSCommon):
         records_numbers = self.records_numbers + ['+32456999999']
 
         mailing = self.env['mailing.mailing'].browse(self.mailing_sms.ids)
-        mailing.write({
-            'sms_force_send': False,  # force outgoing sms, not sent
-            'keep_archives': True,  # keep a note on document (mass_keep_log)
-        })
+        mailing.write({'sms_force_send': False})  # force outgoing sms, not sent
         with self.with_user('user_marketing'):
             with self.mockSMSGateway():
                 mailing.action_send_sms()
 
-        valid_records = self.records | new_record_1
         self.assertSMSTraces(
             [{'partner': record.customer_id, 'number': records_numbers[i],
               'content': 'Dear %s this is a mass SMS' % record.display_name}
              for i, record in enumerate(self.records | new_record_1)],
-            mailing, valid_records,
+            mailing, self.records | new_record_1,
         )
-        self.assertEqual(
-            len(self.env['mail.message'].search([
-                ('res_id', 'in', valid_records.ids), ('model', '=', 'mail.test.sms'),
-                ('id', 'in', self._new_sms.mail_message_id.ids)])),
-            len(valid_records),
-            "Only not canceled message must be logged in the chatter")
         # duplicates
         self.assertSMSTraces(
             [{'partner': new_record_2.customer_id, 'number': self.records_numbers[0],
@@ -161,10 +151,7 @@ class TestMassSMSInternals(TestMassSMSCommon):
     @users('user_marketing')
     def test_mass_sms_internals_done_ids(self):
         mailing = self.env['mailing.mailing'].browse(self.mailing_sms.ids)
-        mailing.write({
-            'sms_force_send': False,  # check with outgoing traces, not already pending
-            'keep_archives': True,  # keep a note on document (mass_keep_log)
-        })
+        mailing.write({'sms_force_send': False})  # check with outgoing traces, not already pending
 
         with self.with_user('user_marketing'):
             with self.mockSMSGateway():
@@ -267,10 +254,6 @@ class TestMassSMSInternals(TestMassSMSCommon):
             mailing, self.records,
         )
 
-
-@tagged('mass_mailing', 'mass_mailing_sms', 'mailing_test')
-class TestMassSMSTest(TestMassSMSCommon):
-
     @mute_logger('odoo.addons.mail.models.mail_render_mixin')
     def test_mass_sms_test_button(self):
         mailing = self.env['mailing.mailing'].create({
@@ -281,23 +264,15 @@ class TestMassSMSTest(TestMassSMSCommon):
             'mailing_type': 'sms',
             'body_plaintext': 'Hello {{ object.name }}',
             'mailing_model_id': self.env['ir.model']._get('res.partner').id,
-            'sms_allow_unsubscribe': True,
         })
         mailing_test = self.env['mailing.sms.test'].with_user(self.user_marketing).create({
-            'numbers': '+32456001122\n+32455334455\nwrong\n\n',
+            'numbers': '+32456001122',
             'mailing_id': mailing.id,
         })
 
         with self.with_user('user_marketing'):
             with self.mockSMSGateway():
                 mailing_test.action_send_sms()
-        new_traces = self.env['mailing.trace'].search([('mass_mailing_id', '=', mailing.id)])
-        self.assertEqual(len(new_traces), 2, 'Should have create 1 trace / valid number')
-        self.assertEqual(new_traces.mapped('is_test_trace'), [True, True], 'Traces should be flagged as test')
-        self.assertEqual(
-            sorted(new_traces.mapped('sms_number')),
-            ['+32455334455', '+32456001122']
-        )
 
         # Test if bad inline_template in the body raises an error
         mailing.write({
@@ -435,7 +410,6 @@ class TestMassSMS(TestMassSMSCommon):
         mailing.write({
             'mailing_model_id': self.env['ir.model']._get('mail.test.sms.bl.optout'),
             'mailing_domain': [('id', 'in', recipients.ids)],
-            'keep_archives': True,  # keep a note on document (mass_keep_log)
         })
 
         with self.mockSMSGateway():

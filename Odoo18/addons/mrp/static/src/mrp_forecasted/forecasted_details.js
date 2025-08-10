@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { ForecastedDetails } from '@stock/stock_forecasted/forecasted_details';
 import { patch } from "@web/core/utils/patch";
 

@@ -1,4 +1,4 @@
-import { queryAttribute } from '@odoo/hoot-dom';
+import { queryAttribute, queryValue, waitUntil } from '@odoo/hoot-dom';
 
 function productSelector(productName) {
     return `
@@ -46,18 +46,6 @@ function removeOptionalProduct(productName) {
     };
 }
 
-function decreaseProductQuantity(productName) {
-    return {
-        content: `Decrease the quantity of ${productName}`,
-        trigger: `
-            ${productSelector(productName)}
-            td.o_sale_product_configurator_qty
-            button:has(i.fa-minus)
-        `,
-        run: 'click',
-    };
-}
-
 function increaseProductQuantity(productName) {
     return {
         content: `Increase the quantity of ${productName}`,
@@ -82,26 +70,17 @@ function setProductQuantity(productName, quantity) {
     };
 }
 
-function setProductUoM(productName, uomName) {
-    // UoM must be enabled
-    return {
-        content: `Set the uom of ${productName} to ${uomName}`,
-        trigger: `
-            ${productSelector(productName)}
-            label:contains("${uomName}")
-        `,
-        run: `click && click .modal-body`,
-    };
-}
-
 function assertProductQuantity(productName, quantity) {
+    const quantitySelector = `
+        ${productSelector(productName)}
+        td.o_sale_product_configurator_qty
+        input[name="sale_quantity"]
+    `;
     return {
         content: `Assert that the quantity of ${productName} is ${quantity}`,
-        trigger: `
-            ${productSelector(productName)}
-            td.o_sale_product_configurator_qty
-            input[name="sale_quantity"]:value(${quantity})
-        `,
+        trigger: quantitySelector,
+        run: async () =>
+            await waitUntil(() => queryValue(quantitySelector) === quantity, { timeout: 1000 }),
     };
 }
 
@@ -243,9 +222,7 @@ export default {
     addOptionalProduct,
     removeOptionalProduct,
     increaseProductQuantity,
-    decreaseProductQuantity,
     setProductQuantity,
-    setProductUoM,
     assertProductQuantity,
     selectAttribute,
     setCustomAttribute,

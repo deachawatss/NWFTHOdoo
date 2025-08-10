@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { OdooEditor } from '../../src/OdooEditor.js';
 import {
     childNodeIndex,
@@ -1708,6 +1710,17 @@ X[]
                     contentBefore: '<p>ab</p><p>[<br></p><p>d]ef</p>',
                     stepFunction: deleteForward,
                     contentAfter: '<p>ab</p><p>[]<br></p><p>ef</p>',
+                });
+            });
+            it('should not delete text on the next container', async () => {
+                await testEditor(BasicEditor, {
+                    contentBefore: unformat(`
+                        <p>keep<br>[delete</p>
+                        <p>delete<br>delete<br>]</p>
+                        <p>keep</p>
+                    `),
+                    stepFunction: deleteBackward,
+                    contentAfter: '<p>keep<br>[]keep</p>',
                 });
             });
         });
@@ -5687,17 +5700,17 @@ X[]
         describe('rectangular selections', () => {
             describe('select a full table on cross over', () => {
                 describe('select', () => {
-                    // it('should select some characters and a table', async () => {
-                    //     await testEditor(BasicEditor, {
-                    //         contentBefore: '<p>a[bc</p><table><tbody><tr><td>a]b</td><td>cd</td><td>ef</td></tr></tbody></table>',
-                    //         contentAfterEdit: '<p>a[bc</p>' +
-                    //                         '<table class="o_selected_table"><tbody><tr>' +
-                    //                             '<td class="o_selected_td">ab</td>' +
-                    //                             '<td class="o_selected_td">cd</td>' +
-                    //                             '<td class="o_selected_td">ef]</td>' +
-                    //                         '</tr></tbody></table>',
-                    //     });
-                    // });
+                    it('should select some characters and a table', async () => {
+                        await testEditor(BasicEditor, {
+                            contentBefore: '<p>a[bc</p><table><tbody><tr><td>a]b</td><td>cd</td><td>ef</td></tr></tbody></table>',
+                            contentAfterEdit: '<p>a[bc</p>' +
+                                            '<table class="o_selected_table"><tbody><tr>' +
+                                                '<td class="o_selected_td">a]b</td>' +
+                                                '<td class="o_selected_td">cd</td>' +
+                                                '<td class="o_selected_td">ef</td>' +
+                                            '</tr></tbody></table>',
+                        });
+                    });
                     it('should select a table and some characters', async () => {
                         await testEditor(BasicEditor, {
                             contentBefore: '<table><tbody><tr><td>ab</td><td>cd</td><td>e[f</td></tr></tbody></table><p>a]bc</p>',
@@ -5724,9 +5737,9 @@ X[]
                                             '<td class="o_selected_td">cd</td>' +
                                             '<td class="o_selected_td">ef</td></tr></tbody></table>' +
                                             '<p>abc</p><table class="o_selected_table"><tbody><tr>' +
-                                            '<td class="o_selected_td">ab</td>' +
+                                            '<td class="o_selected_td">a]b</td>' +
                                             '<td class="o_selected_td">cd</td>' +
-                                            '<td class="o_selected_td">ef]</td></tr></tbody></table>',
+                                            '<td class="o_selected_td">ef</td></tr></tbody></table>',
                         });
                     });
                     it('should select some characters, a table, some more characters, another table and some more characters', async () => {
@@ -5884,13 +5897,13 @@ X[]
                                     <tbody>
                                         <tr>
                                             <td class="o_selected_td">
-                                                <font style="color: aquamarine;">ab</font>
+                                                <font style="color: aquamarine;">a]b</font>
                                             </td>
                                             <td class="o_selected_td">
                                                 <font style="color: aquamarine;">cd</font>
                                             </td>
                                             <td class="o_selected_td">
-                                                <font style="color: aquamarine;">ef]</font>
+                                                <font style="color: aquamarine;">ef</font>
                                             </td>
                                         </tr>
                                     </tbody>
@@ -5994,13 +6007,13 @@ X[]
                                 <table class="o_selected_table">
                                     <tbody><tr>
                                         <td class="o_selected_td">
-                                            <font style="color: aquamarine;">ab</font>
+                                            <font style="color: aquamarine;">a]b</font>
                                         </td>
                                         <td class="o_selected_td">
                                             <font style="color: aquamarine;">cd</font>
                                         </td>
                                         <td class="o_selected_td">
-                                            <font style="color: aquamarine;">ef]</font>
+                                            <font style="color: aquamarine;">ef</font>
                                         </td>
                                     </tr></tbody>
                                 </table>`),
@@ -7852,9 +7865,9 @@ X[]
                         <div data-oe-protected="false">
                             <p>a[bc</p>
                             <table class="o_selected_table"><tbody><tr>
-                                <td class="o_selected_td">ab</td>
+                                <td class="o_selected_td">a]b</td>
                                 <td class="o_selected_td">cd</td>
-                                <td class="o_selected_td">ef]</td>
+                                <td class="o_selected_td">ef</td>
                             </tr></tbody></table>
                         </div>
                     </div>
@@ -8101,6 +8114,42 @@ X[]
                 await testEditor(BasicEditor, {
                     contentBefore: '<hr contenteditable="false">[]',
                     contentAfter: '<hr contenteditable="false">',
+                });
+            });
+        });
+        describe('rating star elements', () => {
+            it('add star elements', async () => {
+                await testEditor(BasicEditor, {
+                    contentBefore: '<p>[]</p>',
+                    stepFunction: async editor => {
+                        await insertText(editor,'/');
+                        await insertText(editor, '3star');
+                        await triggerEvent(editor.editable, 'keyup')
+                        await triggerEvent(editor.editable, 'keydown', {key: 'Enter'})
+                        await nextTick()
+                    },
+                    contentAfterEdit: `<p>\u200B<span contenteditable="false" class="o_stars o_three_stars" id="checkId-1"><i class="fa fa-star-o" contenteditable="false">\u200B</i><i class="fa fa-star-o" contenteditable="false">\u200B</i><i class="fa fa-star-o" contenteditable="false">\u200B</i></span>\u200B[]</p>`,
+                });
+                await testEditor(BasicEditor, {
+                    contentBefore: '<p>[]</p>',
+                    stepFunction: async editor => {
+                        await insertText(editor,'/');
+                        await insertText(editor, '5star');
+                        await triggerEvent(editor.editable, 'keyup')
+                        await triggerEvent(editor.editable, 'keydown', {key: 'Enter'})
+                        await nextTick()
+                    },
+                    contentAfterEdit: `<p>\u200B<span contenteditable="false" class="o_stars o_five_stars" id="checkId-1"><i class="fa fa-star-o" contenteditable="false">\u200B</i><i class="fa fa-star-o" contenteditable="false">\u200B</i><i class="fa fa-star-o" contenteditable="false">\u200B</i><i class="fa fa-star-o" contenteditable="false">\u200B</i><i class="fa fa-star-o" contenteditable="false">\u200B</i></span>\u200B[]</p>`,
+                });
+            });
+            it('should delete star rating elements when delete is pressed twice', async () => {
+                await testEditor(BasicEditor, {
+                    contentBefore: `<p>\u200B<span contenteditable="false" class="o_stars o_three_stars"><i class="fa fa-star-o" id="checkId-1" contenteditable="false">\u200B</i><i class="o_stars fa fa-star-o" id="checkId-2" contenteditable="false">\u200B</i><i class="o_stars fa fa-star-o" id="checkId-3" contenteditable="false">\u200B</i></span>\u200B[]</p>`,
+                    stepFunction: async editor => {
+                        await deleteBackward(editor)
+                        await deleteBackward(editor)
+                    },
+                    contentAfter: '<p>\u200B[]<br></p>'
                 });
             });
         });

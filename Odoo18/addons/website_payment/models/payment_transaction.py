@@ -1,7 +1,7 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from markupsafe import Markup
-
 from odoo import _, fields, models
 
 
@@ -28,20 +28,20 @@ class PaymentTransaction(models.Model):
         self.ensure_one()
         if is_internal_notification or self.state == 'done':
             subject = _('A donation has been made on your website') if is_internal_notification else _('Donation confirmation')
-            body = self.env['ir.qweb'].with_context(lang=self.partner_id.lang)._render('website_payment.donation_mail_body', {
+            body = self.env['ir.qweb']._render('website_payment.donation_mail_body', {
                 'is_internal_notification': is_internal_notification,
                 'tx': self,
                 'comment': comment,
             }, minimal_qcontext=True)
-            body = self.env['mail.render.mixin'].with_context(lang=self.partner_id.lang)._render_encapsulate(
-                'mail.mail_notification_light',
-                body,
-                context_record=self,
+            self.env.ref('website_payment.mail_template_donation').send_mail(
+                self.id,
+                email_layout_xmlid="mail.mail_notification_light",
+                email_values={
+                    'email_to': recipient_email if is_internal_notification else self.partner_email,
+                    'email_from': self.company_id.email_formatted,
+                    'author_id': self.partner_id.id,
+                    'subject': subject,
+                    'body_html': body,
+                },
+                force_send=True,
             )
-            self.env['mail.mail'].sudo().create({
-                'author_id': self.partner_id.id,
-                'body_html': body,
-                'email_from': self.company_id.email_formatted,
-                'email_to': recipient_email if is_internal_notification else self.partner_email,
-                'subject': subject,
-            }).send()

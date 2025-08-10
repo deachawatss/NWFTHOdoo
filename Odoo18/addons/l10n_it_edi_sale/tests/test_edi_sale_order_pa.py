@@ -21,7 +21,6 @@ class TestItEdiSaleOrderPa(TestItEdi):
         })
 
         cls.module = 'l10n_it_edi_sale'
-        cls.env.user.group_ids |= cls.env.ref('sales_team.group_sale_salesman')
 
     def get_sales_order_vals(self, **kwargs):
         return {
@@ -34,7 +33,7 @@ class TestItEdiSaleOrderPa(TestItEdi):
                     'product_id': self.product_a.id,
                     'price_unit': 100.0,
                     'product_uom_qty': 1,
-                    'tax_ids': [Command.set(self.default_tax.ids)],
+                    'tax_id': [Command.set(self.default_tax.ids)],
                 }),
             ],
         }

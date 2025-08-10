@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { Component, useState, onWillStart } from "@odoo/owl";
 
 import { Domain } from "@web/core/domain";

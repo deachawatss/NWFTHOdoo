@@ -14,7 +14,7 @@ class TestSaleFiscal(L10nInTestInvoicingCommon):
         cls.partner_b.property_account_position_id = None
 
     def _assert_order_fiscal_position(self, fpos_ref, partner, post=True):
-        test_order = self.env['sale.order'].sudo().create({
+        test_order = self.env['sale.order'].create({
             'partner_id': partner,
             'company_id': self.env.company.id,
             'order_line': [
@@ -37,7 +37,7 @@ class TestSaleFiscal(L10nInTestInvoicingCommon):
         According to GST: Compare place of supply (instead of delivery address) with company state
         '''
 
-        self.env = self.env['base'].with_company(self.default_company).env
+        self.env.company = self.default_company
         template = self.env['account.chart.template']
         company_state = self.env.company.state_id
 
@@ -64,11 +64,11 @@ class TestSaleFiscal(L10nInTestInvoicingCommon):
 
         # Sub-test: SEZ (Special Economic Zone)
         with self.subTest(scenario="SEZ"):
-            # Here fpos should Intra-State. But due to `l10n_in_gst_treatment` on partner, it will be SEZ
-            self.partner_a.l10n_in_gst_treatment = 'special_economic_zone'
-            sale_order = self.env['sale.order'].sudo().with_company(self.env.company).create({
+            # Here fpos should Intra-State. But due to `l10n_in_gst_treatment` it will be SEZ
+            sale_order = self.env['sale.order'].with_company(self.env.company).create({
                 'date_order': fields.Date.from_string('2019-01-01'),
                 'partner_id': self.partner_a.id,  # Intra-State Partner
+                'l10n_in_gst_treatment': 'special_economic_zone',
                 'order_line': [Command.create({
                     'product_id': self.product_a.id,
                     'product_uom_qty': 10,
@@ -93,3 +93,44 @@ class TestSaleFiscal(L10nInTestInvoicingCommon):
                 fpos_ref='fiscal_position_in_export_sez_in',
                 partner=self.partner_a.id,
             )
+
+    def test_foreign_partner_without_state_fiscal_position(self):
+        """ Verify foreign partner without state gets export fiscal position """
+        self.env.company = self.default_company
+
+        self._assert_order_fiscal_position(
+            fpos_ref='fiscal_position_in_export_sez_in',
+            partner=self.partner_foreign_no_state.id,
+        )
+
+    def test_prepare_invoice_values_returns_reseller_id_as_int(self):
+        """Test that the reseller partner ID is correctly passed as an integer, not a recordset."""
+
+        sale_order = self.env['sale.order'].create({
+            'partner_id': self.partner_a.id,
+            'l10n_in_reseller_partner_id': self.partner_a.id,
+            'country_code': 'IN',
+        })
+
+        so_line = self.env['sale.order.line'].create({
+            'order_id': sale_order.id,
+            'product_id': self.env.ref('product.product_product_4').id,
+            'name': 'Test Product',
+            'product_uom_qty': 1,
+            'price_unit': 100,
+            'product_uom': self.env.ref('uom.product_uom_unit').id,
+        })
+
+        wizard = self.env['sale.advance.payment.inv'].create({
+            'advance_payment_method': 'delivered',
+            'sale_order_ids': [(6, 0, [sale_order.id])]
+        })
+
+        _, accounts = wizard._prepare_down_payment_lines_values(wizard.sale_order_ids)
+        invoice_vals = wizard._prepare_invoice_values(
+            sale_order, so_line, accounts
+        )
+
+        reseller_id = invoice_vals['l10n_in_reseller_partner_id']
+        self.assertIsInstance(reseller_id, int, "Reseller partner ID should be an integer")
+        self.assertEqual(reseller_id, self.partner_a.id)

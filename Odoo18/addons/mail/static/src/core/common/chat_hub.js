@@ -9,10 +9,9 @@ import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { ChatBubble } from "./chat_bubble";
 import { isMobileOS } from "@web/core/browser/feature_detection";
-import { DropdownItem } from "@web/core/dropdown/dropdown_item";
 
 export class ChatHub extends Component {
-    static components = { ChatBubble, ChatWindow, Dropdown, DropdownItem };
+    static components = { ChatBubble, ChatWindow, Dropdown };
     static props = [];
     static template = "mail.ChatHub";
 
@@ -22,25 +21,18 @@ export class ChatHub extends Component {
 
     setup() {
         super.setup();
-        this.store = useService("mail.store");
-        this.ui = useService("ui");
-        this.busMonitoring = useService("bus.monitoring_service");
+        this.store = useState(useService("mail.store"));
+        this.ui = useState(useService("ui"));
+        this.busMonitoring = useState(useService("bus.monitoring_service"));
         this.bubblesHover = useHover("bubbles");
-        this.moreHover = useHover(["more-button", "more-menu"], {
+        this.moreHover = useHover(["more-button", "more-menu*"], {
             onHover: () => (this.more.isOpen = true),
             onAway: () => (this.more.isOpen = false),
         });
         this.options = useDropdownState();
         this.more = useDropdownState();
-        this.ref = useRef("bubbles");
-        this.position = useState({
-            dragged: false,
-            isDragging: false,
-            top: "unset",
-            left: "unset",
-            bottom: `${this.chatHub.BUBBLE_OUTER}px;`,
-            right: `${this.chatHub.BUBBLE_OUTER + this.chatHub.BUBBLE_START}px;`,
-        });
+        this.compactRef = useRef("compact");
+        this.compactPosition = useState({ left: "auto", top: "auto" });
         this.onResize();
         useExternalListener(browser, "resize", this.onResize);
         useEffect(() => {
@@ -50,16 +42,10 @@ export class ChatHub extends Component {
         });
         useMovable({
             cursor: "grabbing",
-            ref: this.ref,
-            elements: ".o-mail-ChatHub-bubbles",
-            onDragStart: () => {
-                this.more.close();
-                this.options.close();
-                this.position.isDragging = true;
-                this.position.dragged = true;
-            },
-            onDragEnd: () => (this.position.isDragging = false),
-            onDrop: this.onDrop.bind(this),
+            ref: this.compactRef,
+            elements: ".o-mail-ChatHub-compact",
+            onDrop: ({ top, left }) =>
+                Object.assign(this.compactPosition, { left: `${left}px`, top: `${top}px` }),
         });
     }
 
@@ -67,24 +53,8 @@ export class ChatHub extends Component {
         return isMobileOS();
     }
 
-    onDrop({ top, left }) {
-        this.position.bottom = "unset";
-        this.position.right = "unset";
-        this.position.top = `${top}px`;
-        this.position.left = `${left}px`;
-    }
-
     onResize() {
         this.chatHub.onRecompute();
-    }
-
-    resetPosition() {
-        this.position.top = "unset";
-        this.position.left = "unset";
-        this.position.bottom = `${this.chatHub.BUBBLE_OUTER}px;`;
-        this.position.right = `${this.chatHub.BUBBLE_OUTER + this.chatHub.BUBBLE_START}px;`;
-        this.position.dragged = false;
-        this.options.close();
     }
 
     get compactCounter() {
@@ -104,23 +74,13 @@ export class ChatHub extends Component {
         return counter;
     }
 
-    /** @deprecated */
-    get displayConversations() {
-        return this.chatHub.showConversations && !this.chatHub.compact;
-    }
-
-    /** @deprecated */
     get isShown() {
         return true;
     }
 
-    /** @deprecated */
-    shouldDisplayChatWindow(cw) {
-        return cw.canShow;
-    }
-
     expand() {
         this.chatHub.compact = false;
+        Object.assign(this.compactPosition, { left: "auto", top: "auto" });
         this.more.isOpen = this.chatHub.folded.length > this.chatHub.maxFolded;
     }
 }

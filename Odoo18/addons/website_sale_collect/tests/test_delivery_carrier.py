@@ -6,7 +6,7 @@ from odoo import Command
 from odoo.exceptions import ValidationError
 from odoo.tests import Form, tagged
 
-from odoo.addons.website_sale.tests.common import MockRequest
+from odoo.addons.website.tools import MockRequest
 from odoo.addons.website_sale_collect.tests.common import ClickAndCollectCommon
 from odoo.addons.website_sale_stock.tests.common import WebsiteSaleStockCommon
 
@@ -88,7 +88,7 @@ class TestDeliveryCarrier(ClickAndCollectCommon, WebsiteSaleStockCommon):
                     'country_code': wh_address_partner.country_code,
                     'latitude': wh_address_partner.partner_latitude,
                     'longitude': wh_address_partner.partner_longitude,
-                    'additional_data': {'in_store_stock_data': {'in_stock': True}},
+                    'additional_data': {'in_store_stock': {'in_stock': True}},
                     'opening_hours': {
                         '0': ['08:00 - 12:00', '13:00 - 17:00'],
                         '1': [],

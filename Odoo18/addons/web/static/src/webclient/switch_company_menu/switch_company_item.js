@@ -1,6 +1,6 @@
 import { DropdownItem } from "@web/core/dropdown/dropdown_item";
 import { Component, useState } from "@odoo/owl";
-import { user } from "@web/core/user";
+import { useService } from "@web/core/utils/hooks";
 
 export class SwitchCompanyItem extends Component {
     static template = "web.SwitchCompanyItem";
@@ -11,6 +11,7 @@ export class SwitchCompanyItem extends Component {
     };
 
     setup() {
+        this.companyService = useService("company");
         this.companySelector = useState(this.env.companySelector);
     }
 
@@ -19,11 +20,11 @@ export class SwitchCompanyItem extends Component {
     }
 
     get isCompanyAllowed() {
-        return user.allowedCompanies.map((c) => c.id).includes(this.props.company.id);
+        return this.props.company.id in this.companyService.allowedCompanies;
     }
 
     get isCurrent() {
-        return this.props.company.id === user.activeCompany.id;
+        return this.props.company.id === this.companyService.currentCompany.id;
     }
 
     logIntoCompany() {

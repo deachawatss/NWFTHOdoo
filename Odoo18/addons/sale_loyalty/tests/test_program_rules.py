@@ -1,11 +1,10 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from datetime import date, timedelta
-
 from freezegun import freeze_time
 
+from odoo import Command
 from odoo.exceptions import ValidationError
-from odoo.fields import Command
 
 from odoo.addons.sale_loyalty.tests.common import TestSaleCouponCommon
 
@@ -28,11 +27,13 @@ class TestProgramRules(TestSaleCouponCommon):
             (0, False, {
                 'product_id': self.product_A.id,
                 'name': '1 Product A',
+                'product_uom': self.uom_unit.id,
                 'product_uom_qty': 1.0,
             }),
             (0, False, {
                 'product_id': self.product_B.id,
                 'name': '2 Product B',
+                'product_uom': self.uom_unit.id,
                 'product_uom_qty': 1.0,
             })
         ]})
@@ -45,11 +46,13 @@ class TestProgramRules(TestSaleCouponCommon):
             (0, False, {
                 'product_id': self.product_A.id,
                 'name': '10 Product A',
+                'product_uom': self.uom_unit.id,
                 'product_uom_qty': 10.0,
             }),
             (0, False, {
                 'product_id': self.product_B.id,
                 'name': '2 Product B',
+                'product_uom': self.uom_unit.id,
                 'product_uom_qty': 1.0,
             })
         ]})
@@ -304,11 +307,13 @@ class TestProgramRules(TestSaleCouponCommon):
             Command.create({
                 'product_id': self.product_A.id,
                 'name': '1 Product A',
+                'product_uom': self.uom_unit.id,
                 'product_uom_qty': 1.0,
             }),
             Command.create({
                 'product_id': self.product_B.id,
                 'name': '2 Product B',
+                'product_uom': self.uom_unit.id,
                 'product_uom_qty': 1.0,
             })
         ]})
@@ -372,6 +377,7 @@ class TestProgramRules(TestSaleCouponCommon):
             Command.create({
                 'product_id': self.product_A.id,
                 'name': '1 Product A',
+                'product_uom': self.uom_unit.id,
                 'product_uom_qty': 1.0,
             })
         ]})
@@ -386,6 +392,7 @@ class TestProgramRules(TestSaleCouponCommon):
             Command.create({
                 'product_id': self.product_B.id,
                 'name': '2 Product B',
+                'product_uom': self.uom_unit.id,
                 'product_uom_qty': 1.0,
             })
         ]})

@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import {SIZES, MEDIAS_BREAKPOINTS} from "@web/core/ui/ui_service";
 import {
     normalizeCSSColor,
@@ -96,7 +98,7 @@ const DEFAULT_PALETTE = {
  * Set of all the data attributes relative to the background images.
  */
 const BACKGROUND_IMAGE_ATTRIBUTES = new Set([
-    "originalId", "originalSrc", "mimetype", "resizeWidth", "glFilter", "quality",
+    "originalId", "originalSrc", "mimetype", "resizeWidth", "glFilter", "quality", "bgSrc",
     "filterOptions",
     "mimetypeBeforeConversion",
 ]);

@@ -8,10 +8,10 @@
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server saas~18.3\n"
+"Project-Id-Version: Odoo Server 18.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-05-23 18:35+0000\n"
-"PO-Revision-Date: 2025-05-06 12:03+0000\n"
+"POT-Creation-Date: 2025-05-14 20:47+0000\n"
+"PO-Revision-Date: 2024-09-25 09:41+0000\n"
 "Last-Translator: Tony Ng, 2025\n"
 "Language-Team: Chinese (Taiwan) (https://app.transifex.com/odoo/teams/41243/zh_TW/)\n"
 "MIME-Version: 1.0\n"
@@ -416,8 +416,28 @@ msgstr "<span class=\"o_stat_text\">開放收件人</span>"
 
 #. module: mass_mailing
 #: model_terms:ir.ui.view,arch_db:mass_mailing.mailing_contact_view_form_split_name
-msgid "<span class=\"opacity-50\" invisible=\"name\">e.g. \"John Smith\"</span>"
-msgstr "<span class=\"opacity-50\" invisible=\"name\">例：陳大文</span>"
+msgid "<span class=\"oe_grey\" invisible=\"name\">e.g. \"John Smith\"</span>"
+msgstr "<span class=\"oe_grey\" invisible=\"name\">例：陳大文</span>"
+
+#. module: mass_mailing
+#: model_terms:ir.ui.view,arch_db:mass_mailing.mailing_list_view_kanban
+msgid "<span class=\"text-muted\">Blacklist</span>"
+msgstr "<span class=\"text-muted\">黑名單</span>"
+
+#. module: mass_mailing
+#: model_terms:ir.ui.view,arch_db:mass_mailing.mailing_list_view_kanban
+msgid "<span class=\"text-muted\">Bounce</span>"
+msgstr "<span class=\"text-muted\">彈回</span>"
+
+#. module: mass_mailing
+#: model_terms:ir.ui.view,arch_db:mass_mailing.mailing_list_view_kanban
+msgid "<span class=\"text-muted\">Mailings</span>"
+msgstr "<span class=\"text-muted\">郵寄</span>"
+
+#. module: mass_mailing
+#: model_terms:ir.ui.view,arch_db:mass_mailing.mailing_list_view_kanban
+msgid "<span class=\"text-muted\">Opt-out</span>"
+msgstr "<span class=\"text-muted\">退出</span>"
 
 #. module: mass_mailing
 #: model_terms:ir.ui.view,arch_db:mass_mailing.view_mail_mass_mailing_kanban
@@ -555,9 +575,19 @@ msgstr ""
 "                                    管理"
 
 #. module: mass_mailing
+#: model_terms:ir.ui.view,arch_db:mass_mailing.mailing_list_view_kanban
+msgid "<span>Contacts</span>"
+msgstr "<span>聯絡人</span>"
+
+#. module: mass_mailing
 #: model_terms:ir.ui.view,arch_db:mass_mailing.ab_testing_description
 msgid "<span>There wasn't enough recipients left for this mailing</span>"
 msgstr "<span>剩餘收件人數目不足以供此郵件使用</span>"
+
+#. module: mass_mailing
+#: model_terms:ir.ui.view,arch_db:mass_mailing.mailing_list_view_kanban
+msgid "<span>Valid Email Recipients</span>"
+msgstr "<span>有效電郵收件人</span>"
 
 #. module: mass_mailing
 #: model_terms:ir.ui.view,arch_db:mass_mailing.snippet_options
@@ -973,14 +1003,18 @@ msgid "Archived"
 msgstr "已封存"
 
 #. module: mass_mailing
-#: model_terms:ir.ui.view,arch_db:mass_mailing.page_mailing_confirm_unsubscribe
+#. odoo-python
+#: code:addons/mass_mailing/controllers/main.py:0
 msgid "Are you sure you want to unsubscribe from our mailing list?"
 msgstr "確定要取消訂閱我們的郵寄清單？"
 
 #. module: mass_mailing
-#: model_terms:ir.ui.view,arch_db:mass_mailing.page_mailing_confirm_unsubscribe
-msgid "Are you sure you want to unsubscribe from the mailing list \""
-msgstr "確定要取消訂閱郵寄清單 \""
+#. odoo-python
+#: code:addons/mass_mailing/controllers/main.py:0
+msgid ""
+"Are you sure you want to unsubscribe from the mailing list "
+"\"%(unsubscribed_lists)s\"?"
+msgstr "確定要取消訂閱郵寄清單「%(unsubscribed_lists)s」？"
 
 #. module: mass_mailing
 #: model:ir.model.fields,field_description:mass_mailing.field_mailing_subscription_optout__is_feedback
@@ -1609,11 +1643,6 @@ msgid "Cover"
 msgstr "封面"
 
 #. module: mass_mailing
-#: model:ir.model,website_form_label:mass_mailing.model_res_partner
-msgid "Create a Customer"
-msgstr "建立客戶"
-
-#. module: mass_mailing
 #: model_terms:ir.actions.act_window,help:mass_mailing.mailing_mailing_action_mail
 msgid "Create a Mailing"
 msgstr "建立郵寄"
@@ -1828,16 +1857,6 @@ msgid "Discover all the features"
 msgstr "發掘更多功能"
 
 #. module: mass_mailing
-#: model:ir.model.fields,field_description:mass_mailing.field_ir_http__display_name
-#: model:ir.model.fields,field_description:mass_mailing.field_ir_mail_server__display_name
-#: model:ir.model.fields,field_description:mass_mailing.field_ir_model__display_name
-#: model:ir.model.fields,field_description:mass_mailing.field_link_tracker__display_name
-#: model:ir.model.fields,field_description:mass_mailing.field_link_tracker_click__display_name
-#: model:ir.model.fields,field_description:mass_mailing.field_mail_blacklist__display_name
-#: model:ir.model.fields,field_description:mass_mailing.field_mail_compose_message__display_name
-#: model:ir.model.fields,field_description:mass_mailing.field_mail_mail__display_name
-#: model:ir.model.fields,field_description:mass_mailing.field_mail_render_mixin__display_name
-#: model:ir.model.fields,field_description:mass_mailing.field_mail_thread__display_name
 #: model:ir.model.fields,field_description:mass_mailing.field_mailing_contact__display_name
 #: model:ir.model.fields,field_description:mass_mailing.field_mailing_contact_import__display_name
 #: model:ir.model.fields,field_description:mass_mailing.field_mailing_contact_to_list__display_name
@@ -1851,13 +1870,6 @@ msgstr "發掘更多功能"
 #: model:ir.model.fields,field_description:mass_mailing.field_mailing_subscription_optout__display_name
 #: model:ir.model.fields,field_description:mass_mailing.field_mailing_trace__display_name
 #: model:ir.model.fields,field_description:mass_mailing.field_mailing_trace_report__display_name
-#: model:ir.model.fields,field_description:mass_mailing.field_res_company__display_name
-#: model:ir.model.fields,field_description:mass_mailing.field_res_config_settings__display_name
-#: model:ir.model.fields,field_description:mass_mailing.field_res_partner__display_name
-#: model:ir.model.fields,field_description:mass_mailing.field_res_users__display_name
-#: model:ir.model.fields,field_description:mass_mailing.field_utm_campaign__display_name
-#: model:ir.model.fields,field_description:mass_mailing.field_utm_medium__display_name
-#: model:ir.model.fields,field_description:mass_mailing.field_utm_source__display_name
 msgid "Display Name"
 msgstr "顯示名稱"
 
@@ -1969,7 +1981,6 @@ msgstr "電郵內容"
 #. odoo-python
 #: code:addons/mass_mailing/models/res_users.py:0
 #: model:ir.ui.menu,name:mass_mailing.mass_mailing_menu_root
-#: model:res.groups.privilege,name:mass_mailing.res_groups_privilege_email_marketing
 #: model_terms:ir.ui.view,arch_db:mass_mailing.res_config_settings_view_form
 msgid "Email Marketing"
 msgstr "電郵推廣"
@@ -2262,11 +2273,6 @@ msgid "Furniture"
 msgstr "家具"
 
 #. module: mass_mailing
-#: model:ir.model.fields,field_description:mass_mailing.field_mailing_trace__is_test_trace
-msgid "Generated for testing"
-msgstr "產生作測試"
-
-#. module: mass_mailing
 #: model_terms:ir.ui.view,arch_db:mass_mailing.s_image_text
 msgid ""
 "Get your inside sales (CRM) fully integrated with online sales (eCommerce), "
@@ -2368,16 +2374,6 @@ msgid "I receive too many emails from this list"
 msgstr "我收到太多來自該清單的電子郵件"
 
 #. module: mass_mailing
-#: model:ir.model.fields,field_description:mass_mailing.field_ir_http__id
-#: model:ir.model.fields,field_description:mass_mailing.field_ir_mail_server__id
-#: model:ir.model.fields,field_description:mass_mailing.field_ir_model__id
-#: model:ir.model.fields,field_description:mass_mailing.field_link_tracker__id
-#: model:ir.model.fields,field_description:mass_mailing.field_link_tracker_click__id
-#: model:ir.model.fields,field_description:mass_mailing.field_mail_blacklist__id
-#: model:ir.model.fields,field_description:mass_mailing.field_mail_compose_message__id
-#: model:ir.model.fields,field_description:mass_mailing.field_mail_mail__id
-#: model:ir.model.fields,field_description:mass_mailing.field_mail_render_mixin__id
-#: model:ir.model.fields,field_description:mass_mailing.field_mail_thread__id
 #: model:ir.model.fields,field_description:mass_mailing.field_mailing_contact__id
 #: model:ir.model.fields,field_description:mass_mailing.field_mailing_contact_import__id
 #: model:ir.model.fields,field_description:mass_mailing.field_mailing_contact_to_list__id
@@ -2391,13 +2387,6 @@ msgstr "我收到太多來自該清單的電子郵件"
 #: model:ir.model.fields,field_description:mass_mailing.field_mailing_subscription_optout__id
 #: model:ir.model.fields,field_description:mass_mailing.field_mailing_trace__id
 #: model:ir.model.fields,field_description:mass_mailing.field_mailing_trace_report__id
-#: model:ir.model.fields,field_description:mass_mailing.field_res_company__id
-#: model:ir.model.fields,field_description:mass_mailing.field_res_config_settings__id
-#: model:ir.model.fields,field_description:mass_mailing.field_res_partner__id
-#: model:ir.model.fields,field_description:mass_mailing.field_res_users__id
-#: model:ir.model.fields,field_description:mass_mailing.field_utm_campaign__id
-#: model:ir.model.fields,field_description:mass_mailing.field_utm_medium__id
-#: model:ir.model.fields,field_description:mass_mailing.field_utm_source__id
 msgid "ID"
 msgstr "識別號"
 
@@ -3030,7 +3019,8 @@ msgid "Manage Mass Mailing Campaigns"
 msgstr "管理群發信件行銷"
 
 #. module: mass_mailing
-#: model_terms:ir.ui.view,arch_db:mass_mailing.page_mailing_has_unsubscribed
+#. odoo-python
+#: code:addons/mass_mailing/controllers/main.py:0
 msgid "Manage Subscriptions"
 msgstr "管理訂閱"
 
@@ -3134,7 +3124,7 @@ msgstr "媒體標題"
 #: model_terms:ir.ui.view,arch_db:mass_mailing.snippet_options
 #: model_terms:ir.ui.view,arch_db:mass_mailing.view_mail_mass_mailing_form
 msgid "Medium"
-msgstr "媒體"
+msgstr "中"
 
 #. module: mass_mailing
 #. odoo-javascript
@@ -3298,6 +3288,11 @@ msgstr "新信件列表名稱"
 #: code:addons/mass_mailing/wizard/mailing_contact_import.py:0
 msgid "New contacts imported"
 msgstr "已匯入新的聯絡人"
+
+#. module: mass_mailing
+#: model:utm.campaign,title:mass_mailing.mass_mail_campaign_1
+msgid "Newsletter"
+msgstr "電子報"
 
 #. module: mass_mailing
 #: model:ir.model.fields,field_description:mass_mailing.field_mailing_mailing__activity_calendar_event_id
@@ -3732,14 +3727,14 @@ msgstr "純文字"
 
 #. module: mass_mailing
 #. odoo-javascript
-#: code:addons/mass_mailing/static/src/interactions/subscribe.js:0
+#: code:addons/mass_mailing/static/src/js/mailing_portal_subscription_feedback.js:0
 #: model_terms:ir.ui.view,arch_db:mass_mailing.unsubscribe_form
 msgid "Please let us know why you updated your subscription."
 msgstr "請告訴我們你更新訂閱的原因。"
 
 #. module: mass_mailing
 #. odoo-javascript
-#: code:addons/mass_mailing/static/src/interactions/subscribe.js:0
+#: code:addons/mass_mailing/static/src/js/mailing_portal_subscription_feedback.js:0
 msgid "Please let us know why you want to be in our block list."
 msgstr "請告訴我們為什麼您想加入我們的攔截名單。"
 
@@ -3854,12 +3849,6 @@ msgstr "已收款"
 #: model:ir.model.fields,field_description:mass_mailing.field_utm_campaign__received_ratio
 msgid "Received Ratio"
 msgstr "已接收比例"
-
-#. module: mass_mailing
-#. odoo-python
-#: code:addons/mass_mailing/wizard/mail_compose_message.py:0
-msgid "Received the mailing <b>{mailing_name}</b>"
-msgstr "收到郵件 <b>{mailing_name}</b>"
 
 #. module: mass_mailing
 #: model_terms:ir.ui.view,arch_db:mass_mailing.mailing_mailing_view_calendar
@@ -4096,13 +4085,26 @@ msgstr "預定將在"
 
 #. module: mass_mailing
 #: model_terms:ir.ui.view,arch_db:mass_mailing.view_mail_mass_mailing_kanban
-msgid "Scheduled on {{0}}"
-msgstr "預定於 {{0}}"
+msgid "Scheduled on #{record.next_departure.value}"
+msgstr "於 #{record.next_departure.value} 預定"
+
+#. module: mass_mailing
+#: model_terms:ir.ui.view,arch_db:mass_mailing.view_mail_mass_mailing_kanban
+msgid "Scheduled on #{record.schedule_date.value}"
+msgstr "於 #{record.schedule_date.value} 預定"
 
 #. module: mass_mailing
 #: model_terms:ir.ui.view,arch_db:mass_mailing.s_rating_options
 msgid "Score"
 msgstr "分數"
+
+#. module: mass_mailing
+#. odoo-python
+#: code:addons/mass_mailing/models/ir_model.py:0
+msgid ""
+"Searching Mailing Enabled models supports only direct search using '='' or "
+"'!='."
+msgstr "啟用了搜尋郵件功能的模型，只支援使用「=」或「!=」的直接搜尋。"
 
 #. module: mass_mailing
 #: model_terms:ir.ui.view,arch_db:mass_mailing.s_features
@@ -4203,11 +4205,6 @@ msgid "Send a test version of your mailing to preview its design"
 msgstr "傳送測試版本郵件，以預覽版面設計"
 
 #. module: mass_mailing
-#: model:ir.model,website_form_label:mass_mailing.model_mail_mail
-msgid "Send an E-mail"
-msgstr "傳送電郵"
-
-#. module: mass_mailing
 #: model:ir.model.fields.selection,name:mass_mailing.selection__mailing_mailing__schedule_type__now
 msgid "Send now"
 msgstr "立即傳送"
@@ -4272,8 +4269,8 @@ msgstr "發送期間"
 
 #. module: mass_mailing
 #: model_terms:ir.ui.view,arch_db:mass_mailing.view_mail_mass_mailing_kanban
-msgid "Sent on {{0}}"
-msgstr "於 {{0}} 傳送"
+msgid "Sent on #{record.sent_date.value}"
+msgstr "已於 #{record.sent_date.value} 發送"
 
 #. module: mass_mailing
 #. odoo-javascript
@@ -4441,11 +4438,6 @@ msgid "Subject"
 msgstr "主題"
 
 #. module: mass_mailing
-#: model:ir.model,website_form_label:mass_mailing.model_mailing_contact
-msgid "Subscribe to Newsletter"
-msgstr "訂閱電子報"
-
-#. module: mass_mailing
 #. odoo-javascript
 #: code:addons/mass_mailing/static/src/xml/mailing_portal_subscription_form.xml:0
 #: model_terms:ir.ui.view,arch_db:mass_mailing.unsubscribe_form
@@ -4467,17 +4459,13 @@ msgid "Subscription Information"
 msgstr "訂閱資訊"
 
 #. module: mass_mailing
-#: model_terms:ir.ui.view,arch_db:mass_mailing.mailing_contact_view_form
-msgid "Subscriptions"
-msgstr "訂閱"
-
-#. module: mass_mailing
 #: model_terms:ir.ui.view,arch_db:mass_mailing.unsubscribe_form
 msgid "Successfully Unsubscribed"
 msgstr "您已成功取消訂閱!"
 
 #. module: mass_mailing
-#: model_terms:ir.ui.view,arch_db:mass_mailing.page_mailing_has_unsubscribed
+#. odoo-python
+#: code:addons/mass_mailing/controllers/main.py:0
 msgid "Successfully unsubscribed!"
 msgstr "成功取消訂閱。"
 
@@ -4514,7 +4502,6 @@ msgid "Template"
 msgstr "範本文字"
 
 #. module: mass_mailing
-#: model_terms:ir.ui.view,arch_db:mass_mailing.mailing_trace_view_form
 #: model_terms:ir.ui.view,arch_db:mass_mailing.view_mail_mass_mailing_form
 msgid "Test"
 msgstr "測試"
@@ -4524,11 +4511,6 @@ msgstr "測試"
 #: code:addons/mass_mailing/models/mailing.py:0
 msgid "Test Mailing"
 msgstr "測試信件"
-
-#. module: mass_mailing
-#: model_terms:ir.ui.view,arch_db:mass_mailing.mailing_trace_view_search
-msgid "Test Traces"
-msgstr "測試追蹤"
 
 #. module: mass_mailing
 #. odoo-python
@@ -4727,6 +4709,7 @@ msgid "TikTok"
 msgstr "TikTok / 抖音"
 
 #. module: mass_mailing
+#: model:ir.model.fields,field_description:mass_mailing.field_mailing_contact__title_id
 #: model_terms:ir.ui.view,arch_db:mass_mailing.email_designer_snippets
 msgid "Title"
 msgstr "稱謂"
@@ -4857,7 +4840,8 @@ msgid "Unknown error"
 msgstr "未知的錯誤"
 
 #. module: mass_mailing
-#: model_terms:ir.ui.view,arch_db:mass_mailing.page_mailing_confirm_unsubscribe
+#. odoo-python
+#: code:addons/mass_mailing/controllers/main.py:0
 #: model_terms:ir.ui.view,arch_db:mass_mailing.s_mail_block_footer_social
 #: model_terms:ir.ui.view,arch_db:mass_mailing.s_mail_block_footer_social_left
 #: model_terms:ir.ui.view,arch_db:mass_mailing.theme_basic_template
@@ -5279,11 +5263,6 @@ msgid "e.g. New Sale on all T-shirts"
 msgstr "例：所有 T 恤均享全新減價"
 
 #. module: mass_mailing
-#: model:ir.model.constraint,message:mass_mailing.constraint_mailing_mailing_email_from
-msgid "email from is required for mailing"
-msgstr "郵寄須有寄件人電郵"
-
-#. module: mass_mailing
 #: model_terms:ir.ui.view,arch_db:mass_mailing.view_mail_mass_mailing_test_form
 msgid ""
 "email1@example.com\n"
@@ -5296,12 +5275,6 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:mass_mailing.ab_testing_description
 msgid "having the"
 msgstr "已經收到此提示的用戶"
-
-#. module: mass_mailing
-#. odoo-python
-#: code:addons/mass_mailing/models/mailing_subscription.py:0
-msgid "id"
-msgstr "id"
 
 #. module: mass_mailing
 #. odoo-javascript

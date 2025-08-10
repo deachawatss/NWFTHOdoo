@@ -7,10 +7,8 @@ from odoo.exceptions import UserError
 
 
 # Invoice template that needs to be passed to Sinvoice and will determine the format of the resulting
-
-
 # invoice pdf on their system
-class L10n_Vn_Edi_ViettelSinvoiceTemplate(models.Model):
+class SInvoiceTemplate(models.Model):
     _name = 'l10n_vn_edi_viettel.sinvoice.template'
     _description = 'SInvoice template'
 
@@ -35,10 +33,9 @@ class L10n_Vn_Edi_ViettelSinvoiceTemplate(models.Model):
         inverse_name='invoice_template_id',
     )
 
-    _name_uniq = models.Constraint(
-        'unique (name)',
-        'The template code must be unique!',
-    )
+    _sql_constraints = [
+        ('name_uniq', 'unique (name)', 'The template code must be unique!')
+    ]
 
     @api.constrains('name', 'template_invoice_type')
     def _constrains_changes(self):
@@ -51,10 +48,8 @@ class L10n_Vn_Edi_ViettelSinvoiceTemplate(models.Model):
 
 
 # Invoice symbol that needs to be passed to Sinvoice and will determine the prefix of the
-
-
 # invoice number on their system
-class L10n_Vn_Edi_ViettelSinvoiceSymbol(models.Model):
+class SInvoiceSymbol(models.Model):
     _name = 'l10n_vn_edi_viettel.sinvoice.symbol'
     _description = 'SInvoice symbol'
     """
@@ -86,10 +81,9 @@ class L10n_Vn_Edi_ViettelSinvoiceSymbol(models.Model):
         required=True,
     )
 
-    _name_template_uniq = models.Constraint(
-        'unique (name, invoice_template_id)',
-        'The combination symbol/template must be unique!',
-    )
+    _sql_constraints = [
+        ('name_template_uniq', 'unique (name, invoice_template_id)', 'The combination symbol/template must be unique!')
+    ]
 
     @api.constrains('name', 'invoice_template_id')
     def _constrains_changes(self):

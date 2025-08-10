@@ -4,13 +4,12 @@ from . import ir_http
 from odoo import models
 
 
-class Base(models.AbstractModel):
+class BaseModel(models.AbstractModel):
     _inherit = 'base'
 
     def get_base_url(self):
         """
         Returns the base url for a given record, given the following priority:
-
         1. If the record has a `website_id` field, we use the url from this
            website as base url, if set.
         2. If the record has a `company_id` field, we use the website from that

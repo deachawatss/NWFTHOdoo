@@ -7,20 +7,22 @@
             <field name="arch" type="xml">
                 <form>
                     <sheet>
+                        <h1><field name="employee_id" readonly="1" options="{'no_open': True}"/></h1>
                         <group>
                             <group id="info">
-                                <field name="employee_ids" widget="many2many_tags"/>
                                 <field name="departure_reason_id" options="{'no_edit': True, 'no_create': True, 'no_open': True}"/>
                                 <field name="departure_date"/>
                             </group>
                             <group id="action">
-                                <div class="o_td_label" id="activities_label">
+                                <!-- Override invisible="1" when inheriting -->
+                                <div class="o_td_label" id="activities_label" invisible="1">
                                     <span class="o_form_label o_hr_form_label cursor-default">Close Activities</span>
                                 </div>
-                                <div class="column" id="activities">
-                                    <div>
-                                        <field name="set_date_end"/><label for="set_date_end" string="Contract"/>
-                                    </div>
+                                <!-- Override invisible="1" when inheriting -->
+                                <div class="column" id="activities" invisible="1">
+                                </div>
+                                <div class="o_td_label" id="label_info">
+                                    <span class="o_form_label o_hr_form_label cursor-default">HR Info</span>
                                 </div>
                                 <div class="column" id="info"/>
                             </group>
@@ -38,6 +40,13 @@
                     </footer>
                 </form>
             </field>
+        </record>
+
+        <record id="hr_departure_wizard_action" model="ir.actions.act_window">
+            <field name="name">Register Departure</field>
+            <field name="res_model">hr.departure.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
         </record>
     </data>
 </odoo>

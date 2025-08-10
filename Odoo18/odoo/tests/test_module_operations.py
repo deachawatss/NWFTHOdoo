@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import contextlib
 import logging.config
 import os
 import sys
@@ -9,8 +8,8 @@ import time
 
 sys.path.append(os.path.abspath(os.path.join(__file__,'../../../')))
 
-from odoo import api
-from odoo.tools import config, topological_sort, unique, profiler
+import odoo
+from odoo.tools import config, topological_sort, unique
 from odoo.modules.registry import Registry
 from odoo.netsvc import init_logger
 from odoo.tests import standalone_tests
@@ -31,7 +30,7 @@ INSTALL_BLACKLIST = {
 
 def install(db_name, module_id, module_name):
     with Registry(db_name).cursor() as cr:
-        env = api.Environment(cr, api.SUPERUSER_ID, {})
+        env = odoo.api.Environment(cr, odoo.SUPERUSER_ID, {})
         module = env['ir.module.module'].browse(module_id)
         module.button_immediate_install()
     _logger.info('%s installed', module_name)
@@ -39,7 +38,7 @@ def install(db_name, module_id, module_name):
 
 def uninstall(db_name, module_id, module_name):
     with Registry(db_name).cursor() as cr:
-        env = api.Environment(cr, api.SUPERUSER_ID, {})
+        env = odoo.api.Environment(cr, odoo.SUPERUSER_ID, {})
         module = env['ir.module.module'].browse(module_id)
         module.button_immediate_uninstall()
     _logger.info('%s uninstalled', module_name)
@@ -51,8 +50,10 @@ def cycle(db_name, module_id, module_name):
     install(db_name, module_id, module_name)
 
 
-def addons_path(value):
-    return config._check_addons_path(config.options_index['init'], '-i', value)
+class CheckAddons(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        self.values = namespace
+        config._check_addons_path(self, option_string, values, self)
 
 
 def parse_args():
@@ -76,7 +77,7 @@ def parse_args():
         help="Comma-separated list of modules to skip (they will only be installed)")
     parser.add_argument("--resume-at", "-r", type=str,
         help="Skip modules (only install) up to the specified one in topological order")
-    parser.add_argument("--addons-path", "-p", type=addons_path,
+    parser.add_argument("--addons-path", "-p", type=str, action=CheckAddons,
         help="Comma-separated list of paths to directories containing extra Odoo modules")
 
     cmds = parser.add_subparsers(title="subcommands", metavar='')
@@ -126,7 +127,7 @@ class StandaloneAction(argparse.Action):
 def test_cycle(args):
     """ Test full install/uninstall/reinstall cycle for all modules """
     with Registry(args.database).cursor() as cr:
-        env = odoo.api.Environment(cr, odoo.api.SUPERUSER_ID, {})
+        env = odoo.api.Environment(cr, odoo.SUPERUSER_ID, {})
 
         def valid(module):
             return not (
@@ -161,7 +162,7 @@ def test_uninstall(args):
     """ Tries to uninstall/reinstall one ore more modules"""
     for module_name in args.uninstall.split(','):
         with Registry(args.database).cursor() as cr:
-            env = odoo.api.Environment(cr, odoo.api.SUPERUSER_ID, {})
+            env = odoo.api.Environment(cr, odoo.SUPERUSER_ID, {})
             module = env['ir.module.module'].search([('name', '=', module_name)])
             module_id, module_state = module.id, module.state
 
@@ -193,7 +194,7 @@ def test_standalone(args):
     start_time = time.time()
     for index, func in enumerate(funcs, start=1):
         with Registry(args.database).cursor() as cr:
-            env = odoo.api.Environment(cr, odoo.api.SUPERUSER_ID, {})
+            env = odoo.api.Environment(cr, odoo.SUPERUSER_ID, {})
             _logger.info("Executing standalone script: %s (%d / %d)",
                          func.__name__, index, len(funcs))
             try:
@@ -210,9 +211,9 @@ if __name__ == '__main__':
     config['dbname'] = threading.current_thread().dbname = args.database
     # handle paths option
     if args.addons_path:
-        config['addons_path'] = args.addons_path + config['addons_path']
+        odoo.tools.config['addons_path'] = ','.join([args.addons_path, odoo.tools.config['addons_path']])
         if args.data_dir:
-            config['data_dir'] = args.data_dir
+            odoo.tools.config['data_dir'] = args.data_dir
         odoo.modules.module.initialize_sys_path()
 
     init_logger()
@@ -228,16 +229,8 @@ if __name__ == '__main__':
         }
     })
 
-    prof = contextlib.nullcontext()
-    if os.environ.get('ODOO_PROFILE_PRELOAD'):
-        interval = float(os.environ.get('ODOO_PROFILE_PRELOAD_INTERVAL', '0.1'))
-        collectors = [profiler.PeriodicCollector(interval=interval)]
-        if os.environ.get('ODOO_PROFILE_PRELOAD_SQL'):
-            collectors.append('sql')
-        prof = profiler.Profiler(db=args.database, collectors=collectors)
     try:
-        with prof:
-            args.func(args)
+        args.func(args)
     except Exception:
         _logger.error("%s tests failed", args.func.__name__[5:])
         raise

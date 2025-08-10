@@ -30,18 +30,6 @@ export class PosCategory extends Base {
 
         return parents.reverse();
     }
-    get associatedProducts() {
-        const allCategoryIds = this.getAllChildren().map((cat) => cat.id);
-        const products = allCategoryIds.flatMap(
-            (catId) => this.models["product.template"].getBy("pos_categ_ids", catId) || []
-        );
-        // Remove duplicates since owl doesn't like them.
-        return Array.from(new Set(products));
-    }
-
-    get hasProductsToShow() {
-        return this.associatedProducts.length > 0;
-    }
 }
 
 registry.category("pos_available_models").add(PosCategory.pythonModel, PosCategory);

@@ -3,14 +3,15 @@
 from odoo import Command
 from odoo.tests import tagged
 
-from odoo.addons.product.tests.test_product_attribute_value_config import (
-    TestProductAttributeValueCommon,
+from odoo.addons.sale.tests.test_sale_product_attribute_value_config import (
+    TestSaleProductAttributeValueCommon,
 )
-from odoo.addons.website_sale.tests.common import MockRequest, WebsiteSaleCommon
+from odoo.addons.website.tools import MockRequest
+from odoo.addons.website_sale.tests.common import WebsiteSaleCommon
 
 
 @tagged('post_install', '-at_install')
-class TestWebsiteSaleProductFilters(WebsiteSaleCommon, TestProductAttributeValueCommon):
+class TestWebsiteSaleProductFilters(WebsiteSaleCommon, TestSaleProductAttributeValueCommon):
 
     @classmethod
     def setUpClass(cls):
@@ -61,19 +62,20 @@ class TestWebsiteSaleProductFilters(WebsiteSaleCommon, TestProductAttributeValue
         })
 
         # Computer alternatives
-        cls.windows_pc = cls._create_product(
-            name='Windows PC',
-            lst_price=1000.0,
-            standard_price=800.0,
-            alternative_product_ids=[Command.set(cls.computer.ids)],
-        ).product_tmpl_id
-        cls.mac = cls._create_product(
-            name='Mac',
-            uom_id=cls.uom_dozen.id,
-            lst_price=200.0,
-            standard_price=160.0,
-            alternative_product_ids=[Command.link(cls.computer.id), Command.link(cls.windows_pc.id)]
-        ).product_tmpl_id
+        cls.windows_pc = cls.product_a.with_env(cls.env).product_tmpl_id
+        cls.windows_pc.write({
+            'name': "Windows PC",
+            'company_id': False,
+            'alternative_product_ids': cls.computer.ids,
+            'website_published': True,
+        })
+        cls.mac = cls.product_b.with_env(cls.env).product_tmpl_id
+        cls.mac.write({
+            'name': "Mac",
+            'company_id': False,
+            'alternative_product_ids': (cls.computer + cls.windows_pc).ids,
+            'website_published': True,
+        })
 
         # More generic products to get the number of product templates to 17
         generics = cls.env['product.template'].create([{
@@ -86,6 +88,14 @@ class TestWebsiteSaleProductFilters(WebsiteSaleCommon, TestProductAttributeValue
             cls.computer_case + cls.monitor + cls.computer + cls.windows_pc + cls.mac + generics
         )
 
+        if 'loyalty.program' in cls.env:
+            programs = cls.env['loyalty.program'].sudo().search([])
+            programs.active = False
+            programs.coupon_ids.unlink()
+            programs.unlink()
+
+        cls.env['product.template'].search([('id', 'not in', cls.product_tmpls.ids)]).active = False
+
     def test_latest_sold_filter(self):
         """Check the latest sold filter after selling 1 computer and 3 different cases.
 
@@ -93,16 +103,6 @@ class TestWebsiteSaleProductFilters(WebsiteSaleCommon, TestProductAttributeValue
         When hiding variants, the case should be the most sold product.
         """
         computer = self.computer.product_variant_id
-        self.env['product.product'].search([
-            (
-                'id',
-                'in',
-                self.env['sale.order.line']._search([
-                    ('order_id.website_id', '!=', False),
-                    ('state', '=', 'sale'),
-                ]).subselect('product_id'),
-            )
-        ]).action_archive()
         self.empty_cart.write({
             'website_id': self.website.id,
             'order_line': [
@@ -127,7 +127,6 @@ class TestWebsiteSaleProductFilters(WebsiteSaleCommon, TestProductAttributeValue
             with_variants = self.WebsiteSnippetFilter.with_context(
                 dynamic_filter=dyn_filter,
                 hide_variants=False,
-                website_id=self.website.id,
             )._get_products('latest_sold')
             self.assertSetEqual(
                 {p['product_id'] for p in with_variants},
@@ -143,7 +142,6 @@ class TestWebsiteSaleProductFilters(WebsiteSaleCommon, TestProductAttributeValue
             no_variants = self.WebsiteSnippetFilter.with_context(
                 dynamic_filter=dyn_filter,
                 hide_variants=True,
-                website_id=self.website.id,
             )._get_products('latest_sold')
             self.assertSetEqual(
                 {p['product_id'] for p in no_variants},
@@ -212,7 +210,6 @@ class TestWebsiteSaleProductFilters(WebsiteSaleCommon, TestProductAttributeValue
             with_variants = self.WebsiteSnippetFilter.with_context(
                 dynamic_filter=dyn_filter,
                 hide_variants=False,
-                website_id=self.website.id,
             )._get_products('recently_sold_with', product_template_id=str(self.computer.id))
             self.assertSetEqual(
                 {p['product_id'] for p in with_variants},
@@ -223,7 +220,6 @@ class TestWebsiteSaleProductFilters(WebsiteSaleCommon, TestProductAttributeValue
             no_variants = self.WebsiteSnippetFilter.with_context(
                 dynamic_filter=dyn_filter,
                 hide_variants=True,
-                website_id=self.website.id,
             )._get_products('recently_sold_with', product_template_id=str(self.computer.id))
             self.assertSetEqual(
                 {p['product_id'] for p in no_variants},
@@ -297,9 +293,7 @@ class TestWebsiteSaleProductFilters(WebsiteSaleCommon, TestProductAttributeValue
         via the `_get_products` method.
         """
         # Ensure we're working with a known set of products
-        self.env['product.template'].search([('id', 'not in', self.product_tmpls.ids)]).write({
-            'sale_ok': False,
-        })
+        self.assertEqual(len(self.env['product.template'].search([])), 17)
 
         dyn_filter = self.env.ref('website_sale.dynamic_filter_newest_products')
         with MockRequest(self.env, website=self.website):

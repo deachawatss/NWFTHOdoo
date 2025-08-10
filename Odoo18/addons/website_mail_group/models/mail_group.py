@@ -5,6 +5,7 @@ from odoo import models
 
 
 class MailGroup(models.Model):
+    _name = 'mail.group'
     _inherit = 'mail.group'
 
     def action_go_to_website(self):

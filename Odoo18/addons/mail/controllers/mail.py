@@ -1,13 +1,17 @@
+# Part of Odoo. See LICENSE file for full copyright and licensing details.
+
 import logging
 
 from werkzeug.urls import url_encode
-from werkzeug.exceptions import Unauthorized
+from werkzeug.exceptions import NotFound, Unauthorized
 
 from odoo import _, http
 from odoo.exceptions import AccessError
 from odoo.http import request
 from odoo.tools import consteq
-from odoo.addons.mail.tools.discuss import add_guest_to_context
+from odoo.addons.mail.controllers.discuss.public_page import PublicPageController
+from odoo.addons.mail.models.discuss.mail_guest import add_guest_to_context
+from odoo.addons.mail.tools.discuss import Store
 
 _logger = logging.getLogger(__name__)
 
@@ -114,7 +118,7 @@ class MailController(http.Controller):
                     # - Make a new access test if it succeeds, redirect to the record. Otherwise,
                     #   redirect to the messaging.
                     if not suggested_company:
-                        raise AccessError(_("There is no candidate company that has read access to the record."))
+                        raise AccessError('')
                     cids = cids + [suggested_company.id]
                     record_sudo.with_user(uid).with_context(allowed_company_ids=cids).check_access('read')
                     request.future_response.set_cookie('cids', '-'.join([str(cid) for cid in cids]))
@@ -231,16 +235,27 @@ class MailController(http.Controller):
             if request.env.user._is_public():
                 return request.redirect(f'/web/login?redirect=/mail/message/{message_id}')
             raise Unauthorized()
-        return self._mail_thread_message_redirect(message)
 
-    def _mail_thread_message_redirect(self, message):
+        # sudo: public user can access some relational fields of mail.message
+        if message.sudo()._filter_empty():
+            raise NotFound()
         if not request.env.user._is_internal():
             thread = request.env[message.model].search([('id', '=', message.res_id)])
-            if hasattr(thread, "_get_share_url"):
+            if message.model == 'discuss.channel':
+                store = Store({'isChannelTokenSecret': True})
+                store.add(thread, {'highlightMessage': Store.one(message, only_id=True)})
+                return PublicPageController()._response_discuss_channel_invitation(store, thread)
+            elif hasattr(thread, '_get_share_url'):
                 return request.redirect(thread._get_share_url(share_token=False))
-            raise Unauthorized()
-        # @see commit c63d14a0485a553b74a8457aee158384e9ae6d3f
-        # @see router.js: heuristics to discrimate a model name from an action path
-        # is the presence of dots, or the prefix m- for models
-        model_in_url = model if "." in (model := message.model) else "m-" + model
-        return request.redirect(f'/odoo/{model_in_url}/{message.res_id}?highlight_message_id={message.id}')
+            else:
+                raise Unauthorized()
+
+        if message.model == 'discuss.channel':
+            url = f'/odoo/action-mail.action_discuss?active_id={message.res_id}&highlight_message_id={message_id}'
+        else:
+            # @see commit c63d14a0485a553b74a8457aee158384e9ae6d3f
+            # @see router.js: heuristics to discrimate a model name from an action path
+            # is the presence of dots, or the prefix m- for models
+            model_in_url = model if "." in (model := message.model) else "m-" + model
+            url = f'/odoo/{model_in_url}/{message.res_id}?highlight_message_id={message_id}'
+        return request.redirect(url)

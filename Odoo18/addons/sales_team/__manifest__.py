@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 {
@@ -27,12 +28,8 @@ Using this application you can manage Sales Teams with CRM and/or Sales
     'installable': True,
     'assets': {
         'web.assets_backend': [
-            'sales_team/static/src/**/*',
-        ],
-        'web.assets_unit_tests': [
-            'sales_team/static/tests/**/*',
+            'sales_team/static/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

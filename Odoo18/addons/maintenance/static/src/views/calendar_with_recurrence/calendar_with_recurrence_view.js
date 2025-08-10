@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { calendarView } from '@web/views/calendar/calendar_view';
 import { CalendarWithRecurrenceModel } from './calendar_with_recurrence_model';
 import { CalendarWithRecurrenceRenderer } from './calendar_with_recurrence_renderer';

@@ -15,12 +15,14 @@ class TestSubcontractingDropshippingValuation(ValuationReconciliationTestCommon)
 
         categ_form = Form(cls.env['product.category'])
         categ_form.name = 'fifo auto'
+        categ_form.parent_id = cls.env.ref('product.product_category_all')
         categ_form.property_cost_method = 'fifo'
         categ_form.property_valuation = 'real_time'
         cls.categ_fifo_auto = categ_form.save()
 
         categ_form = Form(cls.env['product.category'])
         categ_form.name = 'avco auto'
+        categ_form.parent_id = cls.env.ref('product.product_category_all')
         categ_form.property_cost_method = 'average'
         categ_form.property_valuation = 'real_time'
         cls.categ_avco_auto = categ_form.save()
@@ -52,7 +54,7 @@ class TestSubcontractingDropshippingValuation(ValuationReconciliationTestCommon)
         all_amls_ids = self.env['account.move.line'].search_read([], ['id'])
 
         grp_multi_loc = self.env.ref('stock.group_stock_multi_locations')
-        self.env.user.write({'group_ids': [(4, grp_multi_loc.id)]})
+        self.env.user.write({'groups_id': [(4, grp_multi_loc.id)]})
 
         (self.product_a | self.product_b).categ_id = self.categ_fifo_auto
         self.product_b.standard_price = 10
@@ -72,7 +74,7 @@ class TestSubcontractingDropshippingValuation(ValuationReconciliationTestCommon)
                 'name': self.product_a.name,
                 'product_qty': 2.0,
                 'price_unit': 100,
-                'tax_ids': False,
+                'taxes_id': False,
             })],
         })
         po.button_confirm()
@@ -116,8 +118,8 @@ class TestSubcontractingDropshippingValuation(ValuationReconciliationTestCommon)
         amls = self.env['account.move.line'].search([('id', 'not in', all_amls_ids)])
         all_amls_ids += amls.ids
         self.assertRecordValues(amls, [
-            {'account_id': stock_valu_acc_id,   'product_id': self.product_a.id,    'debit': 0.0,   'credit': 110.0},
-            {'account_id': stock_in_acc_id,     'product_id': self.product_a.id,    'debit': 110.0, 'credit': 0.0},
+            {'account_id': stock_out_acc_id,      'product_id': self.product_a.id,    'debit': 0.0,   'credit': 110.0},
+            {'account_id': stock_valu_acc_id,     'product_id': self.product_a.id,    'debit': 110.0, 'credit': 0.0},
         ])
 
         # return to stock location
@@ -167,11 +169,11 @@ class TestSubcontractingDropshippingValuation(ValuationReconciliationTestCommon)
             'price': 1,
         })
 
-        sale_order = self.env['sale.order'].sudo().create({
+        sale_order = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'order_line': [(0, 0, {
                 'product_id': final_product.id,
-                'route_ids': [Command.link(self.dropship_route.id)],
+                'route_id': self.dropship_route.id,
                 'product_uom_qty': 100,
             })],
         })
@@ -180,14 +182,12 @@ class TestSubcontractingDropshippingValuation(ValuationReconciliationTestCommon)
         purchase_order.button_confirm()
         dropship_transfer = purchase_order.picking_ids[0]
         dropship_transfer.move_ids[0].quantity = 50
-        res = dropship_transfer.button_validate()
-        wizard = Form(self.env[res['res_model']].with_context(res['context'])).save()
-        wizard.process()
+        dropship_transfer.with_context(cancel_backorder=False)._action_done()
         account_move_1 = sale_order._create_invoices()
         account_move_1.action_post()
         dropship_backorder = dropship_transfer.backorder_ids[0]
         dropship_backorder.move_ids[0].quantity = 50
-        dropship_backorder.button_validate()
+        dropship_backorder._action_done()
         account_move_2 = sale_order._create_invoices()
         account_move_2.action_post()
 
@@ -196,11 +196,11 @@ class TestSubcontractingDropshippingValuation(ValuationReconciliationTestCommon)
             [
                 # DS/01
                 {'reference': dropship_transfer.name, 'quantity': -50, 'value': -500},
-                {'reference': dropship_transfer.move_ids.move_orig_ids[0].reference, 'quantity': 50, 'value': 8500},
+                {'reference': dropship_transfer.move_ids.move_orig_ids[0].name, 'quantity': 50, 'value': 8500},
                 {'reference': dropship_transfer.name, 'quantity': 0, 'value': -8000},
                 # DS/02 - backorder
                 {'reference': dropship_backorder.name, 'quantity': -50, 'value': -500},
-                {'reference': dropship_backorder.move_ids.move_orig_ids[1].reference, 'quantity': 50, 'value': 8500},
+                {'reference': dropship_backorder.move_ids.move_orig_ids[1].name, 'quantity': 50, 'value': 8500},
                 {'reference': dropship_backorder.name, 'quantity': 0, 'value': -8000},
             ]
         )
@@ -214,6 +214,7 @@ class TestSubcontractingDropshippingValuation(ValuationReconciliationTestCommon)
         product_c = self.env['product.product'].create({
             'name': 'product_c',
             'uom_id': self.env.ref('uom.product_uom_dozen').id,
+            'uom_po_id': self.env.ref('uom.product_uom_dozen').id,
             'lst_price': 120.0,
             'standard_price': 100.0,
             'property_account_income_id': self.copy_account(self.company_data['default_account_revenue']).id,
@@ -251,12 +252,12 @@ class TestSubcontractingDropshippingValuation(ValuationReconciliationTestCommon)
             'property_valuation': 'real_time',
         })
 
-        sale_order = self.env['sale.order'].sudo().create({
+        sale_order = self.env['sale.order'].create({
             'partner_id': self.partner_b.id,
             'order_line': [(0, 0, {
                 'price_unit': 900,
                 'product_id': kit_final_prod.id,
-                'route_ids': [Command.link(self.dropship_route.id)],
+                'route_id': self.dropship_route.id,
                 'product_uom_qty': 2.0,
             })],
         })

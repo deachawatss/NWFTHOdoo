@@ -57,30 +57,26 @@ class ResConfigSettings(models.TransientModel):
     prepayment_percent = fields.Float(
         related='company_id.prepayment_percent',
         readonly=False)
-    downpayment_account_id = fields.Many2one(related='company_id.downpayment_account_id', readonly=False)
 
     # Modules
     module_delivery = fields.Boolean("Delivery Methods")
     module_delivery_bpost = fields.Boolean("bpost Connector")
     module_delivery_dhl = fields.Boolean("DHL Express Connector")
     module_delivery_easypost = fields.Boolean("Easypost Connector")
-    module_delivery_envia = fields.Boolean("Envia.com Connector")
-    module_delivery_fedex_rest = fields.Boolean("FedEx Connector")
+    module_delivery_fedex = fields.Boolean("FedEx Connector")
     module_delivery_sendcloud = fields.Boolean("Sendcloud Connector")
     module_delivery_shiprocket = fields.Boolean("Shiprocket Connector")
+    module_delivery_ups = fields.Boolean("UPS Connector")
+    module_delivery_usps = fields.Boolean("USPS Connector")
     module_delivery_starshipit = fields.Boolean("Starshipit Connector")
-    module_delivery_ups_rest = fields.Boolean("UPS Connector")
-    module_delivery_usps_rest = fields.Boolean("USPS Connector")
 
     module_product_email_template = fields.Boolean("Specific Email")
     module_sale_amazon = fields.Boolean("Amazon Sync")
-    module_sale_commission = fields.Boolean("Commissions")
-    module_sale_gelato = fields.Boolean("Gelato")
     module_sale_loyalty = fields.Boolean("Coupons & Loyalty")
     module_sale_margin = fields.Boolean("Margins")
-    module_sale_pdf_quote_builder = fields.Boolean("PDF Quote builder")
     module_sale_product_matrix = fields.Boolean("Sales Grid Entry")
-    module_sale_shopee = fields.Boolean("Shopee Sync")
+    module_sale_pdf_quote_builder = fields.Boolean("PDF Quote builder")
+    module_sale_commission = fields.Boolean("Commissions")
 
     #=== ONCHANGE METHODS ===#
 

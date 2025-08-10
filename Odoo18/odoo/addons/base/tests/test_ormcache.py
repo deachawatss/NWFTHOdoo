@@ -116,11 +116,11 @@ class TestOrmCache(TransactionCase):
         )
 
     def test_signaling_01_single(self):
-        self.assertFalse(self._registry_patched)
+        self.assertFalse(self.registry.test_cr)
         self.registry.cache_invalidated.clear()
         registry = self.registry
         old_sequences = dict(registry.cache_sequences)
-        with self.assertLogs('odoo.registry') as logs:
+        with self.assertLogs('odoo.modules.registry') as logs:
             registry.cache_invalidated.add('assets')
             self.assertEqual(registry.cache_invalidated, {'assets'})
             registry.signal_changes()
@@ -128,7 +128,7 @@ class TestOrmCache(TransactionCase):
 
         self.assertEqual(
             logs.output,
-            ["INFO:odoo.registry:Caches invalidated, signaling through the database: ['assets']"],
+            ["INFO:odoo.modules.registry:Caches invalidated, signaling through the database: ['assets']"],
         )
 
         for key, value in old_sequences.items():
@@ -148,15 +148,15 @@ class TestOrmCache(TransactionCase):
             registry.check_signaling()
         self.assertEqual(
             logs.output,
-            ["INFO:odoo.registry:Invalidating caches after database signaling: ['assets', 'templates.cached_values']"],
+            ["INFO:odoo.modules.registry:Invalidating caches after database signaling: ['assets', 'templates.cached_values']"],
         )
 
     def test_signaling_01_multiple(self):
-        self.assertFalse(self._registry_patched)
+        self.assertFalse(self.registry.test_cr)
         self.registry.cache_invalidated.clear()
         registry = self.registry
         old_sequences = dict(registry.cache_sequences)
-        with self.assertLogs('odoo.registry') as logs:
+        with self.assertLogs('odoo.modules.registry') as logs:
             registry.cache_invalidated.add('assets')
             registry.cache_invalidated.add('default')
             self.assertEqual(registry.cache_invalidated, {'assets', 'default'})
@@ -166,7 +166,7 @@ class TestOrmCache(TransactionCase):
         self.assertEqual(
             logs.output,
             [
-                "INFO:odoo.registry:Caches invalidated, signaling through the database: ['assets', 'default']",
+                "INFO:odoo.modules.registry:Caches invalidated, signaling through the database: ['assets', 'default']",
             ],
         )
 
@@ -187,44 +187,5 @@ class TestOrmCache(TransactionCase):
             registry.check_signaling()
         self.assertEqual(
             logs.output,
-            ["INFO:odoo.registry:Invalidating caches after database signaling: ['assets', 'default', 'templates.cached_values']"],
+            ["INFO:odoo.modules.registry:Invalidating caches after database signaling: ['assets', 'default', 'templates.cached_values']"],
         )
-
-    def test_signaling_gc(self):
-        cr = self.env.cr
-        cr.execute('SELECT last_value FROM orm_signaling_registry_id_seq')
-        sequence_start = cr.fetchone()[0]
-
-        def assertSignalCount(expected_count, expected_max_id, message):
-            cr.execute("SELECT count(*), max(id) FROM orm_signaling_registry")
-            count, max_id = cr.fetchone()
-            self.assertEqual(expected_count, count, message)
-            self.assertEqual(expected_max_id, max_id-sequence_start, message)     
-
-        cr.execute('DELETE FROM orm_signaling_registry')
-    
-        for _ in range (7):
-            cr.execute("INSERT INTO orm_signaling_registry (date) VALUES (NOW() - interval '2 hours')")
-
-        cr.execute("INSERT INTO orm_signaling_registry DEFAULT VALUES")
-
-        assertSignalCount(8, 8, "8 signals were inserted")
-        self.env['ir.autovacuum']._gc_orm_signaling()
-        assertSignalCount(8, 8, "less than 10 signals, no deletion")
-
-        for _ in range (5):
-            cr.execute("INSERT INTO orm_signaling_registry DEFAULT VALUES")
-
-        assertSignalCount(13, 13, "5 more signals were inserted")
-        self.env['ir.autovacuum']._gc_orm_signaling()
-        assertSignalCount(10, 13, "more than 10 signals, some should have been deleted")
-
-        for _ in range (7):
-            cr.execute("INSERT INTO orm_signaling_registry DEFAULT VALUES")
-
-        assertSignalCount(17, 20, "7 more signals were inserted")
-        self.env['ir.autovacuum']._gc_orm_signaling()
-        assertSignalCount(13, 20, "Keeping the 13 signals having less than one hour")
-
-        # reset sequence to avoid side effects
-        cr.execute(f"SELECT setval('orm_signaling_registry_id_seq', {sequence_start})")

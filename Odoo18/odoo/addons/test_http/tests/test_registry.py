@@ -9,7 +9,7 @@ import odoo
 from odoo.modules.registry import Registry
 from odoo.sql_db import close_db, db_connect
 from odoo.tests import HOST, BaseCase, Like, get_db_name, tagged
-from odoo.tools import mute_logger, reset_cached_properties, SQL
+from odoo.tools import lazy_property, mute_logger, SQL
 
 
 """
@@ -46,9 +46,9 @@ def drop_db(db):
 class TestHttpRegistry(BaseCase):
     @classmethod
     def setUpClass(cls):
-        reset_cached_properties(odoo.http.root)
-        cls.addClassCleanup(reset_cached_properties, odoo.http.root)
-        cls.classPatch(odoo.conf, 'server_wide_modules', ['base', 'web', 'rpc', 'test_http'])
+        lazy_property.reset_all(odoo.http.root)
+        cls.addClassCleanup(lazy_property.reset_all, odoo.http.root)
+        cls.classPatch(odoo.conf, 'server_wide_modules', ['base', 'web', 'test_http'])
 
         # make sure there are always many databases, to break monodb
         cls._db_list = cls.startClassPatcher(patch('odoo.http.db_list'))
@@ -96,15 +96,15 @@ class TestHttpRegistry(BaseCase):
 
         # invalidate the registry of the current db
         with Registry(get_db_name()).cursor() as cr:
-            cr.execute("INSERT INTO orm_signaling_registry default values")
+            cr.execute("select nextval('base_registry_signaling')")
 
         # the registry should rebuild itself just fine
-        with self.assertLogs('odoo.registry', logging.INFO) as capture:
+        with self.assertLogs('odoo.modules.registry', logging.INFO) as capture:
             res = self.url_open('/test_http/ensure_db')
             self.assertEqual(res.status_code, 200)
         self.assertEqual(capture.output, [
-            "INFO:odoo.registry:Reloading the model registry after database signaling.",
-            Like("INFO:odoo.registry:Registry loaded in ...s"),
+            "INFO:odoo.modules.registry:Reloading the model registry after database signaling.",
+            Like("INFO:odoo.modules.registry:Registry loaded in ...s"),
         ])
 
     def test_missing_db(self):
@@ -153,12 +153,12 @@ class TestHttpRegistry(BaseCase):
         self.authenticate(db=db_duplicate)
 
         # impossible to build a registry, make sure the system recovers
-        with self.assertLogs('odoo.registry', logging.ERROR) as capture1, \
+        with self.assertLogs('odoo.modules.registry', logging.ERROR) as capture1, \
              self.assertLogs('odoo.http', logging.WARNING) as capture2:
             res = self.url_open('/test_http/greeting-public')
             self.assertEqual(res.status_code, 404)
         self.assertEqual(capture1.output, [
-            "ERROR:odoo.registry:Failed to load registry",
+            "ERROR:odoo.modules.registry:Failed to load registry",
         ])
         self.assertEqual(capture2.output, [
             Like("WARNING:odoo.http:Database or registry unusable, trying without\n"
@@ -166,7 +166,7 @@ class TestHttpRegistry(BaseCase):
         ])
 
     @mute_logger('odoo.sql_db')
-    def test_corrupt_signaling(self):
+    def test_corrupt_sequences(self):
         db_duplicate = self.duplicate_current_db('corrupt-sequence')
 
         # open a registry + session on the current db (for first subtest)
@@ -177,7 +177,7 @@ class TestHttpRegistry(BaseCase):
         # drop the signaling sequence
         with db_connect(db_duplicate).cursor() as cr:
             cr.execute('''
-                DROP table "orm_signaling_registry"
+                DROP SEQUENCE "base_registry_signaling"
             ''')
 
         with self.subTest(name="existing registry"):
@@ -187,7 +187,7 @@ class TestHttpRegistry(BaseCase):
                 self.assertEqual(res.status_code, 404)
             self.assertEqual(capture.output, [
                 Like("WARNING:odoo.http:Database or registry unusable, trying without\n"
-                     'Traceback...relation "orm_signaling_registry" does not exist...')
+                     'Traceback...relation "base_registry_signaling" does not exist...')
             ])
 
         with self.subTest(name="new registry"):

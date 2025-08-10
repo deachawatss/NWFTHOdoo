@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { Component, useState } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
 import { redirect } from "@web/core/utils/urls";

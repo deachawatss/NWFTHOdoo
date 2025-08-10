@@ -3,17 +3,16 @@
 from ast import literal_eval
 from unittest.mock import patch
 
-from odoo import http
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 from odoo.addons.account.models.account_payment_method import AccountPaymentMethod
 from odoo.addons.mail.tests.common import MailCommon
-from odoo.tests import Form, tagged, HttpCase
+from odoo.tests import Form, tagged
 from odoo.exceptions import UserError, ValidationError
 from odoo import Command
 
 
 @tagged('post_install', '-at_install')
-class TestAccountJournal(AccountTestInvoicingCommon, HttpCase):
+class TestAccountJournal(AccountTestInvoicingCommon):
 
     @classmethod
     def setUpClass(cls):
@@ -29,7 +28,7 @@ class TestAccountJournal(AccountTestInvoicingCommon, HttpCase):
         journal_bank.currency_id = self.other_currency
 
         # Try to set a different currency on the 'debit' account.
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationError), self.cr.savepoint():
             journal_bank.default_account_id.currency_id = self.company_data['currency']
 
     def test_changing_journal_company(self):
@@ -42,8 +41,61 @@ class TestAccountJournal(AccountTestInvoicingCommon, HttpCase):
             'journal_id': self.company_data['default_journal_sale'].id,
         })
 
-        with self.assertRaisesRegex(UserError, "entries linked to it"):
+        with self.assertRaisesRegex(UserError, "entries linked to it"), self.cr.savepoint():
             self.company_data['default_journal_sale'].company_id = self.company_data_2['company']
+
+    def test_account_control_create_journal_entry(self):
+        move_vals = {
+            'line_ids': [
+                (0, 0, {
+                    'name': 'debit',
+                    'account_id': self.company_data['default_account_revenue'].id,
+                    'debit': 100.0,
+                    'credit': 0.0,
+                }),
+                (0, 0, {
+                    'name': 'credit',
+                    'account_id': self.company_data['default_account_expense'].id,
+                    'debit': 0.0,
+                    'credit': 100.0,
+                }),
+            ],
+        }
+
+        # Should fail because 'default_account_expense' is not allowed.
+        self.company_data['default_journal_misc'].account_control_ids |= self.company_data['default_account_revenue']
+        with self.assertRaises(UserError), self.cr.savepoint():
+            self.env['account.move'].create(move_vals)
+
+        # Should be allowed because both accounts are accepted.
+        self.company_data['default_journal_misc'].account_control_ids |= self.company_data['default_account_expense']
+        self.env['account.move'].create(move_vals)
+
+    def test_account_control_existing_journal_entry(self):
+        self.env['account.move'].create({
+            'line_ids': [
+                (0, 0, {
+                    'name': 'debit',
+                    'account_id': self.company_data['default_account_revenue'].id,
+                    'debit': 100.0,
+                    'credit': 0.0,
+                }),
+                (0, 0, {
+                    'name': 'credit',
+                    'account_id': self.company_data['default_account_expense'].id,
+                    'debit': 0.0,
+                    'credit': 100.0,
+                }),
+            ],
+        })
+
+        # There is already an other line using the 'default_account_expense' account.
+        with self.assertRaises(ValidationError), self.cr.savepoint():
+            self.company_data['default_journal_misc'].account_control_ids |= self.company_data['default_account_revenue']
+
+        # Assigning both should be allowed
+        self.company_data['default_journal_misc'].account_control_ids = \
+            self.company_data['default_account_revenue'] + self.company_data['default_account_expense']
 
     def test_account_journal_add_new_payment_method_multi(self):
         """
@@ -101,7 +153,7 @@ class TestAccountJournal(AccountTestInvoicingCommon, HttpCase):
             {"name": "OD_BLABLU"},
         ])
 
-        self.assertEqual(sorted(new_journals.mapped("code")), ["MISC1", "OD_BL"], "The journals should be set correctly")
+        self.assertEqual(sorted(new_journals.mapped("code")), ["GEN1", "OD_BL"], "The journals should be set correctly")
 
     def test_archive_used_journal(self):
         journal = self.env['account.journal'].create({
@@ -142,20 +194,6 @@ class TestAccountJournal(AccountTestInvoicingCommon, HttpCase):
         journals.action_unarchive()
         self.assertTrue(journals[0].active)
         self.assertTrue(journals[1].active)
-
-    def test_journal_notifications_unsubscribe(self):
-        journal = self.company_data['default_journal_purchase']
-        journal.incoming_einvoice_notification_email = 'test@example.com'
-
-        self.authenticate(self.env.user.login, self.env.user.login)
-        res = self.url_open(
-            f'/my/journal/{journal.id}/unsubscribe',
-            data={'csrf_token': http.Request.csrf_token(self)},
-            method='POST',
-        )
-        res.raise_for_status()
-
-        self.assertFalse(journal.incoming_einvoice_notification_email)
 
 
 @tagged('post_install', '-at_install', 'mail_alias')
@@ -238,7 +276,7 @@ class TestAccountJournalAlias(AccountTestInvoicingCommon, MailCommon):
         # assert base test data
         company_name = 'company_1_data'
         journal_code = 'BILL'
-        journal_name = 'Purchases'
+        journal_name = 'Vendor Bills'
         journal_alias = journal.alias_id
         self.assertEqual(journal.code, journal_code)
         self.assertEqual(journal.company_id.name, company_name)
@@ -258,7 +296,7 @@ class TestAccountJournalAlias(AccountTestInvoicingCommon, MailCommon):
         self.assertFalse(journal_alias.alias_force_thread_id, 'Journal alias should create new moves')
         self.assertEqual(journal_alias.alias_model_id, self.env['ir.model']._get('account.move'),
                          'Journal alias targets moves')
-        self.assertEqual(journal_alias.alias_name, f'purchases-{company_name}')
+        self.assertEqual(journal_alias.alias_name, f'vendor-bills-{company_name}')
         self.assertEqual(journal_alias.alias_parent_model_id, self.env['ir.model']._get('account.journal'),
                          'Journal alias owned by journal itself')
         self.assertEqual(journal_alias.alias_parent_thread_id, journal.id,
@@ -268,10 +306,10 @@ class TestAccountJournalAlias(AccountTestInvoicingCommon, MailCommon):
         for alias_name, expected in [
             (False, False),
             ('', False),
-            (' ', f'purchases-{company_name}'),  # error recuperation
-            ('.', f'purchases-{company_name}'),  # error recuperation
-            ('😊', f'purchases-{company_name}'),  # resets, unicode not supported
-            ('ぁ', f'purchases-{company_name}'),  # resets, non ascii not supported
+            (' ', f'vendor-bills-{company_name}'),  # error recuperation
+            ('.', f'vendor-bills-{company_name}'),  # error recuperation
+            ('😊', f'vendor-bills-{company_name}'),  # resets, unicode not supported
+            ('ぁ', f'vendor-bills-{company_name}'),  # resets, non ascii not supported
             ('Youpie Boum', 'youpie-boum'),
         ]:
             with self.subTest(alias_name=alias_name):

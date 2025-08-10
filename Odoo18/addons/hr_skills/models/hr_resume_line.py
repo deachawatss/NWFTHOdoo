@@ -4,7 +4,7 @@
 from odoo import fields, models
 
 
-class HrResumeLine(models.Model):
+class ResumeLine(models.Model):
     _name = 'hr.resume.line'
     _description = "Resume line of an employee"
     _order = "line_type_id, date_end desc, date_start desc"
@@ -19,7 +19,6 @@ class HrResumeLine(models.Model):
     # Used to apply specific template on a line
     display_type = fields.Selection([('classic', 'Classic')], string="Display Type", default='classic')
 
-    _date_check = models.Constraint(
-        'CHECK ((date_start <= date_end OR date_end IS NULL))',
-        'The start date must be anterior to the end date.',
-    )
+    _sql_constraints = [
+        ('date_check', "CHECK ((date_start <= date_end OR date_end IS NULL))", "The start date must be anterior to the end date."),
+    ]

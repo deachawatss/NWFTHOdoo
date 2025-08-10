@@ -16,11 +16,7 @@ class RazorpayPosRequest:
         self.payment_method = payment_method
         self.session = requests.Session()
 
-    def _razorpay_get_endpoint(self, endpoint):
-        if endpoint in ['unified/refund', 'void']:
-            if self.razorpay_test_mode:
-                return 'https://demo.ezetap.com/api/2.0/payment/'
-            return 'https://www.ezetap.com/api/2.0/payment/'
+    def _razorpay_get_endpoint(self):
         if self.razorpay_test_mode:
             return 'https://demo.ezetap.com/api/3.0/p2padapter/'
         return 'https://www.ezetap.com/api/3.0/p2padapter/'
@@ -33,9 +29,10 @@ class RazorpayPosRequest:
         :return The JSON-formatted content of the response.
         :rtype: dict
         """
-        url = f'{self._razorpay_get_endpoint(endpoint)}{endpoint}'
+        endpoint = f'{self._razorpay_get_endpoint()}{endpoint}'
+        request_timeout = self.payment_method.env['ir.config_parameter'].sudo().get_param('pos_razorpay.timeout', REQUEST_TIMEOUT)
         try:
-            response = self.session.post(url, json=payload, timeout=REQUEST_TIMEOUT)
+            response = self.session.post(endpoint, json=payload, timeout=request_timeout)
             response.raise_for_status()
             res_json = response.json()
         except requests.exceptions.RequestException as error:
@@ -54,10 +51,10 @@ class RazorpayPosRequest:
         }
         if payment_mode:
             request_parameters.update({'mode': self.razorpay_allowed_payment_modes.upper()})
-        request_parameters.update(self._razorpay_get_request_parameters())
+        request_parameters.update(self._razorpay_get_payment_status_request_body())
         return request_parameters
 
-    def _razorpay_get_request_parameters(self):
+    def _razorpay_get_payment_status_request_body(self):
         return {
             'username': self.razorpay_username,
             'appKey': self.razorpay_api_key,

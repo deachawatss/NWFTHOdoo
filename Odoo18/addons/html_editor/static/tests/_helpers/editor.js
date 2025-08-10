@@ -13,10 +13,6 @@ export const Direction = {
     FORWARD: "FORWARD",
 };
 
-// A generic base64 image for testing
-export const base64Img =
-    "data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAUA\n        AAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO\n            9TXL0Y4OHwAAAABJRU5ErkJggg==";
-
 class TestEditor extends Component {
     static template = xml`
         <t t-if="props.styleContent">
@@ -149,7 +145,7 @@ export async function testEditor(config) {
     if (!compareFunction) {
         compareFunction = (content, expected, phase) => {
             expect(content).toBe(expected, {
-                message: `(testEditor) ${phase} is strictly equal to "${expected}"`,
+                message: `(testEditor) ${phase} should be strictly equal to ${expected}`,
             });
         };
     }

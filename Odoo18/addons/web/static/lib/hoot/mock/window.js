@@ -1,6 +1,6 @@
 /** @odoo-module */
 
-import { EventBus, whenReady } from "@odoo/owl";
+import { EventBus } from "@odoo/owl";
 import { getCurrentDimensions, getDocument, getWindow } from "@web/../lib/hoot-dom/helpers/dom";
 import {
     mockedCancelAnimationFrame,
@@ -11,7 +11,7 @@ import {
     mockedSetTimeout,
 } from "@web/../lib/hoot-dom/helpers/time";
 import { interactor } from "../../hoot-dom/hoot_dom_utils";
-import { MockEventTarget, strictEqual } from "../hoot_utils";
+import { MockEventTarget, strictEqual, waitForDocument } from "../hoot_utils";
 import { getRunner } from "../main_runner";
 import {
     MockAnimation,
@@ -47,7 +47,6 @@ import {
 import { MockNotification } from "./notification";
 import { MockStorage } from "./storage";
 import { MockBlob } from "./sync_values";
-import { mockCrypto } from "./crypto";
 
 //-----------------------------------------------------------------------------
 // Global
@@ -464,13 +463,11 @@ const WINDOW_MOCK_DESCRIPTORS = {
     clearTimeout: { value: mockedClearTimeout, writable: false },
     ClipboardItem: { value: MockClipboardItem },
     console: { value: mockConsole, writable: false },
-    crypto: { value: mockCrypto, writable: false },
     Date: { value: MockDate, writable: false },
     fetch: { value: interactor("server", mockedFetch).as("fetch"), writable: false },
     history: { value: mockHistory },
     innerHeight: { get: () => getCurrentDimensions().height },
     innerWidth: { get: () => getCurrentDimensions().width },
-    isSecureContext: { value: true, writable: false },
     Intl: { value: MockIntl },
     localStorage: { value: mockLocalStorage, writable: false },
     matchMedia: { value: mockedMatchMedia },
@@ -605,7 +602,7 @@ export function patchWindow(view = getWindow()) {
     // Window (doesn't need to be ready)
     applyPropertyDescriptors(view, WINDOW_MOCK_DESCRIPTORS);
 
-    whenReady(() => {
+    waitForDocument(view.document).then(() => {
         // Document
         applyPropertyDescriptors(view.document, DOCUMENT_MOCK_DESCRIPTORS);
 

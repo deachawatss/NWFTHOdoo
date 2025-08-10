@@ -42,7 +42,7 @@ class TestMultiCompanyCommon(TransactionCase):
             'email': 'employee@companya.com',
             'company_id': cls.company_a.id,
             'company_ids': [(6, 0, [cls.company_a.id])],
-            'group_ids': [(6, 0, [user_group_employee.id])]
+            'groups_id': [(6, 0, [user_group_employee.id])]
         })
         cls.user_manager_company_a = Users.create({
             'name': 'Manager Company A',
@@ -50,7 +50,7 @@ class TestMultiCompanyCommon(TransactionCase):
             'email': 'manager@companya.com',
             'company_id': cls.company_a.id,
             'company_ids': [(6, 0, [cls.company_a.id])],
-            'group_ids': [(6, 0, [user_group_employee.id])]
+            'groups_id': [(6, 0, [user_group_employee.id])]
         })
         cls.user_employee_company_b = Users.create({
             'name': 'Employee Company B',
@@ -58,7 +58,7 @@ class TestMultiCompanyCommon(TransactionCase):
             'email': 'employee@companyb.com',
             'company_id': cls.company_b.id,
             'company_ids': [(6, 0, [cls.company_b.id])],
-            'group_ids': [(6, 0, [user_group_employee.id])]
+            'groups_id': [(6, 0, [user_group_employee.id])]
         })
         cls.user_manager_company_b = Users.create({
             'name': 'Manager Company B',
@@ -66,7 +66,7 @@ class TestMultiCompanyCommon(TransactionCase):
             'email': 'manager@companyb.com',
             'company_id': cls.company_b.id,
             'company_ids': [(6, 0, [cls.company_b.id])],
-            'group_ids': [(6, 0, [user_group_employee.id])]
+            'groups_id': [(6, 0, [user_group_employee.id])]
         })
 
     @contextmanager
@@ -131,16 +131,16 @@ class TestMultiCompanyProject(TestMultiCompanyCommon):
 
         # setup users
         cls.user_employee_company_a.write({
-            'group_ids': [(4, user_group_project_user.id)]
+            'groups_id': [(4, user_group_project_user.id)]
         })
         cls.user_manager_company_a.write({
-            'group_ids': [(4, user_group_project_manager.id)]
+            'groups_id': [(4, user_group_project_manager.id)]
         })
         cls.user_employee_company_b.write({
-            'group_ids': [(4, user_group_project_user.id)]
+            'groups_id': [(4, user_group_project_user.id)]
         })
         cls.user_manager_company_b.write({
-            'group_ids': [(4, user_group_project_manager.id)]
+            'groups_id': [(4, user_group_project_manager.id)]
         })
 
         # create project in both companies
@@ -420,6 +420,7 @@ class TestMultiCompanyProject(TestMultiCompanyCommon):
             self.assertEqual(subtask_line.project_id, self.task_1.project_id, "The task's project should already be set on the subtask.")
             subtask_line.name = 'Test Subtask'
         subtask = self.task_1.child_ids[0]
+        self.assertTrue(subtask.show_display_in_project, "The subtask's field 'display in project' should be visible.")
         self.assertFalse(subtask.display_in_project, "The subtask's field 'display in project' should be unchecked.")
         self.assertEqual(subtask.company_id, self.task_1.company_id, "The company of the subtask should be the one from its project.")
 
@@ -427,6 +428,7 @@ class TestMultiCompanyProject(TestMultiCompanyCommon):
         with Form(self.task_1) as task_1_form:
             task_1_form.project_id = self.project_company_b
         self.assertEqual(subtask.project_id, self.task_1.project_id, "The task's project should already be set on the subtask.")
+        self.assertTrue(subtask.show_display_in_project, "The subtask's field 'display in project' should be visible.")
         self.assertFalse(subtask.display_in_project, "The subtask's field 'display in project' should be unchecked.")
         self.assertEqual(subtask.company_id, self.project_company_b.company_id, "The company of the subtask should be the one from its project.")
         task_1_form.project_id = self.project_company_a
@@ -446,12 +448,18 @@ class TestMultiCompanyProject(TestMultiCompanyCommon):
         ):
             subtask_form.parent_id = self.task_2
             self.assertEqual(subtask_form.project_id, self.task_2.project_id, "The task's project should already be set on the subtask.")
+            self.assertTrue(subtask.show_display_in_project, "The subtask's field 'display in project' should be visible.")
             self.assertFalse(subtask.display_in_project, "The subtask's field 'display in project' should be unchecked.")
         self.assertEqual(subtask.company_id, self.task_2.company_id, "The company of the subtask should be the one from its new project, set from its parent.")
 
         # 4) Change the project of the subtask and check some fields
-        subtask.project_id = self.project_company_a
-        self.assertTrue(subtask.display_in_project, "The subtask's field 'display in project' should be checked.")
+        with (
+            self.debug_mode(),
+            Form(subtask) as subtask_form
+        ):
+            subtask.project_id = self.project_company_a
+            self.assertFalse(subtask.show_display_in_project, "The subtask's field 'display in project' shouldn't be visible.")
+            self.assertTrue(subtask.display_in_project, "The subtask's field 'display in project' should be checked.")
         self.assertEqual(subtask.company_id, self.project_company_a.company_id, "The company of the subtask should be the one from its project, and not from its parent.")
 
 

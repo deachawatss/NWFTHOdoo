@@ -24,12 +24,12 @@ Activates:
     'auto_install': ['account'],
     'data': [
         'data/account.account.tag.csv',
+        'data/res.country.state.csv',
         'data/account_tax_report_data.xml',
         'views/menu_items.xml',
     ],
     'demo': [
         'demo/demo_company.xml',
     ],
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
 import { helpers, registries, EvaluationError } from "@odoo/o-spreadsheet";
 import { sprintf } from "@web/core/utils/strings";
@@ -27,9 +29,6 @@ const ODOO_LIST = {
         const id = toString(listId);
         const position = toNumber(index, this.locale) - 1;
         const _fieldName = toString(fieldName);
-        if (!_fieldName) {
-            return new EvaluationError(_t("The field name should not be empty."));
-        }
         assertListsExists(id, this.getters);
         return this.getters.getListCellValueAndFormat(id, position, _fieldName);
     },

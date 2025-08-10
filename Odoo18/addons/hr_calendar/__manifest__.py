@@ -18,6 +18,5 @@
             'hr_calendar/static/tests/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

@@ -12,13 +12,13 @@ class TestMultistepManufacturing(TestMrpCommon):
         super().setUpClass()
 
         # Required for `uom_id ` to be visible in the view
-        cls.env.user.group_ids += cls.env.ref('uom.group_uom')
+        cls.env.user.groups_id += cls.env.ref('uom.group_uom')
         # Required for `manufacture_steps` to be visible in the view
-        cls.env.user.group_ids += cls.env.ref('stock.group_adv_location')
+        cls.env.user.groups_id += cls.env.ref('stock.group_adv_location')
         # Required for `product_id` to be visible in the view
-        cls._enable_variants()
+        cls.env.user.groups_id += cls.env.ref('product.group_product_variant')
 
-        cls.route_mto.active = True
+        cls.env.ref('stock.route_warehouse0_mto').active = True
         cls.MrpProduction = cls.env['mrp.production']
         # Create warehouse
         warehouse_form = Form(cls.env['stock.warehouse'])
@@ -63,6 +63,7 @@ class TestMultistepManufacturing(TestMrpCommon):
             line.name = cls.product_manu.name
             line.product_id = cls.product_manu
             line.product_uom_qty = 1.0
+            line.product_uom = cls.uom_unit
             line.price_unit = 10.0
         cls.sale_order = sale_form.save()
 
@@ -155,8 +156,8 @@ class TestMultistepManufacturing(TestMrpCommon):
         self.assertEqual(mo.action_view_sale_orders()['res_id'], self.sale_order.id)
 
     def test_sales_order_with_mto_manufacturing(self):
-        self.route_mto.active = True
-        warehouse = self.warehouse_1
+        self.env.ref('stock.route_warehouse0_mto').active = True
+        warehouse = self.env.ref('stock.warehouse0')
         warehouse.manufacture_steps = 'pbm_sam'
         prod1 = self.env['product.product'].create({
             'name': 'elct1',

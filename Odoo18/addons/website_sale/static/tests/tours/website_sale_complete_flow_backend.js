@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { clickOnSave, registerWebsitePreviewTour } from '@website/js/tours/tour_utils';
 
 registerWebsitePreviewTour('website_sale_tour_backend', {
@@ -6,15 +8,15 @@ registerWebsitePreviewTour('website_sale_tour_backend', {
 }, () => [
         {
             content: "open customize tab",
-            trigger: "[data-name='customize']",
+            trigger: '.o_we_customize_snippet_btn',
             run: "click",
         },
         {
-            trigger: ".o_builder_sidebar_open .o_customize_tab",
+            trigger: "#oe_snippets .o_we_customize_panel",
         },
         {
             content: "Enable Extra step",
-            trigger: "[data-action-param='{\"views\":[\"website_sale.extra_info\"]}'] input[type='checkbox']",
+            trigger: '[data-customize-website-views="website_sale.extra_info"] we-checkbox',
             run: "click",
         },
         ...clickOnSave(),

@@ -26,7 +26,6 @@ import { router } from "@web/core/browser/router";
 import { listView } from "@web/views/list/list_view";
 import { PivotModel } from "@web/views/pivot/pivot_model";
 import { WebClient } from "@web/webclient/webclient";
-import { redirect } from "@web/core/utils/urls";
 
 const { ResCompany, ResPartner, ResUsers } = webModels;
 
@@ -250,7 +249,7 @@ test("properly handle case when action xmlId does not exist", async () => {
 test("actions can be cached", async () => {
     onRpc("/web/action/load", async (request) => {
         const { params } = await request.json();
-        expect.step(params.context);
+        expect.step(JSON.stringify(params));
     });
 
     await makeMockEnv();
@@ -285,22 +284,16 @@ test("actions can be cached", async () => {
     await getService("action").loadAction(3, { active_model: "b" });
 
     // should load from server once per active_id/active_ids/active_model change, nothing else
-    const baseCtx = {
-        lang: "en",
-        tz: "taht",
-        uid: 7,
-        allowed_company_ids: [1],
-    };
     expect.verifySteps([
-        { ...baseCtx },
-        { ...baseCtx, configuratorMode: "add" },
-        { ...baseCtx, configuratorMode: "edit" },
-        { ...baseCtx, active_id: 1 },
-        { ...baseCtx, active_id: 2 },
-        { ...baseCtx, active_ids: [1, 2] },
-        { ...baseCtx, active_ids: [1, 2, 3] },
-        { ...baseCtx, active_model: "a" },
-        { ...baseCtx, active_model: "b" },
+        '{"action_id":3,"context":{"lang":"en","tz":"taht","uid":7,"allowed_company_ids":[1]}}',
+        '{"action_id":3,"context":{"lang":"en","tz":"taht","uid":7,"allowed_company_ids":[1],"configuratorMode":"add"}}',
+        '{"action_id":3,"context":{"lang":"en","tz":"taht","uid":7,"allowed_company_ids":[1],"configuratorMode":"edit"}}',
+        '{"action_id":3,"context":{"lang":"en","tz":"taht","uid":7,"allowed_company_ids":[1],"active_id":1}}',
+        '{"action_id":3,"context":{"lang":"en","tz":"taht","uid":7,"allowed_company_ids":[1],"active_id":2}}',
+        '{"action_id":3,"context":{"lang":"en","tz":"taht","uid":7,"allowed_company_ids":[1],"active_ids":[1,2]}}',
+        '{"action_id":3,"context":{"lang":"en","tz":"taht","uid":7,"allowed_company_ids":[1],"active_ids":[1,2,3]}}',
+        '{"action_id":3,"context":{"lang":"en","tz":"taht","uid":7,"allowed_company_ids":[1],"active_model":"a"}}',
+        '{"action_id":3,"context":{"lang":"en","tz":"taht","uid":7,"allowed_company_ids":[1],"active_model":"b"}}',
     ]);
 });
 
@@ -580,7 +573,7 @@ test("search defaults are removed from context when switching view", async () =>
     await switchView("pivot");
 });
 
-test("retrieving a stored action should remove 'allowed_company_ids' from its context (model)", async () => {
+test("retrieving a stored action should remove 'allowed_company_ids' from its context", async () => {
     // Prepare a multi company scenario
     serverState.companies = [
         { id: 3, name: "Hermit", sequence: 1 },
@@ -625,51 +618,6 @@ test("retrieving a stored action should remove 'allowed_company_ids' from its co
     });
 });
 
-test("retrieving a stored action should remove 'allowed_company_ids' from its context (action)", async () => {
-    // Prepare a multi company scenario
-    serverState.companies = [
-        { id: 3, name: "Hermit", sequence: 1 },
-        { id: 2, name: "Herman's", sequence: 2 },
-        { id: 1, name: "Heroes TM", sequence: 3 },
-    ];
-
-    // Prepare a stored action
-    browser.sessionStorage.setItem(
-        "current_action",
-        JSON.stringify({
-            id: 1,
-            name: "Partners Action 1",
-            res_model: "partner",
-            type: "ir.actions.act_window",
-            views: [[1, "kanban"]],
-            context: {
-                someKey: 44,
-                allowed_company_ids: [1, 2],
-                lang: "not_en",
-                tz: "not_taht",
-                uid: 42,
-            },
-        })
-    );
-
-    // Prepare the URL hash to make sure the stored action will get executed.
-    // Object.assign(browser.location, { search: "?model=partner&view_type=kanban" });
-    redirect("/odoo/action-1?view_type=kanban");
-
-    // Create the web client. It should execute the stored action.
-    await mountWithCleanup(WebClient);
-    await animationFrame(); // blank action
-
-    // Check the current action context
-    expect(getService("action").currentController.action.context).toEqual({
-        // action context
-        someKey: 44,
-        lang: "not_en",
-        tz: "not_taht",
-        uid: 42,
-        // note there is no 'allowed_company_ids' in the action context
-    });
-});
 test.tags("desktop");
 test("action is removed while waiting for another action with selectMenu", async () => {
     let def;

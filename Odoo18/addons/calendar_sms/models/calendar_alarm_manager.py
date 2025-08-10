@@ -4,7 +4,7 @@
 from odoo import api, models
 
 
-class CalendarAlarm_Manager(models.AbstractModel):
+class AlarmManager(models.AbstractModel):
     _inherit = 'calendar.alarm_manager'
 
     @api.model
@@ -21,4 +21,7 @@ class CalendarAlarm_Manager(models.AbstractModel):
             alarm = self.env['calendar.alarm'].browse(alarm_id).with_prefetch(list(events_by_alarm.keys()))
             events = self.env['calendar.event'].browse(event_ids).with_prefetch(all_events_ids)
             events._do_sms_reminder(alarm)
-            events._setup_event_recurrent_alarms(events_by_alarm)
+            for event in events:
+                if event.recurrence_id:
+                    next_date = event.get_next_alarm_date(events_by_alarm)
+                    event.recurrence_id.with_context(date=next_date)._setup_alarms()

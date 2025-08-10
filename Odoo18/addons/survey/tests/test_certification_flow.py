@@ -4,15 +4,14 @@
 from unittest.mock import patch
 
 from odoo import Command
-from odoo.addons.base.models.ir_mail_server import IrMail_Server
-from odoo.addons.mail.tests.common import MockEmail
+from odoo.addons.base.models.ir_mail_server import IrMailServer
 from odoo.addons.survey.tests import common
 from odoo.tests import tagged
 from odoo.tests.common import HttpCase
 
 
 @tagged('-at_install', 'post_install', 'functional')
-class TestCertificationFlow(common.TestSurveyCommon, MockEmail, HttpCase):
+class TestCertificationFlow(common.TestSurveyCommon, HttpCase):
 
     def test_flow_certification(self):
         # Step: survey user creates the certification
@@ -80,11 +79,6 @@ class TestCertificationFlow(common.TestSurveyCommon, MockEmail, HttpCase):
                     {'value': 'a_future_and_yet_unknown_model', 'is_correct': True, 'answer_score': 1.0},
                     {'value': 'none', 'answer_score': -1.0}
                 ])
-            q06 = self._add_question(
-                None, 'Are you sure of all your answers (not rated)', 'simple_choice',
-                sequence=6,
-                constr_mandatory=False, survey_id=certification.id,
-                labels=[{'value': 'Yes'}, {'value': 'No'}])
 
         # Step: employee takes the certification
         # --------------------------------------------------
@@ -108,21 +102,14 @@ class TestCertificationFlow(common.TestSurveyCommon, MockEmail, HttpCase):
         r = self._access_begin(certification, answer_token)
         self.assertResponse(r, 200)
 
-        with self.mock_mail_gateway():
+        with patch.object(IrMailServer, 'connect'):
             self._answer_question(q01, q01.suggested_answer_ids.ids[3], answer_token, csrf_token)
-            self._answer_question(q02, q02.suggested_answer_ids.ids[0], answer_token, csrf_token)  # incorrect => no points
-            self._answer_question(q03, "", answer_token, csrf_token, button_submit='previous')
-            self._answer_question(q02, q02.suggested_answer_ids.ids[1], answer_token, csrf_token)  # correct answer
+            self._answer_question(q02, q02.suggested_answer_ids.ids[1], answer_token, csrf_token)
             self._answer_question(q03, "I think they're great!", answer_token, csrf_token)
             self._answer_question(q04, q04.suggested_answer_ids.ids[0], answer_token, csrf_token, button_submit='previous')
             self._answer_question(q03, "Just kidding, I don't like it...", answer_token, csrf_token)
-            self._answer_question(q04, q04.suggested_answer_ids.ids[0], answer_token, csrf_token,
-                                  submit_query_count=43, access_page_query_count=24)
-            q05_answers = q05.suggested_answer_ids.ids[0:2] + [q05.suggested_answer_ids.ids[3]]
-            self._answer_question(q05, q05_answers, answer_token, csrf_token,
-                                  submit_query_count=28, access_page_query_count=24)
-            self._answer_question(q06, q06.suggested_answer_ids.ids[0], answer_token, csrf_token,
-                                  submit_query_count=108, access_page_query_count=24)
+            self._answer_question(q04, q04.suggested_answer_ids.ids[0], answer_token, csrf_token)
+            self._answer_question(q05, [q05.suggested_answer_ids.ids[0], q05.suggested_answer_ids.ids[1], q05.suggested_answer_ids.ids[3]], answer_token, csrf_token)
 
         user_inputs.invalidate_recordset()
         # Check that certification is successfully passed
@@ -156,17 +143,13 @@ class TestCertificationFlow(common.TestSurveyCommon, MockEmail, HttpCase):
         self.assertNotIn("I think they're great!", user_inputs.mapped('user_input_line_ids.value_text_box'))
         self.assertIn("Just kidding, I don't like it...", user_inputs.mapped('user_input_line_ids.value_text_box'))
 
+        certification_email = self.env['mail.mail'].sudo().search([], limit=1, order="create_date desc")
         # Check certification email correctly sent and contains document
-        self.assertMailMail(
-            self.user_emp.partner_id,
-            'outgoing',
-            fields_values={
-                'attachments_info': [
-                    {'name': f'Certification - {certification.title}.html'},
-                ],
-                'subject': f'Certification: {certification.title}',
-            },
-        )
+        self.assertIn("User Certification for SO lines", certification_email.subject)
+        self.assertIn("employee@example.com", certification_email.email_to)
+        self.assertEqual(len(certification_email.attachment_ids), 1)
+        self.assertEqual(certification_email.attachment_ids[0].name, f'Certification - {certification.title}.html',
+                         'Default certification report print_report_name is "Certification - %s" % (object.survey_id.display_name)')
 
         # Check that the certification can be printed without access to the participant's company
         with self.with_user('admin'):
@@ -177,7 +160,7 @@ class TestCertificationFlow(common.TestSurveyCommon, MockEmail, HttpCase):
                 'name': 'No access right user',
                 'login': 'user_new_company',
                 'password': 'user_new_company',
-                'group_ids': [
+                'groups_id': [
                     Command.set(self.env.ref('base.group_user').ids),
                     Command.link(self.env.ref('survey.group_survey_user').id),
                 ],
@@ -246,7 +229,7 @@ class TestCertificationFlow(common.TestSurveyCommon, MockEmail, HttpCase):
         r = self._access_begin(certification, answer_token)
         self.assertResponse(r, 200)
 
-        with patch.object(IrMail_Server, 'connect'):
+        with patch.object(IrMailServer, 'connect'):
             question_ids = user_inputs.predefined_question_ids
             self.assertEqual(len(question_ids), 1, 'Only one question should have been selected by the randomization')
             # Whatever which question was selected, the correct answer is the first one

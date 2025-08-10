@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from datetime import date
@@ -5,11 +6,11 @@ import calendar
 from dateutil.relativedelta import relativedelta
 
 from odoo import models, api, _
-from odoo.fields import Domain
+from odoo.osv import expression
 from odoo.tools import date_utils
 
 
-class AccountAccount(models.Model):
+class AccountMove(models.Model):
     _inherit = "account.account"
 
     @api.model
@@ -44,46 +45,53 @@ class AccountAccount(models.Model):
     def _build_spreadsheet_formula_domain(self, formula_params, default_accounts=False):
         codes = [code for code in formula_params["codes"] if code]
 
-        default_domain = Domain.FALSE
+        default_domain = expression.FALSE_DOMAIN
         if not codes:
             if not default_accounts:
                 return default_domain
-            default_domain = Domain('account_type', 'in', ['liability_payable', 'asset_receivable'])
+            default_domain = [('account_type', 'in', ['liability_payable', 'asset_receivable'])]
 
         company_id = formula_params["company_id"] or self.env.company.id
         company = self.env["res.company"].browse(company_id)
         start, end = self._get_date_period_boundaries(
             formula_params["date_range"], company
         )
-        balance_domain = Domain([
+        balance_domain = [
             ("account_id.include_initial_balance", "=", True),
             ("date", "<=", end),
-        ])
-        pnl_domain = Domain([
+        ]
+        pnl_domain = [
             ("account_id.include_initial_balance", "=", False),
             ("date", ">=", start),
             ("date", "<=", end),
-        ])
+        ]
         # It is more optimized to (like) search for code directly in account.account than in account_move_line
-        code_domain = Domain.OR(
-            Domain("code", "=like", f"{code}%")
+        code_domain = expression.OR(
+            [
+                ("code", "=like", f"{code}%"),
+            ]
             for code in codes
         )
-        account_domain = code_domain | default_domain
+        account_domain = expression.OR([code_domain, default_domain])
         account_ids = self.env["account.account"].with_company(company_id).search(account_domain).ids
-        code_domain = Domain("account_id", "in", account_ids)
-        period_domain = balance_domain | pnl_domain
-        domain = code_domain & period_domain & Domain("company_id", "=", company_id)
+        code_domain = [("account_id", "in", account_ids)]
+        period_domain = expression.OR([balance_domain, pnl_domain])
+        domain = expression.AND([code_domain, period_domain, [("company_id", "=", company_id)]])
         if formula_params["include_unposted"]:
-            domain &= Domain("move_id.state", "!=", "cancel")
+            domain = expression.AND(
+                [domain, [("move_id.state", "!=", "cancel")]]
+            )
         else:
-            domain &= Domain("move_id.state", "=", "posted")
+            domain = expression.AND(
+                [domain, [("move_id.state", "=", "posted")]]
+            )
         partner_ids = [int(partner_id) for partner_id in formula_params.get('partner_ids', []) if partner_id]
         if partner_ids:
-            domain &= Domain("partner_id", "in", partner_ids)
+            domain = expression.AND(
+                [domain, [("partner_id", "in", partner_ids)]]
+            )
         return domain
 
-    @api.readonly
     @api.model
     def spreadsheet_move_line_action(self, args):
         domain = self._build_spreadsheet_formula_domain(args, default_accounts=True)
@@ -97,7 +105,6 @@ class AccountAccount(models.Model):
             "name": _("Cell Audit"),
         }
 
-    @api.readonly
     @api.model
     def spreadsheet_fetch_debit_credit(self, args_list):
         """Fetch data for ODOO.CREDIT, ODOO.DEBIT and ODOO.BALANCE formulas
@@ -122,7 +129,6 @@ class AccountAccount(models.Model):
 
         return results
 
-    @api.readonly
     @api.model
     def spreadsheet_fetch_residual_amount(self, args_list):
         """Fetch data for ODOO.RESUDUAL formulas

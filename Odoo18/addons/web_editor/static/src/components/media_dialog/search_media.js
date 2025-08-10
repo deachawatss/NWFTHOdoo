@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { useDebounced } from '@web/core/utils/timing';
 import { useAutofocus } from '@web/core/utils/hooks';
 

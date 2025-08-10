@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { formatFloat, formatMonetary } from "@web/views/fields/formatters";
 import { useService } from "@web/core/utils/hooks";
 import { BomOverviewLine } from "../bom_overview_line/mrp_bom_overview_line";
@@ -14,7 +16,10 @@ export class BomOverviewTable extends Component {
         showOptions: {
             type: Object,
             shape: {
-                mode: String,
+                availabilities: Boolean,
+                costs: Boolean,
+                operations: Boolean,
+                leadTimes: Boolean,
                 uom: Boolean,
                 attachments: Boolean,
             },
@@ -23,7 +28,6 @@ export class BomOverviewTable extends Component {
         currentWarehouseId: { type: Number, optional: true },
         data: Object,
         precision: Number,
-        bomQuantity: Number,
         changeFolded: Function,
     };
 
@@ -58,12 +62,20 @@ export class BomOverviewTable extends Component {
         return this.props.precision;
     }
 
-    get forecastMode() {
-        return this.props.showOptions.mode == "forecast";
+    get showAvailabilities() {
+        return this.props.showOptions.availabilities;
     }
 
-    get showUnitCosts() {
-        return this.props.bomQuantity > 1;
+    get showCosts() {
+        return this.props.showOptions.costs;
+    }
+
+    get showOperations() {
+        return this.props.showOptions.operations;
+    }
+
+    get showLeadTimes() {
+        return this.props.showOptions.leadTimes;
     }
 
     get showUom() {

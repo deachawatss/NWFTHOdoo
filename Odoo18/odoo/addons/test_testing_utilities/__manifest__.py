@@ -9,9 +9,8 @@ supposed to do
     """,
     'depends': ['base', 'web'],
     'data': [
-        'security/ir.model.access.csv',
-        'views/menu.xml',
+        'ir.model.access.csv',
+        'menu.xml',
     ],
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

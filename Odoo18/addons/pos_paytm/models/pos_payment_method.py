@@ -17,7 +17,6 @@ _logger = logging.getLogger(__name__)
 REQUEST_TIMEOUT = 30
 iv = b'@@@@&&&&####$$$$'
 
-
 class PosPaymentMethod(models.Model):
     _inherit = 'pos.payment.method'
 

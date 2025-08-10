@@ -4,8 +4,8 @@
 from odoo import api, fields, models, tools, _
 
 
-class HrLeaveEmployeeTypeReport(models.Model):
-    _name = 'hr.leave.employee.type.report'
+class LeaveReport(models.Model):
+    _name = "hr.leave.employee.type.report"
     _description = 'Time Off Summary / Report'
     _auto = False
     _order = "date_from DESC, employee_id"
@@ -33,9 +33,9 @@ class HrLeaveEmployeeTypeReport(models.Model):
     company_id = fields.Many2one('res.company', string="Company", readonly=True)
 
     def init(self):
-        tools.drop_view_if_exists(self.env.cr, 'hr_leave_employee_type_report')
+        tools.drop_view_if_exists(self._cr, 'hr_leave_employee_type_report')
 
-        self.env.cr.execute("""
+        self._cr.execute("""
             CREATE or REPLACE view hr_leave_employee_type_report as (
                 SELECT row_number() over(ORDER BY leaves.employee_id) as id,
                 leaves.employee_id as employee_id,
@@ -62,7 +62,7 @@ class HrLeaveEmployeeTypeReport(models.Model):
                             THEN aggregate_allocation.number_of_hours - COALESCE(aggregate_leave.number_of_hours, 0)
                             ELSE 0
                     END as number_of_hours,
-                    v.department_id as department_id,
+                    allocation.department_id as department_id,
                     allocation.holiday_status_id as leave_type,
                     allocation.state as state,
                     allocation.date_from as date_from,
@@ -71,7 +71,6 @@ class HrLeaveEmployeeTypeReport(models.Model):
                     allocation.employee_company_id as company_id
                 FROM hr_leave_allocation as allocation
                 INNER JOIN hr_employee as employee ON (allocation.employee_id = employee.id)
-                LEFT JOIN hr_version v ON v.id = employee.current_version_id
 
                 /* Obtain the minimum id for a given employee and type of leave */
                 LEFT JOIN
@@ -103,7 +102,7 @@ class HrLeaveEmployeeTypeReport(models.Model):
                     employee.active as active_employee,
                     request.number_of_days as number_of_days,
                     request.number_of_hours as number_of_hours,
-                    v.department_id as department_id,
+                    request.department_id as department_id,
                     request.holiday_status_id as leave_type,
                     request.state as state,
                     request.date_from as date_from,
@@ -115,7 +114,6 @@ class HrLeaveEmployeeTypeReport(models.Model):
                     request.employee_company_id as company_id
                 FROM hr_leave as request
                 INNER JOIN hr_employee as employee ON (request.employee_id = employee.id)
-                LEFT JOIN hr_version v ON v.id = employee.current_version_id
                 WHERE request.state IN ('confirm', 'validate', 'validate1')) leaves
             );
         """)
@@ -128,20 +126,12 @@ class HrLeaveEmployeeTypeReport(models.Model):
                       ('state', '!=', 'cancel')]
 
         return {
-            'name': _('Balance'),
+            'name': _('Time Off Analysis'),
             'type': 'ir.actions.act_window',
             'res_model': 'hr.leave.employee.type.report',
             'view_mode': 'pivot',
             'search_view_id': [self.env.ref('hr_holidays.view_search_hr_holidays_employee_type_report').id],
             'domain': domain,
-            'help': _("""
-                <p class="o_view_nocontent_empty_folder">
-                    No Balance yet!
-                </p>
-                <p>
-                    Why don't you start by <a type="action" class="text-link" name="%d">Allocating Time off</a> ?
-                </p>
-            """, self.env.ref("hr_holidays.hr_leave_allocation_action_form").id),
             'context': {
                 'search_default_year': True,
                 'search_default_company': True,

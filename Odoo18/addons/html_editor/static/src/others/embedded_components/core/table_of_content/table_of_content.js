@@ -9,7 +9,7 @@ export class EmbeddedTableOfContentComponent extends Component {
     };
 
     setup() {
-        this.state = useState({ toc: this.props.manager.structure, folded: false });
+        this.state = useState({ toc: this.props.manager.structure });
         onWillStart(async () => {
             await this.props.manager.batchedUpdateStructure();
         });
@@ -35,7 +35,9 @@ export const tableOfContentEmbedding = {
 export const readonlyTableOfContentEmbedding = {
     name: "tableOfContent",
     Component: EmbeddedTableOfContentComponent,
-    getProps: (host) => ({
-        readonly: true,
-    }),
+    getProps: (host) => {
+        return {
+            readonly: true,
+        };
+    },
 };

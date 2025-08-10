@@ -3,7 +3,6 @@
 
 from odoo import fields, models, api
 
-
 class PosOrderLine(models.Model):
     _inherit = 'pos.order.line'
 
@@ -20,8 +19,11 @@ class PosOrderLine(models.Model):
     """)
     points_cost = fields.Float(help="How many point this reward cost on the coupon.")
 
+    def _is_not_sellable_line(self):
+        return super().is_not_sellable_line() or self.reward_id
+
     @api.model
-    def _load_pos_data_fields(self, config):
-        params = super()._load_pos_data_fields(config)
+    def _load_pos_data_fields(self, config_id):
+        params = super()._load_pos_data_fields(config_id)
         params += ['is_reward_line', 'reward_id', 'reward_identifier_code', 'points_cost', 'coupon_id']
         return params

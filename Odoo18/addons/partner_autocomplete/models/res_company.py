@@ -1,10 +1,11 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import logging
+import threading
 
 from odoo.addons.iap.tools import iap_tools
-from odoo import api, fields, models, modules, _
-from odoo.tools import config
+from odoo import api, fields, models, _
 from odoo.tools.mail import email_domain_extract, url_domain_extract
 
 _logger = logging.getLogger(__name__)
@@ -13,17 +14,16 @@ COMPANY_AC_TIMEOUT = 5
 
 
 class ResCompany(models.Model):
+    _name = 'res.company'
     _inherit = 'res.company'
 
+    partner_gid = fields.Integer('Company database ID', related="partner_id.partner_gid",store=True)
     iap_enrich_auto_done = fields.Boolean('Enrich Done')
 
     @api.model_create_multi
     def create(self, vals_list):
         res = super().create(vals_list)
-        if modules.module.current_test:
-            # while running the test, mark enrichment as done
-            res.sudo().iap_enrich_auto_done = True
-        else:
+        if not getattr(threading.current_thread(), 'testing', False):
             res.iap_enrich_auto()
         return res
 
@@ -32,7 +32,7 @@ class ResCompany(models.Model):
         arch, view = super()._get_view(view_id, view_type, **options)
 
         if view_type == 'form':
-            for i, node in enumerate(arch.xpath("//field[@name='name' or @name='vat' or @name='duns']")):
+            for i, node in enumerate(arch.xpath("//field[@name='name' or @name='vat']")):
                 node.set('widget', 'field_partner_autocomplete')
 
         return arch, view
@@ -40,7 +40,7 @@ class ResCompany(models.Model):
     def iap_enrich_auto(self):
         """ Enrich company. This method should be called by automatic processes
         and a protection is added to avoid doing enrich in a loop. """
-        if self.env.user._is_system() and self.env.registry.ready:
+        if self.env.user._is_system():
             for company in self.filtered(lambda company: not company.iap_enrich_auto_done):
                 company._enrich()
             self.iap_enrich_auto_done = True
@@ -48,7 +48,9 @@ class ResCompany(models.Model):
 
     def _enrich(self):
         """ This method calls the partner autocomplete service from IAP to enrich
-        partner related fields of the company. """
+        partner related fields of the company.
+
+        :return bool: either done, either failed """
         self.ensure_one()
         _logger.info("Starting enrich of company %s (%s)", self.name, self.id)
 
@@ -58,7 +60,7 @@ class ResCompany(models.Model):
 
         company_data = self.env['res.partner'].enrich_by_domain(company_domain, timeout=COMPANY_AC_TIMEOUT)
         if not company_data or company_data.get("error"):
-            return False
+            return
 
         company_data = {field: value for field, value in company_data.items()
                         if field in self.partner_id._fields and value and (field == 'image_1920' or not self.partner_id[field])}
@@ -80,14 +82,10 @@ class ResCompany(models.Model):
 
     def _get_company_domain(self):
         """ Extract the company domain to be used by IAP services.
-
         The domain is extracted from the website or the email information.
-
-        >>> company.email, company._get_company_domain()
-        ("info@proximus.be", "proximus.be")
-        >>> company.website, company._get_company_domain()
-        ("www.info.proximus.be", "proximus.be")
-        """
+        e.g:
+            - www.info.proximus.be -> proximus.be
+            - info@proximus.be -> proximus.be """
         self.ensure_one()
 
         company_domain = email_domain_extract(self.email) if self.email else False

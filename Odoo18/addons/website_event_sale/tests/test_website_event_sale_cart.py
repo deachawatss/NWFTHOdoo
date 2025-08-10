@@ -16,15 +16,13 @@ class TestWebsiteEventSaleCart(TestWebsiteEventSaleCommon, TestWebsiteSaleCartAb
     def setUpClass(cls):
         super().setUpClass()
 
+        cls.website = cls.env.ref('website.default_website')
         cls.website.write({
             'send_abandoned_cart_email': True,
             'cart_abandoned_delay': 1.0,  # 1 hour
         })
-        cls.website.send_abandoned_cart_email_activation_time -= timedelta(weeks=1)
 
         cls.partner_admin = cls.env.ref('base.partner_admin')
-        if not cls.partner_admin.email:
-            cls.partner_admin.email = 'base@partner.admin'
 
     def test_sold_out_event_cart_reminder(self):
         """Check that abandoned cart emails aren't sent for sold out tickets."""

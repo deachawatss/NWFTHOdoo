@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
 import * as wsTourUtils from '@website_sale/js/tours/tour_utils';
 
@@ -11,8 +13,8 @@ registry.category("web_tour.tours").add('website_event_booth_tour', {
     run: "click",
     expectUnloadPage: true,
 }, {
-    content: 'Go to "Booth" page',
-    trigger: 'a:contains("Become exhibitor")',
+    content: 'Go to "Get A Booth" page',
+    trigger: 'li.nav-item a:has(span:contains("Get A Booth"))',
     run: "click",
     expectUnloadPage: true,
 }, {

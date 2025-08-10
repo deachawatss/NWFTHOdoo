@@ -17,7 +17,7 @@ class MailComposerMixin(models.AbstractModel):
     grain control of rendering access.
     """
     _name = 'mail.composer.mixin'
-    _inherit = ['mail.render.mixin']
+    _inherit = 'mail.render.mixin'
     _description = 'Mail Composer Mixin'
 
     # Content
@@ -109,7 +109,7 @@ class MailComposerMixin(models.AbstractModel):
                 or not record.template_id
             )
 
-    def _render_lang(self, res_ids, engine='inline_template'):
+    def _render_lang(self, *args, **kwargs):
         """ Given some record ids, return the lang for each record based on
         lang field of template or through specific context-based key.
         This method enters sudo mode to allow qweb rendering (which
@@ -123,20 +123,19 @@ class MailComposerMixin(models.AbstractModel):
 
         if not self.template_id:
             # Do not need to bypass the verification
-            return super()._render_lang(res_ids, engine=engine)
+            return super()._render_lang(*args, **kwargs)
 
         composer_value = self.lang
         template_value = self.template_id.lang
 
         call_sudo = False
-        equality = composer_value == template_value or (not composer_value and not template_value)
-        if not self.is_mail_template_editor and equality:
+        if (not self.is_mail_template_editor and composer_value == template_value):
             call_sudo = True
 
         record = self.sudo() if call_sudo else self
-        return super(MailComposerMixin, record)._render_lang(res_ids, engine=engine)
+        return super(MailComposerMixin, record)._render_lang(*args, **kwargs)
 
-    def _render_field(self, field, res_ids, *args, **kwargs):
+    def _render_field(self, field, *args, **kwargs):
         """ Render the given field on the given records. This method enters
         sudo mode to allow qweb rendering (which is otherwise reserved for
         the 'mail template editor' group') if we consider it safe. Safe
@@ -163,7 +162,7 @@ class MailComposerMixin(models.AbstractModel):
 
         if not self.template_id:
             # Do not need to bypass the verification
-            return super()._render_field(field, res_ids, *args, **kwargs)
+            return super()._render_field(field, *args, **kwargs)
 
         # template-based access check + translation check
         template_field = {
@@ -192,14 +191,10 @@ class MailComposerMixin(models.AbstractModel):
             call_sudo = True
 
         if translation_asked and equality:
-            # use possibly custom lang template changed on composer instead of
-            # original template one
-            if not kwargs.get('res_ids_lang'):
-                kwargs['res_ids_lang'] = self._render_lang(res_ids)
             template = self.template_id.sudo() if call_sudo else self.template_id
             return template._render_field(
-                template_field, res_ids, *args, **kwargs,
+                template_field, *args, **kwargs,
             )
 
         record = self.sudo() if call_sudo else self
-        return super(MailComposerMixin, record)._render_field(field, res_ids, *args, **kwargs)
+        return super(MailComposerMixin, record)._render_field(field, *args, **kwargs)

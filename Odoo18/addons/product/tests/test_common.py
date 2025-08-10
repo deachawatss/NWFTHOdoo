@@ -10,7 +10,6 @@ from odoo.addons.product.tests.common import ProductCommon
 class TestProduct(ProductCommon):
 
     def test_common(self):
-        self._enable_pricelists()
         self.assertEqual(self.product.type, 'consu')
         self.assertEqual(self.service_product.type, 'service')
 

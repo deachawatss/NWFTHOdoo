@@ -2,7 +2,6 @@
 from . import template_in
 from . import account_invoice
 from . import account_move_line
-from . import account_payment
 from . import account_tax
 from . import company
 from . import iap_account
@@ -12,5 +11,3 @@ from . import res_config_settings
 from . import res_country_state
 from . import res_partner
 from . import uom_uom
-from . import account_account
-from . import l10n_in_section_alert

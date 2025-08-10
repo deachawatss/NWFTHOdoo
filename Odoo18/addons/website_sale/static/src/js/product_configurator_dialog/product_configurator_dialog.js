@@ -1,9 +1,9 @@
+import { _t } from '@web/core/l10n/translation';
+import { patch } from '@web/core/utils/patch';
 import { useSubEnv } from '@odoo/owl';
 import {
     ProductConfiguratorDialog
 } from '@sale/js/product_configurator_dialog/product_configurator_dialog';
-import { _t } from '@web/core/l10n/translation';
-import { patch } from '@web/core/utils/patch';
 
 patch(ProductConfiguratorDialog, {
     props: {
@@ -14,7 +14,6 @@ patch(ProductConfiguratorDialog, {
             shape: {
                 ...ProductConfiguratorDialog.props.options.shape,
                 isMainProductConfigurable: { type: Boolean, optional: true },
-                isBuyNow: { type: Boolean, optional: true },
             },
         },
     },

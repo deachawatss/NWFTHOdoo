@@ -16,8 +16,7 @@
         'views/res_partner_views.xml',
     ],
     'demo': [
-        'demo/demo_company.xml',
+        'data/l10n_fr_demo.xml',
     ],
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

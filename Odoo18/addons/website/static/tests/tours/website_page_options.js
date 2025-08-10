@@ -1,5 +1,7 @@
+/** @odoo-module **/
+
 import {
-    changeOptionInPopover,
+    changeOption,
     clickOnEditAndWaitEditMode,
     clickOnSave,
     clickOnSnippet,
@@ -12,7 +14,8 @@ registerWebsitePreviewTour('website_page_options', {
     edition: true,
 }, () => [
     ...clickOnSnippet({id: 'o_header_standard', name: 'Header'}),
-    ...changeOptionInPopover("Header", "Header Position", "Over the content"),
+    changeOption('TopMenuVisibility', 'we-select:has([data-visibility]) we-toggler'),
+    changeOption('TopMenuVisibility', 'we-button[data-visibility="transparent"]'),
     // It's important to test saving right after changing that option only as
     // this is why this test was made in the first place: the page was not
     // marked as dirty when that option was the only one that was changed.
@@ -23,37 +26,21 @@ registerWebsitePreviewTour('website_page_options', {
     },
     ...clickOnEditAndWaitEditMode(),
     ...clickOnSnippet({id: 'o_header_standard', name: 'Header'}),
-    {
-        content: "Open the color picker to change the backaground color of the header",
-        trigger:"div[data-container-title='Header'] .hb-row-sublevel-1[data-label='Background'] button",
-        run: "click",
-    },
-    {
-        content: "Select the color black-600",
-        trigger: ".popover button[data-color='600']",
-        run: "click",
-    },
+    changeOption('topMenuColor', 'we-select.o_we_so_color_palette'),
+    changeOption('topMenuColor', 'button[data-color="black-50"]', 'background color', 'bottom', true),
     ...clickOnSave(),
     {
-        content: "Check that the header is in black-600",
-        trigger: ":iframe header#top.bg-600",
+        content: "Check that the header is in black-50",
+        trigger: ':iframe header#top.bg-black-50',
     },
     ...clickOnEditAndWaitEditMode(),
     ...clickOnSnippet({id: 'o_header_standard', name: 'Header'}),
-    {
-        content: "Open the color picker to change the text color of the header",
-        trigger: "div[data-container-title='Header'] .hb-row-sublevel-1[data-label='Text Color'] button",
-        run: "click",
-    },
-    {
-        content: "Select the color red",
-        trigger: ".popover button[data-color='#FF0000']",
-        run: "click",
-    },
+    changeOption("topMenuColor", '[data-page-option-name="header_text_color"]'),
+    changeOption("topMenuColor", 'button[style="background-color:#FF0000;"]', "text color", "bottom", true),
     ...clickOnSave(),
     {
         content: "Check that text color of the header is in red",
-        trigger: ':iframe header#top[style=" color: #ff0000;"]',
+        trigger: ':iframe header#top[style=" color: #FF0000;"]',
     },
     {
         content: "Enable the mobile view",
@@ -76,7 +63,8 @@ registerWebsitePreviewTour('website_page_options', {
     },
     ...clickOnEditAndWaitEditMode(),
     ...clickOnSnippet({id: "o_header_standard", name: "Header"}),
-    ...changeOptionInPopover("Header", "Header Position", "Hidden"),
+    changeOption('TopMenuVisibility', 'we-select:has([data-visibility]) we-toggler'),
+    changeOption('TopMenuVisibility', 'we-button[data-visibility="hidden"]'),
     ...clickOnSave(),
     {
         content: "Check that the header is hidden",
@@ -89,18 +77,13 @@ registerWebsitePreviewTour('website_page_options', {
         run: "click",
     },
     ...clickOnSnippet({id: 'o_footer', name: 'Footer'}),
-    {
-        content: "Click on the visibility toggle to change the visibility of the footer",
-        trigger: "div[data-container-title='Footer'] div[data-label='Page Visibility'] div[data-action-id='setWebsiteFooterVisible'] input",
-        run: "click",
-    },
+    changeOption('HideFooter', 'we-button[data-name="hide_footer_page_opt"] we-checkbox'),
     ...clickOnSave(),
     {
-        content: "Check that the header is hidden",
-        trigger: ":iframe #wrapwrap:has(header#top.d-none.o_snippet_invisible)",
+        trigger: ":iframe #wrapwrap header#top:not(.d-none)",
     },
     {
-        content: "Check that the footer is hidden",
+        content: "Check that the footer is hidden and the header is visible",
         trigger: ':iframe #wrapwrap:has(.o_footer.d-none.o_snippet_invisible)',
     },
 ]);

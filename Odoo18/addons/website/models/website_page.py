@@ -4,30 +4,23 @@ import re
 
 from odoo.addons.website.tools import text_from_html
 from odoo import api, fields, models
-from odoo.fields import Domain
+from odoo.osv import expression
 from odoo.tools import escape_psql, SQL
 from odoo.tools.translate import _
 
 
-class WebsitePage(models.Model):
+class Page(models.Model):
     _name = 'website.page'
     _inherits = {'ir.ui.view': 'view_id'}
     _inherit = [
         'website.published.multi.mixin',
         'website.searchable.mixin',
-        'website.page_options.mixin',
     ]
     _description = 'Page'
     _order = 'website_id'
 
     url = fields.Char('Page URL', required=True)
-    view_id = fields.Many2one('ir.ui.view', string='View', required=True, index=True, ondelete="cascade")
-
-    view_write_uid = fields.Many2one('res.users', "Last Content Update by",
-        related='view_id.write_uid')
-    view_write_date = fields.Datetime("Last Content Update on",
-        related='view_id.write_date')
-
+    view_id = fields.Many2one('ir.ui.view', string='View', required=True, ondelete="cascade")
     website_indexed = fields.Boolean('Is Indexed', default=True)
     date_publish = fields.Datetime('Publishing Date')
     menu_ids = fields.One2many('website.menu', 'page_id', 'Related Menus')
@@ -35,6 +28,13 @@ class WebsitePage(models.Model):
     is_homepage = fields.Boolean(compute='_compute_is_homepage', string='Homepage')
     is_visible = fields.Boolean(compute='_compute_visible', string='Is Visible')
     is_new_page_template = fields.Boolean(string="New Page Template", help='Add this page to the "+New" page templates. It will be added to the "Custom" category.')
+
+    # Page options
+    header_overlay = fields.Boolean()
+    header_color = fields.Char()
+    header_text_color = fields.Char()
+    header_visible = fields.Boolean(default=True)
+    footer_visible = fields.Boolean(default=True)
 
     # don't use mixin website_id but use website_id on ir.ui.view instead
     website_id = fields.Many2one(related='view_id.website_id', store=True, readonly=False, ondelete='cascade')
@@ -65,6 +65,8 @@ class WebsitePage(models.Model):
 
     @api.depends_context('uid')
     def _compute_can_publish(self):
+        # Note: this `if`'s purpose it to optimize the way this is computed for
+        # multiple records.
         if self.env.user.has_group('website.group_website_designer'):
             for record in self:
                 record.can_publish = True
@@ -76,7 +78,7 @@ class WebsitePage(models.Model):
         ids = []
         previous_page = None
         page_keys = self.sudo().search(
-            self.env['website'].browse(self.env.context.get('website_id')).website_domain()
+            self.env['website'].website_domain(website_id=self._context.get('website_id'))
         ).mapped('key')
         # Iterate a single time on the whole list sorted on specific-website first.
         for page in self.sorted(key=lambda p: (p.url, not p.website_id)):
@@ -166,9 +168,9 @@ class WebsitePage(models.Model):
                 vals['key'] = self.env['website'].with_context(website_id=website_id).get_unique_key(self.env['ir.http']._slugify(vals['name'] or ''))
             if 'visibility' in vals:
                 if vals['visibility'] != 'restricted_group':
-                    vals['group_ids'] = False
+                    vals['groups_id'] = False
         self.env.registry.clear_cache()  # write on page == write on view that invalid cache
-        return super().write(vals)
+        return super(Page, self).write(vals)
 
     def get_website_meta(self):
         self.ensure_one()
@@ -210,10 +212,10 @@ class WebsitePage(models.Model):
         # Cannot rely on the super's _search_fetch because the search must be
         # performed among the most specific pages only.
         fields = search_detail['search_fields']
-        base_domain = Domain.AND(search_detail['base_domain'])
-        domain = self._search_build_domain([base_domain], search, fields, search_detail.get('search_extra'))
+        base_domain = search_detail['base_domain']
+        domain = self._search_build_domain(base_domain, search, fields, search_detail.get('search_extra'))
         most_specific_pages = self.env['website']._get_website_pages(
-            domain=base_domain, order=order
+            domain=expression.AND(base_domain), order=order
         )
         results = most_specific_pages.filtered_domain(domain)  # already sudo
         v_arch_db = self.env['ir.ui.view']._field_to_sql('v', 'arch_db')
@@ -221,7 +223,7 @@ class WebsitePage(models.Model):
         if with_description and search and most_specific_pages:
             # Perform search in translations
             # TODO Remove when domains will support xml_translate fields
-            rows = self.env.execute_query(SQL(
+            self.env.cr.execute(SQL(
                 """
                 SELECT DISTINCT %(table)s.id
                 FROM %(table)s
@@ -237,10 +239,12 @@ class WebsitePage(models.Model):
                 ids=tuple(most_specific_pages.ids),
                 limit=len(most_specific_pages.ids),
             ))
-            ids = {row[0] for row in rows}
+            ids = {row[0] for row in self.env.cr.fetchall()}
             if ids:
                 ids.update(results.ids)
-                domain = base_domain & Domain('id', 'in', ids)
+                domains = search_detail['base_domain'].copy()
+                domains.append([('id', 'in', list(ids))])
+                domain = expression.AND(domains)
                 model = self.sudo() if search_detail.get('requires_sudo') else self
                 results = model.search(
                     domain,

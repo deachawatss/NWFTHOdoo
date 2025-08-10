@@ -4,7 +4,7 @@
 from odoo import models, _
 
 
-class MrpProduction(models.Model):
+class MrpWorkorder(models.Model):
     _inherit = 'mrp.production'
 
     def pre_button_mark_done(self):

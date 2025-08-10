@@ -4,15 +4,17 @@
 from odoo import api, models, fields, tools
 
 
-class ResCompany(models.Model):
+class Company(models.Model):
+    _name = 'res.company'
     _inherit = 'res.company'
 
     def _default_alias_domain_id(self):
         return self.env['mail.alias.domain'].search([], limit=1)
 
     alias_domain_id = fields.Many2one(
-        'mail.alias.domain', string='Email Domain', index='btree_not_null',
+        'mail.alias.domain', string='Email Domain',
         default=lambda self: self._default_alias_domain_id())
+    alias_domain_name = fields.Char('Alias Domain Name', related='alias_domain_id.name', readonly=True, store=True)
     bounce_email = fields.Char(string="Bounce Email", compute="_compute_bounce")
     bounce_formatted = fields.Char(string="Bounce", compute="_compute_bounce")
     catchall_email = fields.Char(string="Catchall Email", compute="_compute_catchall")
@@ -26,11 +28,11 @@ class ResCompany(models.Model):
         string="Formatted Email",
         compute="_compute_email_formatted", compute_sudo=True)
     email_primary_color = fields.Char(
-        "Email Button Text", default="#FFFFFF",
-        readonly=False)
+        "Email Header Color", compute="_compute_email_primary_color",
+        readonly=False, store=True)
     email_secondary_color = fields.Char(
-        "Email Button Color", default="#875A7B",
-        readonly=False)
+        "Email Button Color", compute="_compute_email_secondary_color",
+        readonly=False, store=True)
 
     @api.depends('alias_domain_id', 'name')
     def _compute_bounce(self):
@@ -61,3 +63,21 @@ class ResCompany(models.Model):
                 company.email_formatted = company.catchall_formatted
             else:
                 company.email_formatted = ''
+
+    @api.depends('primary_color')
+    def _compute_email_primary_color(self):
+        """ When updating documents layout colors, force usage of same colors
+        for emails as it is considered as base colors for all communication.
+        Inverse is not true, people may change email colors without changing
+        their overall layout. """
+        for company in self:
+            company.email_primary_color = company.primary_color or '#000000'
+
+    @api.depends('secondary_color')
+    def _compute_email_secondary_color(self):
+        """ When updating documents layout colors, force usage of same colors
+        for emails as it is considered as base colors for all communication.
+        Inverse is not true, people may change email colors without changing
+        their overall layout. """
+        for company in self:
+            company.email_secondary_color = company.secondary_color or '#875A7B'

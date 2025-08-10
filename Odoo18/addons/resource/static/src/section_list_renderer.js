@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { ListRenderer } from "@web/views/list/list_renderer";
 import { useEffect } from "@odoo/owl";
 

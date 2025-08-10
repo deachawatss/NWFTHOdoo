@@ -5,7 +5,6 @@ import logging
 from odoo import _, fields, models
 from odoo.exceptions import UserError, ValidationError
 
-
 _logger = logging.getLogger(__name__)
 
 
@@ -78,7 +77,7 @@ class PaymentTransaction(models.Model):
         notification_data = {'reference': self.reference, 'simulated_state': simulated_state}
         self._handle_notification_data('demo', notification_data)
 
-    def _send_refund_request(self, amount_to_refund=None):
+    def _send_refund_request(self, **kwargs):
         """ Override of payment to simulate a refund.
 
         Note: self.ensure_one()
@@ -87,7 +86,7 @@ class PaymentTransaction(models.Model):
         :return: The refund transaction created to process the refund request.
         :rtype: recordset of `payment.transaction`
         """
-        refund_tx = super()._send_refund_request(amount_to_refund=amount_to_refund)
+        refund_tx = super()._send_refund_request(**kwargs)
         if self.provider_code != 'demo':
             return refund_tx
 
@@ -144,15 +143,6 @@ class PaymentTransaction(models.Model):
                 "Demo: " + _("No transaction found matching reference %s.", reference)
             )
         return tx
-
-    def _compare_notification_data(self, notification_data):
-        """ Override of `payment` to skip the transaction comparison for dummy flows.
-
-        :param dict notification_data: The dummy notification data.
-        :return: None
-        """
-        if self.provider_code != 'demo':
-            return super()._compare_notification_data(notification_data)
 
     def _process_notification_data(self, notification_data):
         """ Override of payment to process the transaction based on dummy data.

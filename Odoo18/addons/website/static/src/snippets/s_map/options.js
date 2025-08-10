@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
 import options from '@web_editor/js/editor/snippets.options';
 import {generateGMapIframe, generateGMapLink} from '@website/js/utils';

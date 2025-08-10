@@ -17,6 +17,7 @@ class TestStockLandedCostsRounding(TestStockLandedCostsCommon):
         product_uom_unit_round_1 = self.env.ref('uom.product_uom_unit')
         product_uom_unit_round_1.write({
             'name': 'Undivisible Units',
+            'rounding': 1.0,
         })
 
         # I create 2 products with different cost prices and configure them for real_time
@@ -24,7 +25,6 @@ class TestStockLandedCostsRounding(TestStockLandedCostsCommon):
         product_landed_cost_3 = self.env['product.product'].create({
             'name': "LC product 3",
             'uom_id': product_uom_unit_round_1.id,
-            'categ_id': self.env.ref('product.product_category_goods').id,
         })
         product_landed_cost_3.product_tmpl_id.categ_id.property_cost_method = 'fifo'
         product_landed_cost_3.product_tmpl_id.categ_id.property_stock_account_input_categ_id = self.company_data['default_account_expense']
@@ -33,7 +33,6 @@ class TestStockLandedCostsRounding(TestStockLandedCostsCommon):
         product_landed_cost_4 = self.env['product.product'].create({
             'name': "LC product 4",
             'uom_id': product_uom_unit_round_1.id,
-            'categ_id': self.env.ref('product.product_category_goods').id,
         })
         product_landed_cost_4.product_tmpl_id.categ_id.property_cost_method = 'fifo'
         product_landed_cost_4.product_tmpl_id.categ_id.property_valuation = 'real_time'
@@ -56,6 +55,8 @@ class TestStockLandedCostsRounding(TestStockLandedCostsCommon):
         })
         picking_landed_cost_3 = self.env['stock.picking'].new(vals)
         picking_landed_cost_3._onchange_picking_type()
+        picking_landed_cost_3.move_ids._onchange_product_id()
+        picking_landed_cost_3.move_ids.name = 'move 3'
         vals = picking_landed_cost_3._convert_to_write(picking_landed_cost_3._cache)
         picking_landed_cost_3 = self.env['stock.picking'].create(vals)
 
@@ -73,6 +74,8 @@ class TestStockLandedCostsRounding(TestStockLandedCostsCommon):
         })
         picking_landed_cost_4 = self.env['stock.picking'].new(vals)
         picking_landed_cost_4._onchange_picking_type()
+        picking_landed_cost_4.move_ids._onchange_product_id()
+        picking_landed_cost_4.move_ids.name = 'move 4'
         vals = picking_landed_cost_4._convert_to_write(picking_landed_cost_4._cache)
         picking_landed_cost_4 = self.env['stock.picking'].create(vals)
 
@@ -83,10 +86,7 @@ class TestStockLandedCostsRounding(TestStockLandedCostsCommon):
         picking_landed_cost_3.action_assign()
         picking_landed_cost_3._action_done()
 
-        virtual_interior_design = self.env['product.product'].create({
-            'name': 'Virtual Interior Design',
-            'categ_id': self.env.ref('product.product_category_goods').id,
-        })
+        virtual_interior_design = self.env['product.product'].create({'name': 'Virtual Interior Design'})
 
         # I create a landed cost for picking 3
         default_vals = self.env['stock.landed.cost'].default_get(list(self.env['stock.landed.cost'].fields_get()))
@@ -162,6 +162,7 @@ class TestStockLandedCostsRounding(TestStockLandedCostsCommon):
 
         fifo_pc = self.env['product.category'].create({
             'name': 'Fifo Category',
+            'parent_id': self.env.ref("product.product_category_all").id,
             'property_valuation': 'real_time',
             'property_cost_method': 'fifo',
         })
@@ -229,6 +230,7 @@ class TestStockLandedCostsRounding(TestStockLandedCostsCommon):
             'location_id': supplier_location_id,
             'location_dest_id': stock_location.id,
             'move_ids': [(0, 0, {
+                'name': self.product_a.name,
                 'product_id': self.product_a.id,
                 'price_unit': price,
                 'product_uom': self.product_a.uom_id.id,
@@ -268,6 +270,7 @@ class TestStockLandedCostsRounding(TestStockLandedCostsCommon):
             'location_id': stock_location.id,
             'location_dest_id': customer_location_id,
             'move_ids': [(0, 0, {
+                'name': self.product_a.name,
                 'product_id': self.product_a.id,
                 'product_uom': self.product_a.uom_id.id,
                 'product_uom_qty': qty,

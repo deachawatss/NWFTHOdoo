@@ -1,11 +1,12 @@
 from datetime import timedelta
 
-from odoo import api, fields, models, _
+from odoo import Command, api, fields, models, _
 from odoo.exceptions import UserError
-from odoo.fields import Command, Domain
+from odoo.osv import expression
+from odoo.tools import format_list
 
 
-class AccountSecureEntriesWizard(models.TransientModel):
+class AccountSecureEntries(models.TransientModel):
     """
     This wizard is used to secure journal entries (with a hash)
     """
@@ -83,7 +84,7 @@ class AccountSecureEntriesWizard(models.TransientModel):
         moves = self.env['account.move'].sudo().search(
             self._get_unhashed_moves_in_hashed_period_domain(company_id, hash_date, [('state', '=', 'posted')])
         )
-        for journal_moves in moves.grouped('journal_id').values():
+        for journal, journal_moves in moves.grouped('journal_id').items():
             for chain_moves in journal_moves.grouped('sequence_prefix').values():
                 chain_info = chain_moves._get_chain_info(force_hash=True)
                 if not chain_info:
@@ -149,7 +150,7 @@ class AccountSecureEntriesWizard(models.TransientModel):
                 warnings['account_unreconciled_bank_statement_line_ids'] = {
                     'message': _("There are still unreconciled bank statement lines before the selected date. "
                                  "The entries from journal prefixes containing them will not be secured: %(prefix_info)s",
-                                 prefix_info=ignored_sequence_prefixes),
+                                 prefix_info=format_list(self.env, ignored_sequence_prefixes)),
                     'level': 'danger',
                     'action_text': _("Review"),
                     'action': wizard.company_id._get_unreconciled_statement_lines_redirect_action(wizard.unreconciled_bank_statement_line_ids),
@@ -186,7 +187,7 @@ class AccountSecureEntriesWizard(models.TransientModel):
                         ('sequence_number', '<=', last_move.sequence_number),
                         ('sequence_number', '>=', first_move.sequence_number),
                     ])
-                domain = Domain.OR(OR_domains)
+                domain = expression.OR(OR_domains)
                 warnings['account_sequence_gap'] = {
                     'message': _("Securing these entries will create at least one gap in the sequence."),
                     'action_text': _("Review"),
@@ -214,14 +215,14 @@ class AccountSecureEntriesWizard(models.TransientModel):
         :return a search domain
         """
         if not (company_id and hash_date):
-            return Domain.FALSE
-        return Domain.AND([
+            return [(0, '=', 1)]
+        return expression.AND([
             [
                 ('date', '<=', fields.Date.to_string(hash_date)),
                 ('company_id', 'child_of', company_id.id),
                 ('inalterable_hash', '=', False),
             ],
-            domain or Domain.TRUE,
+            domain or [],
         ])
 
     def _get_draft_moves_in_hashed_period_domain(self):

@@ -7,8 +7,8 @@ from odoo import _, models
 from odoo.exceptions import UserError, ValidationError
 
 from odoo.addons.payment import utils as payment_utils
-from odoo.addons.payment_authorize import const
 from odoo.addons.payment_authorize.models.authorize_request import AuthorizeAPI
+from odoo.addons.payment_authorize.const import PAYMENT_METHODS_MAPPING, TRANSACTION_STATUS_MAPPING
 
 
 _logger = logging.getLogger(__name__)
@@ -106,10 +106,10 @@ class PaymentTransaction(models.Model):
 
         refund_tx = self.env['payment.transaction']
         tx_status = tx_details.get('transaction', {}).get('transactionStatus')
-        if tx_status in const.TRANSACTION_STATUS_MAPPING['voided']:
+        if tx_status in TRANSACTION_STATUS_MAPPING['voided']:
             # The payment has been voided from Authorize.net side before we could refund it.
             self._set_canceled(extra_allowed_states=('done',))
-        elif tx_status in const.TRANSACTION_STATUS_MAPPING['refunded']:
+        elif tx_status in TRANSACTION_STATUS_MAPPING['refunded']:
             # The payment has been refunded from Authorize.net side before we could refund it. We
             # create a refund tx on Odoo to reflect the move of the funds.
             refund_tx = super()._send_refund_request(amount_to_refund=amount_to_refund)
@@ -117,8 +117,8 @@ class PaymentTransaction(models.Model):
             # Immediately post-process the transaction as the post-processing will not be
             # triggered by a customer browsing the transaction from the portal.
             self.env.ref('payment.cron_post_process_payment_tx')._trigger()
-        elif any(tx_status in const.TRANSACTION_STATUS_MAPPING[k] for k in ('authorized', 'captured')):
-            if tx_status in const.TRANSACTION_STATUS_MAPPING['authorized']:
+        elif any(tx_status in TRANSACTION_STATUS_MAPPING[k] for k in ('authorized', 'captured')):
+            if tx_status in TRANSACTION_STATUS_MAPPING['authorized']:
                 # The payment has not been settled on Authorize.net yet. It must be voided rather
                 # than refunded. Since the funds have not moved yet, we don't create a refund tx.
                 res_content = authorize_api.void(self.provider_reference)
@@ -197,25 +197,6 @@ class PaymentTransaction(models.Model):
             )
         return tx
 
-    def _compare_notification_data(self, notification_data):
-        """ Override of `payment` to compare the transaction based on Authorize data.
-
-        :param dict notification_data: The notification data sent by the provider.
-        :return: None
-        :raise ValidationError: If the transaction's amount and currency don't match the
-            notification data.
-        """
-        if self.provider_code != 'authorize':
-            return super()._compare_notification_data(notification_data)
-
-        tx_details = AuthorizeAPI(self.provider_id).get_transaction_details(
-            notification_data.get('response', {}).get('x_trans_id')
-        )
-        amount = tx_details.get('transaction', {}).get('authAmount')
-        # Authorize supports only one currency per account.
-        currency_code = self.provider_id.available_currency_ids[0].name
-        self._validate_amount_and_currency(amount, currency_code)
-
     def _process_notification_data(self, notification_data):
         """ Override of payment to process the transaction based on Authorize data.
 
@@ -236,7 +217,7 @@ class PaymentTransaction(models.Model):
         # Update the payment method.
         payment_method_code = response_content.get('payment_method_code', '').lower()
         payment_method = self.env['payment.method']._get_from_code(
-            payment_method_code, mapping=const.PAYMENT_METHODS_MAPPING
+            payment_method_code, mapping=PAYMENT_METHODS_MAPPING
         )
         self.payment_method_id = payment_method or self.payment_method_id
 

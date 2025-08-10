@@ -4,10 +4,10 @@
 from odoo import fields, models
 
 
-class CrmLead(models.Model):
+class Lead(models.Model):
     _inherit = 'crm.lead'
 
     reveal_id = fields.Char(string='Reveal ID', index='btree_not_null') # Technical ID of reveal request done by IAP
 
     def _merge_get_fields(self):
-        return super()._merge_get_fields() + ['reveal_id']
+        return super(Lead, self)._merge_get_fields() + ['reveal_id']

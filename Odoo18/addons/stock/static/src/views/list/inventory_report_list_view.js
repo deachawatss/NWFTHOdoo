@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { listView } from "@web/views/list/list_view";
 import { InventoryReportListModel } from "./inventory_report_list_model";
 import { registry } from "@web/core/registry";

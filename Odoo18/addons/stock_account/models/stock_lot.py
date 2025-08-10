@@ -4,13 +4,12 @@ from ast import literal_eval
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
-from odoo.tools import float_round
+from odoo.tools import float_compare, float_round, float_is_zero
 
 
 class StockLot(models.Model):
     _inherit = 'stock.lot'
 
-    lot_valuated = fields.Boolean(related='product_id.lot_valuated', readonly=True, store=False)
     value_svl = fields.Float(compute='_compute_value_svl', compute_sudo=True)
     quantity_svl = fields.Float(compute='_compute_value_svl', compute_sudo=True)
     avg_cost = fields.Monetary(string="Average Cost", compute='_compute_value_svl', compute_sudo=True, currency_field='company_currency_id')
@@ -94,7 +93,7 @@ class StockLot(models.Model):
             if lot.product_id.cost_method not in ('standard', 'average'):
                 continue
             quantity_svl = lot.sudo().quantity_svl
-            if lot.product_id.uom_id.compare(quantity_svl, 0.0) <= 0:
+            if float_compare(quantity_svl, 0.0, precision_rounding=lot.product_id.uom_id.rounding) <= 0:
                 continue
             value_svl = lot.sudo().value_svl
             value = company_id.currency_id.round((rounded_new_price * quantity_svl) - value_svl)
@@ -125,12 +124,12 @@ class StockLot(models.Model):
         # Cannot hide the button in list view for non required field in groupby
         if not self:
             raise UserError(_("Select an existing lot/serial number to be reevaluated"))
-        elif all(self.product_id.uom_id.is_zero(layer.remaining_qty) for layer in self.stock_valuation_layer_ids):
+        elif all(float_is_zero(layer.remaining_qty, precision_rounding=self.product_id.uom_id.rounding) for layer in self.stock_valuation_layer_ids):
             raise UserError(_("You cannot adjust the valuation of a layer with zero quantity"))
         self.ensure_one()
-        ctx = dict(self.env.context, default_lot_ids=self.ids, default_company_id=self.env.company.id)
+        ctx = dict(self._context, default_lot_id=self.id, default_company_id=self.env.company.id)
         return {
-            'name': _('Lot/Serial number Revaluation - %s', self.product_id.display_name),
+            'name': _("Lot/Serial number Revaluation"),
             'view_mode': 'form',
             'res_model': 'stock.valuation.layer.revaluation',
             'view_id': self.env.ref('stock_account.stock_valuation_layer_revaluation_form_view').id,

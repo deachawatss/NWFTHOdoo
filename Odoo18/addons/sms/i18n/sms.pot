@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 18.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-09-26 08:56+0000\n"
-"PO-Revision-Date: 2024-09-26 08:56+0000\n"
+"POT-Creation-Date: 2025-04-07 20:37+0000\n"
+"PO-Revision-Date: 2025-04-07 20:37+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -48,6 +48,12 @@ msgstr ""
 #. module: sms
 #: model_terms:ir.ui.view,arch_db:sms.sms_account_phone_view_form
 msgid "+1 555-555-555"
+msgstr ""
+
+#. module: sms
+#. odoo-javascript
+#: code:addons/sms/static/src/components/sms_widget/fields_sms_widget.xml:0
+msgid ", fits in"
 msgstr ""
 
 #. module: sms
@@ -168,6 +174,12 @@ msgid "An error occurred when sending an SMS"
 msgstr ""
 
 #. module: sms
+#. odoo-javascript
+#: code:addons/sms/static/src/core/failure_model_patch.js:0
+msgid "An error occurred when sending an SMS on “%(record_name)s”"
+msgstr ""
+
+#. module: sms
 #. odoo-python
 #: code:addons/sms/tools/sms_api.py:0
 msgid ""
@@ -191,6 +203,11 @@ msgstr ""
 #. module: sms
 #: model:ir.model.fields,field_description:sms.field_res_partner__message_attachment_count
 msgid "Attachment Count"
+msgstr ""
+
+#. module: sms
+#: model:ir.model,name:sms.model_base
+msgid "Base"
 msgstr ""
 
 #. module: sms
@@ -296,16 +313,12 @@ msgid "Content"
 msgstr ""
 
 #. module: sms
-#. odoo-javascript
-#: code:addons/sms/static/src/core/notification_model_patch.js:0
 #: model:ir.model.fields.selection,name:sms.selection__mail_notification__failure_type__sms_country_not_supported
 #: model:ir.model.fields.selection,name:sms.selection__sms_sms__failure_type__sms_country_not_supported
 msgid "Country Not Supported"
 msgstr ""
 
 #. module: sms
-#. odoo-javascript
-#: code:addons/sms/static/src/core/notification_model_patch.js:0
 #: model:ir.model.fields.selection,name:sms.selection__mail_notification__failure_type__sms_registration_needed
 #: model:ir.model.fields.selection,name:sms.selection__sms_sms__failure_type__sms_registration_needed
 msgid "Country-specific Registration Required"
@@ -454,8 +467,6 @@ msgid "Error Message"
 msgstr ""
 
 #. module: sms
-#. odoo-javascript
-#: code:addons/sms/static/src/core/notification_model_patch.js:0
 #: model:ir.model.fields.selection,name:sms.selection__mail_notification__failure_type__sms_expired
 msgid "Expired"
 msgstr ""
@@ -619,16 +630,12 @@ msgid "Indicates if the SMS composer targets a single specific recipient"
 msgstr ""
 
 #. module: sms
-#. odoo-javascript
-#: code:addons/sms/static/src/core/notification_model_patch.js:0
 #: model:ir.model.fields.selection,name:sms.selection__mail_notification__failure_type__sms_credit
 #: model:ir.model.fields.selection,name:sms.selection__sms_sms__failure_type__sms_credit
 msgid "Insufficient Credit"
 msgstr ""
 
 #. module: sms
-#. odoo-javascript
-#: code:addons/sms/static/src/core/notification_model_patch.js:0
 #: model:ir.model.fields.selection,name:sms.selection__mail_notification__failure_type__sms_invalid_destination
 msgid "Invalid Destination"
 msgstr ""
@@ -747,8 +754,6 @@ msgid "Messages"
 msgstr ""
 
 #. module: sms
-#. odoo-javascript
-#: code:addons/sms/static/src/core/notification_model_patch.js:0
 #: model:ir.model.fields.selection,name:sms.selection__mail_notification__failure_type__sms_number_missing
 #: model:ir.model.fields.selection,name:sms.selection__sms_sms__failure_type__sms_number_missing
 msgid "Missing Number"
@@ -770,15 +775,11 @@ msgid "No Record"
 msgstr ""
 
 #. module: sms
-#. odoo-javascript
-#: code:addons/sms/static/src/core/notification_model_patch.js:0
 #: model:ir.model.fields.selection,name:sms.selection__mail_notification__failure_type__sms_not_allowed
 msgid "Not Allowed"
 msgstr ""
 
 #. module: sms
-#. odoo-javascript
-#: code:addons/sms/static/src/core/notification_model_patch.js:0
 #: model:ir.model.fields.selection,name:sms.selection__mail_notification__failure_type__sms_not_delivered
 msgid "Not Delivered"
 msgstr ""
@@ -985,8 +986,6 @@ msgid "Register your SMS account"
 msgstr ""
 
 #. module: sms
-#. odoo-javascript
-#: code:addons/sms/static/src/core/notification_model_patch.js:0
 #: model:ir.model.fields.selection,name:sms.selection__mail_notification__failure_type__sms_rejected
 msgid "Rejected"
 msgstr ""
@@ -1108,6 +1107,12 @@ msgstr ""
 #: model:ir.model.fields,field_description:sms.field_res_partner__message_has_sms_error
 #: model:ir.model.fields,field_description:sms.field_res_users__message_has_sms_error
 msgid "SMS Delivery error"
+msgstr ""
+
+#. module: sms
+#. odoo-javascript
+#: code:addons/sms/static/src/messaging_menu/messaging_menu_patch.js:0
+msgid "SMS Failure: %(modelName)s"
 msgstr ""
 
 #. module: sms
@@ -1320,8 +1325,6 @@ msgid "Server Action"
 msgstr ""
 
 #. module: sms
-#. odoo-javascript
-#: code:addons/sms/static/src/core/notification_model_patch.js:0
 #: model:ir.model.fields.selection,name:sms.selection__mail_notification__failure_type__sms_server
 #: model:ir.model.fields.selection,name:sms.selection__sms_sms__failure_type__sms_server
 msgid "Server Error"
@@ -1529,8 +1532,6 @@ msgid "Unknown error"
 msgstr ""
 
 #. module: sms
-#. odoo-javascript
-#: code:addons/sms/static/src/core/notification_model_patch.js:0
 #: model:ir.model.fields.selection,name:sms.selection__mail_notification__failure_type__sms_acc
 #: model:ir.model.fields.selection,name:sms.selection__sms_sms__failure_type__sms_acc
 msgid "Unregistered Account"
@@ -1612,8 +1613,6 @@ msgid ""
 msgstr ""
 
 #. module: sms
-#. odoo-javascript
-#: code:addons/sms/static/src/core/notification_model_patch.js:0
 #: model:ir.model.fields.selection,name:sms.selection__mail_notification__failure_type__sms_number_format
 #: model:ir.model.fields.selection,name:sms.selection__sms_sms__failure_type__sms_number_format
 msgid "Wrong Number Format"
@@ -1680,7 +1679,7 @@ msgstr ""
 #. module: sms
 #. odoo-javascript
 #: code:addons/sms/static/src/components/sms_widget/fields_sms_widget.xml:0
-msgid "characters, fits in"
+msgid "characters"
 msgstr ""
 
 #. module: sms

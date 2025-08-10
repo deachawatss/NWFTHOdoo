@@ -4,7 +4,6 @@ import { reactive } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { TableMenu } from "./table_menu";
 import { TablePicker } from "./table_picker";
-import { isHtmlContentSupported } from "@html_editor/core/selection_plugin";
 
 /**
  * This plugin only contains the table ui feature (table picker, menus, ...).
@@ -21,7 +20,6 @@ export class TableUIPlugin extends Plugin {
                 description: _t("Insert a table"),
                 icon: "fa-table",
                 run: this.openPickerOrInsertTable.bind(this),
-                isAvailable: isHtmlContentSupported,
             },
         ],
         powerbox_items: [
@@ -30,6 +28,7 @@ export class TableUIPlugin extends Plugin {
                 commandId: "openTablePicker",
             },
         ],
+        power_buttons: { commandId: "openTablePicker" },
     };
 
     setup() {
@@ -56,7 +55,13 @@ export class TableUIPlugin extends Plugin {
         this.colMenu = this.dependencies.overlay.createOverlay(TableMenu, {
             positionOptions: {
                 position: "top-fit",
-                flip: false,
+                onPositioned: (el, solution) => {
+                    // Only accept top position as solution.
+                    if (solution.direction !== "top") {
+                        el.style.display = "none"; // avoid glitch
+                        this.colMenu.close();
+                    }
+                },
             },
         });
         /** @type {import("@html_editor/core/overlay_plugin").Overlay} */
@@ -143,12 +148,12 @@ export class TableUIPlugin extends Plugin {
         if (!td) {
             return;
         }
-        const withAddStep =
-            (fn) =>
-            (...args) => {
+        const withAddStep = (fn) => {
+            return (...args) => {
                 fn(...args);
                 this.dependencies.history.addStep();
             };
+        };
         const tableMethods = {
             moveColumn: withAddStep(this.dependencies.table.moveColumn),
             addColumn: withAddStep(this.dependencies.table.addColumn),
@@ -156,11 +161,7 @@ export class TableUIPlugin extends Plugin {
             moveRow: withAddStep(this.dependencies.table.moveRow),
             addRow: withAddStep(this.dependencies.table.addRow),
             removeRow: withAddStep(this.dependencies.table.removeRow),
-            resetRowHeight: withAddStep(this.dependencies.table.resetRowHeight),
-            resetColumnWidth: withAddStep(this.dependencies.table.resetColumnWidth),
             resetTableSize: withAddStep(this.dependencies.table.resetTableSize),
-            clearColumnContent: withAddStep(this.dependencies.table.clearColumnContent),
-            clearRowContent: withAddStep(this.dependencies.table.clearRowContent),
         };
         if (td.cellIndex === 0) {
             this.rowMenu.open({

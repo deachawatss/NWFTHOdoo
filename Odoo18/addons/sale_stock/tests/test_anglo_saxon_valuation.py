@@ -1,12 +1,9 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import Command, fields
-from odoo.exceptions import UserError
 from odoo.tests import Form, tagged
-
-from odoo.addons.stock_account.tests.test_anglo_saxon_valuation_reconciliation_common import (
-    ValuationReconciliationTestCommon,
-)
+from odoo.addons.stock_account.tests.test_anglo_saxon_valuation_reconciliation_common import ValuationReconciliationTestCommon
+from odoo.exceptions import UserError
 
 
 @tagged('post_install', '-at_install')
@@ -32,15 +29,16 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         }).action_apply_inventory()
 
     def _so_and_confirm_two_units(self):
-        sale_order = self.env['sale.order'].sudo().create({
+        sale_order = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'order_line': [
                 (0, 0, {
                     'name': self.product.name,
                     'product_id': self.product.id,
                     'product_uom_qty': 2.0,
+                    'product_uom': self.product.uom_id.id,
                     'price_unit': 12,
-                    'tax_ids': False,  # no love taxes amls
+                    'tax_id': False,  # no love taxes amls
                 })],
         })
         sale_order.flush_recordset()
@@ -50,6 +48,7 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
     def _fifo_in_one_eight_one_ten(self):
         # Put two items in stock.
         in_move_1 = self.env['stock.move'].create({
+            'name': 'a',
             'product_id': self.product.id,
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.company_data['default_warehouse'].lot_stock_id.id,
@@ -61,6 +60,7 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         in_move_1.write({'quantity': 1, 'picked': True})
         in_move_1._action_done()
         in_move_2 = self.env['stock.move'].create({
+            'name': 'a',
             'product_id': self.product.id,
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.company_data['default_warehouse'].lot_stock_id.id,
@@ -479,7 +479,7 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         product.list_price = 100
         product.standard_price = 50
 
-        so = self.env['sale.order'].sudo().create({
+        so = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'partner_invoice_id': self.partner_a.id,
             'partner_shipping_id': self.partner_a.id,
@@ -487,7 +487,7 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
                 'name': product.name,
                 'product_id': product.id,
                 'product_uom_qty': 5.0,
-                'product_uom_id': product.uom_id.id,
+                'product_uom': product.uom_id.id,
                 'price_unit': product.list_price})],
         })
         so.action_confirm()
@@ -516,6 +516,7 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         })
         # We don't set the price_unit so that the `standard_price` will be used (see _get_price_unit()):
         self.env['stock.move'].create({
+            'name': 'test_immediate_validate_1',
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.company_data['default_warehouse'].lot_stock_id.id,
             'picking_id': picking.id,
@@ -902,6 +903,7 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         self.product.standard_price = 10
 
         in_move_1 = self.env['stock.move'].create({
+            'name': 'a',
             'product_id': self.product.id,
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.company_data['default_warehouse'].lot_stock_id.id,
@@ -914,15 +916,16 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         in_move_1._action_done()
 
         # Create and confirm a sale order for 2@12
-        sale_order = self.env['sale.order'].sudo().create({
+        sale_order = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'order_line': [
                 (0, 0, {
                     'name': self.product.name,
                     'product_id': self.product.id,
                     'product_uom_qty': 10.0,
+                    'product_uom': self.product.uom_id.id,
                     'price_unit': 12,
-                    'tax_ids': False,  # no love taxes amls
+                    'tax_id': False,  # no love taxes amls
                 })],
         })
         sale_order.action_confirm()
@@ -933,6 +936,7 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
 
         # Make the second receipt
         in_move_2 = self.env['stock.move'].create({
+            'name': 'a',
             'product_id': self.product.id,
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.company_data['default_warehouse'].lot_stock_id.id,
@@ -975,6 +979,7 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
 
         # +5@8
         in_move_1 = self.env['stock.move'].create({
+            'name': 'a',
             'product_id': self.product.id,
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.company_data['default_warehouse'].lot_stock_id.id,
@@ -988,6 +993,7 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
 
         # +8@12
         in_move_2 = self.env['stock.move'].create({
+            'name': 'a',
             'product_id': self.product.id,
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.company_data['default_warehouse'].lot_stock_id.id,
@@ -1000,15 +1006,16 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         in_move_2._action_done()
 
         # sale 1@20, deliver, invoice
-        sale_order = self.env['sale.order'].sudo().create({
+        sale_order = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'order_line': [
                 (0, 0, {
                     'name': self.product.name,
                     'product_id': self.product.id,
                     'product_uom_qty': 1,
+                    'product_uom': self.product.uom_id.id,
                     'price_unit': 20,
-                    'tax_ids': False,
+                    'tax_id': False,
                 })],
         })
         sale_order.action_confirm()
@@ -1018,15 +1025,16 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         invoice.action_post()
 
         # sale 6@20, deliver, invoice
-        sale_order = self.env['sale.order'].sudo().create({
+        sale_order = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'order_line': [
                 (0, 0, {
                     'name': self.product.name,
                     'product_id': self.product.id,
                     'product_uom_qty': 6,
+                    'product_uom': self.product.uom_id.id,
                     'price_unit': 20,
-                    'tax_ids': False,
+                    'tax_id': False,
                 })],
         })
         sale_order.action_confirm()
@@ -1049,6 +1057,7 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         self.product.standard_price = 10
 
         in_move_1 = self.env['stock.move'].create({
+            'name': 'a',
             'product_id': self.product.id,
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.company_data['default_warehouse'].lot_stock_id.id,
@@ -1061,15 +1070,16 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         in_move_1._action_done()
 
         # Create and confirm a sale order for 10@12
-        sale_order = self.env['sale.order'].sudo().create({
+        sale_order = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'order_line': [
                 (0, 0, {
                     'name': self.product.name,
                     'product_id': self.product.id,
                     'product_uom_qty': 10.0,
+                    'product_uom': self.product.uom_id.id,
                     'price_unit': 12,
-                    'tax_ids': False,  # no love taxes amls
+                    'tax_id': False,  # no love taxes amls
                 })],
         })
         sale_order.action_confirm()
@@ -1084,6 +1094,7 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
 
         # Make the second receipt
         in_move_2 = self.env['stock.move'].create({
+            'name': 'a',
             'product_id': self.product.id,
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.company_data['default_warehouse'].lot_stock_id.id,
@@ -1108,6 +1119,7 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
 
         # Receive 2@10.
         in_move_1 = self.env['stock.move'].create({
+            'name': 'a',
             'product_id': self.product.id,
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.company_data['default_warehouse'].lot_stock_id.id,
@@ -1138,15 +1150,16 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         return_pick._action_done()
 
         # Create, confirm and deliver a sale order for 1@12 (SO2)
-        so_2 = self.env['sale.order'].sudo().create({
+        so_2 = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'order_line': [
                 (0, 0, {
                     'name': self.product.name,
                     'product_id': self.product.id,
                     'product_uom_qty': 1.0,
+                    'product_uom': self.product.uom_id.id,
                     'price_unit': 12,
-                    'tax_ids': False,  # no love taxes amls
+                    'tax_id': False,  # no love taxes amls
                 })],
         })
         so_2.action_confirm()
@@ -1155,6 +1168,7 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
 
         # Receive 1@20
         in_move_2 = self.env['stock.move'].create({
+            'name': 'a',
             'product_id': self.product.id,
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.company_data['default_warehouse'].lot_stock_id.id,
@@ -1225,21 +1239,23 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         self.product.standard_price = 2.0
         unit_12 = self.env['uom.uom'].create({
             'name': 'Pack of 12 units',
-            'relative_factor': 12,
-            'relative_uom_id': self.env.ref('uom.product_uom_unit').id,
+            'category_id': self.product.uom_id.category_id.id,
+            'uom_type': 'bigger',
+            'factor_inv': 12,
+            'rounding': 1,
         })
 
         # Create, confirm and deliver a sale order for 12@1.5 without reception with std_price = 2.0 (SO1)
-        so_1 = self.env['sale.order'].sudo().create({
+        so_1 = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'order_line': [
                 (0, 0, {
                     'name': self.product.name,
                     'product_id': self.product.id,
                     'product_uom_qty': 1,
-                    'product_uom_id': unit_12.id,
+                    'product_uom': unit_12.id,
                     'price_unit': 18,
-                    'tax_ids': False,  # no love taxes amls
+                    'tax_id': False,  # no love taxes amls
                 })],
         })
         so_1.action_confirm()
@@ -1277,6 +1293,7 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
 
         # Create stock move 1
         in_move_1 = self.env['stock.move'].create({
+            'name': 'a',
             'product_id': self.product.id,
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.company_data['default_warehouse'].lot_stock_id.id,
@@ -1289,16 +1306,16 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         in_move_1._action_done()
 
         # Create, confirm and deliver a sale order for 12@1.5 with reception (50 * 1.0, 50 * 0.0)(SO2)
-        so_2 = self.env['sale.order'].sudo().create({
+        so_2 = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'order_line': [
                 (0, 0, {
                     'name': self.product.name,
                     'product_id': self.product.id,
                     'product_uom_qty': 1,
-                    'product_uom_id': unit_12.id,
+                    'product_uom': unit_12.id,
                     'price_unit': 18,
-                    'tax_ids': False,  # no love taxes amls
+                    'tax_id': False,  # no love taxes amls
                 })],
         })
         so_2.action_confirm()
@@ -1343,6 +1360,7 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
 
         # Receive one @10, one @20 and one @60
         in_moves = self.env['stock.move'].create([{
+            'name': 'IN move @%s' % p,
             'product_id': self.product.id,
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.company_data['default_warehouse'].lot_stock_id.id,
@@ -1355,15 +1373,16 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         in_moves._action_done()
 
         # Sell 3 units
-        so = self.env['sale.order'].sudo().create({
+        so = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'order_line': [
                 (0, 0, {
                     'name': self.product.name,
                     'product_id': self.product.id,
                     'product_uom_qty': 3.0,
+                    'product_uom': self.product.uom_id.id,
                     'price_unit': 100,
-                    'tax_ids': False,
+                    'tax_id': False,
                 })],
         })
         so.action_confirm()
@@ -1384,6 +1403,7 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
 
         # Receive one @100
         in_moves = self.env['stock.move'].create({
+            'name': 'IN move @100',
             'product_id': self.product.id,
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.company_data['default_warehouse'].lot_stock_id.id,
@@ -1433,6 +1453,7 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
 
         # Receive one @10, one @20 and one @60
         in_moves = self.env['stock.move'].create([{
+            'name': 'IN move @%s' % p,
             'product_id': self.product.id,
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.company_data['default_warehouse'].lot_stock_id.id,
@@ -1445,15 +1466,16 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         in_moves._action_done()
 
         # Sell 3 units
-        so = self.env['sale.order'].sudo().create({
+        so = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'order_line': [
                 (0, 0, {
                     'name': self.product.name,
                     'product_id': self.product.id,
                     'product_uom_qty': 3.0,
+                    'product_uom': self.product.uom_id.id,
                     'price_unit': 100,
-                    'tax_ids': False,
+                    'tax_id': False,
                 })],
         })
         so.action_confirm()
@@ -1474,6 +1496,7 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
 
         # Receive one @100
         in_moves = self.env['stock.move'].create({
+            'name': 'IN move @100',
             'product_id': self.product.id,
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.company_data['default_warehouse'].lot_stock_id.id,
@@ -1494,10 +1517,9 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         return_picking.button_validate()
 
         # Create a new invoice for the returned product
-        self.env['sale.advance.payment.inv'].with_context({
-            'active_model': 'sale.order',
-            'active_ids': so.ids,
-        }).sudo().create({}).create_invoices()
+        ctx = {'active_model': 'sale.order', 'active_ids': so.ids}
+        create_invoice_wizard = self.env['sale.advance.payment.inv'].with_context(ctx).create({'advance_payment_method': 'delivered'})
+        create_invoice_wizard.create_invoices()
         reverse_invoice = so.invoice_ids[-1]
         with Form(reverse_invoice) as reverse_invoice_form:
             with reverse_invoice_form.invoice_line_ids.edit(0) as line:
@@ -1519,6 +1541,7 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         svl_values = [10, 15, 65]
         total_value = sum(svl_values)
         in_moves = self.env['stock.move'].create([{
+            'name': 'IN move @%s' % p,
             'product_id': self.product.id,
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.company_data['default_warehouse'].lot_stock_id.id,
@@ -1530,15 +1553,16 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         in_moves.write({'quantity': 1, 'picked': True})
         in_moves._action_done()
 
-        so = self.env['sale.order'].sudo().create({
+        so = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'order_line': [
                 (0, 0, {
                     'name': self.product.name,
                     'product_id': self.product.id,
                     'product_uom_qty': 3.0,
+                    'product_uom': self.product.uom_id.id,
                     'price_unit': 100,
-                    'tax_ids': False,
+                    'tax_id': False,
                 })],
         })
         so.action_confirm()
@@ -1602,10 +1626,11 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
             'name': 'Super Accountman',
             'login': 'super_accountman',
             'password': 'super_accountman',
-            'group_ids': [(6, 0, self.env.ref('account.group_account_invoice').ids)],
+            'groups_id': [(6, 0, self.env.ref('account.group_account_invoice').ids)],
         })
 
         in_moves = self.env['stock.move'].create([{
+            'name': 'IN move @%s' % p,
             'product_id': self.product.id,
             'location_id': self.env.ref('stock.stock_location_suppliers').id,
             'location_dest_id': self.company_data['default_warehouse'].lot_stock_id.id,
@@ -1617,15 +1642,16 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         in_moves.write({'quantity': 1, 'picked': True})
         in_moves._action_done()
 
-        so = self.env['sale.order'].sudo().create({
+        so = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'order_line': [
                 (0, 0, {
                     'name': self.product.name,
                     'product_id': self.product.id,
                     'product_uom_qty': 1.0,
+                    'product_uom': self.product.uom_id.id,
                     'price_unit': 100,
-                    'tax_ids': False,
+                    'tax_id': False,
                 })],
         })
         so.action_confirm()
@@ -1694,26 +1720,27 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         }).action_apply_inventory()
 
         # Create a SO with a product invoiced on delivered quantity
-        so = self.env['sale.order'].sudo().create({
+        so = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'order_line': [
                 (0, 0, {
                     'name': self.product.name,
                     'product_id': self.product.id,
                     'product_uom_qty': 10.0,
+                    'product_uom': self.product.uom_id.id,
                     'price_unit': 100,
-                    'tax_ids': False,
+                    'tax_id': False,
                 })],
         })
         so.action_confirm()
 
         # Do a 100% down payment
-        self.env['sale.advance.payment.inv'].sudo().create({
+        down_payment = self.env['sale.advance.payment.inv'].create({
             'advance_payment_method': 'percentage',
             'amount': 100,
             'sale_order_ids': so.ids,
-        }).create_invoices()
-
+        })
+        down_payment.create_invoices()
         # Invoice the delivered part from the down payment
         down_payment_invoices = so.invoice_ids
         down_payment_invoices.action_post()
@@ -1723,9 +1750,8 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         so.picking_ids.move_ids.picked = True
         Form.from_action(self.env, so.picking_ids.button_validate()).save().process()
 
-        self.env['sale.advance.payment.inv'].with_context(
-            active_ids=so.ids,
-        ).sudo().create({}).create_invoices()
+        invoice_wizard = self.env['sale.advance.payment.inv'].with_context(active_ids=so.ids, open_invoices=True).create({})
+        invoice_wizard.create_invoices()
         credit_note = so.invoice_ids.filtered(lambda i: i.state != 'posted')
         self.assertEqual(len(credit_note), 1)
         self.assertEqual(len(credit_note.invoice_line_ids.filtered(lambda line: line.display_type == 'product')), 2)
@@ -1738,9 +1764,8 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         backorder.move_ids.picked = True
         backorder.button_validate()
 
-        self.env['sale.advance.payment.inv'].with_context(
-            active_ids=so.ids,
-        ).sudo().create({}).create_invoices()
+        invoice_wizard = self.env['sale.advance.payment.inv'].with_context(active_ids=so.ids, open_invoices=True).create({})
+        invoice_wizard.create_invoices()
 
         invoice = so.invoice_ids.filtered(lambda i: i.state != 'posted')
         invoice.action_post()
@@ -1771,6 +1796,7 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         """
         product = self.product
         in_move = self.env['stock.move'].create({
+            'name': 'in 12 units @ $100',
             'product_id': product.id,
             'price_unit': 100,
             'product_uom_qty': 12,
@@ -1783,7 +1809,7 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         in_move.picked = True
         in_move._action_done()
 
-        sale_order = self.env['sale.order'].sudo().create({
+        sale_order = self.env['sale.order'].create({
             'partner_id': self.partner_a.id,
             'order_line': [Command.create({
                 'product_id': product.id,
@@ -1803,9 +1829,10 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         backorder_delivery = sale_order.picking_ids.filtered(lambda p: p.state != 'done')
         backorder_delivery.move_ids.quantity = 2
         backorder_delivery.button_validate()
-        self.env['sale.advance.payment.inv'].with_context(
-            active_ids=sale_order.ids,
-        ).sudo().create({}).create_invoices()
+        invoice_wizard = self.env['sale.advance.payment.inv'].with_context(
+            active_ids=sale_order.ids, open_invoices=True
+        ).create({})
+        invoice_wizard.create_invoices()
 
         invoice = sale_order.invoice_ids
         qty_ten_invoice_line = invoice.invoice_line_ids.filtered(lambda l: l.quantity == 10)
@@ -1813,9 +1840,10 @@ class TestAngloSaxonValuation(ValuationReconciliationTestCommon):
         invoice.invoice_date = fields.Date.today()
         invoice.action_post()
         product.standard_price = 50
-        self.env['sale.advance.payment.inv'].with_context(
-            active_ids=sale_order.ids,
-        ).sudo().create({}).create_invoices()
+        invoice_wizard = self.env['sale.advance.payment.inv'].with_context(
+            active_ids=sale_order.ids, open_invoices=True
+        ).create({})
+        invoice_wizard.create_invoices()
         invoice2 = sale_order.invoice_ids.filtered(lambda i: i.state != 'posted')
         invoice2.invoice_date = fields.Date.today()
         invoice2.action_post()

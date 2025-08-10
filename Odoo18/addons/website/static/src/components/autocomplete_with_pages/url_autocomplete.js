@@ -1,6 +1,7 @@
+/** @odoo-module **/
+
 import { Component } from "@odoo/owl";
 import { rpc } from "@web/core/network/rpc";
-import { useChildRef } from "@web/core/utils/hooks";
 import { AutoCompleteWithPages } from "@website/components/autocomplete_with_pages/autocomplete_with_pages";
 
 // TODO: we probably don't need it anymore after merging html_builder
@@ -14,8 +15,11 @@ export class UrlAutoComplete extends Component {
     static template = "website.UrlAutoComplete";
     static components = { AutoCompleteWithPages };
 
-    setup() {
-        this.inputRef = useChildRef();
+    _mapItemToSuggestion(item) {
+        return {
+            ...item,
+            classList: item.separator ? "ui-autocomplete-category" : "ui-autocomplete-item",
+        };
     }
 
     get dropdownClass() {
@@ -37,20 +41,16 @@ export class UrlAutoComplete extends Component {
     get sources() {
         return [
             {
-                optionSlot: "option",
+                optionTemplate: "website.AutoCompleteWithPagesItem",
                 options: async (term) => {
-                    const makeItem = (item) => ({
-                        cssClass: "ui-autocomplete-item",
-                        label: item.label,
-                        onSelect: this.onSelect.bind(this, item.value),
-                    });
-
                     if (term[0] === "#") {
                         const anchors = await this.props.loadAnchors(
                             term,
                             this.props.options && this.props.options.body
                         );
-                        return anchors.map((anchor) => makeItem({ label: anchor, value: anchor }));
+                        return anchors.map((anchor) =>
+                            this._mapItemToSuggestion({ label: anchor, value: anchor })
+                        );
                     } else if (term.startsWith("http") || term.length === 0) {
                         // avoid useless call to /website/get_suggested_links
                         return [];
@@ -62,30 +62,24 @@ export class UrlAutoComplete extends Component {
                         needle: term,
                         limit: 15,
                     });
-                    const choices = [];
-                    for (const page of res.matching_pages) {
-                        choices.push(makeItem(page));
-                    }
-                    for (const other of res.others) {
+                    let choices = res.matching_pages;
+                    res.others.forEach((other) => {
                         if (other.values.length) {
-                            choices.push({
-                                cssClass: "ui-autocomplete-category",
-                                data: { separator: true },
-                                label: other.title,
-                            });
-                            for (const page of other.values) {
-                                choices.push(makeItem(page));
-                            }
+                            choices = choices.concat(
+                                [{ separator: other.title, label: other.title }],
+                                other.values
+                            );
                         }
-                    }
-                    return choices;
+                    });
+                    return choices.map(this._mapItemToSuggestion);
                 },
             },
         ];
     }
 
-    onSelect(value) {
-        this.inputRef.value = value;
+    onSelect(selectedSubjection, { input }) {
+        const { value } = Object.getPrototypeOf(selectedSubjection);
+        input.value = value;
         this.props.targetDropdown.value = value;
         this.props.options.urlChosen?.();
     }

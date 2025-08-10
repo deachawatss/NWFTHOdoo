@@ -11,6 +11,8 @@ class AccountChartTemplate(models.AbstractModel):
         return {
             'property_account_receivable_id': 'uae_account_102011',
             'property_account_payable_id': 'uae_account_201002',
+            'property_account_expense_categ_id': 'uae_account_400001',
+            'property_account_income_categ_id': 'uae_account_500001',
             'code_digits': '6',
         }
 
@@ -24,7 +26,7 @@ class AccountChartTemplate(models.AbstractModel):
             'RK': 'uae_sale_tax_5_ras_al_khaima',
             'SH': 'uae_sale_tax_5_sharjah',
             'UQ': 'uae_sale_tax_5_umm_al_quwain',
-        }.get(self.env.company.state_id.code, 'uae_sale_tax_5_dubai')
+        }.get(self.env.company.state_id.code, 'uae_sale_tax_5_abu_dhabi')
         return {
             self.env.company.id: {
                 'account_fiscal_country_id': 'base.ae',
@@ -38,8 +40,6 @@ class AccountChartTemplate(models.AbstractModel):
                 'account_journal_early_pay_discount_gain_account_id': 'uae_account_500014',
                 'account_sale_tax_id': sales_tax_xmlid,
                 'account_purchase_tax_id': 'uae_purchase_tax_5',
-                'expense_account_id': 'uae_account_400001',
-                'income_account_id': 'uae_account_500001',
             },
         }
 
@@ -63,3 +63,16 @@ class AccountChartTemplate(models.AbstractModel):
             }
         }
 
+    @template('ae', 'account.account')
+    def _get_ae_account_account(self):
+        return {
+            "uae_account_100101": {
+                'allowed_journal_ids': [Command.link('ifrs16')],
+            },
+            "uae_account_100102": {
+                'allowed_journal_ids': [Command.link('ifrs16')],
+            },
+            "uae_account_400070": {
+                'allowed_journal_ids': [Command.link('ifrs16')],
+            },
+        }

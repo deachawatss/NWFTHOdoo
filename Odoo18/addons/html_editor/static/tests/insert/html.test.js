@@ -4,10 +4,7 @@ import { tick } from "@odoo/hoot-mock";
 import { setupEditor, testEditor } from "../_helpers/editor";
 import { unformat } from "../_helpers/format";
 import { getContent } from "../_helpers/selection";
-import { cleanHints } from "../_helpers/dispatch";
-import { MAIN_PLUGINS } from "@html_editor/plugin_sets";
-import { addStep } from "../_helpers/user_actions";
-import { Plugin } from "@html_editor/plugin";
+import { dispatchClean } from "../_helpers/dispatch";
 
 function span(text) {
     const span = document.createElement("span");
@@ -146,14 +143,13 @@ describe("collapsed selection", () => {
         await testEditor({
             contentBefore: "<p>content</p>",
             stepFunction: async (editor) => {
-                editor.shared.selection.setCursorEnd(editor.editable);
+                editor.shared.selection.setCursorEnd(editor.editable, false);
                 editor.shared.selection.focusEditable();
                 await tick();
                 editor.shared.dom.insert(parseHTML(editor.document, "<div>abc</div><p>def</p>"));
                 editor.shared.history.addStep();
             },
             contentAfter: "<p>content</p><div>abc</div><p>def[]</p>",
-            config: { allowInlineAtRoot: true },
         });
     });
 
@@ -291,7 +287,6 @@ describe("collapsed selection", () => {
         editor.shared.dom.insert(
             parseHTML(editor.document, `<p data-oe-protected="true">in</p>`).firstElementChild
         );
-        cleanHints(editor);
         expect(getContent(editor.editable, { sortAttrs: true })).toBe(
             `<p contenteditable="false" data-oe-protected="true">in</p><p>[]<br></p>`
         );
@@ -329,7 +324,7 @@ describe("collapsed selection", () => {
         const { el, editor } = await setupEditor(`<p>[]<br></p>`);
         editor.shared.dom.insert(parseHTML(editor.document, `<div class="oe_unbreakable">a</div>`));
         editor.shared.history.addStep();
-        cleanHints(editor);
+        dispatchClean(editor);
         expect(getContent(el)).toBe(`<div class="oe_unbreakable">a</div><p>[]<br></p>`);
     });
 
@@ -337,7 +332,7 @@ describe("collapsed selection", () => {
         const { el, editor } = await setupEditor(`<p>b[]</p>`);
         editor.shared.dom.insert(parseHTML(editor.document, `<div class="oe_unbreakable">a</div>`));
         editor.shared.history.addStep();
-        cleanHints(editor);
+        dispatchClean(editor);
         expect(getContent(el)).toBe(`<p>b</p><div class="oe_unbreakable">a</div><p>[]<br></p>`);
     });
 
@@ -354,32 +349,6 @@ describe("collapsed selection", () => {
         editor.shared.history.addStep();
         expect(getContent(el)).toBe(`<p>b</p><div class="oe_unbreakable">a</div><p>[]c</p>`);
     });
-
-    test("insert content processed by a plugin", async () => {
-        class CustomPlugin extends Plugin {
-            static id = "customPlugin";
-            static dependencies = ["dom", "selection"];
-            resources = {
-                before_insert_processors: (container) => {
-                    const second = this.editable.querySelector(".second");
-                    this.dependencies.selection.setCursorStart(second);
-                    container.replaceChildren(parseHTML(this.document, `<p>surprise</p>`));
-                    return container;
-                },
-            };
-        }
-        const { el, editor } = await setupEditor(
-            `<p class="first">[]?</p><p class="second">!</p>`,
-            {
-                config: {
-                    Plugins: [...MAIN_PLUGINS, CustomPlugin],
-                },
-            }
-        );
-        editor.shared.dom.insert("notasurprise");
-        addStep(editor);
-        expect(getContent(el)).toBe(`<p class="first">?</p><p class="second">surprise[]!</p>`);
-    });
 });
 
 describe("not collapsed selection", () => {
@@ -392,7 +361,7 @@ describe("not collapsed selection", () => {
                 );
             },
             contentAfterEdit:
-                '<p><i class="fa fa-pastafarianism" contenteditable="false">\u200b</i>[]</p>',
+                '<p>\ufeff<i class="fa fa-pastafarianism" contenteditable="false">\u200b</i>\ufeff[]</p>',
             contentAfter: '<p><i class="fa fa-pastafarianism"></i>[]</p>',
         });
     });
@@ -415,10 +384,12 @@ describe("not collapsed selection", () => {
     test("should delete selection and insert html in its place (3)", async () => {
         await testEditor({
             contentBefore: "<h1>[abc</h1><p>def]</p>",
-            stepFunction: async (editor) => {
+            stepFunction: async editor => {
                 // There's an empty text node after the paragraph:
                 editor.editable.lastChild.after(editor.document.createTextNode(""));
-                editor.shared.dom.insert(parseHTML(editor.document, "<p>ghi</p><p>jkl</p>"));
+                editor.shared.dom.insert(
+                    parseHTML(editor.document, "<p>ghi</p><p>jkl</p>")
+                );
                 editor.shared.history.addStep();
             },
             contentAfter: "<p>ghi</p><p>jkl[]</p>",

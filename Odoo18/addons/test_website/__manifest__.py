@@ -39,12 +39,11 @@ models which only purpose is to run tests.""",
             'http://test.external.link/style2.css',
         ],
         'web.assets_frontend': [
-            'test_website/static/src/interactions/**/*',
+            'test_website/static/src/js/test_error.js',
         ],
         'web.assets_tests': [
             'test_website/static/tests/tours/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

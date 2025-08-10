@@ -8,6 +8,7 @@ _logger = logging.getLogger(__name__)
 
 
 class AccountChartTemplate(models.AbstractModel):
+
     _inherit = "account.chart.template"
 
     @api.model

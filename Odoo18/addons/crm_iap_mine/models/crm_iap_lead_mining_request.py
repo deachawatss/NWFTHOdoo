@@ -20,7 +20,7 @@ CREDIT_PER_COMPANY = 1
 CREDIT_PER_CONTACT = 1
 
 
-class CrmIapLeadMiningRequest(models.Model):
+class CRMLeadMiningRequest(models.Model):
     _name = 'crm.iap.lead.mining.request'
     _description = 'CRM Lead Mining Request'
 

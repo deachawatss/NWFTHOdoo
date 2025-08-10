@@ -5,7 +5,7 @@
         <div class="d-flex gap-2 align-items-center" t-ref="root">
             <!-- Start date -->
             <t t-if="props.readonly">
-                <span t-if="!isEmpty(startDateField)" class="text-truncate" t-esc="getFormattedValue(0)" />
+                <span class="text-truncate" t-esc="getFormattedValue(0)" />
             </t>
             <t t-elif="!props.required and !props.alwaysRange and isEmpty(startDateField) and !isEmpty(endDateField)">
                 <button
@@ -21,12 +21,16 @@
                     t-ref="start-date"
                     type="text"
                     t-att-id="showSeparator ? props.endDateField and props.id : props.id"
-                    t-att-class="'o_input cursor-pointer ' + (props.warnFuture and isDateInTheFuture(0) ? 'text-danger' : '')"
+                    class="o_input cursor-pointer"
                     autocomplete="off"
                     t-att-placeholder="props.placeholder"
                     t-att-data-field="startDateField"
                     t-on-input="onInput"
-                    t-att-title="props.warnFuture and isDateInTheFuture(0) ? futureWarningMsg : ''"
+                />
+                <span
+                    t-if="props.warnFuture and isDateInTheFuture(0)"
+                    class="fa fa-exclamation-triangle text-danger"
+                    title="This date is on the future. Make sure it is what you expected."
                 />
             </t>
 
@@ -54,12 +58,16 @@
                         t-ref="end-date"
                         type="text"
                         t-att-id="props.startDateField and props.id"
-                        t-att-class="'o_input cursor-pointer ' + (props.warnFuture and isDateInTheFuture(1) ? 'text-danger' : '')"
+                        class="o_input cursor-pointer"
                         autocomplete="off"
                         t-att-placeholder="props.placeholder"
                         t-att-data-field="endDateField"
                         t-on-input="onInput"
-                        t-att-title="props.warnFuture and isDateInTheFuture(1) ? futureWarningMsg : ''"
+                    />
+                    <span
+                        t-if="props.warnFuture and isDateInTheFuture(1)"
+                        class="fa fa-exclamation-triangle text-danger"
+                        title="This date is on the future. Make sure it is what you expected."
                     />
                 </t>
             </t>

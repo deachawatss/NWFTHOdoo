@@ -6,7 +6,7 @@ from werkzeug.urls import url_encode
 from odoo import _, api, fields, models
 
 
-class HrEmployeeCvWizard(models.TransientModel):
+class HrEmployeeCVWizard(models.TransientModel):
     _name = 'hr.employee.cv.wizard'
     _description = 'Print Resume'
 

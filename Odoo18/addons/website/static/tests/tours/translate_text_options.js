@@ -1,11 +1,27 @@
+/** @odoo-module **/
+
 import {
     clickOnSave,
     insertSnippet,
     registerWebsitePreviewTour,
     selectElementInWeSelectWidget,
-    selectFullText,
-    clickToolbarButton,
 } from "@website/js/tours/tour_utils";
+
+const selectText = (selector) => {
+    return {
+        content: "Select some text content",
+        trigger: `:iframe ${selector}`,
+        run() {
+            const iframeDOC = document.querySelector(".o_iframe").contentDocument;
+            const range = iframeDOC.createRange();
+            const selection = iframeDOC.getSelection();
+            range.selectNodeContents(this.anchor);
+            selection.removeAllRanges();
+            selection.addRange(range);
+            this.anchor.click();
+        },
+    };
+};
 
 registerWebsitePreviewTour(
     "translate_text_options",
@@ -19,18 +35,26 @@ registerWebsitePreviewTour(
             name: "Text",
             groupName: "Text",
         }),
-        ...clickToolbarButton(
-            "first text block in the snippet",
-            "#wrap .s_text_block p",
-            "Animate Text",
-            true
-        ),
-        ...clickToolbarButton(
-            "second text block in the snippet",
-            "#wrap .s_text_block p:last",
-            "Apply highlight",
-            true
-        ),
+        {
+            content: "Select the first text block in the snippet",
+            trigger: ":iframe #wrap .s_text_block p:first",
+            run: "dblclick",
+        },
+        {
+            content: "Click on the 'Animate Text' button to activate the option",
+            trigger: "div.o_we_animate_text",
+            run: "click",
+        },
+        {
+            content: "Select the second text block in the snippet",
+            trigger: ":iframe #wrap .s_text_block p:last",
+            run: "dblclick",
+        },
+        {
+            content: "Click on the 'Highlight Effects' button to activate the option",
+            trigger: "div.o_we_text_highlight",
+            run: "click",
+        },
         ...clickOnSave(),
         {
             content: "Change the language to French",
@@ -53,14 +77,14 @@ registerWebsitePreviewTour(
             run: "click",
         },
         // Select the highlighted text content.
-        selectFullText("snippet highlighted text content", "#wrap .s_text_block p:last .o_text_highlight"),
+        selectText("#wrap .s_text_block p:last .o_text_highlight"),
         {
             content: "Check that the highlight options were displayed",
             trigger: "#toolbar we-select[data-name=text_highlight_opt]",
         },
         ...selectElementInWeSelectWidget("text_highlight_opt", "Jagged"),
         // Select the animated text content.
-        selectFullText("animated text content", "#wrap .s_text_block p:first .o_animated_text"),
+        selectText("#wrap .s_text_block p:first .o_animated_text"),
         {
             content:
                 "Check that the animation options are displayed and highlight options are no longer visible",
@@ -68,14 +92,14 @@ registerWebsitePreviewTour(
                 "#toolbar:not(:has(.snippet-option-TextHighlight)) .snippet-option-WebsiteAnimate",
         },
         // Select a text content without any option.
-        selectFullText("text content without any option", "footer .s_text_block p:first span"),
+        selectText("footer .s_text_block p:first span"),
         {
             content: "Check that all text options are removed",
             trigger:
                 "#toolbar:not(:has(.snippet-option-TextHighlight, .snippet-option-WebsiteAnimate))",
         },
         // Select the highlighted text content again.
-        selectFullText("highlighted text content again", "#wrap .s_text_block p:last .o_text_highlight"),
+        selectText("#wrap .s_text_block p:last .o_text_highlight"),
         {
             content: "Check that only the highlight options are displayed",
             trigger:

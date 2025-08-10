@@ -1,8 +1,8 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, fields, models
-from odoo.tools import format_amount
 
+from odoo.tools import format_amount
 
 VARIABLE_SELECTION = [
     ('weight', "Weight"),
@@ -13,8 +13,8 @@ VARIABLE_SELECTION = [
 ]
 
 
-class DeliveryPriceRule(models.Model):
-    _name = 'delivery.price.rule'
+class PriceRule(models.Model):
+    _name = "delivery.price.rule"
     _description = "Delivery Price Rules"
     _order = 'sequence, list_price, id'
 
@@ -40,7 +40,7 @@ class DeliveryPriceRule(models.Model):
 
     name = fields.Char(compute='_compute_name')
     sequence = fields.Integer(required=True, default=10)
-    carrier_id = fields.Many2one('delivery.carrier', 'Carrier', required=True, index=True, ondelete='cascade')
+    carrier_id = fields.Many2one('delivery.carrier', 'Carrier', required=True, ondelete='cascade')
     currency_id = fields.Many2one(related='carrier_id.currency_id')
 
     variable = fields.Selection(selection=VARIABLE_SELECTION, required=True, default='quantity')

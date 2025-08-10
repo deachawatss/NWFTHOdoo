@@ -18,6 +18,5 @@
             'l10n_id_pos/static/tests/**/*'
         ]
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

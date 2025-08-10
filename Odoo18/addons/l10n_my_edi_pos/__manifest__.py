@@ -9,7 +9,7 @@
     "description": """
     This modules allows the user to send consolidated invoices to the MyInvois system when using the POS app.
     """,
-    "depends": ["l10n_my_edi", "point_of_sale"],
+    "depends": ["l10n_my_edi_extended", "point_of_sale"],
     "data": [
         "data/ir_cron.xml",
         "data/res_partner.xml",
@@ -28,6 +28,5 @@
     ],
     "installable": True,
     'auto_install': True,
-    'author': 'Odoo S.A.',
     "license": "LGPL-3",
 }

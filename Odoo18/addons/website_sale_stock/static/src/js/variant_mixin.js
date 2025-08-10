@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import VariantMixin from "@website_sale/js/sale_variant_mixin";
 import { renderToFragment } from "@web/core/utils/render";
 import { formatFloat } from "@web/core/utils/numbers";
@@ -21,13 +23,18 @@ import { markup } from "@odoo/owl";
  * @param {Array} combination
  */
 VariantMixin._onChangeCombinationStock = function (ev, $parent, combination) {
-    const has_max_combo_quantity = 'max_combo_quantity' in combination
-    if (!combination.is_storable && !has_max_combo_quantity) {
-        return;
+    let product_id = 0;
+    // needed for list view of variants
+    if ($parent.find('input.product_id:checked').length) {
+        product_id = $parent.find('input.product_id:checked').val();
+    } else {
+        product_id = $parent.find('.product_id').val();
     }
+    const isMainProduct = combination.product_id &&
+        $parent.is('.js_main_product') &&
+        combination.product_id === parseInt(product_id);
 
-    if (!$parent.is('.js_main_product') || !combination.product_id) {
-        // if we're not on product page or the product is dynamic
+    if (!this.isWebsite || !isMainProduct) {
         return;
     }
 
@@ -37,7 +44,7 @@ VariantMixin._onChangeCombinationStock = function (ev, $parent, combination) {
     ctaWrapper.classList.replace('d-none', 'd-flex');
     ctaWrapper.classList.remove('out_of_stock');
 
-    if (!combination.allow_out_of_stock_order) {
+    if (combination.is_storable && !combination.allow_out_of_stock_order) {
         combination.free_qty -= parseInt(combination.cart_qty);
         $addQtyInput.data('max', combination.free_qty || 1);
         if (combination.free_qty < 0) {
@@ -53,12 +60,9 @@ VariantMixin._onChangeCombinationStock = function (ev, $parent, combination) {
         }
     }
 
-    if (has_max_combo_quantity) {
+    combination.has_max_combo_quantity = 'max_combo_quantity' in combination
+    if (combination.product_type === 'combo' && combination.has_max_combo_quantity) {
         $addQtyInput.data('max', combination.max_combo_quantity || 1);
-        if (qty > combination.max_combo_quantity) {
-            qty = combination.max_combo_quantity || 1;
-            $addQtyInput.val(qty);
-        }
         if (combination.max_combo_quantity < 1) {
             ctaWrapper.classList.replace('d-flex', 'd-none');
             ctaWrapper.classList.add('out_of_stock');

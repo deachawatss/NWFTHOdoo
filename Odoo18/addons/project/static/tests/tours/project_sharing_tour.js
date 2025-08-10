@@ -1,6 +1,5 @@
-import { delay } from "@odoo/hoot-dom";
 import { registry } from "@web/core/registry";
-import { stepUtils } from "@web_tour/tour_utils";
+import { stepUtils } from "@web_tour/tour_service/tour_utils";
 
 const projectSharingSteps = [...stepUtils.goToAppSteps("project.menu_main_pm", 'Go to the Project App.'), {
     trigger: ".o_kanban_record:contains(Project Sharing)",
@@ -47,84 +46,84 @@ const projectSharingSteps = [...stepUtils.goToAppSteps("project.menu_main_pm", '
     run: "click",
     expectUnloadPage: true,
 }, {
-    trigger: '.o_project_sharing .o_kanban_renderer',
+    trigger: ':iframe .o_project_sharing',
     content: 'Wait the project sharing feature be loaded',
 }, {
-    trigger: 'button.o-kanban-button-new',
+    trigger: ':iframe button.o-kanban-button-new',
     content: 'Click "Create" button',
     run: 'click',
 }, {
-    trigger: '.o_kanban_quick_create .o_field_widget[name=name] input',
+    trigger: ':iframe .o_kanban_quick_create .o_field_widget[name="name"] input',
     content: 'Create Task',
     run: "edit Test Create Task",
 }, {
     content: "Check that task stages cannot be drag and dropped",
-    trigger: '.o_kanban_group:not(.o_group_draggable)',
+    trigger: ':iframe .o_kanban_group:not(.o_group_draggable)',
 }, {
-    trigger: '.o_kanban_quick_create .o_kanban_edit',
+    trigger: ':iframe .o_kanban_quick_create .o_kanban_edit',
     content: 'Go to the form view of this new task',
     run: "click",
 }, {
-    trigger: 'div[name="stage_id"] div.o_statusbar_status button[aria-checked="false"]:contains(Done)',
+    trigger: ':iframe div[name="stage_id"] div.o_statusbar_status button[aria-checked="false"]:contains(Done)',
     content: 'Change the stage of the task.',
     run: "click",
 }, {
-    trigger: '.o-mail-Composer-input',
+    trigger: ':iframe .o-mail-Composer-input',
     content: 'Write a message in the chatter of the task',
     run: "edit I create a new task for testing purpose.",
 }, {
-    trigger: '.o-mail-Composer-send:enabled',
+    trigger: ':iframe .o-mail-Composer-send:enabled',
     content: 'Send the message',
     run: "click",
 }, {
-    trigger: 'ol.breadcrumb > li.o_back_button > a:contains(Project Sharing)',
+    trigger: ':iframe ol.breadcrumb > li.o_back_button > a:contains(Project Sharing)',
     content: 'Go back to the kanban view',
     run: "click",
 }, {
-    trigger: '.o_searchview_dropdown_toggler',
+    trigger: ':iframe .o_searchview_dropdown_toggler',
     content: 'open the search panel menu',
     run: "click",
 }, {
-    trigger: '.o_filter_menu .dropdown-item:first-child',
+    trigger: ':iframe .o_filter_menu .dropdown-item:first-child',
     content: 'click on the first item in the filter menu',
     run: "click",
 }, {
-    trigger: '.o_group_by_menu .dropdown-item:first-child',
+    trigger: ':iframe .o_group_by_menu .dropdown-item:first-child',
     content: 'click on the first item in the group by menu',
     run: "click",
 }, {
-    trigger: '.o_favorite_menu .o_add_favorite',
+    trigger: ':iframe .o_favorite_menu .o_add_favorite',
     content: 'open accordion "save current search" in favorite menu',
     run: "click",
 }, {
-    trigger: '.o_favorite_menu .o_accordion_values .o_save_favorite',
+    trigger: ':iframe .o_favorite_menu .o_accordion_values .o_save_favorite',
     content: 'click to "save" button in favorite menu',
     run: "click",
 }, {
-    trigger: '.o_filter_menu .dropdown-item:first-child',
+    trigger: ':iframe .o_filter_menu .dropdown-item:first-child',
     content: 'click on the first item in the filter menu',
     run: "click",
 }, {
-    trigger: '.o_group_by_menu .dropdown-item:first-child',
+    trigger: ':iframe .o_group_by_menu .dropdown-item:first-child',
     content: 'click on the first item in the group by menu',
     run: "click",
 }, {
-    trigger: '.o_favorite_menu .o_accordion_values .o_save_favorite',
+    trigger: ':iframe .o_favorite_menu .o_accordion_values .o_save_favorite',
     content: 'click to "save" button in favorite menu',
     run: "click",
 }, {
-    trigger: 'button.o_switch_view.o_list',
+    trigger: ':iframe button.o_switch_view.o_list',
     content: 'Go to the list view',
     run: "click",
 }, {
-    trigger: '.o_list_view',
+    trigger: ':iframe .o_list_view',
 }, {
-    trigger: '.o_optional_columns_dropdown_toggle',
+    trigger: ':iframe .o_optional_columns_dropdown_toggle',
     run: "click",
 }, {
-    trigger: '.dropdown-item:contains("Milestone")',
+    trigger: ':iframe .dropdown-item:contains("Milestone")',
 }, {
-    trigger: '.o_list_view',
+    trigger: ':iframe .o_list_view',
     content: 'Check the list view',
 }];
 
@@ -152,15 +151,15 @@ registry.category("web_tour.tours").add("project_sharing_with_blocked_task_tour"
         run: "click",
         expectUnloadPage: true,
     }, {
-        trigger: 'article.o_kanban_record',
+        trigger: ':iframe article.o_kanban_record',
         content: 'Click on the task',
         run: "click",
     }, {
-        trigger: 'a:contains("Blocked By")',
+        trigger: ':iframe a:contains("Blocked By")',
         content: 'Go to the Block by task tab',
         run: "click",
     }, {
-        trigger: 'i:contains("This task is currently blocked by")',
+        trigger: ':iframe i:contains("This task is currently blocked by")',
         content: 'Check that the blocked task is not visible',
     },
 ]});
@@ -177,26 +176,26 @@ registry.category("web_tour.tours").add("portal_project_sharing_tour_with_disall
             expectUnloadPage: true,
         },
         {
-            trigger: ".o_project_sharing",
+            trigger: ":iframe .o_project_sharing",
             content: "Wait the project sharing feature be loaded",
         },
         {
-            trigger: "button.o_switch_view.o_list",
+            trigger: ":iframe button.o_switch_view.o_list",
             content: "Go to the list view",
             run: "click",
         },
         {
-            trigger: ".o_list_view",
+            trigger: ":iframe .o_list_view",
         },
         {
-            trigger: ".o_optional_columns_dropdown_toggle",
+            trigger: ":iframe .o_optional_columns_dropdown_toggle",
             run: "click",
         },
         {
-            trigger: ".dropdown-item",
+            trigger: ":iframe .dropdown-item",
         },
         {
-            trigger: ".dropdown-menu",
+            trigger: ":iframe .dropdown-menu",
             run: function () {
                 const optionalFields = Array.from(
                     this.anchor.ownerDocument.querySelectorAll(".dropdown-item")
@@ -215,36 +214,10 @@ registry.category("web_tour.tours").add("portal_project_sharing_tour_with_disall
 registry.category("web_tour.tours").add("test_04_project_sharing_chatter_message_reactions", {
     url: "/my/projects",
     steps: () => [
-        {
-            trigger: "table > tbody > tr a:has(span:contains(Project Sharing))",
-            run: "click",
-            expectUnloadPage: true,
-        },
-        { trigger: ".o_project_sharing" },
-        { trigger: ".o_kanban_record:contains('Test Task with messages')", run: "click" },
-        { trigger: ".o-mail-Message" },
-        { trigger: ".o-mail-Message .o-mail-MessageReaction:contains('👀')" },
-    ],
-});
-
-registry.category("web_tour.tours").add("portal_project_sharing_chatter_mention_users", {
-    url: "/my/projects",
-    steps: () => [
-        {
-            trigger: "table > tbody > tr a:has(span:contains(Project Sharing))",
-            run: "click",
-            expectUnloadPage: true,
-        },
-        { trigger: ".o_project_sharing" },
-        { trigger: ".o_kanban_record:contains('Test Task')", run: "click" },
-        { trigger: ".o-mail-Composer-input", run: "edit @xxx" },
-        {
-            trigger: "body:not(:has(.o-mail-Composer-suggestion))",
-            run: async () => {
-                await delay(odoo.loader.modules.get("@mail/core/common/suggestion_hook").DELAY_FETCH);
-            },
-        },
-        { trigger: ".o-mail-Composer-input", run: "edit @Georges" },
-        { trigger: ".o-mail-Composer-suggestion:contains('Georges')" },
+        { trigger: "table > tbody > tr a:has(span:contains(Project Sharing))", run: "click" },
+        { trigger: ":iframe .o_project_sharing" },
+        { trigger: ":iframe .o_kanban_record:contains('Test Task with messages')", run: "click" },
+        { trigger: ":iframe .o-mail-Message" },
+        { trigger: ":iframe .o-mail-Message .o-mail-MessageReaction:contains('👀')" },
     ],
 });

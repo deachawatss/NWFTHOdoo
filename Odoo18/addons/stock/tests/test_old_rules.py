@@ -139,9 +139,9 @@ class TestOldRules(TestStockCommon):
         self.env['stock.quant']._update_available_quantity(self.productA, self.warehouse_3_steps.lot_stock_id, 4.0)
 
         # We alter one rule and we set it to 'mts_else_mto'
-        self.warehouse_3_steps.delivery_route_id.rule_ids.filtered(
-            lambda r: r.procure_method == "make_to_order"
-        ).procure_method = 'mts_else_mto'
+        self.warehouse_3_steps.delivery_route_id.rule_ids.filtered(lambda r: r.procure_method == "make_to_order").write({
+            'procure_method': 'mts_else_mto',
+        })
 
         pg = self.env['procurement.group'].create({'name': 'Test-pg-mtso-mto'})
 
@@ -193,7 +193,9 @@ class TestOldRules(TestStockCommon):
         # We alter one rule and we set it to 'mts_else_mto'
         self.warehouse_3_steps.delivery_route_id.rule_ids.filtered(
             lambda r: r.procure_method == "make_to_order"
-        ).procure_method = 'mts_else_mto'
+        ).write({
+            'procure_method': 'mts_else_mto',
+        })
 
         pg1 = self.env['procurement.group'].create({'name': 'Test-pg-mtso-mts-1'})
         pg2 = self.env['procurement.group'].create({'name': 'Test-pg-mtso-mts-2'})
@@ -273,6 +275,7 @@ class TestOldRules(TestStockCommon):
                 'state': 'draft',
             })
             move_A, move_B = self.env['stock.move'].create([{
+                'name': self.productA.name,
                 'product_id': self.productA.id,
                 'product_uom_qty': 1,
                 'product_uom': self.productA.uom_id.id,
@@ -280,6 +283,7 @@ class TestOldRules(TestStockCommon):
                 'location_id': from_loc.id,
                 'location_dest_id': to_loc.id,
             }, {
+                'name': self.productB.name,
                 'product_id': self.productB.id,
                 'product_uom_qty': 1,
                 'product_uom': self.productB.uom_id.id,
@@ -326,11 +330,12 @@ class TestOldRules(TestStockCommon):
         """
         prod = self.env['product.product'].create({'name': 'bad dragon', 'type': 'consu'})
         ship_move = self.env['stock.move'].create({
+            'name': 'The ship move',
             'product_id': prod.id,
             'product_uom_qty': 5.0,
             'product_uom': prod.uom_id.id,
             'location_id': self.warehouse_3_steps.wh_output_stock_loc_id.id,
-            'location_dest_id': self.customer_location.id,
+            'location_dest_id': self.env.ref('stock.stock_location_customers').id,
             'warehouse_id':  self.warehouse_3_steps.id,
             'picking_type_id':  self.warehouse_3_steps.out_type_id.id,
             'procure_method': 'make_to_order',
@@ -378,6 +383,7 @@ class TestOldRules(TestStockCommon):
         procurement_group2 = self.env['procurement.group'].create({'partner_id': partner1.id})
 
         move1 = self.env['stock.move'].create({
+            'name': 'first out move',
             'procure_method': 'make_to_order',
             'location_id': pick_location.id,
             'location_dest_id': customer_location.id,
@@ -390,6 +396,7 @@ class TestOldRules(TestStockCommon):
         })
 
         move2 = self.env['stock.move'].create({
+            'name': 'second out move',
             'procure_method': 'make_to_order',
             'location_id': pick_location.id,
             'location_dest_id': customer_location.id,
@@ -506,11 +513,12 @@ class TestOldRules(TestStockCommon):
         })
 
         ship_move = self.env['stock.move'].create({
+            'name': 'The ship move',
             'product_id': self.product.id,
             'product_uom_qty': 5.0,
             'product_uom': self.product.uom_id.id,
             'location_id': warehouse.wh_output_stock_loc_id.id,
-            'location_dest_id': self.customer_location.id,
+            'location_dest_id': self.env.ref('stock.stock_location_customers').id,
             'warehouse_id': warehouse.id,
             'picking_type_id': warehouse.out_type_id.id,
             'procure_method': 'make_to_order',
@@ -562,6 +570,7 @@ class TestOldRules(TestStockCommon):
         procurement_group2 = self.env['procurement.group'].create({'partner_id': partner1.id})
 
         move1 = self.env['stock.move'].create({
+            'name': 'first out move',
             'procure_method': 'make_to_order',
             'location_id': ship_location.id,
             'location_dest_id': customer_location.id,
@@ -574,6 +583,7 @@ class TestOldRules(TestStockCommon):
         })
 
         move2 = self.env['stock.move'].create({
+            'name': 'second out move',
             'procure_method': 'make_to_order',
             'location_id': ship_location.id,
             'location_dest_id': customer_location.id,
@@ -652,6 +662,7 @@ class TestOldRules(TestStockCommon):
             'location_dest_id': rule.location_dest_id.id,
         })
         pos_move = self.env['stock.move'].create({
+            'name': 'Positive move',
             'product_id': self.product_1.id,
             'product_uom_qty': 5.0,
             'picking_id': picking.id,
@@ -659,6 +670,7 @@ class TestOldRules(TestStockCommon):
         })
         pos_move._action_confirm()
         neg_move = pos_move.copy({
+            'name': 'Negative move',
             'product_uom_qty': -2.0,
         })
         neg_move._action_confirm()

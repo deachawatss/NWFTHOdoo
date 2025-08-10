@@ -52,12 +52,15 @@ export class SplitPlugin extends Plugin {
             // unmergeable.
             (node) => node.classList?.contains("oe_unbreakable"),
             (node) => {
-                const isExplicitlyNotContentEditable = (node) =>
+                const isExplicitlyNotContentEditable = (node) => {
                     // In the `contenteditable` attribute consideration,
                     // disconnected nodes can be unsplittable only if they are
                     // explicitly set under a contenteditable="false" element.
-                    !isContentEditable(node) &&
-                    (node.isConnected || closestElement(node, "[contenteditable]"));
+                    return (
+                        !isContentEditable(node) &&
+                        (node.isConnected || closestElement(node, "[contenteditable]"))
+                    );
+                };
                 return (
                     isExplicitlyNotContentEditable(node) ||
                     // If node sets contenteditable='true' and is inside a non-editable
@@ -77,7 +80,7 @@ export class SplitPlugin extends Plugin {
     // --------------------------------------------------------------------------
     splitBlock() {
         this.dispatchTo("before_split_block_handlers");
-        let selection = this.dependencies.selection.getSelectionData().deepEditableSelection;
+        let selection = this.dependencies.selection.getEditableSelection();
         if (!selection.isCollapsed) {
             // @todo @phoenix collapseIfZWS is not tested
             // this.shared.collapseIfZWS();
@@ -136,23 +139,20 @@ export class SplitPlugin extends Plugin {
             blockToSplit.parentElement
         );
         restore();
-        const fillEmptyElement = (node) => {
+        const removeEmptyAndFill = (node) => {
             if (isProtecting(node) || isProtected(node)) {
                 // TODO ABD: add test
                 return;
-            } else if (node.nodeType === Node.TEXT_NODE && !isVisible(node)) {
+            } else if (!isBlock(node) && !isVisible(node)) {
                 const parent = node.parentElement;
                 node.remove();
-                fillEmptyElement(parent);
-            } else if (node.nodeType === Node.ELEMENT_NODE) {
-                if (node.hasAttribute("data-oe-zws-empty-inline")) {
-                    delete node.dataset.oeZwsEmptyInline;
-                }
+                removeEmptyAndFill(parent);
+            } else {
                 fillEmpty(node);
             }
         };
-        fillEmptyElement(lastLeaf(beforeElement));
-        fillEmptyElement(firstLeaf(afterElement));
+        removeEmptyAndFill(lastLeaf(beforeElement));
+        removeEmptyAndFill(firstLeaf(afterElement));
 
         this.dependencies.selection.setCursorStart(afterElement);
 
@@ -177,18 +177,20 @@ export class SplitPlugin extends Plugin {
      * @returns {[HTMLElement, HTMLElement]}
      */
     splitElement(element, offset) {
+        this.dispatchTo("clean_handlers", element);
+        // const before = /** @type {HTMLElement} **/ (element.cloneNode());
         /** @type {HTMLElement} **/
-        const firstPart = element.cloneNode();
-        /** @type {HTMLElement} **/
-        const secondPart = element.cloneNode();
-        element.before(firstPart);
-        element.after(secondPart);
-        const children = childNodes(element);
-        firstPart.append(...children.slice(0, offset));
-        secondPart.append(...children.slice(offset));
+        const before = element.cloneNode();
+        const after = /** @type {HTMLElement} **/ (element.cloneNode());
+        element.before(before);
+        element.after(after);
+        let index = 0;
+        for (const child of childNodes(element)) {
+            index < offset ? before.appendChild(child) : after.appendChild(child);
+            index++;
+        }
         element.remove();
-        this.dispatchTo("after_split_element_handlers", { firstPart, secondPart });
-        return [firstPart, secondPart];
+        return [before, after];
     }
 
     /**
@@ -238,8 +240,20 @@ export class SplitPlugin extends Plugin {
         let before = firstNode.previousSibling;
         let after = lastNode.nextSibling;
         let beforeSplit, afterSplit;
-        if (!before && !after && elements[0] !== limitAncestor) {
-            return this.splitAroundUntil(elements[0].parentElement, limitAncestor);
+        if (
+            !before &&
+            !after &&
+            firstNode.parentElement !== limitAncestor &&
+            lastNode.parentElement !== limitAncestor
+        ) {
+            return this.splitAroundUntil(
+                [firstNode.parentElement, lastNode.parentElement],
+                limitAncestor
+            );
+        } else if (!after && lastNode.parentElement !== limitAncestor) {
+            return this.splitAroundUntil([firstNode, lastNode.parentElement], limitAncestor);
+        } else if (!before && firstNode.parentElement !== limitAncestor) {
+            return this.splitAroundUntil([firstNode.parentElement, lastNode], limitAncestor);
         }
         // Split up ancestors up to font
         while (after && after.parentElement !== limitAncestor) {

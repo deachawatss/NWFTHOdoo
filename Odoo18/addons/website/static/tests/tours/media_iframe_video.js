@@ -11,13 +11,12 @@ registerWebsitePreviewTour("website_media_iframe_video", {
         }),
         {
             content: "Select the image",
-            trigger:
-                ":iframe #wrap .s_text_image img, :iframe #wrap .s_text_image img:not(:visible)",
+            trigger: ":iframe #wrap .s_text_image img",
             run: "click",
         },
         {
             content: "Open image link options",
-            trigger: "[data-action-id='setLink']",
+            trigger: "[data-name='media_link_opt']",
             run: "click",
         },
         {
@@ -27,7 +26,7 @@ registerWebsitePreviewTour("website_media_iframe_video", {
         },
         {
             content: "Click on replace media",
-            trigger: "[data-action-id='replaceMedia']",
+            trigger: "[data-replace-media='true']",
             run: "click",
         },
         {
@@ -47,25 +46,6 @@ registerWebsitePreviewTour("website_media_iframe_video", {
         {
             content: "Click on 'add' button",
             trigger: ".modal-footer button:contains('Add')",
-            run: "click",
-        },
-        {
-            content: "Click on replace media",
-            trigger: "[data-action-id='replaceMedia']",
-            run: "click",
-        },
-        {
-            content: "Check that video url has protocol",
-            trigger: "#o_video_text",
-            run() {
-                if (!this.anchor.value.startsWith("https")) {
-                    console.error("Video Url is missing protocol");
-                }
-            },
-        },
-        {
-            content: "Close the dialog",
-            trigger: "button.btn-close",
             run: "click",
         },
         {

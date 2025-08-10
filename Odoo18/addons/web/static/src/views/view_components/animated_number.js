@@ -2,7 +2,6 @@ import { browser } from "@web/core/browser/browser";
 import { formatInteger } from "@web/views/fields/formatters";
 
 import { Component, onWillUpdateProps, onWillUnmount, useState } from "@odoo/owl";
-import { _t } from "@web/core/l10n/translation";
 
 export class AnimatedNumber extends Component {
     static template = "web.AnimatedNumber";
@@ -52,9 +51,5 @@ export class AnimatedNumber extends Component {
 
     format(value) {
         return this.formatInteger(value, { humanReadable: true, decimals: 0, minDigits: 3 });
-    }
-
-    get invalidAggregateTooltip() {
-        return _t("Different currencies cannot be aggregated");
     }
 }

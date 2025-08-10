@@ -5,7 +5,7 @@ from odoo import api, models, Command
 from odoo.tools import html2plaintext
 
 
-class ProjectTask(models.Model):
+class Task(models.Model):
     _inherit = 'project.task'
 
     @api.model_create_multi
@@ -25,7 +25,7 @@ class ProjectTask(models.Model):
         if not self.env.user.has_group('project_todo.group_onboarding_todo'):
             self._generate_onboarding_todo(self.env.user)
             onboarding_group = self.env.ref('project_todo.group_onboarding_todo').sudo()
-            onboarding_group.write({'user_ids': [Command.link(self.env.user.id)]})
+            onboarding_group.write({'users': [Command.link(self.env.user.id)]})
 
     def _generate_onboarding_todo(self, user):
         user.ensure_one()
@@ -49,9 +49,10 @@ class ProjectTask(models.Model):
         self.ensure_one()
         self.company_id = self.project_id.company_id
         return {
-            'type': 'ir.actions.act_url',
-            'target': 'self',
-            'url': f'/odoo/project/{self.project_id.id}/tasks/{self.id}',
+            'view_mode': 'form',
+            'res_model': 'project.task',
+            'res_id': self.id,
+            'type': 'ir.actions.act_window',
         }
 
     @api.model
@@ -66,6 +67,5 @@ class ProjectTask(models.Model):
             (self.env['ir.model.data']._xmlid_to_res_id("project_todo.project_task_view_todo_kanban"), "kanban"),
             (self.env['ir.model.data']._xmlid_to_res_id("project_todo.project_task_view_todo_tree"), "list"),
             (self.env['ir.model.data']._xmlid_to_res_id("project_todo.project_task_view_todo_form"), "form"),
-            (self.env['ir.model.data']._xmlid_to_res_id("project_todo.project_task_view_todo_calendar"), "calendar"),
             (self.env['ir.model.data']._xmlid_to_res_id("project_todo.project_task_view_todo_activity"), "activity"),
         ]

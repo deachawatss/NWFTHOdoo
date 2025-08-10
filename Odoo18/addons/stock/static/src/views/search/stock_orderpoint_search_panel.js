@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { useService } from "@web/core/utils/hooks";
 import { onWillStart, useState } from '@odoo/owl';
 import { SearchPanel } from "@web/search/search_panel/search_panel";
@@ -10,6 +12,7 @@ export class StockOrderpointSearchPanel extends SearchPanel {
         this.orm = useService("orm");
         super.setup(...arguments);
         this.globalVisibilityDays = useState({value: 0});
+        this.state.sidebarExpanded = false;
         onWillStart(this.getVisibilityParameter);
     }
 

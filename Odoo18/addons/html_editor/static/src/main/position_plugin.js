@@ -22,12 +22,12 @@ export class PositionPlugin extends Plugin {
         this.resizeObserver.observe(this.document.body);
         this.resizeObserver.observe(this.editable);
         this.addDomListener(window, "resize", this.layoutGeometryChange);
-        if (this.window !== window) {
-            this.addDomListener(this.window, "resize", this.layoutGeometryChange);
+        if (this.document.defaultView !== window) {
+            this.addDomListener(this.document.defaultView, "resize", this.layoutGeometryChange);
         }
-        const scrollableElements = [this.editable, ...ancestors(this.editable)].filter(
-            (node) => couldBeScrollableX(node) || couldBeScrollableY(node)
-        );
+        const scrollableElements = [this.editable, ...ancestors(this.editable)].filter((node) => {
+            return couldBeScrollableX(node) || couldBeScrollableY(node);
+        });
         for (const scrollableElement of scrollableElements) {
             this.addDomListener(scrollableElement, "scroll", () => {
                 this.layoutGeometryChange();

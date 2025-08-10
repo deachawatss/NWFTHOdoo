@@ -1,5 +1,7 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
-import { stepUtils } from "@web_tour/tour_utils";
+import { stepUtils } from "@web_tour/tour_service/tour_utils";
 
 registry.category("web_tour.tours").add("hr_skills_tour", {
     url: "/odoo",
@@ -26,9 +28,9 @@ registry.category("web_tour.tours").add("hr_skills_tour", {
             run: "click",
         },
         {
-            content: "Add Experience",
-            trigger: ".nav-link:contains('Resume')",
-            run: "click",
+        content: "Open the Resume tab",
+        trigger: ".o_notebook_headers a.nav-link[name='skills_resume']",
+        run: "click",
         },
         {
             content: "Add a new Resume experience",
@@ -89,22 +91,33 @@ registry.category("web_tour.tours").add("hr_skills_tour", {
         },
         {
             content: "Select Music",
-            trigger: ".o_field_widget[name='skill_type_id'] span:contains('Best Music')",
+            trigger:
+                ".modal:contains(select skills) .o_field_widget[name='skill_type_id'] label:contains('Best Music')",
             run: "click",
+        },
+        {
+            content: "Select a song",
+            trigger: ".modal:contains(select skills) .o_field_widget[name='skill_id'] input",
+            run: "edit Fortun",
         },
         {
             content: "Choose the song",
-            trigger: ".o_field_widget[name='skill_id'] span:contains('Fortunate Son')",
+            trigger: '.ui-autocomplete .ui-menu-item a:contains("Fortunate Son")',
             run: "click",
         },
         {
+            content: "Select a level",
+            trigger: ".modal:contains(select skills) .o_field_widget[name='skill_level_id'] input",
+            run: "edit Level",
+        },
+        {
             content: "Choose the level",
-            trigger: ".o_field_widget[name='skill_level_id'] span:contains('Level 2')",
+            trigger: '.ui-autocomplete .ui-menu-item a:contains("Level 2")',
             run: "click",
         },
         {
             content: "Save new skill",
-            trigger: ".modal:contains(update skills) .o_form_button_save:contains(save & close)",
+            trigger: ".modal:contains(select skills) .o_form_button_save:contains(save & close)",
             run: "click",
         },
         {
@@ -122,38 +135,33 @@ registry.category("web_tour.tours").add("hr_skills_tour", {
             run: "click",
         },
         {
-            content: "Select Certification",
-            trigger: ".o_field_widget[name='skill_type_id'] span:contains('Certification')",
+            content: "Music should be already selected",
+            trigger:
+                ".modal:contains(select skills) .o_field_widget[name=skill_id] input:value(Fortunate Son)",
+        },
+        {
+            content: "Select a song",
+            trigger: ".modal:contains(select skills) .o_field_widget[name='skill_id'] input",
+            run: "edit Mary",
+        },
+        {
+            content: "Choose the song",
+            trigger: '.ui-autocomplete .ui-menu-item a:contains("Oh Mary")',
             run: "click",
         },
         {
-            content: "Choose the instrument",
-            trigger: ".o_field_widget[name='skill_id'] span:contains('Piano')",
+            content: "Select a level",
+            trigger: ".modal:contains(select skills) .o_field_widget[name='skill_level_id'] input",
+            run: "edit Level 7",
+        },
+        {
+            content: "Choose the level",
+            trigger: '.ui-autocomplete .ui-menu-item a:contains("Level 7")',
             run: "click",
-        },
-        {
-            content: "Choose the level",
-            trigger: ".o_field_widget[name='valid_from']",
-            run: "click",
-        },
-        {
-            content: "Choose the level",
-            trigger: ".o_field_widget[name='valid_from'] input",
-            run: "edit 02/03/2025",
-        },
-        {
-            content: "Choose the level",
-            trigger: ".o_field_widget[name='valid_to']",
-            run: "click",
-        },
-        {
-            content: "Choose the level",
-            trigger: ".o_field_widget[name='valid_to'] input",
-            run: "edit 03/04/2025",
         },
         {
             content: "Save new skill",
-            trigger: ".modal:contains(update skills) .o_form_button_save:contains(save & close)",
+            trigger: ".modal:contains(select skills) .o_form_button_save:contains(save & close)",
             run: "click",
         },
         {
@@ -162,8 +170,11 @@ registry.category("web_tour.tours").add("hr_skills_tour", {
         },
         {
             content: "Check if item is added",
-            trigger: ".o_data_row td.o_data_cell:contains('Piano')",
+            trigger: ".o_data_row td.o_data_cell:contains('Oh Mary')",
         },
-        ...stepUtils.saveForm(),
+        {
+            content: "wait for save completion",
+            trigger: ".o_form_readonly, .o_form_saved",
+        },
     ],
 });

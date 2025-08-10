@@ -1,9 +1,12 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 import base64
 import logging
 
+import psycopg2.errors
+
 from odoo import models, fields, api, _
-from odoo.exceptions import LockError, UserError
+from odoo.exceptions import UserError
 
 
 _logger = logging.getLogger(__name__)
@@ -37,10 +40,13 @@ class AccountEdiDocument(models.Model):
     edi_format_name = fields.Char(string='Format Name', related='edi_format_id.name')
     edi_content = fields.Binary(compute='_compute_edi_content', compute_sudo=True)
 
-    _unique_edi_document_by_move_by_format = models.Constraint(
-        'UNIQUE(edi_format_id, move_id)',
-        'Only one edi document by move by format',
-    )
+    _sql_constraints = [
+        (
+            'unique_edi_document_by_move_by_format',
+            'UNIQUE(edi_format_id, move_id)',
+            'Only one edi document by move by format',
+        ),
+    ]
 
     @api.depends('move_id', 'error', 'state')
     def _compute_edi_content(self):
@@ -219,10 +225,15 @@ class AccountEdiDocument(models.Model):
             move_to_lock = documents.move_id
             attachments_potential_unlink = documents.sudo().attachment_id.filtered(lambda a: not a.res_model and not a.res_id)
             try:
-                documents.lock_for_update()
-                move_to_lock.lock_for_update()
-                attachments_potential_unlink.lock_for_update()
-            except LockError:
+                with self.env.cr.savepoint(flush=False):
+                    self._cr.execute('SELECT * FROM account_edi_document WHERE id IN %s FOR UPDATE NOWAIT', [tuple(documents.ids)])
+                    self._cr.execute('SELECT * FROM account_move WHERE id IN %s FOR UPDATE NOWAIT', [tuple(move_to_lock.ids)])
+
+                    # Locks the attachments that might be unlinked
+                    if attachments_potential_unlink:
+                        self._cr.execute('SELECT * FROM ir_attachment WHERE id IN %s FOR UPDATE NOWAIT', [tuple(attachments_potential_unlink.ids)])
+
+            except psycopg2.errors.LockNotAvailable:
                 _logger.debug('Another transaction already locked documents rows. Cannot process documents.')
                 if not with_commit:
                     raise UserError(_('This document is being sent by another process already. ')) from None
@@ -274,7 +285,7 @@ class AccountEdiDocument(models.Model):
         if not (attachment_sudo.res_model and attachment_sudo.res_id):
             # do not return system attachment not linked to a record
             return {}
-        if len(self.env.context.get('active_ids', [])) > 1:
+        if len(self._context.get('active_ids', [])) > 1:
             # In mass mail mode 'attachments_ids' is removed from template values
             # as they should not be rendered
             return {'attachments': [(attachment_sudo.name, attachment_sudo.datas)]}

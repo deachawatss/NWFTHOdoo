@@ -97,7 +97,7 @@
             </t>
             <t t-else="">
                 <span t-field="line.product_uom_qty"/>
-                <span t-field="line.product_uom_id"/>
+                <span t-field="line.product_uom"/>
             </t>
         </xpath>
 

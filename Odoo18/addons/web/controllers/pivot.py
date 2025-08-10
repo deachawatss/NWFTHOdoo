@@ -1,20 +1,22 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
+
+from collections import deque
 import io
 import json
-from collections import deque
 
 from werkzeug.datastructures import FileStorage
 
 from odoo import http, _
 from odoo.http import content_disposition, request
 from odoo.tools import osutil
+from odoo.tools.misc import xlsxwriter
 
 
 class TableExporter(http.Controller):
 
     @http.route('/web/pivot/export_xlsx', type='http', auth="user", readonly=True)
     def export_xlsx(self, data, **kw):
-        import xlsxwriter  # noqa: PLC0415
         jdata = json.load(data) if isinstance(data, FileStorage) else json.loads(data)
         output = io.BytesIO()
         workbook = xlsxwriter.Workbook(output, {'in_memory': True})

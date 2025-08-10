@@ -4,11 +4,11 @@ import { Deferred } from "@web/core/utils/concurrency";
 import { registry } from "@web/core/registry";
 import { session } from "@web/session";
 import { isIosApp } from "@web/core/browser/feature_detection";
-import { EventBus, reactive } from "@odoo/owl";
+import { EventBus } from "@odoo/owl";
 import { user } from "@web/core/user";
 
 // List of worker events that should not be broadcasted.
-const INTERNAL_EVENTS = new Set(["initialized", "outdated", "notification", "provide_logs"]);
+const INTERNAL_EVENTS = new Set(["initialized", "outdated", "log_debug", "notification"]);
 // Slightly delay the reconnection when coming back online as the network is not
 // ready yet and the exponential backoff would delay the reconnection by a lot.
 export const BACK_ONLINE_RECONNECT_DELAY = 5000;
@@ -34,7 +34,10 @@ export const busService = {
          * @typedef {typeof import("@bus/workers/websocket_worker").WORKER_STATE} WORKER_STATE
          * @type {WORKER_STATE[keyof WORKER_STATE]}
          */
+        let workerState;
+        let isActive = false;
         let isInitialized = false;
+        let lastNotificationId = null;
         let isUsingSharedWorker = browser.SharedWorker && !isIosApp();
         let backOnlineTimeout;
         const startedAt = luxon.DateTime.now().set({ milliseconds: 0 });
@@ -70,27 +73,13 @@ export const busService = {
         function handleMessage(messageEv) {
             const { type, data } = messageEv.data;
             switch (type) {
-                case "provide_logs": {
-                    const blob = new Blob([JSON.stringify(data, null, 2)], {
-                        type: "application/json",
-                    });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = `bus_logs_${luxon.DateTime.now().toFormat(
-                        "yyyy-LL-dd-HH-mm-ss"
-                    )}.json`;
-                    a.click();
-                    URL.revokeObjectURL(url);
-                    break;
-                }
                 case "notification": {
                     const notifications = data.map(({ id, message }) => ({ id, ...message }));
-                    state.lastNotificationId = notifications.at(-1).id;
-                    multiTab.setSharedValue("last_notification_id", state.lastNotificationId);
+                    lastNotificationId = notifications.at(-1).id;
+                    multiTab.setSharedValue("last_notification_id", lastNotificationId);
                     for (const { id, type, payload } of notifications) {
                         notificationBus.trigger(type, { id, payload });
-                        busService._onMessage(env, id, type, payload);
+                        busService._onMessage(id, type, payload);
                     }
                     break;
                 }
@@ -100,7 +89,10 @@ export const busService = {
                     break;
                 }
                 case "worker_state_updated":
-                    state.workerState = data;
+                    workerState = data;
+                    break;
+                case "log_debug":
+                    console.debug(...data);
                     break;
                 case "outdated": {
                     multiTab.unregister();
@@ -211,7 +203,7 @@ export const busService = {
             "online",
             () => {
                 backOnlineTimeout = browser.setTimeout(() => {
-                    if (state.isActive) {
+                    if (isActive) {
                         send("start");
                     }
                 }, BACK_ONLINE_RECONNECT_DELAY);
@@ -228,7 +220,8 @@ export const busService = {
                 capture: true,
             }
         );
-        const state = reactive({
+
+        return {
             addEventListener: bus.addEventListener.bind(bus),
             addChannel: async (channel) => {
                 if (!worker) {
@@ -237,13 +230,9 @@ export const busService = {
                 await connectionInitializedDeferred;
                 send("add_channel", channel);
                 send("start");
-                state.isActive = true;
+                isActive = true;
             },
-            deleteChannel: (channel) => {
-                send("delete_channel", channel);
-            },
-            setLoggingEnabled: (isEnabled) => send("set_logging_enabled", isEnabled),
-            downloadLogs: () => send("request_logs"),
+            deleteChannel: (channel) => send("delete_channel", channel),
             forceUpdateChannels: () => send("force_update_channels"),
             trigger: bus.trigger.bind(bus),
             removeEventListener: bus.removeEventListener.bind(bus),
@@ -254,13 +243,15 @@ export const busService = {
                 }
                 await connectionInitializedDeferred;
                 send("start");
-                state.isActive = true;
+                isActive = true;
             },
             stop: () => {
                 send("leave");
-                state.isActive = false;
+                isActive = false;
             },
-            isActive: false,
+            get isActive() {
+                return isActive;
+            },
             /**
              * Subscribe to a single notification type.
              *
@@ -270,7 +261,7 @@ export const busService = {
             subscribe(notificationType, callback) {
                 const wrapper = ({ detail }) => {
                     const { id, payload } = detail;
-                    callback(JSON.parse(JSON.stringify(payload)), { id });
+                    callback(payload, { id });
                 };
                 subscribeFnToWrapper.set(callback, wrapper);
                 notificationBus.addEventListener(notificationType, wrapper);
@@ -289,13 +280,16 @@ export const busService = {
                 subscribeFnToWrapper.delete(callback);
             },
             startedAt,
-            workerState: null,
+            get workerState() {
+                return workerState;
+            },
             /** The id of the last notification received by this tab. */
-            lastNotificationId: null,
-        });
-        return state;
+            get lastNotificationId() {
+                return lastNotificationId;
+            },
+        };
     },
     /** Overriden to provide logs in tests. Use subscribe() in production. */
-    _onMessage(env, id, type, payload) {},
+    _onMessage(id, type, payload) {},
 };
 registry.category("services").add("bus_service", busService);

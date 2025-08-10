@@ -2,7 +2,7 @@ import uuid
 from markupsafe import Markup
 from urllib.parse import quote, urlencode, urlparse
 
-from odoo import fields, models, _
+from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 from odoo.addons.l10n_tr_nilvera.lib.nilvera_client import _get_nilvera_client
 
@@ -20,7 +20,7 @@ class AccountMove(models.Model):
     )
     l10n_tr_nilvera_send_status = fields.Selection(
         selection=[
-            ('error', "Error"),
+            ('error', "Error (check chatter)"),
             ('not_sent', "Not sent"),
             ('sent', "Sent and waiting response"),
             ('succeed', "Successful"),
@@ -33,26 +33,17 @@ class AccountMove(models.Model):
         default='not_sent',
     )
 
-    def _get_import_file_type(self, file_data):
-        """ Identify Nilvera UBL files. """
-        # EXTENDS 'account'
-        if (
-            file_data['xml_tree'] is not None
-            and (customization_id := file_data['xml_tree'].findtext('{*}CustomizationID'))
-            and 'TR1.2' in customization_id
-        ):
-            return 'account_edi.xml.ubl.tr'
-
-        return super()._get_import_file_type(file_data)
+    @api.model
+    def _get_ubl_cii_builder_from_xml_tree(self, tree):
+        customization_id = tree.find('{*}CustomizationID')
+        if customization_id is not None and 'TR1.2' in customization_id.text:
+            return self.env['account.edi.xml.ubl.tr']
+        return super()._get_ubl_cii_builder_from_xml_tree(tree)
 
     def button_draft(self):
         # EXTENDS account
         for move in self:
-            if (
-                not move.company_id.l10n_tr_nilvera_use_test_env
-                and move.l10n_tr_nilvera_uuid
-                and move.l10n_tr_nilvera_send_status != 'not_sent'
-            ):
+            if move.l10n_tr_nilvera_uuid and move.l10n_tr_nilvera_send_status != 'not_sent':
                 raise UserError(_("You cannot reset to draft an entry that has been sent to Nilvera."))
         super().button_draft()
 
@@ -181,16 +172,13 @@ class AccountMove(models.Model):
                 groupby=['l10n_tr_nilvera_uuid'],
                 aggregates=['__count'],
             ))
-            moves = self.env['account.move']
             for document_uuid in document_uuids:
                 # Skip invoices that have already been downloaded.
                 if document_uuid in document_uuids_count:
                     continue
                 move = self._l10n_tr_nilvera_get_invoice_from_uuid(client, journal, document_uuid)
                 self._l10n_tr_nilvera_add_pdf_to_invoice(client, move, document_uuid)
-                moves |= move
-                self.env.cr.commit()
-            journal._notify_einvoices_received(moves)
+                self._cr.commit()
 
     def _l10n_tr_nilvera_get_invoice_from_uuid(self, client, journal, document_uuid):
         response = client.request(
@@ -253,7 +241,7 @@ class AccountMove(models.Model):
                 and invoice.message_main_attachment_id.name.endswith('.xml')
                 and 'pdf' not in invoice.message_main_attachment_id.mimetype):
             invoice.message_main_attachment_id = attachment
-        invoice.message_post(attachment_ids=attachment.ids)
+        invoice.with_context(no_new_invoice=True).message_post(attachment_ids=attachment.ids)
 
     def _l10n_tr_nilvera_einvoice_get_error_messages_from_response(self, response):
         msg = ""
@@ -267,6 +255,19 @@ class AccountMove(models.Model):
                 error_codes.append(error.get('Code'))
 
         return msg, error_codes
+
+    def _l10n_tr_nilvera_einvoice_check_invalid_subscription_dates(self):
+        if 'deferred_start_date' not in self.invoice_line_ids._fields:
+            return False
+
+        # Ensure that either no lines have the start and end dates or all lines have the same start and end dates.
+        lines_to_check = self.invoice_line_ids.filtered(lambda line: line.display_type == 'product')
+        if not (subscription_lines := lines_to_check.filtered('deferred_start_date')):
+            return False
+
+        return len(subscription_lines) != len(lines_to_check) or len(set(subscription_lines.mapped(
+            lambda aml: (aml.deferred_start_date, aml.deferred_end_date))
+        )) > 1
 
     # -------------------------------------------------------------------------
     # CRONS

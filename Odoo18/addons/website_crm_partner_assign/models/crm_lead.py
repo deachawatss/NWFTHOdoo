@@ -12,7 +12,7 @@ class CrmLead(models.Model):
 
     partner_latitude = fields.Float('Geo Latitude', digits=(10, 7))
     partner_longitude = fields.Float('Geo Longitude', digits=(10, 7))
-    partner_assigned_id = fields.Many2one('res.partner', 'Assigned Partner', tracking=True, domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]", index='btree_not_null')
+    partner_assigned_id = fields.Many2one('res.partner', 'Assigned Partner', tracking=True, domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]", help="Partner this case has been forwarded/assigned to.", index='btree_not_null')
     partner_declined_ids = fields.Many2many(
         'res.partner',
         'crm_lead_declined_partner',
@@ -131,7 +131,7 @@ class CrmLead(models.Model):
                     ('partner_latitude', '>', latitude - 2), ('partner_latitude', '<', latitude + 2),
                     ('partner_longitude', '>', longitude - 1.5), ('partner_longitude', '<', longitude + 1.5),
                     ('country_id', '=', lead.country_id.id),
-                    ('id', 'not in', lead.partner_declined_ids.ids),
+                    ('id', 'not in', lead.partner_declined_ids.mapped('id')),
                 ])
 
                 # 2. second way: in the same country, big area
@@ -141,7 +141,7 @@ class CrmLead(models.Model):
                         ('partner_latitude', '>', latitude - 4), ('partner_latitude', '<', latitude + 4),
                         ('partner_longitude', '>', longitude - 3), ('partner_longitude', '<', longitude + 3),
                         ('country_id', '=', lead.country_id.id),
-                        ('id', 'not in', lead.partner_declined_ids.ids),
+                        ('id', 'not in', lead.partner_declined_ids.mapped('id')),
                     ])
 
                 # 3. third way: in the same country, extra large area
@@ -151,7 +151,7 @@ class CrmLead(models.Model):
                         ('partner_latitude', '>', latitude - 8), ('partner_latitude', '<', latitude + 8),
                         ('partner_longitude', '>', longitude - 8), ('partner_longitude', '<', longitude + 8),
                         ('country_id', '=', lead.country_id.id),
-                        ('id', 'not in', lead.partner_declined_ids.ids),
+                        ('id', 'not in', lead.partner_declined_ids.mapped('id')),
                     ])
 
                 # 5. fifth way: anywhere in same country
@@ -160,13 +160,13 @@ class CrmLead(models.Model):
                     partner_ids = Partner.search([
                         ('partner_weight', '>', 0),
                         ('country_id', '=', lead.country_id.id),
-                        ('id', 'not in', lead.partner_declined_ids.ids),
+                        ('id', 'not in', lead.partner_declined_ids.mapped('id')),
                     ])
 
                 # 6. sixth way: closest partner whatsoever, just to have at least one result
                 if not partner_ids:
                     # warning: point() type takes (longitude, latitude) as parameters in this order!
-                    self.env.cr.execute("""SELECT id, distance
+                    self._cr.execute("""SELECT id, distance
                                   FROM  (select id, (point(partner_longitude, partner_latitude) <-> point(%s,%s)) AS distance FROM res_partner
                                   WHERE active
                                         AND partner_longitude is not null
@@ -175,7 +175,7 @@ class CrmLead(models.Model):
                                         AND id not in (select partner_id from crm_lead_declined_partner where lead_id = %s)
                                         ) AS d
                                   ORDER BY distance LIMIT 1""", (longitude, latitude, lead.id))
-                    res = self.env.cr.dictfetchone()
+                    res = self._cr.dictfetchone()
                     if res:
                         partner_ids = Partner.browse([res['id']])
 
@@ -252,7 +252,7 @@ class CrmLead(models.Model):
 
     def update_contact_details_from_portal(self, values):
         self.browse().check_access('write')
-        fields = ['partner_name', 'phone', 'email_from', 'street', 'street2',
+        fields = ['partner_name', 'phone', 'mobile', 'email_from', 'street', 'street2',
             'city', 'zip', 'state_id', 'country_id']
         if any([key not in fields for key in values]):
             raise UserError(_("Not allowed to update the following field(s): %s.", ", ".join([key for key in values if not key in fields])))

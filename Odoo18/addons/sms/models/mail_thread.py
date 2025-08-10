@@ -33,17 +33,16 @@ class MailThread(models.AbstractModel):
                        AND msg.message_type != 'user_notification'
                   GROUP BY msg.res_id
             """, {'author_id': self.env.user.partner_id.id, 'model_name': self._name, 'res_ids': tuple(self.ids)})
-            res.update(self.env.cr.fetchall())
+            res.update(self._cr.fetchall())
 
         for record in self:
             record.message_has_sms_error = bool(res.get(record._origin.id, 0))
 
     @api.model
     def _search_message_has_sms_error(self, operator, operand):
-        if operator != 'in':
-            return NotImplemented
-        return ['&', ('message_ids.has_sms_error', '=', True), ('message_ids.author_id', '=', self.env.user.partner_id.id)]
+        return ['&', ('message_ids.has_sms_error', operator, operand), ('message_ids.author_id', '=', self.env.user.partner_id.id)]
 
+    @api.returns('mail.message', lambda value: value.id)
     def message_post(self, *args, body='', message_type='notification', **kwargs):
         # When posting an 'SMS' `message_type`, make sure that the body is used as-is in the sms,
         # and reformat the message body for the notification (mainly making URLs clickable).
@@ -136,9 +135,8 @@ class MailThread(models.AbstractModel):
         )
 
     def _notify_thread(self, message, msg_vals=False, **kwargs):
-        # Main notification method. Override to add support of sending SMS notifications.
         scheduled_date = self._is_notification_scheduled(kwargs.get('scheduled_date'))
-        recipients_data = super()._notify_thread(message, msg_vals=msg_vals, **kwargs)
+        recipients_data = super(MailThread, self)._notify_thread(message, msg_vals=msg_vals, **kwargs)
         if not scheduled_date:
             self._notify_thread_by_sms(message, recipients_data, msg_vals=msg_vals, **kwargs)
         return recipients_data
@@ -148,13 +146,21 @@ class MailThread(models.AbstractModel):
                               resend_existing=False, put_in_queue=False, **kwargs):
         """ Notification method: by SMS.
 
-        :param record message: <mail.message> record being notified. May be
-          void as 'msg_vals' superseeds it;
-        :param list recipients_data: list of recipients data based on <res.partner>
-          records formatted like a list of dicts containing information. See
-          ``MailThread._notify_get_recipients()``;
-        :param dict msg_vals: values dict used to create the message, allows to
-          skip message usage and spare some queries if given;
+        :param message: ``mail.message`` record to notify;
+        :param recipients_data: list of recipients information (based on res.partner
+          records), formatted like
+            [{'active': partner.active;
+              'id': id of the res.partner being recipient to notify;
+              'groups': res.group IDs if linked to a user;
+              'notif': 'inbox', 'email', 'sms' (SMS App);
+              'share': partner.partner_share;
+              'type': 'customer', 'portal', 'user;'
+             }, {...}].
+          See ``MailThread._notify_get_recipients``;
+        :param msg_vals: dictionary of values used to create the message. If given it
+          may be used to access values related to ``message`` without accessing it
+          directly. It lessens query count in some optimized use cases by avoiding
+          access message content in db;
 
         :param sms_content: plaintext version of body, mainly to avoid
           conversion glitches by splitting html and plain text content formatting
@@ -169,14 +175,13 @@ class MailThread(models.AbstractModel):
         :param put_in_queue: use cron to send queued SMS instead of sending them
           directly;
         """
-        msg_vals = msg_vals or {}
         sms_pid_to_number = sms_pid_to_number if sms_pid_to_number is not None else {}
         sms_numbers = sms_numbers if sms_numbers is not None else []
         sms_create_vals = []
         sms_all = self.env['sms.sms'].sudo()
 
         # pre-compute SMS data
-        body = sms_content or html2plaintext(msg_vals['body'] if 'body' in msg_vals else message.body)
+        body = sms_content or html2plaintext(msg_vals['body'] if msg_vals and 'body' in msg_vals else message.body)
         sms_base_vals = {
             'body': body,
             'mail_message_id': message.id,
@@ -188,7 +193,7 @@ class MailThread(models.AbstractModel):
         partner_ids = [r['id'] for r in partners_data]
         if partner_ids:
             for partner in self.env['res.partner'].sudo().browse(partner_ids):
-                number = sms_pid_to_number.get(partner.id) or partner.phone
+                number = sms_pid_to_number.get(partner.id) or partner.mobile or partner.phone
                 sms_create_vals.append(dict(
                     sms_base_vals,
                     partner_id=partner.id,
@@ -258,7 +263,7 @@ class MailThread(models.AbstractModel):
                         })
 
         if sms_all and not put_in_queue:
-            sms_all.filtered(lambda sms: sms.state == 'outgoing').send(raise_exception=False)
+            sms_all.filtered(lambda sms: sms.state == 'outgoing').send(auto_commit=False, raise_exception=False)
 
         return True
 

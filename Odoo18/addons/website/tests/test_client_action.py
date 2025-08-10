@@ -1,14 +1,11 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import odoo.tests
-import unittest
-from odoo.addons.website.tests.common import HttpCaseWithWebsiteUser
 
 
 @odoo.tests.common.tagged('post_install', '-at_install')
-class TestClientAction(HttpCaseWithWebsiteUser):
+class TestClientAction(odoo.tests.HttpCase):
 
-    @unittest.skip
     def test_01_client_action_redirect(self):
         page = self.env['website.page'].create({
             'name': 'Base',
@@ -23,7 +20,7 @@ class TestClientAction(HttpCaseWithWebsiteUser):
             'url': '/test_client_action_redirect',
             'is_published': True,
         })
-        self.start_tour(page.url, 'client_action_redirect', login='website_user', timeout=180)
+        self.start_tour(page.url, 'client_action_redirect', login='admin', timeout=180)
 
     def test_02_client_action_iframe_fallback(self):
         self.start_tour('/@/', 'client_action_iframe_fallback', login='admin')

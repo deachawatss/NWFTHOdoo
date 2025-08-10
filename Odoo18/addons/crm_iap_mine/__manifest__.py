@@ -29,6 +29,5 @@
             'crm_iap_mine/static/src/js/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

@@ -192,8 +192,3 @@ export function getScrollingElement(document = window.document) {
     }
     return baseScrollingElement;
 }
-
-export function getScrollingTarget(scrollingElement = window.document) {
-    const document = scrollingElement.ownerDocument;
-    return scrollingElement === document.scrollingElement ? document.defaultView : scrollingElement;
-}

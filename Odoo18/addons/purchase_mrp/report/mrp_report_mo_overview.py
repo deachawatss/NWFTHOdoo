@@ -3,14 +3,13 @@
 
 from odoo import fields, models
 
-
-class ReportMrpReport_Mo_Overview(models.AbstractModel):
+class ReportMoOverview(models.AbstractModel):
     _inherit = 'report.mrp.report_mo_overview'
 
     def _get_extra_replenishments(self, product):
         res = super()._get_extra_replenishments(product)
         domain = [('state', 'in', ['draft', 'sent', 'to approve']), ('product_id', '=', product.id)]
-        warehouse_id = self.env.context.get('warehouse_id', False)
+        warehouse_id = self.env['stock.warehouse']._get_warehouse_id_from_context()
         if warehouse_id:
             domain += [('order_id.picking_type_id.warehouse_id', '=', warehouse_id)]
         po_lines = self.env['purchase.order.line'].search(domain, order='date_planned, id')
@@ -24,7 +23,7 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
             for move in dest_moves:
                 if not move.raw_material_production_id:
                     continue
-                prod_qty = min(line_qty, move.product_uom._compute_quantity(move.product_uom_qty, po_line.product_uom_id))
+                prod_qty = min(line_qty, move.product_uom._compute_quantity(move.product_uom_qty, po_line.product_uom))
                 res.append(self._format_extra_replenishment(po_line, prod_qty, move.raw_material_production_id.id))
                 line_qty -= prod_qty
             if line_qty:
@@ -34,7 +33,7 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
 
     def _format_extra_replenishment(self, po_line, quantity, production_id=False):
         po = po_line.order_id
-        price = po_line.tax_ids.compute_all(
+        price = po_line.taxes_id.compute_all(
             po_line.price_unit,
             currency=po.currency_id,
             quantity=quantity,
@@ -47,7 +46,7 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
             'id': po.id,
             'cost': price,
             'quantity': quantity,
-            'uom': po_line.product_uom_id,
+            'uom': po_line.product_uom,
             'production_id': production_id
         }
 
@@ -68,7 +67,7 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
             if supplier:
                 return {
                     'delay': supplier.delay + rules_delay,
-                    'cost': supplier.price * uom_id._compute_quantity(quantity, supplier.product_uom_id),
+                    'cost': supplier.price * uom_id._compute_quantity(quantity, supplier.product_uom),
                     'currency': supplier.currency_id,
                 }
         return res
@@ -87,10 +86,10 @@ class ReportMrpReport_Mo_Overview(models.AbstractModel):
         if move_in and move_in.purchase_line_id:
             po_line = move_in.purchase_line_id
             po = po_line.order_id
-            price = po_line.tax_ids.compute_all(
+            price = po_line.taxes_id.compute_all(
                 po_line.price_unit,
                 currency=po.currency_id,
-                quantity=uom_id._compute_quantity(quantity, move_in.purchase_line_id.product_uom_id),
+                quantity=uom_id._compute_quantity(quantity, move_in.purchase_line_id.product_uom),
                 product=po_line.product_id,
                 partner=po.partner_id,
                 rounding_method='round_globally',

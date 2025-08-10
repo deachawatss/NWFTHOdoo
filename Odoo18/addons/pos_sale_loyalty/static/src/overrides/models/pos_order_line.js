@@ -14,7 +14,7 @@ patch(PosOrderline.prototype, {
     setQuantityFromSOL(saleOrderLine) {
         // we need to consider reward product such as discount in a quotation
         if (saleOrderLine.reward_id) {
-            this.setQuantity(saleOrderLine.product_uom_qty);
+            this.set_quantity(saleOrderLine.product_uom_qty);
         } else {
             super.setQuantityFromSOL(...arguments);
         }

@@ -1,12 +1,11 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 from odoo.tests import Form, tagged
-
-from odoo.addons.sale.tests.common import TestSaleCommon
 
 
 @tagged('post_install', '-at_install')
-class TestStockMoveInvoice(TestSaleCommon):
+class StockMoveInvoice(AccountTestInvoicingCommon):
 
     @classmethod
     def setUpClass(cls):
@@ -48,6 +47,7 @@ class TestStockMoveInvoice(TestSaleCommon):
                 'name': 'Cable Management Box',
                 'product_id': self.product_cable_management_box.id,
                 'product_uom_qty': 2,
+                'product_uom': self.product_uom_unit.id,
                 'price_unit': 750.00,
             })],
         })
@@ -114,6 +114,7 @@ class TestStockMoveInvoice(TestSaleCommon):
                 'name': 'Cable Management Box',
                 'product_id': self.product_cable_management_box.id,
                 'product_uom_qty': 2,
+                'product_uom': self.product_uom_unit.id,
                 'price_unit': 750.00,
             })],
         })
@@ -192,6 +193,7 @@ class TestStockMoveInvoice(TestSaleCommon):
                 "name": "Cable Management Box",
                 "product_id": self.product_cable_management_box.id,
                 "product_uom_qty": 2,
+                "product_uom": self.product_uom_unit.id,
                 "price_unit": 750.00,
             })],
         })
@@ -213,6 +215,7 @@ class TestStockMoveInvoice(TestSaleCommon):
                 "name": "Another product to deliver",
                 "product_id": self.product_11.id,
                 "product_uom_qty": 2,
+                "product_uom": self.product_uom_unit.id,
                 "price_unit": 750.00,
             })],
         })
@@ -243,6 +246,7 @@ class TestStockMoveInvoice(TestSaleCommon):
                 "name": "Cable Management Box",
                 "product_id": self.product_cable_management_box.id,
                 "product_uom_qty": 1,
+                "product_uom": self.product_uom_unit.id,
                 "price_unit": 750.00,
             })],
         })

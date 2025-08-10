@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { SearchPanel } from "@web/search/search_panel/search_panel";
 import { useState } from "@odoo/owl";
 

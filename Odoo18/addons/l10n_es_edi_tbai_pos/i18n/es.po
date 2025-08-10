@@ -18,7 +18,7 @@ msgstr ""
 
 #. module: l10n_es_edi_tbai_pos
 #. odoo-javascript
-#: code:addons/l10n_es_edi_tbai_pos/static/src/app/components/popups/add_tbai_refund_reason_popup/add_tbai_refund_reason_popup.xml:0
+#: code:addons/l10n_es_edi_tbai_pos/static/src/app/add_tbai_refund_reason_popup/add_tbai_refund_reason_popup.xml:0
 msgid "Additional Refund Information"
 msgstr "Información adicional sobre el reembolso"
 
@@ -35,20 +35,6 @@ msgstr ""
 #: model:ir.model,name:l10n_es_edi_tbai_pos.model_res_company
 msgid "Companies"
 msgstr "Compañías"
-
-#. module: l10n_es_edi_tbai_pos
-#: model:ir.model.fields,field_description:l10n_es_edi_tbai_pos.field_pos_order__display_name
-#: model:ir.model.fields,field_description:l10n_es_edi_tbai_pos.field_pos_session__display_name
-#: model:ir.model.fields,field_description:l10n_es_edi_tbai_pos.field_res_company__display_name
-msgid "Display Name"
-msgstr "Nombre mostrado"
-
-#. module: l10n_es_edi_tbai_pos
-#: model:ir.model.fields,field_description:l10n_es_edi_tbai_pos.field_pos_order__id
-#: model:ir.model.fields,field_description:l10n_es_edi_tbai_pos.field_pos_session__id
-#: model:ir.model.fields,field_description:l10n_es_edi_tbai_pos.field_res_company__id
-msgid "ID"
-msgstr "ID"
 
 #. module: l10n_es_edi_tbai_pos
 #: model:ir.model.fields,field_description:l10n_es_edi_tbai_pos.field_pos_order__l10n_es_tbai_refund_reason
@@ -71,7 +57,7 @@ msgstr "Publicar documento L10N Es Tbai"
 
 #. module: l10n_es_edi_tbai_pos
 #. odoo-javascript
-#: code:addons/l10n_es_edi_tbai_pos/static/src/app/components/popups/add_tbai_refund_reason_popup/add_tbai_refund_reason_popup.xml:0
+#: code:addons/l10n_es_edi_tbai_pos/static/src/app/add_tbai_refund_reason_popup/add_tbai_refund_reason_popup.xml:0
 msgid "Ok"
 msgstr "Aceptar"
 
@@ -149,7 +135,7 @@ msgstr "Archivo de publicación de TicketBAI"
 
 #. module: l10n_es_edi_tbai_pos
 #. odoo-javascript
-#: code:addons/l10n_es_edi_tbai_pos/static/src/app/components/popups/add_tbai_refund_reason_popup/add_tbai_refund_reason_popup.xml:0
+#: code:addons/l10n_es_edi_tbai_pos/static/src/app/add_tbai_refund_reason_popup/add_tbai_refund_reason_popup.xml:0
 msgid "TicketBAI Refund Reason:"
 msgstr "Motivo de reembolso TicketBAI:"
 
@@ -170,7 +156,7 @@ msgstr "Estado de TicketBAI"
 
 #. module: l10n_es_edi_tbai_pos
 #. odoo-javascript
-#: code:addons/l10n_es_edi_tbai_pos/static/src/app/screens/receipt_screen/order_receipt.xml:0
+#: code:addons/l10n_es_edi_tbai_pos/static/src/overrides/components/order_receipt/order_receipt.xml:0
 msgid "TicketBai QR Code"
 msgstr "Código QR TicketBAI"
 
@@ -186,9 +172,3 @@ msgid "You cannot invoice a refund whose linked order hasn't been invoiced."
 msgstr ""
 "No es posible realizar un reembolso si el pedido vinculado aún no ha sido "
 "facturado."
-
-#. module: l10n_es_edi_tbai_pos
-#. odoo-python
-#: code:addons/l10n_es_edi_tbai_pos/models/pos_order.py:0
-msgid "You cannot mix orders that require TicketBAI with those that don't."
-msgstr "No puede mezclar pedidos que requieran TicketBAI con los que no."

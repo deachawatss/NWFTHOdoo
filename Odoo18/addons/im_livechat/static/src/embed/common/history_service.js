@@ -1,4 +1,4 @@
-import { expirableStorage } from "@im_livechat/core/common/expirable_storage";
+import { expirableStorage } from "@im_livechat/embed/common/expirable_storage";
 import { browser } from "@web/core/browser/browser";
 import { rpc } from "@web/core/network/rpc";
 import { registry } from "@web/core/registry";
@@ -10,25 +10,21 @@ export class HistoryService {
     constructor(env, services) {
         /** @type {ReturnType<typeof import("@bus/services/bus_service").busService.start>} */
         this.busService = services.bus_service;
-        /** @type {import("models").Store} */
-        this.storeService = services["mail.store"];
+        /** @type {import("@im_livechat/embed/common/livechat_service").LivechatService} */
+        this.livechatService = services["im_livechat.livechat"];
     }
 
     setup() {
         this.updateHistory();
-        this.busService.subscribe("im_livechat.history_command", async (payload) => {
-            const thread = await this.storeService.Thread.getOrFetch({
-                id: payload.id,
-                model: "discuss.channel",
-            });
-            if (thread?.channel_type !== "livechat") {
+        this.busService.subscribe("im_livechat.history_command", (payload) => {
+            if (payload.id !== this.livechatService.thread?.id) {
                 return;
             }
             const data = expirableStorage.getItem(HistoryService.HISTORY_STORAGE_KEY);
             const history = data ? JSON.parse(data) : [];
             rpc("/im_livechat/history", {
-                pid: payload.partner_id,
-                channel_id: thread.id,
+                pid: this.livechatService.thread.operator.id,
+                channel_id: this.livechatService.thread.id,
                 page_history: history,
             });
         });
@@ -53,7 +49,7 @@ export class HistoryService {
 }
 
 export const historyService = {
-    dependencies: ["bus_service", "mail.store"],
+    dependencies: ["im_livechat.livechat", "bus_service"],
     start(env, services) {
         const history = new HistoryService(env, services);
         history.setup();

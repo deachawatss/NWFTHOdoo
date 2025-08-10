@@ -22,21 +22,6 @@ class StockMove(models.Model):
         distinct_fields.append('sale_line_id')
         return distinct_fields
 
-    @api.depends('sale_line_id', 'sale_line_id.product_uom_id')
-    def _compute_packaging_uom_id(self):
-        super()._compute_packaging_uom_id()
-        for move in self:
-            if move.sale_line_id:
-                move.packaging_uom_id = move.sale_line_id.product_uom_id
-
-    @api.depends('sale_line_id')
-    def _compute_description_picking(self):
-        super()._compute_description_picking()
-        for move in self:
-            if move.sale_line_id and not move.description_picking_manual:
-                sale_line_id = move.sale_line_id.with_context(lang=move.sale_line_id.order_id.partner_id.lang)
-                move.description_picking = (sale_line_id._get_sale_order_line_multiline_description_variants() + '\n' + move.description_picking).strip()
-
     def _get_related_invoices(self):
         """ Overridden from stock_account to return the customer invoices
         related to this stock move.
@@ -155,7 +140,7 @@ class StockPicking(models.Model):
                 'product_id': product.id,
                 'product_uom_qty': 0,
                 'qty_delivered': quantity,
-                'product_uom_id': move.product_uom.id,
+                'product_uom': move.product_uom.id,
             }
             so_line = sale_order.order_line.filtered(lambda sol: sol.product_id == product)
             if product.invoice_policy == 'delivery':
@@ -239,5 +224,5 @@ class StockLot(models.Model):
         self.ensure_one()
         action = self.env["ir.actions.actions"]._for_xml_id("sale.action_orders")
         action['domain'] = [('id', 'in', self.mapped('sale_order_ids.id'))]
-        action['context'] = dict(self.env.context, create=False)
+        action['context'] = dict(self._context, create=False)
         return action

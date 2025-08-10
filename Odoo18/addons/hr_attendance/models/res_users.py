@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-from odoo import api, models, fields, _
+from odoo import models, fields, _
 
-
-class ResUsers(models.Model):
-    _inherit = 'res.users'
+class User(models.Model):
+    _inherit = ['res.users']
 
     hours_last_month = fields.Float(related='employee_id.hours_last_month')
     hours_last_month_display = fields.Char(related='employee_id.hours_last_month_display')
@@ -29,41 +28,13 @@ class ResUsers(models.Model):
             'display_extra_hours',
         ]
 
-    @property
-    def SELF_WRITEABLE_FIELDS(self):
-        return super().SELF_WRITEABLE_FIELDS + [
-            'attendance_manager_id',
-        ]
-
     def _clean_attendance_officers(self):
         attendance_officers = self.env['hr.employee'].search(
             [('attendance_manager_id', 'in', self.ids)]).attendance_manager_id
         officers_to_remove_ids = self - attendance_officers
         if officers_to_remove_ids:
-            self.env.ref('hr_attendance.group_hr_attendance_officer').user_ids = [(3, user.id) for user in
+            self.env.ref('hr_attendance.group_hr_attendance_officer').users = [(3, user.id) for user in
                                                                                officers_to_remove_ids]
-
-    @api.model
-    def get_overtime_data(self, domain=None, employee_id=None):
-        domain = [] if domain is None else domain
-        validated_overtime = {
-            overtime[0].id: overtime[1]
-            for overtime in self.env["hr.attendance.overtime"]._read_group(
-                domain=domain + [('adjustment', '=', False)],
-                groupby=['employee_id'],
-                aggregates=['duration:sum']
-            )
-        }
-        overtime_adjustments = {
-            overtime[0].id: overtime[1]
-            for overtime in self.env["hr.attendance.overtime"]._read_group(
-                domain=domain + [('adjustment', '=', True)],
-                groupby=['employee_id'],
-                aggregates=['duration:sum']
-            )
-        }
-        return {"validated_overtime": validated_overtime, "overtime_adjustments": overtime_adjustments}
-
     def action_open_last_month_attendances(self):
         self.ensure_one()
         return {
@@ -72,13 +43,13 @@ class ResUsers(models.Model):
             "res_model": "hr.attendance",
             "views": [[self.env.ref('hr_attendance.hr_attendance_employee_simple_tree_view').id, "list"]],
             "context": {
-                "create": 0,
-                "search_default_check_in_filter": 1,
+                "create": 0
             },
-            "domain": [('employee_id', '=', self.employee_id.id)]
+            "domain": [('employee_id', '=', self.employee_id.id),
+                       ('check_in', ">=", fields.datetime.today().replace(day=1, hour=0, minute=0))]
         }
 
-    def action_open_total_overtime(self):
+    def action_open_last_month_overtime(self):
         self.ensure_one()
         return {
             "type": "ir.actions.act_window",
@@ -86,9 +57,7 @@ class ResUsers(models.Model):
             "res_model": "hr.attendance.overtime",
             "views": [[False, "list"]],
             "context": {
-                "create": 0,
-                'employee_id': self.employee_id.id,
-                'model': 'res.users',
+                "create": 0
             },
             "domain": [('employee_id', '=', self.employee_id.id)]
         }

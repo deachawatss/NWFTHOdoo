@@ -24,6 +24,7 @@ class TestLandedCosts(TestStockLandedCostsCommon):
             'state': 'draft',
             'location_dest_id': cls.warehouse.lot_stock_id.id})
         cls.Move.create({
+            'name': cls.product_refrigerator.name,
             'product_id': cls.product_refrigerator.id,
             'product_uom_qty': 5,
             'product_uom': cls.product_refrigerator.uom_id.id,
@@ -31,6 +32,7 @@ class TestLandedCosts(TestStockLandedCostsCommon):
             'location_id': cls.supplier_location_id,
             'location_dest_id': cls.warehouse.lot_stock_id.id})
         cls.Move.create({
+            'name': cls.product_oven.name,
             'product_id': cls.product_oven.id,
             'product_uom_qty': 10,
             'product_uom': cls.product_oven.uom_id.id,
@@ -45,6 +47,7 @@ class TestLandedCosts(TestStockLandedCostsCommon):
             'state': 'draft',
             'location_dest_id': cls.customer_location_id})
         cls.Move.create({
+            'name': cls.product_refrigerator.name,
             'product_id': cls.product_refrigerator.id,
             'product_uom_qty': 2,
             'product_uom': cls.product_refrigerator.uom_id.id,
@@ -508,9 +511,9 @@ class TestLandedCostsWithPurchaseAndInv(TestStockValuationLCCommon):
                     'name': self.product_a.name,
                     'product_id': self.product_a.id,
                     'product_qty': 1.0,
-                    'product_uom_id': self.product_a.uom_id.id,
+                    'product_uom': self.product_a.uom_po_id.id,
                     'price_unit': 100.0,
-                    'tax_ids': False,
+                    'taxes_id': False,
                 }),
                 (0, 0, {
                     'name': self.landed_cost.name,
@@ -550,7 +553,7 @@ class TestLandedCostsWithPurchaseAndInv(TestStockValuationLCCommon):
             'name': 'User h',
             'login': 'usher',
             'email': 'usher@yourcompany.com',
-            'group_ids': [(6, 0, [self.env.ref('account.group_account_invoice').id])]
+            'groups_id': [(6, 0, [self.env.ref('account.group_account_invoice').id])]
         })
         # Post the bill
         bill.landed_costs_ids = [(6, 0, lc.id)]
@@ -663,7 +666,7 @@ class TestLandedCostsWithPurchaseAndInv(TestStockValuationLCCommon):
         receipt.button_validate()
 
         # Ensure that the product cost has not been updated yet
-        assert receipt.move_ids[0].stock_valuation_layer_ids[0].unit_cost == 10
+        assert receipt.move_ids[0].stock_valuation_layer_ids[0].unit_cost == 10 
 
         action = bill.button_create_landed_costs()
         lc_form = Form(self.env[action['res_model']].browse(action['res_id']))
@@ -751,7 +754,7 @@ class TestLandedCostsWithPurchaseAndInv(TestStockValuationLCCommon):
         """
         decimal_price = self.env.ref('product.decimal_price')
         decimal_price.digits = 5
-        decimal_product_uom = self.env.ref('uom.decimal_product_uom')
+        decimal_product_uom = self.env.ref('product.decimal_product_uom')
         decimal_product_uom.digits = 5
 
         self.env.company.anglo_saxon_accounting = True
@@ -772,7 +775,7 @@ class TestLandedCostsWithPurchaseAndInv(TestStockValuationLCCommon):
                     'name': self.product1.name,
                     'product_id': self.product1.id,
                     'product_qty': 190.0,
-                    'product_uom_id': self.product1.uom_id.id,
+                    'product_uom': self.product1.uom_po_id.id,
                     'price_unit': 110.0,
                 })
             ],

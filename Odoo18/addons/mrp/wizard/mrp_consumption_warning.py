@@ -3,6 +3,7 @@
 
 from odoo import _, fields, models, api
 from odoo.exceptions import UserError
+from odoo.tools import float_compare, float_is_zero
 
 
 class MrpConsumptionWarning(models.TransientModel):
@@ -45,7 +46,7 @@ class MrpConsumptionWarning(models.TransientModel):
                     if line.product_id != move.product_id:
                         continue
                     qty_expected = line.product_uom_id._compute_quantity(line.product_expected_qty_uom, move.product_uom)
-                    qty_compare_result = move.product_uom.compare(qty_expected, move.quantity)
+                    qty_compare_result = float_compare(qty_expected, move.quantity, precision_rounding=move.product_uom.rounding)
                     if qty_compare_result != 0:
                         move.quantity = qty_expected
                     # move should be set to picked to correctly consume the product
@@ -53,7 +54,7 @@ class MrpConsumptionWarning(models.TransientModel):
                     # in case multiple lines with same product => set others to 0 since we have no way to know how to distribute the qty done
                     line.product_expected_qty_uom = 0
                 # move was deleted before confirming MO or force deleted somehow
-                if not line.product_uom_id.is_zero(line.product_expected_qty_uom):
+                if not float_is_zero(line.product_expected_qty_uom, precision_rounding=line.product_uom_id.rounding):
                     missing_move_vals.append({
                         'product_id': line.product_id.id,
                         'product_uom': line.product_uom_id.id,
@@ -85,7 +86,6 @@ class MrpConsumptionWarning(models.TransientModel):
                 'target': 'main',
             }
 
-
 class MrpConsumptionWarningLine(models.TransientModel):
     _name = 'mrp.consumption.warning.line'
     _description = "Line of issue consumption"
@@ -95,6 +95,6 @@ class MrpConsumptionWarningLine(models.TransientModel):
     consumption = fields.Selection(related="mrp_production_id.consumption")
 
     product_id = fields.Many2one('product.product', "Product", readonly=True, required=True)
-    product_uom_id = fields.Many2one('uom.uom', "Unit", related="product_id.uom_id", readonly=True)
+    product_uom_id = fields.Many2one('uom.uom', "Unit of Measure", related="product_id.uom_id", readonly=True)
     product_consumed_qty_uom = fields.Float("Consumed", readonly=True)
     product_expected_qty_uom = fields.Float("To Consume", readonly=True)

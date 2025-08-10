@@ -1,17 +1,19 @@
-import {
-    ProductLabelSectionAndNoteListRender,
-    productLabelSectionAndNoteOne2Many,
-    ProductLabelSectionAndNoteOne2Many,
-} from '@account/components/product_label_section_and_note_field/product_label_section_and_note_field_o2m';
-import {
-    listSectionAndNoteText,
-    ListSectionAndNoteText,
-    sectionAndNoteFieldOne2Many,
-    sectionAndNoteText,
-    SectionAndNoteText,
-} from '@account/components/section_and_note_fields_backend/section_and_note_fields_backend';
+/** @odoo-module **/
+
 import { registry } from '@web/core/registry';
 import { CharField } from '@web/views/fields/char/char_field';
+import {
+    productLabelSectionAndNoteOne2Many,
+    ProductLabelSectionAndNoteOne2Many,
+    ProductLabelSectionAndNoteListRender,
+} from '@account/components/product_label_section_and_note_field/product_label_section_and_note_field';
+import {
+    listSectionAndNoteText,
+    sectionAndNoteFieldOne2Many,
+    sectionAndNoteText,
+    ListSectionAndNoteText,
+    SectionAndNoteText,
+} from '@account/components/section_and_note_fields_backend/section_and_note_fields_backend';
 
 export class SaleOrderLineListRenderer extends ProductLabelSectionAndNoteListRender {
     static recordRowTemplate = 'sale.ListRenderer.RecordRow';
@@ -28,8 +30,8 @@ export class SaleOrderLineListRenderer extends ProductLabelSectionAndNoteListRen
         super.getCellTitle(column, record);
     }
 
-    getActiveColumns() {
-        let activeColumns = super.getActiveColumns();
+    getActiveColumns(list) {
+        let activeColumns = super.getActiveColumns(list);
         let productTmplCol = activeColumns.find((col) => col.name === 'product_template_id');
         let productCol = activeColumns.find((col) => col.name === 'product_id');
 
@@ -69,7 +71,7 @@ export class SaleOrderLineListRenderer extends ProductLabelSectionAndNoteListRen
     isCellReadonly(column, record) {
         return super.isCellReadonly(column, record) || (
             this.isComboItem(record)
-                && ![this.titleField, 'tax_ids', 'qty_delivered'].includes(column.name)
+                && ![this.titleField, 'tax_id', 'qty_delivered'].includes(column.name)
         );
     }
 

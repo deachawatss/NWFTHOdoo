@@ -21,12 +21,17 @@ const getData = ({ lineProductName, productName, partnerName } = {}) => {
     return { order, line, product, partner };
 };
 
-const notify = async () => {
+const notify = async (orderIds = []) => {
+    const recordIds = {};
+    if (orderIds.lenght) {
+        recordIds["pos.order"] = orderIds;
+    }
     const orm = posmodel.env.services.orm;
     await orm.call("pos.config", "notify_synchronisation", [
         posmodel.config.id,
         posmodel.session.id,
         999,
+        recordIds,
     ]);
 };
 
@@ -50,64 +55,8 @@ const writeOnOrder = async (order, data) => {
     await new Promise((res) => setTimeout(res, timeout));
     const orm = posmodel.env.services.orm;
     await orm.write("pos.order", [order.id], data);
-    await notify();
+    await notify([order.id]);
 };
-
-/**
- * @param {string} productName
- * @param {number} quantity
- * @returns StepSchema[]
- */
-export function createNewLine(productName, quantity) {
-    return [
-        {
-            trigger: "body",
-            run: async () => {
-                const { order, product } = getData({ productName });
-                await writeOnOrder(order, {
-                    lines: [[0, 0, getLineData(product, order, quantity)]],
-                });
-            },
-        },
-    ];
-}
-
-/**
- * @param {string} productName
- * @param {number} quantity
- * @returns StepSchema[]
- */
-export function changeLineQuantity(productName, quantity) {
-    return [
-        {
-            trigger: "body",
-            run: async () => {
-                const { order, line } = getData({ lineProductName: productName });
-                await writeOnOrder(order, {
-                    lines: [[1, line.id, getLineData(line.product_id, order, quantity)]],
-                });
-            },
-        },
-    ];
-}
-
-/**
- * @param {string} partnerName
- * @returns StepSchema[]
- */
-export function changePartner(partnerName) {
-    return [
-        {
-            trigger: "body",
-            run: async () => {
-                const { order, partner } = getData({ partnerName });
-                await writeOnOrder(order, {
-                    partner_id: partner.id,
-                });
-            },
-        },
-    ];
-}
 
 export function markOrderAsPaid() {
     return [
@@ -159,16 +108,17 @@ export function createNewOrderOnTable(tableName, productTuple) {
                 const table = posmodel.models["restaurant.table"].find(
                     (t) => t.table_number === parseInt(tableName)
                 );
-                await orm.create("pos.order", [
+                const [orderId] = await orm.create("pos.order", [
                     {
                         ...prices,
-                        pos_reference: `device_sync_${Math.floor(Math.random() * 9999)}`,
+                        pos_reference: `device_sync`,
+                        config_id: posmodel.config.id,
                         session_id: posmodel.session.id,
                         table_id: table.id,
                         lines,
                     },
                 ]);
-                await notify();
+                await notify([orderId]);
             },
         },
     ];

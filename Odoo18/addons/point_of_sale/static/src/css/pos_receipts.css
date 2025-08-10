@@ -1,6 +1,6 @@
 .pos-receipt-print {
     width: 512px;
-    font-size: 22px;
+    font-size: 27px;
     color: #000000;
 }
 
@@ -34,10 +34,12 @@
 }
 
 .pos-receipt .pos-receipt-order-data {
+    text-align: center;
     font-size: 75%;
 }
 
 .pos-receipt .pos-receipt-amount {
+    font-size: 125%;
     text-align: start;
 }
 
@@ -50,10 +52,6 @@
 .pos-receipt .pos-receipt-header {
     font-size: 125%;
     text-align: center;
-}
-
-.pos-receipt .attribute-line {
-    font-size: 85%;
 }
 
 .pos-payment-terminal-receipt {
@@ -83,12 +81,4 @@
 .pos-receipt .orderlines {
     /*rtl:ignore*/
     direction: ltr;
-}
-
-.pos-receipt-print .qty {
-    min-width: 3.5rem;
-}
-
-.pos-receipt-print .info-list {
-    margin-left: 1.5rem !important;
 }

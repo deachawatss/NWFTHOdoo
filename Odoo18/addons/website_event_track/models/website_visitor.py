@@ -1,12 +1,13 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, fields, models
-from odoo.exceptions import UserError
-from odoo.fields import Domain
+from odoo.osv import expression
 
 
 class WebsiteVisitor(models.Model):
-    _inherit = 'website.visitor'
+    _name = 'website.visitor'
+    _inherit = ['website.visitor']
 
     event_track_visitor_ids = fields.One2many(
         'event.track.visitor', 'visitor_id', string="Track Visitors",
@@ -36,8 +37,8 @@ class WebsiteVisitor(models.Model):
     def _search_event_track_wishlisted_ids(self, operator, operand):
         """ Search visitors with terms on wishlisted tracks. E.g. [('event_track_wishlisted_ids',
         'in', [1, 2])] should return visitors having wishlisted tracks 1, 2. """
-        if operator in ('not in', 'not any'):
-            raise UserError(self.env._("Unsupported 'Not In' operation on track wishlist visitors"))
+        if operator == "not in":
+            raise NotImplementedError(self.env._("Unsupported 'Not In' operation on track wishlist visitors"))
 
         track_visitors = self.env['event.track.visitor'].sudo().search([
             ('track_id', operator, operand),
@@ -49,7 +50,8 @@ class WebsiteVisitor(models.Model):
     def _inactive_visitors_domain(self):
         """ Visitors registered to push subscriptions are considered always active and should not be
         deleted. """
-        return super()._inactive_visitors_domain() & Domain('event_track_visitor_ids', '=', False)
+        domain = super()._inactive_visitors_domain()
+        return expression.AND([domain, [('event_track_visitor_ids', '=', False)]])
 
     def _merge_visitor(self, target):
         """ Override linking process to link wishlist to the final visitor. """

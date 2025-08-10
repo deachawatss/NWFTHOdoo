@@ -164,27 +164,14 @@ ul.o_checklist {
             cursor: pointer;
         }
         &.o_checked {
+            text-decoration: line-through;
             &::before {
                 content: "✓";
                 display: flex;
-                font-size: $o-checklist-before-size;
                 align-items: center;
                 justify-content: center;
                 padding-left: 1px #{"/*rtl:ignore*/"};
                 padding-top: 1px;
-            }
-
-            &:has(ul, ol)::before {
-                opacity: 0.5;
-            }
-
-            &:not(:has(ul, ol)) {
-                text-decoration: line-through;
-                opacity: 0.5;
-            }
-            &:has(ul, ol) > :not(ul, ol) {
-                text-decoration: line-through;
-                opacity: 0.5;
             }
         }
     }
@@ -336,7 +323,7 @@ div.media_iframe_video {
     }
 
     .media_iframe_video_size {
-        padding-bottom: 56.25%; /* 16:9 aspect ratio */
+        padding-bottom: 66.5%;
         position: relative;
         width: 100%;
         height: 0;
@@ -845,6 +832,27 @@ section, .oe_img_bg, [data-oe-shape-data] {
     // are not rendered (invisible) when inside a gradient.
     .fa {
         display: inherit;
+    }
+
+    %o-text-gradient-decoration {
+        background-size: 100% 0.1em;
+        background-repeat: repeat-x;
+        background-image: inherit !important;
+        text-decoration-color: transparent !important;
+        color: transparent;
+        caret-color: black;
+    }
+    * {
+        background-size: 0px;
+        background-image: inherit !important;
+    }
+    s:not(font[style*="-webkit-text-fill-color"] s) {
+        @extend %o-text-gradient-decoration;
+        background-position: 0 50%;
+    }
+    u:not(font[style*="-webkit-text-fill-color"] u) {
+        @extend %o-text-gradient-decoration;
+        background-position: 0 95%;
     }
 }
 

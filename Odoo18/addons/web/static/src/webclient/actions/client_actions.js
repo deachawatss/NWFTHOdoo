@@ -2,7 +2,7 @@ import { browser } from "@web/core/browser/browser";
 import { router } from "@web/core/browser/router";
 import { rpc } from "@web/core/network/rpc";
 import { registry } from "@web/core/registry";
-import { htmlSprintf } from "@web/core/utils/html";
+import { escape, sprintf } from "@web/core/utils/strings";
 
 import { markup } from "@odoo/owl";
 
@@ -14,10 +14,10 @@ export function displayNotificationAction(env, action) {
         title: params.title,
         type: params.type || "info",
     };
-    const links = (params.links || []).map(
-        (link) => markup`<a href="${link.url}" target="_blank">${link.label}</a>`
-    );
-    const message = htmlSprintf(params.message, ...links);
+    const links = (params.links || []).map((link) => {
+        return `<a href="${escape(link.url)}" target="_blank">${escape(link.label)}</a>`;
+    });
+    const message = markup(sprintf(escape(params.message), ...links));
     env.services.notification.add(message, options);
     return params.next;
 }
@@ -43,6 +43,7 @@ function reload(env, action) {
         }
     }
 
+    env.bus.trigger("CLEAR-CACHES");
     router.pushState(route, { replace: true, reload: true });
 }
 
@@ -69,10 +70,13 @@ async function home() {
 registry.category("actions").add("home", home);
 
 /**
- * Client action to refresh the session context (making sure HTTP requests will
- * have the right one). It simply reloads the page.
+ * Client action to refresh the session context (making sure
+ * HTTP requests will have the right one) then reload the
+ * whole interface.
  */
 async function reloadContext(env, action) {
+    // side-effect of get_session_info is to refresh the session context
+    await rpc("/web/session/get_session_info");
     reload(env, action);
 }
 

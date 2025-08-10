@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import {
     clickOnEditAndWaitEditMode,
     clickOnSave,
@@ -57,12 +59,12 @@ const addNewSocialNetwork = function (optionIndex, linkIndex, url, replaceIcon =
     const replaceIconByImageSteps = replaceIcon ? replaceIconByImage("https://www.example.com") : [];
     return [{
         content: "Click on Add New Social Network",
-        trigger: "div[data-container-title='Social Media'] button[data-action-id='addSocialMediaLink']",
+        trigger: 'we-list we-button.o_we_list_add_optional',
         run: "click",
     },
     {
         content: "Ensure new option is found",
-        trigger: `.o_social_media_list tr:eq(${optionIndex}):has(div[data-action-id="editSocialMediaLink"])`,
+        trigger: `we-list table input:eq(${optionIndex})[data-list-position="${optionIndex}"][data-dom-position="${linkIndex}"][data-undeletable=false]`,
     },
     {
         content: "Ensure new link is found",
@@ -71,7 +73,7 @@ const addNewSocialNetwork = function (optionIndex, linkIndex, url, replaceIcon =
     ...replaceIconByImageSteps,
     {
         content: "Change added Option label",
-        trigger: `.o_social_media_list tr:eq(${optionIndex}) input`,
+        trigger: `we-list table input:eq(${optionIndex})`,
         run: `edit ${url} && click body`,
     },
     {
@@ -88,10 +90,10 @@ registerWebsitePreviewTour('snippet_social_media', {
 }, () => [
     ...insertSnippet({id: 's_social_media', name: 'Social Media'}),
     ...clickOnSnippet({id: 's_social_media', name: 'Social Media'}),
-    ...addNewSocialNetwork(8, 8, 'https://www.youtu.be/y7TlnAv6cto'),
+    ...addNewSocialNetwork(7, 7, 'https://www.youtu.be/y7TlnAv6cto'),
     {
         content: 'Click on the toggle to hide Facebook',
-        trigger: ".o_social_media_list div[data-action-id='toggleRecordedSocialMediaLink'] input[type='checkbox']",
+        trigger: 'we-list table we-button.o_we_user_value_widget',
         run: 'click',
     },
     {
@@ -100,19 +102,19 @@ registerWebsitePreviewTour('snippet_social_media', {
     },
     {
         content: 'Drag the facebook link at the end of the list',
-        trigger: ".o_social_media_list button.o_drag_handle",
+        trigger: 'we-list table we-button.o_we_drag_handle',
         tooltipPosition: 'bottom',
-        run: "drag_and_drop .o_social_media_list tr:last-child",
+        run: "drag_and_drop we-list table tr:last-child",
     },
     {
         content: 'Check drop completed',
-        trigger: ".o_social_media_list tr:eq(8) div[data-action-param='facebook']",
+        trigger: 'we-list table input:eq(7)[data-media="facebook"]',
     },
     ...preventRaceConditionStep,
     // Create a Link for which we don't have an icon to propose.
-    ...addNewSocialNetwork(9, 8, 'https://whatever.it/1EdSw9X'),
+    ...addNewSocialNetwork(8, 7, 'https://whatever.it/1EdSw9X'),
     // Create a custom instagram link.
-    ...addNewSocialNetwork(10, 9, 'https://instagr.am/odoo.official/'),
+    ...addNewSocialNetwork(9, 8, 'https://instagr.am/odoo.official/'),
     {
         content: "Check if the result is correct before removing",
         trigger: ":iframe .s_social_media" +
@@ -122,35 +124,34 @@ registerWebsitePreviewTour('snippet_social_media', {
                  ":has(a:eq(3)[href='/website/social/instagram'])" +
                  ":has(a:eq(4)[href='/website/social/github'])" +
                  ":has(a:eq(5)[href='/website/social/tiktok'])" +
-                 ":has(a:eq(6)[href='/website/social/discord'])" +
-                 ":has(a:eq(7)[href='https://www.youtu.be/y7TlnAv6cto']:has(i.fa-youtube-play))" +
-                 ":has(a:eq(8)[href='https://whatever.it/1EdSw9X']:has(i.fa-pencil))" +
-                 ":has(a:eq(9)[href='https://instagr.am/odoo.official/']:has(i.fa-instagram))",
+                 ":has(a:eq(6)[href='https://www.youtu.be/y7TlnAv6cto']:has(i.fa-youtube))" +
+                 ":has(a:eq(7)[href='https://whatever.it/1EdSw9X']:has(i.fa-pencil))" +
+                 ":has(a:eq(8)[href='https://instagr.am/odoo.official/']:has(i.fa-instagram))",
     },
     // Create a custom link, not officially supported, ensure icon is found.
     {
         content: 'Change custom social to unsupported link',
-        trigger: ".o_social_media_list tr:eq(7) input",
+        trigger: 'we-list table input:eq(6)',
         run: "edit https://www.paypal.com/abc && click body",
     },
     {
         content: "Ensure paypal icon is found",
         trigger: ":iframe .s_social_media" +
-                 ":has(a:eq(7)[href='https://www.paypal.com/abc']:has(i.fa-paypal))",
+                 ":has(a:eq(6)[href='https://www.paypal.com/abc']:has(i.fa-paypal))",
     },
     ...preventRaceConditionStep,
     {
         content: 'Delete the custom link',
-        trigger: ".o_social_media_list button[data-action-id='deleteSocialMediaLink']",
+        trigger: 'we-list we-button.o_we_select_remove_option',
         run: 'click',
     },
     {
         content: "Ensure custom link was removed",
-        trigger: ':iframe .s_social_media:has(a:eq(7)[href="https://whatever.it/1EdSw9X"]:has(i.fa-pencil))',
+        trigger: ':iframe .s_social_media:has(a:eq(6)[href="https://whatever.it/1EdSw9X"]:has(i.fa-pencil))',
     },
     {
         content: 'Click on the toggle to show Facebook',
-        trigger: ".o_social_media_list input[type='checkbox']:not(:checked)",
+        trigger: 'we-list table we-button.o_we_user_value_widget:not(.active)',
         run: 'click',
     },
     {
@@ -162,27 +163,27 @@ registerWebsitePreviewTour('snippet_social_media', {
                  ":has(a:eq(3)[href='/website/social/instagram'])" +
                  ":has(a:eq(4)[href='/website/social/github'])" +
                  ":has(a:eq(5)[href='/website/social/tiktok'])" +
-                 ":has(a:eq(6)[href='/website/social/discord'])" +
-                 ":has(a:eq(7)[href='/website/social/facebook'])" +
-                 ":has(a:eq(8)[href='https://whatever.it/1EdSw9X']:has(i.fa-pencil))" +
-                 ":has(a:eq(9)[href='https://instagr.am/odoo.official/']:has(i.fa-instagram))",
+                 ":has(a:eq(6)[href='/website/social/facebook'])" +
+                 ":has(a:eq(7)[href='https://whatever.it/1EdSw9X']:has(i.fa-pencil))" +
+                 ":has(a:eq(8)[href='https://instagr.am/odoo.official/']:has(i.fa-instagram))",
     },
     {
         content: 'Change url of the DB instagram link',
-        trigger: ".o_social_media_list tr:eq(3) input",
+        trigger: 'we-list table input:eq(3)',
         run: "edit https://instagram.com/odoo.official/ && click body",
     },
     ...preventRaceConditionStep,
     ...clickOnSave(),
     ...clickOnEditAndWaitEditMode(),
-    ...clickOnSnippet({
-        id: 's_social_media',
-        name: 'Social Media',
-    }),
     {
         content: "Check if we can still change custom icons",
         trigger: ':iframe .s_social_media a[href="https://whatever.it/1EdSw9X"] i.fa-pencil',
-        run: 'dblclick',
+        run: "click",
+    },
+    {
+        content: "Click on replace media",
+        trigger: "[data-replace-media='true']",
+        run: "click",
     },
     {
         content: "Select a new icon",
@@ -198,23 +199,22 @@ registerWebsitePreviewTour('snippet_social_media', {
                  ":has(a:eq(3)[href='/website/social/instagram'])" +
                  ":has(a:eq(4)[href='/website/social/github'])" +
                  ":has(a:eq(5)[href='/website/social/tiktok'])" +
-                 ":has(a:eq(6)[href='/website/social/discord'])" +
-                 ":has(a:eq(7)[href='/website/social/facebook'])" +
-                 ":has(a:eq(8)[href='https://whatever.it/1EdSw9X']:has(i.fa-heart))" +
-                 ":has(a:eq(9)[href='https://instagr.am/odoo.official/']:has(i.fa-instagram))",
+                 ":has(a:eq(6)[href='/website/social/facebook'])" +
+                 ":has(a:eq(7)[href='https://whatever.it/1EdSw9X']:has(i.fa-heart))" +
+                 ":has(a:eq(8)[href='https://instagr.am/odoo.official/']:has(i.fa-instagram))",
     },
     // Create a social network but replace its icon by an image before setting
     // the link (`replaceIcon` parameter set to `true`).
-    ...addNewSocialNetwork(10, 10, "https://google.com", true),
+    ...addNewSocialNetwork(9, 9, "https://google.com", true),
     // Create a social network after replacing the first icon by an image.
     ...replaceIconByImage("/website/social/twitter"),
-    ...addNewSocialNetwork(11, 11, "https://facebook.com"),
+    ...addNewSocialNetwork(10, 10, "https://facebook.com"),
     {
         content: "Check if the result is correct after adding images",
         trigger: ":iframe .s_social_media" +
                  ":has(a:eq(0)[href='/website/social/twitter']:has(img))" +
-                 ":has(a:eq(10)[href='https://google.com']:has(img))" +
-                 ":has(a:eq(11)[href='https://facebook.com']:has(img))",
+                 ":has(a:eq(9)[href='https://google.com']:has(img))" +
+                 ":has(a:eq(10)[href='https://facebook.com']:has(img))",
     },
     ...clickOnSave(),
 ]);

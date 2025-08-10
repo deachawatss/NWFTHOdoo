@@ -1,26 +1,27 @@
-import { Component } from "@odoo/owl";
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
-import { registry } from "@web/core/registry";
-import { computeM2OProps, Many2One } from "@web/views/fields/many2one/many2one";
-import { buildM2OFieldDescription, Many2OneField } from "@web/views/fields/many2one/many2one_field";
+import { registry } from '@web/core/registry';
+import { Many2OneField, many2OneField } from '@web/views/fields/many2one/many2one_field';
 
-export class ProjectMany2OneField extends Component {
+export class ProjectMany2OneField extends Many2OneField {
     static template = "project.ProjectMany2OneField";
-    static components = { Many2One };
-    static props = { ...Many2OneField.props };
-
-    get m2oProps() {
-        const props = computeM2OProps(this.props);
+    get Many2XAutocompleteProps() {
+        const props = super.Many2XAutocompleteProps;
         const { record } = this.props;
-        props.cssClass = "w-100";
         if (!record.data.project_id && !record._isRequired("project_id")) {
             props.placeholder = _t("Private");
-            props.cssClass += " private_placeholder";
         }
         return props;
     }
 }
 
-registry.category("fields").add("project", {
-    ...buildM2OFieldDescription(ProjectMany2OneField),
-});
+export const projectMany2OneField = {
+    ...many2OneField,
+    component: ProjectMany2OneField,
+    fieldDependencies: [
+        ...(many2OneField.fieldDependencies || []),
+    ],
+};
+
+registry.category("fields").add("project", projectMany2OneField);

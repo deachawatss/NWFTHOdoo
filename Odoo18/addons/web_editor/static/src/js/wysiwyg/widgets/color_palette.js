@@ -1,4 +1,6 @@
-import { CustomColorPicker as ColorPicker } from "@web/core/color_picker/custom_color_picker/custom_color_picker";
+/** @odoo-module **/
+
+import { Colorpicker } from "@web/core/colorpicker/colorpicker";
 import customColors from "@web_editor/js/editor/custom_colors";
 import weUtils from "@web_editor/js/common/utils";
 import {
@@ -62,7 +64,7 @@ export class ColorPalette extends Component {
         getEditableCustomColors: () => [],
         onColorpaletteTabChange: () => {},
     }
-    static components = { ColorPicker };
+    static components = { Colorpicker };
     elRef = useRef('el');
     state = useState({
         showGradientPicker: false,

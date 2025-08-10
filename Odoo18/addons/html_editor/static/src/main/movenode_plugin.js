@@ -1,15 +1,14 @@
 import { useNativeDraggable } from "@html_editor/utils/drag_and_drop";
-import { childNodeIndex, endPos } from "@html_editor/utils/position";
-import { xml } from "@odoo/owl";
+import { endPos } from "@html_editor/utils/position";
 import { Plugin } from "../plugin";
-import { closestElement } from "../utils/dom_traversal";
-import { _t } from "@web/core/l10n/translation";
+import { ancestors, closestElement } from "../utils/dom_traversal";
 import { baseContainerGlobalSelector } from "@html_editor/utils/base_container";
 
 const WIDGET_CONTAINER_WIDTH = 25;
 const WIDGET_MOVE_SIZE = 20;
 
-const ALLOWED_ELEMENTS = "h1, h2, h3, p, hr, pre, blockquote, li";
+const ALLOWED_ELEMENTS =
+    "h1, h2, h3, p, hr, pre, blockquote, ul, ol, table, [data-embedded], .o_text_columns, .o_editor_banner, .oe_movable";
 
 export class MoveNodePlugin extends Plugin {
     static id = "movenode";
@@ -168,15 +167,6 @@ export class MoveNodePlugin extends Plugin {
                     elementRect.width + WIDGET_CONTAINER_WIDTH,
                     elementRect.height + marginTop + marginBottom
                 );
-            } else if (element.tagName === "LI") {
-                // For <li>, move hookBox to the left to avoid blocking
-                // checkboxes — needed for proper list item interaction.
-                hookBox = new DOMRect(
-                    elementRect.x - containerRect.left - WIDGET_CONTAINER_WIDTH - WIDGET_MOVE_SIZE,
-                    elementRect.y - containerRect.top - marginTop,
-                    WIDGET_CONTAINER_WIDTH,
-                    elementRect.height + marginTop + marginBottom
-                );
             } else {
                 hookBox = new DOMRect(
                     elementRect.x - containerRect.left - WIDGET_CONTAINER_WIDTH,
@@ -194,21 +184,21 @@ export class MoveNodePlugin extends Plugin {
         }
     }
     _updateAnchorWidgets(newAnchorWidget) {
-        const movableElement =
+        let movableElement =
             newAnchorWidget &&
-            closestElement(
-                newAnchorWidget,
-                (node) =>
-                    this.isNodeMovable(node) &&
-                    node.matches(
-                        [
-                            ALLOWED_ELEMENTS,
-                            baseContainerGlobalSelector,
-                            ...this.getResource("move_node_whitelist_selectors"),
-                        ].join(", ")
-                    )
-            );
-
+            closestElement(newAnchorWidget, (node) => {
+                return (
+                    isNodeMovable(node) &&
+                    node.matches([ALLOWED_ELEMENTS, baseContainerGlobalSelector].join(", "))
+                );
+            });
+        // Retrive the first list container from the ancestors.
+        const listContainer =
+            movableElement &&
+            ancestors(movableElement, this.editable)
+                .reverse()
+                .find((n) => ["UL", "OL"].includes(n.tagName));
+        movableElement = listContainer || movableElement;
         if (movableElement && movableElement !== this.currentMovableElement) {
             this.setMovableElement(movableElement);
         }
@@ -216,13 +206,9 @@ export class MoveNodePlugin extends Plugin {
     getMovableElements() {
         const elems = [];
         for (const el of this.editable.querySelectorAll(
-            [
-                ALLOWED_ELEMENTS,
-                baseContainerGlobalSelector,
-                ...this.getResource("move_node_whitelist_selectors"),
-            ].join(", ")
+            [ALLOWED_ELEMENTS, baseContainerGlobalSelector].join(", ")
         )) {
-            if (this.isNodeMovable(el)) {
+            if (isNodeMovable(el)) {
                 elems.push(el);
             }
         }
@@ -240,17 +226,15 @@ export class MoveNodePlugin extends Plugin {
 
         const containerRect = this.widgetContainer.getBoundingClientRect();
         const anchorBlockRect = this.currentMovableElement.getBoundingClientRect();
-        const anchorX =
-            this.currentMovableElement.tagName === "LI"
-                ? anchorBlockRect.x - WIDGET_MOVE_SIZE // Prevent overlap bullets.
-                : anchorBlockRect.x;
+        const closestList = closestElement(this.currentMovableElement, "ul, ol"); // Prevent overlap bullets.
+        const anchorX = closestList ? closestList.getBoundingClientRect().x : anchorBlockRect.x;
         let anchorY = anchorBlockRect.y;
         if (this.currentMovableElement.tagName.match(/H[1-6]/)) {
             anchorY += (anchorBlockRect.height - WIDGET_MOVE_SIZE) / 2;
         }
 
         this.moveWidget = this.document.createElement("div");
-        this.moveWidget.className = "oe-sidewidget-move oi oi-draggable";
+        this.moveWidget.className = "oe-sidewidget-move fa fa-sort";
         this.widgetContainer.append(this.moveWidget);
 
         let moveWidgetOffsetTop = 0;
@@ -264,14 +248,6 @@ export class MoveNodePlugin extends Plugin {
         this.moveWidget.style.top = `${anchorY - containerRect.y - moveWidgetOffsetTop}px`;
         this.moveWidget.style.left = `${anchorX - containerRect.x - WIDGET_CONTAINER_WIDTH}px`;
 
-        this.services.tooltip.add(this.moveWidget, {
-            template: xml`
-                <div class="o-tooltip tooltip-inner text-start px-3">
-                    ${_t("Drag to move")}
-                </div>`,
-            arrow: true,
-        });
-
         if (this.scrollableElement) {
             this.smoothScrollOnDrag && this.smoothScrollOnDrag.destroy();
             // TODO: This should be made more generic, one hook for the entire
@@ -282,14 +258,7 @@ export class MoveNodePlugin extends Plugin {
                 onDragStart: () => this.startDropzones(movableElement, containerRect),
                 onDragEnd: () => this._stopDropzones(movableElement),
                 helper: () => {
-                    const container =
-                        movableElement.tagName === "LI"
-                            ? movableElement.parentElement.cloneNode(false)
-                            : document.createElement("div");
-                    if (container.tagName === "OL") {
-                        const originalIndex = childNodeIndex(movableElement) + 1;
-                        container.setAttribute("start", originalIndex);
-                    }
+                    const container = document.createElement("div");
                     container.append(movableElement.cloneNode(true));
                     const style = getComputedStyle(movableElement);
                     container.style.height = style.height;
@@ -339,10 +308,7 @@ export class MoveNodePlugin extends Plugin {
             const dropzoneBox = document.createElement("div");
             dropzoneBox.className = `oe-dropzone-box`;
             dropzoneBox.style.top = `${dropzoneRect.top - containerRect.top}px`;
-            dropzoneBox.style.left =
-                element.tagName == "LI"
-                    ? `${dropzoneRect.left - containerRect.left - WIDGET_MOVE_SIZE}px`
-                    : `${dropzoneRect.left - containerRect.left}px`;
+            dropzoneBox.style.left = `${dropzoneRect.left - containerRect.left}px`;
             dropzoneBox.style.width = `${dropzoneRect.width}px`;
             dropzoneBox.style.height = `${dropzoneRect.height}px`;
 
@@ -420,33 +386,16 @@ export class MoveNodePlugin extends Plugin {
             const [position, focusElelement] = this._currentDropHintElementPosition;
             this._currentDropHintElementPosition = undefined;
             const previousParent = movableElement.parentElement;
-
-            const isFocusInsideList = ["UL", "OL"].includes(focusElelement?.parentElement?.tagName);
-            if (movableElement.tagName === "LI" && !isFocusInsideList) {
-                // If LI is moved outside a list, wrap it in UL/OL (previous parent)
-                const wrapperList = previousParent.cloneNode(false);
-                wrapperList.appendChild(movableElement);
-                movableElement = wrapperList;
-            } else if (movableElement.tagName !== "LI" && isFocusInsideList) {
-                // If non-LI element is moved into a list, wrap it in a LI
-                const wrapperLI = this.document.createElement("LI");
-                wrapperLI.appendChild(movableElement);
-                movableElement = wrapperLI;
-            }
             if (position === "top") {
                 focusElelement.before(movableElement);
             } else if (position === "bottom") {
                 focusElelement.after(movableElement);
             }
             if (previousParent.innerHTML.trim() === "") {
-                if (["UL", "OL"].includes(previousParent.tagName)) {
-                    previousParent.remove();
-                } else {
-                    const baseContainer = this.dependencies.baseContainer.createBaseContainer();
-                    const br = document.createElement("br");
-                    baseContainer.append(br);
-                    previousParent.append(baseContainer);
-                }
+                const baseContainer = this.dependencies.baseContainer.createBaseContainer();
+                const br = document.createElement("br");
+                baseContainer.append(br);
+                previousParent.append(baseContainer);
             }
             const selectionPosition = endPos(movableElement);
             this.dependencies.selection.setSelection({
@@ -476,16 +425,13 @@ export class MoveNodePlugin extends Plugin {
             this.removeMoveWidget();
         }
     }
-    isNodeMovable(node) {
-        const blacklistSelectors = this.getResource("move_node_blacklist_selectors").join(", ");
-        if (blacklistSelectors && node.matches(blacklistSelectors)) {
-            return false;
-        }
-        return (
-            node.parentElement?.getAttribute("contentEditable") === "true" ||
-            (node.tagName === "LI" && node.parentElement.isContentEditable)
-        );
-    }
+}
+
+function isNodeMovable(node) {
+    return (
+        node.parentElement?.getAttribute("contentEditable") === "true" &&
+        !node.parentElement.closest(".o_text_columns, .o_editor_banner")
+    );
 }
 
 function isPointInside(rect, x, y) {
@@ -509,7 +455,6 @@ const simpleDraggableHook = {
         ctx.current.element.style.position = "fixed";
         // makeDraggableHook disables pointer events, we want them in this case
         document.body.classList.remove("pe-none");
-        document.body.style.cursor = "grabbing";
         return ctx.current;
     },
     onDrag({ ctx }) {
@@ -518,9 +463,6 @@ const simpleDraggableHook = {
     },
     onDragEnd({ ctx }) {
         ctx.current.element.remove();
-        if (document.body.style.cursor === "grabbing") {
-            document.body.style.cursor = "";
-        }
         return ctx.current;
     },
 };

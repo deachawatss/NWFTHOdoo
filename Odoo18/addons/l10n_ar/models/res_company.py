@@ -2,8 +2,8 @@
 from odoo import fields, models, api, _
 from odoo.exceptions import UserError
 
-
 class ResCompany(models.Model):
+
     _inherit = "res.company"
 
     l10n_ar_gross_income_number = fields.Char(
@@ -42,6 +42,3 @@ class ResCompany(models.Model):
                     raise UserError(_('Could not change the AFIP Responsibility of this company because there are already accounting entries.'))
 
         return super().write(vals)
-
-    def _is_latam(self):
-        return super()._is_latam() or self.country_code == 'AR'

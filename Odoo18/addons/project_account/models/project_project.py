@@ -3,12 +3,12 @@
 import json
 from ast import literal_eval
 from collections import defaultdict
+from odoo.osv import expression
 
 from odoo import models
-from odoo.fields import Domain
 
 
-class ProjectProject(models.Model):
+class Project(models.Model):
     _inherit = 'project.project'
 
     def _add_purchase_items(self, profitability_items, with_action=True):
@@ -131,9 +131,10 @@ class ProjectProject(models.Model):
         return [('account_id', '=', self.account_id.id), ('move_line_id', '=', False)]
 
     def _get_items_from_aal(self, with_action=True):
-        domain = Domain.AND([
-            self._get_domain_aal_with_no_move_line(),
-            Domain('category', 'not in', ['manufacturing_order', 'picking_entry']),
+        domain = self._get_domain_aal_with_no_move_line()
+        domain = expression.AND([
+            domain,
+            [('category', 'not in', ['manufacturing_order', 'picking_entry'])]
         ])
         aal_other_search = self.env['account.analytic.line'].sudo().search_read(domain, ['id', 'amount', 'currency_id'])
         if not aal_other_search:

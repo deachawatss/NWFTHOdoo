@@ -1,4 +1,4 @@
-import { Component } from "@odoo/owl";
+import { Component, useState } from "@odoo/owl";
 import { ResizablePanel } from "@web/core/resizable_panel/resizable_panel";
 import { useService } from "@web/core/utils/hooks";
 
@@ -16,20 +16,12 @@ export class ActionPanel extends Component {
 
     setup() {
         super.setup();
-        this.store = useService("mail.store");
+        this.store = useState(useService("mail.store"));
     }
 
     get classNames() {
-        const attClass = {
-            "o-mail-ActionPanel overflow-auto o-scrollbar-thin d-flex flex-column flex-shrink-0 position-relative py-2 pt-0 h-100 bg-inherit": true,
-            "o-mail-ActionPanel-chatter": this.env.inChatter,
-            "o-chatWindow": this.env.inChatWindow,
-            "px-2": !this.env.inChatter,
-            rounded: !this.props.resizable,
-        };
-        return Object.entries(attClass)
-            .filter(([classNames, value]) => value)
-            .map(([classNames]) => classNames)
-            .join(" ");
+        return `o-mail-ActionPanel overflow-auto d-flex flex-column flex-shrink-0 position-relative py-2 pt-0 h-100 bg-inherit ${
+            !this.env.inChatter ? " px-2" : " o-mail-ActionPanel-chatter"
+        } ${this.env.inDiscussApp ? " o-mail-discussSidebarBgColor" : ""}`;
     }
 }

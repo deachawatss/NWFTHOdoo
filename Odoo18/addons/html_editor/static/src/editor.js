@@ -76,7 +76,6 @@ export class Editor {
      * @param { EditorConfig } config
      */
     constructor(config, services) {
-        this.isReady = false;
         this.isDestroyed = false;
         this.config = config;
         this.services = services;
@@ -115,13 +114,11 @@ export class Editor {
             editable.style.height = this.config.height;
         }
         this.startPlugins();
-        this.isReady = true;
         this.config.onEditorReady?.();
     }
 
     preparePlugins() {
         const Plugins = sortPlugins(this.config.Plugins || MAIN_PLUGINS);
-        this.config = Object.assign({}, ...Plugins.map((P) => P.defaultConfig), this.config);
         const plugins = new Map();
         for (const P of Plugins) {
             if (P.id === "") {
@@ -204,25 +201,6 @@ export class Editor {
         }
 
         return Object.freeze(resources);
-    }
-
-    /**
-     * @param {string} resourceId
-     * @returns {Array}
-     */
-    getResource(resourceId) {
-        return this.resources[resourceId] || [];
-    }
-
-    /**
-     * Executes the functions registered under resourceId with the given
-     * arguments.
-     *
-     * @param {string} resourceId
-     * @param  {...any} args The arguments to pass to the handlers
-     */
-    dispatchTo(resourceId, ...args) {
-        this.getResource(resourceId).forEach((handler) => handler(...args));
     }
 
     getContent() {

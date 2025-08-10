@@ -32,7 +32,6 @@ export class ProductConfiguratorDialog extends Component {
                 canChangeVariant: { type: Boolean, optional: true },
                 showQuantity : { type: Boolean, optional: true },
                 showPrice : { type: Boolean, optional: true },
-                showPackaging: { type: Boolean, optional: true },
             },
         },
         save: Function,
@@ -63,12 +62,10 @@ export class ProductConfiguratorDialog extends Component {
             currency: this.currency,
             canChangeVariant: this.props.options?.canChangeVariant ?? true,
             showQuantity: this.props.options?.showQuantity ?? true,
-            showPackaging: this.props.options?.showPackaging ?? true,
             showPrice: this.props.options?.showPrice ?? true,
             addProduct: this._addProduct.bind(this),
             removeProduct: this._removeProduct.bind(this),
             setQuantity: this._setQuantity.bind(this),
-            setUoM: this._setUnitOfMeasure.bind(this),
             updateProductTemplateSelectedPTAV: this._updateProductTemplateSelectedPTAV.bind(this),
             updatePTAVCustomValue: this._updatePTAVCustomValue.bind(this),
             isPossibleCombination: this._isPossibleCombination,
@@ -110,7 +107,6 @@ export class ProductConfiguratorDialog extends Component {
             pricelist_id: this.props.pricelistId,
             ptav_ids: this.props.ptavIds,
             only_main_product: onlyMainProduct,
-            show_packaging: this.env.showPackaging,
             ...this._getAdditionalRpcParams(),
         });
     }
@@ -122,14 +118,14 @@ export class ProductConfiguratorDialog extends Component {
         });
     }
 
-    async _updateCombination(product, quantity, uomId) {
+    async _updateCombination(product, quantity) {
         return rpc(this.updateCombinationUrl, {
             product_template_id: product.product_tmpl_id,
             ptav_ids: this._getCombination(product),
             currency_id: this.currency.id,
             so_date: this.props.soDate,
             quantity: quantity,
-            product_uom_id: uomId,
+            product_uom_id: this.props.productUOMId,
             company_id: this.props.companyId,
             pricelist_id: this.props.pricelistId,
             ...this._getAdditionalRpcParams(),
@@ -226,30 +222,9 @@ export class ProductConfiguratorDialog extends Component {
         if (product.quantity === quantity) {
             return false;
         }
-        const { price } = await this._updateCombination(product, quantity, product.uom_id);
+        const { price } = await this._updateCombination(product, quantity);
         product.quantity = quantity;
         product.price = parseFloat(price);
-
-        return true;
-    }
-
-    /**
-     * Set the uom of the product to a given value.
-     *
-     * @param {Number} productTmplId - The product template id, as a `product.template` id.
-     * @param {Number} uomId - The new uom of the product, as an `uom.uom` id.
-     *
-     * @return {Boolean} - Whether the uom was updated.
-     */
-    async _setUnitOfMeasure(productTmplId, uomId) {
-        const product = this._findProduct(productTmplId);
-        if (product.uom.id === uomId) {
-            return false;
-        }
-        const { price } = await this._updateCombination(product, product.quantity, uomId);
-        product.price = parseFloat(price);
-        product.uom = product.available_uoms.find((uom) => uom.id === uomId);
-
         return true;
     }
 
@@ -276,7 +251,7 @@ export class ProductConfiguratorDialog extends Component {
         }
         this._checkExclusions(product);
         if (this._isPossibleCombination(product)) {
-            const updatedValues = await this._updateCombination(product, product.quantity, product.uom_id);
+            const updatedValues = await this._updateCombination(product, product.quantity);
             Object.assign(product, updatedValues);
             // When a combination should exist but was deleted from the database, it should not be
             // selectable and considered as an exclusion.

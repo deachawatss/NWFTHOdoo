@@ -1,3 +1,5 @@
+/** @odoo-module */
+
 import { OdooEditor, parseHTML, setSelection, insertCharsAt } from '../../src/OdooEditor.js';
 import {
     parseMultipleTextualSelection,

@@ -323,7 +323,6 @@ function computeVariation(value, comparisonValue) {
  * @property {Object} rowGroupTree
  * @property {Object} groupDomains
  * @property {Object} measurements
- * @property {Object} currencyIds
  * @property {Object} counts
  * @property {Object} numbering
  */
@@ -362,7 +361,9 @@ export class PivotModel extends Model {
         this.keepLast = new KeepLast();
         this.race = new Race();
         const _loadData = this._loadData.bind(this);
-        this._loadData = (...args) => this.race.add(_loadData(...args));
+        this._loadData = (...args) => {
+            return this.race.add(_loadData(...args));
+        };
 
         let sortedColumn = params.metaData.sortedColumn || null;
         if (!sortedColumn && params.metaData.defaultOrder) {
@@ -385,7 +386,6 @@ export class PivotModel extends Model {
             rowGroupTree: null,
             groupDomains: {},
             measurements: {},
-            currencyIds: {},
             counts: {},
             numbering: {},
         };
@@ -499,7 +499,6 @@ export class PivotModel extends Model {
             return newObject;
         }
         this.data.measurements = omitKeys(this.data.measurements);
-        this.data.currencyIds = omitKeys(this.data.currencyIds);
         this.data.counts = omitKeys(this.data.counts);
         this.data.groupDomains = omitKeys(this.data.groupDomains);
 
@@ -578,27 +577,31 @@ export class PivotModel extends Model {
         // remove the empty headers on left side
         colGroupHeaderRows[0].splice(0, 1);
 
-        colGroupHeaderRows = colGroupHeaderRows.map((headerRow) => headerRow.map(processHeader));
+        colGroupHeaderRows = colGroupHeaderRows.map((headerRow) => {
+            return headerRow.map(processHeader);
+        });
 
         // process rows
-        const tableRows = table.rows.map((row) => ({
-            title: row.title,
-            indent: row.indent,
-            values: row.subGroupMeasurements.map((measurement) => {
-                let value = measurement.value;
-                if (value === undefined) {
-                    value = "";
-                } else if (measurement.originIndexes.length > 1) {
-                    // in that case the value is a variation and a
-                    // number between 0 and 1
-                    value = value * 100;
-                }
-                return {
-                    is_bold: measurement.isBold,
-                    value: value,
-                };
-            }),
-        }));
+        const tableRows = table.rows.map((row) => {
+            return {
+                title: row.title,
+                indent: row.indent,
+                values: row.subGroupMeasurements.map((measurement) => {
+                    let value = measurement.value;
+                    if (value === undefined) {
+                        value = "";
+                    } else if (measurement.originIndexes.length > 1) {
+                        // in that case the value is a variation and a
+                        // number between 0 and 1
+                        value = value * 100;
+                    }
+                    return {
+                        is_bold: measurement.isBold,
+                        value: value,
+                    };
+                }),
+            };
+        });
 
         return {
             model: this.metaData.resModel,
@@ -646,7 +649,6 @@ export class PivotModel extends Model {
         }
 
         this.data.measurements = twist(this.data.measurements);
-        this.data.currencyIds = twist(this.data.currencyIds);
         this.data.counts = twist(this.data.counts);
         this.data.groupDomains = twist(this.data.groupDomains);
 
@@ -837,8 +839,14 @@ export class PivotModel extends Model {
         metaData.customGroupBys = new Map([...metaData.customGroupBys]);
         // shallow copy sortedColumn because we never modify groupId in place
         metaData.sortedColumn = metaData.sortedColumn ? { ...metaData.sortedColumn } : null;
-        metaData.domains = [this.searchParams.domain];
-        metaData.origins = [""];
+        if (this.searchParams.comparison) {
+            const domains = this.searchParams.comparison.domains.slice().reverse();
+            metaData.domains = domains.map((d) => d.arrayRepr);
+            metaData.origins = domains.map((d) => d.description);
+        } else {
+            metaData.domains = [this.searchParams.domain];
+            metaData.origins = [""];
+        }
         Object.defineProperty(metaData, "fullColGroupBys", {
             get() {
                 return metaData.colGroupBys.concat(metaData.expandedColGroupBys);
@@ -921,28 +929,14 @@ export class PivotModel extends Model {
         if (!config.data.measurements[key]) {
             return;
         }
-        var values = originIndexes.map(
-            (originIndex) => config.data.measurements[key][originIndex][measure]
-        );
+        var values = originIndexes.map((originIndex) => {
+            return config.data.measurements[key][originIndex][measure];
+        });
         if (originIndexes.length > 1) {
             return computeVariation(values[1], values[0]);
         } else {
             return values[0];
         }
-    }
-    /**
-     * @protected
-     * @param {Array[]} groupId
-     * @param {string} measure
-     * @param {Config} config
-     * @returns {number}
-     */
-    _getCellCurrency(groupId, measure, config) {
-        var key = JSON.stringify(groupId);
-        if (!config.data.currencyIds[key]) {
-            return;
-        }
-        return config.data.currencyIds[key][0][measure];
     }
     /**
      * @protected
@@ -988,17 +982,26 @@ export class PivotModel extends Model {
             return this._sanitizeLabel(group[groupBy], groupBy, config);
         });
     }
-
-    async _getGroupsSubdivision(params, groupInfo) {
-        const { resModel, groupDomain, groupingSets, measureSpecs, kwargs } = params;
-        const result = await this.orm.formattedReadGroupingSets(
-            resModel,
-            groupDomain,
-            groupingSets,
-            measureSpecs,
-            kwargs
-        );
-        return groupInfo.map((info, index) => ({ ...info, subGroups: result[index] }));
+    /**
+     * Returns a promise that returns the annotated read_group results
+     * corresponding to a partition of the given group obtained using the given
+     * rowGroupBy and colGroupBy.
+     *
+     * @protected
+     * @param {Object} group
+     * @param {string[]} rowGroupBy
+     * @param {string[]} colGroupBy
+     * @param {Object} params
+     */
+    async _getGroupSubdivision(group, rowGroupBy, colGroupBy, params) {
+        const groupBy = this._getGroupBySpecs(rowGroupBy, colGroupBy);
+        const subGroups = await this._getSubGroups(groupBy, params);
+        return {
+            group,
+            subGroups,
+            rowGroupBy: rowGroupBy,
+            colGroupBy: colGroupBy,
+        };
     }
 
     /**
@@ -1049,44 +1052,23 @@ export class PivotModel extends Model {
      */
     _getMeasurements(group, config) {
         const { metaData } = config;
-        return this._getMeasureSpecs(config).reduce((measurements, measureName) => {
+        return metaData.activeMeasures.reduce((measurements, measureName) => {
             var measurement = group[measureName];
-            const [fieldName, aggregator] = measureName.split(":");
-            if (aggregator === "array_agg_distinct") {
-                return measurements;
+            if (measurement instanceof Array) {
+                // case field is many2one and used as measure and groupBy simultaneously
+                measurement = 1;
             }
-            if (metaData.measures[fieldName].type === "boolean" && measurement instanceof Boolean) {
+            if (
+                metaData.measures[measureName].type === "boolean" &&
+                measurement instanceof Boolean
+            ) {
                 measurement = measurement ? 1 : 0;
             }
             if (metaData.origins.length > 1 && !measurement) {
                 measurement = 0;
             }
-            measurements[fieldName] = measurement;
+            measurements[measureName] = measurement;
             return measurements;
-        }, {});
-    }
-    /**
-     * Returns the group sanitized currency id values for the measures in
-     * this.metaData.activeMeasures (only useful for monetary).
-     *
-     * @protected
-     * @param {Object} group
-     * @param {Config} config
-     * @returns {Array}
-     */
-    _getCurrencyIds(group, config) {
-        const { metaData } = config;
-        return this._getMeasureSpecs(config).reduce((currencyIds, measureName) => {
-            const [fieldName, aggregator] = measureName.split(":");
-            if (aggregator === "array_agg_distinct") {
-                return currencyIds;
-            }
-            const measureField = metaData.measures[fieldName];
-            if (measureField.type === "monetary" && measureField.currency_field) {
-                const currencies = group[measureField.currency_field + ":array_agg_distinct"];
-                currencyIds[fieldName] = currencies?.length === 1 ? currencies[0] : false;
-            }
-            return currencyIds;
         }, {});
     }
     /**
@@ -1146,9 +1128,6 @@ export class PivotModel extends Model {
                 throw new Error(
                     "No aggregate function has been provided for the measure '" + measure + "'"
                 );
-            }
-            if (field.currency_field) {
-                acc.push(field.currency_field + ":array_agg_distinct");
             }
             acc.push(measure + ":" + field.aggregator);
             return acc;
@@ -1226,6 +1205,20 @@ export class PivotModel extends Model {
         });
 
         return originRow;
+    }
+    /**
+     * @protected
+     * @param {string[]} groupBy
+     * @param {Object} params
+     * @returns {Promise<Object[]>}
+     */
+    async _getSubGroups(groupBy, params) {
+        const { resModel, groupDomain, measureSpecs, kwargs, mapping } = params;
+        const key = JSON.stringify(groupBy);
+        if (!mapping[key]) {
+            mapping[key] = this.orm.readGroup(resModel, groupDomain, measureSpecs, groupBy, kwargs);
+        }
+        return mapping[key];
     }
     /**
      * Returns the list of header rows of the pivot table: the col group rows
@@ -1341,16 +1334,12 @@ export class PivotModel extends Model {
             const value = this._getCellValue(groupIntersectionId, measure, originIndexes, {
                 data: this.data,
             });
-            const currencyId = this._getCellCurrency(groupIntersectionId, measure, {
-                data: this.data,
-            });
 
             const measurement = {
                 groupId: groupIntersectionId,
                 originIndexes: originIndexes,
                 measure: measure,
                 value: value,
-                currencyId: currencyId,
                 isBold: !groupIntersectionId[0].length || !groupIntersectionId[1].length,
             };
             return measurement;
@@ -1396,7 +1385,9 @@ export class PivotModel extends Model {
      * @returns {boolean} true iff there's no data in the table
      */
     _hasData(data) {
-        return (data.counts[JSON.stringify([[], []])] || []).some((count) => count > 0);
+        return (data.counts[JSON.stringify([[], []])] || []).some((count) => {
+            return count > 0;
+        });
     }
     /**
      * Initialize/Reinitialize data.rowGroupTree, colGroupTree, measurements,
@@ -1415,7 +1406,6 @@ export class PivotModel extends Model {
         data.rowGroupTree = { root: { labels: [], values: [] }, directSubTrees: new Map() };
         data.colGroupTree = { root: { labels: [], values: [] }, directSubTrees: new Map() };
         data.measurements = {};
-        data.currencyIds = {};
         data.counts = {};
         data.groupDomains = {};
         data.numbering = {};
@@ -1427,7 +1417,8 @@ export class PivotModel extends Model {
         const rightDivisors = sections(metaData.fullColGroupBys);
         const divisors = cartesian(leftDivisors, rightDivisors);
 
-        await this._subdivideGroup(group, divisors, config);
+        await this._subdivideGroup(group, divisors.slice(0, 1), config);
+        await this._subdivideGroup(group, divisors.slice(1), config);
 
         // keep folded groups folded after the reload if the structure of the table is the same
         if (prune && this._hasData(data) && this._hasData(this.data)) {
@@ -1519,15 +1510,11 @@ export class PivotModel extends Model {
                 const originIndex = groupSubdivision.group.originIndex;
 
                 if (!(key in data.measurements)) {
-                    data.measurements[key] = metaData.origins.map(() =>
-                        this._getMeasurements({}, config)
-                    );
-                    data.currencyIds[key] = metaData.origins.map(() =>
-                        this._getCurrencyIds({}, config)
-                    );
+                    data.measurements[key] = metaData.origins.map(() => {
+                        return this._getMeasurements({}, config);
+                    });
                 }
                 data.measurements[key][originIndex] = this._getMeasurements(subGroup, config);
-                data.currencyIds[key][originIndex] = this._getCurrencyIds(subGroup, config);
 
                 if (!(key in data.counts)) {
                     data.counts[key] = metaData.origins.map(function () {
@@ -1579,6 +1566,10 @@ export class PivotModel extends Model {
         });
     }
 
+    _getEmptyGroupLabel(fieldName) {
+        return _t("None");
+    }
+
     /**
      * Extract from a groupBy value a label.
      *
@@ -1591,15 +1582,15 @@ export class PivotModel extends Model {
     _sanitizeLabel(value, groupBy, config) {
         const { metaData } = config;
         const fieldName = groupBy.split(":")[0];
-        if (fieldName && metaData.fields[fieldName]) {
-            if (metaData.fields[fieldName].type === "boolean") {
-                return value === undefined ? _t("None") : value ? _t("Yes") : _t("No");
-            } else if (metaData.fields[fieldName].type === "integer") {
-                return value || "0";
-            }
+        if (
+            fieldName &&
+            metaData.fields[fieldName] &&
+            metaData.fields[fieldName].type === "boolean"
+        ) {
+            return value === undefined ? _t("None") : value ? _t("Yes") : _t("No");
         }
         if (value === false) {
-            return metaData.fields[fieldName].falsy_value_label || _t("None");
+            return this._getEmptyGroupLabel(fieldName);
         }
         if (value instanceof Array) {
             return this._getNumberedLabel(value, fieldName, config);
@@ -1654,42 +1645,24 @@ export class PivotModel extends Model {
                 };
                 const groupDomain = this._getGroupDomain(subGroup, config);
                 const measureSpecs = this._getMeasureSpecs(config);
-                if (!measureSpecs.includes("__count")) {
-                    measureSpecs.push("__count");
-                }
                 const resModel = config.metaData.resModel;
-                const kwargs = { context: this.searchParams.context };
+                const kwargs = { lazy: false, context: this.searchParams.context };
                 const mapping = {};
-                const groupingSets = [];
-                const groupInfo = [];
                 divisors.forEach((divisor) => {
-                    const groupBy = this._getGroupBySpecs(divisor[0], divisor[1]);
-                    const key = JSON.stringify(groupBy);
-                    if (!mapping[key]) {
-                        groupingSets.push(groupBy);
-                        groupInfo.push({
-                            group: subGroup,
-                            rowGroupBy: divisor[0],
-                            colGroupBy: divisor[1],
-                            originIndex,
-                        });
-                    }
+                    acc.push(
+                        this._getGroupSubdivision(subGroup, divisor[0], divisor[1], {
+                            resModel,
+                            groupDomain,
+                            measureSpecs,
+                            kwargs,
+                            mapping,
+                        })
+                    );
                 });
-
-                const params = {
-                    resModel,
-                    groupDomain,
-                    measureSpecs,
-                    kwargs,
-                    mapping,
-                    groupingSets,
-                };
-                acc.push(this._getGroupsSubdivision(params, groupInfo));
             }
             return acc;
         }, []);
-        const groupSubdivisionsArray = await this.keepLast.add(Promise.all(proms));
-        const groupSubdivisions = groupSubdivisionsArray.flat();
+        const groupSubdivisions = await this.keepLast.add(Promise.all(proms));
         if (groupSubdivisions.length) {
             this._prepareData(group, groupSubdivisions, config);
         }
@@ -1710,17 +1683,19 @@ export class PivotModel extends Model {
         sortedColumn.originIndexes = sortedColumn.originIndexes || [0];
         metaData.sortedColumn = sortedColumn;
 
-        const sortFunction = (tree) => (subTreeKey) => {
-            const subTree = tree.directSubTrees.get(subTreeKey);
-            const groupIntersectionId = [subTree.root.values, colGroupValues];
-            const value =
-                this._getCellValue(
-                    groupIntersectionId,
-                    sortedColumn.measure,
-                    sortedColumn.originIndexes,
-                    { data }
-                ) || 0;
-            return sortedColumn.order === "asc" ? value : -value;
+        const sortFunction = (tree) => {
+            return (subTreeKey) => {
+                const subTree = tree.directSubTrees.get(subTreeKey);
+                const groupIntersectionId = [subTree.root.values, colGroupValues];
+                const value =
+                    this._getCellValue(
+                        groupIntersectionId,
+                        sortedColumn.measure,
+                        sortedColumn.originIndexes,
+                        { data }
+                    ) || 0;
+                return sortedColumn.order === "asc" ? value : -value;
+            };
         };
 
         this._sortTree(sortFunction, data.rowGroupTree);

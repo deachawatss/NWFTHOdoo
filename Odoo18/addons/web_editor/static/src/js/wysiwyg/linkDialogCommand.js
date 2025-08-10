@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { registry } from '@web/core/registry'
 import { HotkeyCommandItem } from '@web/core/commands/default_providers'
 import { Wysiwyg } from '@web_editor/js/wysiwyg/wysiwyg';

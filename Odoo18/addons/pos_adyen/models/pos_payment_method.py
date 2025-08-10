@@ -14,7 +14,6 @@ _logger = logging.getLogger(__name__)
 
 UNPREDICTABLE_ADYEN_DATA = object() # sentinel
 
-
 class PosPaymentMethod(models.Model):
     _inherit = 'pos.payment.method'
 
@@ -36,8 +35,8 @@ class PosPaymentMethod(models.Model):
     )
 
     @api.model
-    def _load_pos_data_fields(self, config):
-        params = super()._load_pos_data_fields(config)
+    def _load_pos_data_fields(self, config_id):
+        params = super()._load_pos_data_fields(config_id)
         params += ['adyen_terminal_identifier']
         return params
 

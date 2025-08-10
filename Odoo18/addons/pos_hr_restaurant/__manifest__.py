@@ -5,7 +5,7 @@
 {
     'name': 'POS HR Restaurant',
     'version': '1.0',
-    'category': 'Sales/Point of Sale',
+    'category': 'Hidden',
     'summary': 'Link module between pos_hr and pos_restaurant',
     'description': """
 This module adapts the behavior of the PoS when the pos_hr and pos_restaurant are installed.
@@ -17,6 +17,5 @@ This module adapts the behavior of the PoS when the pos_hr and pos_restaurant ar
             'pos_hr_restaurant/static/src/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

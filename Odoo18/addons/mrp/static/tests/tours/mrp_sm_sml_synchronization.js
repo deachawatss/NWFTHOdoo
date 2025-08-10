@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { registry } from "@web/core/registry";
 
 registry.category("web_tour.tours").add('test_manufacturing_and_byproduct_sm_to_sml_synchronization', {
@@ -7,11 +9,11 @@ registry.category("web_tour.tours").add('test_manufacturing_and_byproduct_sm_to_
             run: "click",
         },
         {
-            trigger: ".o_data_row:has([name=quantity]:contains(5.00)) > td:contains(product2)",
+            trigger: ".o_data_row > td:contains('product2')",
             run: "click",
         },
         {
-            trigger: "button:contains('Details')",
+            trigger: ".fa-list",
             run: "click",
         },
         {
@@ -27,7 +29,7 @@ registry.category("web_tour.tours").add('test_manufacturing_and_byproduct_sm_to_
             run: "click",
         },
         {
-            trigger: ".o_data_row:has([name=quantity]:contains(5.00)) > td:contains(product2)",
+            trigger: ".o_data_row > td:contains('product2')",
             run: "click",
         },
         {
@@ -35,7 +37,7 @@ registry.category("web_tour.tours").add('test_manufacturing_and_byproduct_sm_to_
             run: 'edit 21',
         },
         {
-            trigger: "button:contains('Details')",
+            trigger: ".fa-list",
             run: "click",
         },
         {
@@ -64,11 +66,11 @@ registry.category("web_tour.tours").add('test_manufacturing_and_byproduct_sm_to_
             run: 'edit 7',
         },
         {
-            trigger: "button:contains('Details')",
+            trigger: ".fa-list",
             run: "click",
         },
         {
-            trigger: ".modal .o_data_row > td:contains('7')",
+            trigger: ".o_data_row > td:contains('7')",
             run: "click",
         },
         {
@@ -81,7 +83,7 @@ registry.category("web_tour.tours").add('test_manufacturing_and_byproduct_sm_to_
             run: "click",
         },
         {
-            trigger: ".o_data_row:has([name=quantity]:contains(2.00)) > td:contains(product2)",
+            trigger: ".o_data_row > td:contains('product2')",
             run: "click",
         },
         {
@@ -106,8 +108,8 @@ registry.category("web_tour.tours").add('test_manufacturing_and_byproduct_sm_to_
             run: "click",
         },
         {
-            trigger: ".o_data_row:has([name=quantity]:contains(2.00)) > td[name=product_id]:contains(product2)",
-            run: "dblclick",
+            trigger: ".o_data_row > td:contains('product2')",
+            run: "click",
         },
         {
             trigger: ".o_field_widget[name=quantity] input",
@@ -135,7 +137,7 @@ registry.category("web_tour.tours").add('test_manufacturing_and_byproduct_sm_to_
             run: "click",
         },
         {
-            trigger: ".o_data_row:has([name=product_uom_qty]:contains(2.00)) > td:contains(10)",
+            trigger: ".o_data_row > td:contains('10')",
             run: "click",
         },
         {

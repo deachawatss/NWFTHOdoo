@@ -28,15 +28,11 @@ class TestScheduledMessage(MailCommon, TestRecipients):
                 'customer_id': cls.partner_1.id,
                 'user_id': cls.user_employee.id,
             }])
-            cls.private_record = cls.env['mail.test.access'].create({
-                'access': 'admin',
-                'name': 'Private Record',
-            })
             cls.hidden_scheduled_message, cls.visible_scheduled_message = cls.env['mail.scheduled.message'].create([
                 {
                     'author_id': cls.partner_admin.id,
-                    'model': cls.private_record._name,
-                    'res_id': cls.private_record.id,
+                    'model': cls.partner_employee._name,
+                    'res_id': cls.partner_employee.id,
                     'body': 'Hidden Scheduled Message',
                     'scheduled_date': '2022-12-24 15:00:00',
                 },
@@ -67,7 +63,7 @@ class TestScheduledMessageAccess(TestScheduledMessage):
     def test_scheduled_message_model_without_post_right(self):
         # creation on a record that the user cannot post to
         with self.assertRaises(AccessError):
-            self.schedule_message(self.private_record)
+            self.schedule_message(self.partner_employee)
         # read a message scheduled on a record the user can't post to
         with self.assertRaises(AccessError):
             self.hidden_scheduled_message.read()
@@ -148,7 +144,6 @@ class TestScheduledMessageBusiness(TestScheduledMessage, CronMixinCase):
                 scheduled_date='2022-12-24 14:00:00',
                 partner_ids=self.test_record.customer_id,
                 body="success",
-                send_context={"mail_post_autofollow": True},
                 subject="Test subject",
             ).id
             # cron should be triggered at scheduled date
@@ -210,7 +205,28 @@ class TestScheduledMessageBusiness(TestScheduledMessage, CronMixinCase):
                 }]
             )
             self.assertEqual(self._new_mails[0].state, 'sent')
-            # customer should be a follower of the thread (mail_post_autofollow context key)
-            self.assertIn(self.test_record.customer_id, self.test_record.message_partner_ids)
             # scheduled messages shouldn't exist anymore
             self.assertFalse(self.env['mail.scheduled.message'].search([['id', 'in', [scheduled_message_id, failing_schedueld_message_id]]]))
+
+    @users('employee')
+    def test_scheduled_message_posting_on_scheduled_time(self):
+        """ Ensure scheduled message is posted and sent at the scheduled time. """
+        self.test_record.message_subscribe(partner_ids=[self.partner_1.id])
+
+        self.schedule_message(
+            self.test_record,
+            scheduled_date=FieldDatetime.to_string(self.reference_now),
+        )
+
+        with self.mock_mail_gateway(), self.mock_datetime_and_now(self.reference_now):
+            # Needed to get force_send disabled due to mail_notify_force_send in the context
+            self.env.ref('mail.ir_cron_post_scheduled_message').with_user(self.user_admin).method_direct_trigger()
+
+        # Message is posted and mail is sent on time
+        self.assertEqual(len(self._new_mails), 1)
+        self.assertMailMailWRecord(
+            self.test_record,
+            [self.partner_1],
+            'sent',
+            author=self.env.user.partner_id,
+        )

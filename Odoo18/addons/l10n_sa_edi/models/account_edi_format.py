@@ -7,6 +7,7 @@ from lxml import etree
 from datetime import datetime
 from odoo import models, fields, _, api
 from odoo.exceptions import UserError
+from odoo.tools import format_list
 
 _logger = logging.getLogger(__name__)
 
@@ -268,13 +269,13 @@ class AccountEdiFormat(models.Model):
         fields_to_check = [
             ('l10n_sa_edi_building_number', _('Building Number for the Buyer is required on Standard Invoices')),
             ('street2', _('Neighborhood for the Seller is required on Standard Invoices')),
-            ('l10n_sa_edi_additional_identification_scheme',
+            ('l10n_sa_additional_identification_scheme',
              _('Additional Identification Scheme is required for the Seller, and must be one of CRN, MOM, MLS, SAG or OTH'),
              lambda p, v: v in ('CRN', 'MOM', 'MLS', 'SAG', 'OTH')
              ),
             ('vat',
              _('VAT is required when Identification Scheme is set to Tax Identification Number'),
-             lambda p, v: p.l10n_sa_edi_additional_identification_scheme != 'TIN'
+             lambda p, v: p.l10n_sa_additional_identification_scheme != 'TIN'
              ),
             ('state_id', _('State / Country subdivision'))
         ]
@@ -289,15 +290,15 @@ class AccountEdiFormat(models.Model):
                invoice.invoice_line_ids.filtered(
                    lambda line: line.display_type == 'product').tax_ids):
             fields_to_check += [
-                ('l10n_sa_edi_additional_identification_scheme',
+                ('l10n_sa_additional_identification_scheme',
                  _('Additional Identification Scheme is required for the Buyer if tax exemption reason is either '
                    'VATEX-SA-HEA or VATEX-SA-EDU, and its value must be NAT'), lambda p, v: v == 'NAT'),
-                ('l10n_sa_edi_additional_identification_number',
+                ('l10n_sa_additional_identification_number',
                  _('Additional Identification Number is required for commercial partners'),
-                 lambda p, v: p.l10n_sa_edi_additional_identification_scheme != 'TIN'
+                 lambda p, v: p.l10n_sa_additional_identification_scheme != 'TIN'
                  ),
             ]
-        elif invoice.commercial_partner_id.l10n_sa_edi_additional_identification_scheme == 'TIN':
+        elif invoice.commercial_partner_id.l10n_sa_additional_identification_scheme == 'TIN':
             fields_to_check += [
                 ('vat', _('VAT is required when Identification Scheme is set to Tax Identification Number'))
             ]
@@ -320,9 +321,8 @@ class AccountEdiFormat(models.Model):
         # to the taxpayer for clarifications
         chain_head = invoice.journal_id._l10n_sa_get_last_posted_invoice()
         if chain_head and chain_head != invoice and not chain_head._l10n_sa_is_in_chain():
-            invoice.l10n_sa_edi_chain_head_id = chain_head
             return {invoice: {
-                'error': _("Error: This invoice is blocked due to %s. Please check it.", chain_head.name),
+                'error': f"ZATCA: Cannot post invoice while chain head ({chain_head.name}) has not been posted",
                 'blocking_level': 'error',
                 'response': None,
             }}
@@ -366,7 +366,6 @@ class AccountEdiFormat(models.Model):
 
         # Save the submitted/returned invoice XML content once the submission has been completed successfully
         invoice._l10n_sa_log_results(cleared_xml.encode(), response_data)
-        invoice.journal_id._l10n_sa_reset_chain_head_error()
         return {
             invoice: {
                 'success': True,
@@ -433,23 +432,21 @@ class AccountEdiFormat(models.Model):
             errors.append(
                 _(
                     "- Please, set the following fields on the Supplier: %(missing_fields)s",
-                    missing_fields=supplier_missing_info,
+                    missing_fields=format_list(self.env, supplier_missing_info),
                 )
             )
         if customer_missing_info:
             errors.append(
                 _(
                     "- Please, set the following fields on the Customer: %(missing_fields)s",
-                    missing_fields=customer_missing_info,
+                    missing_fields=format_list(self.env, customer_missing_info),
                 )
             )
         if invoice.invoice_date > fields.Date.context_today(self.with_context(tz='Asia/Riyadh')):
             errors.append(_("- Please, make sure the invoice date is set to either the same as or before Today."))
-
-        if invoice.l10n_sa_show_reason and not invoice.l10n_sa_reason:
-            errors.append(_("- Please make sure the 'ZATCA Reason' for the issuance of the Credit/Debit Note is specified."))
-        if invoice.l10n_sa_show_reason and not invoice._l10n_sa_check_billing_reference():
-            errors.append(_("- Please make sure the 'Customer Reference' contains the sequential number of the original invoice(s) that the Credit/Debit Note is related to."))
+        if invoice.move_type in ('in_refund', 'out_refund') and not invoice._l10n_sa_check_refund_reason():
+            errors.append(
+                _("- Please, make sure either the Reversed Entry or the Reversal Reason are specified when confirming a Credit/Debit note"))
         return errors
 
     def _needs_web_services(self):

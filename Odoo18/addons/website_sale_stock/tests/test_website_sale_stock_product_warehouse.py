@@ -3,16 +3,14 @@
 
 from odoo.tests import tagged
 
-from odoo.addons.product.tests.test_product_attribute_value_config import (
-    TestProductAttributeValueCommon,
-)
-from odoo.addons.website_sale.tests.common import MockRequest
+from odoo.addons.sale.tests.test_sale_product_attribute_value_config import TestSaleProductAttributeValueCommon
+from odoo.addons.website.tools import MockRequest
 from odoo.addons.website_sale_stock.tests.common import WebsiteSaleStockCommon
 
 
 @tagged('post_install', '-at_install')
 class TestWebsiteSaleStockProductWarehouse(
-    TestProductAttributeValueCommon, WebsiteSaleStockCommon
+    TestSaleProductAttributeValueCommon, WebsiteSaleStockCommon
 ):
 
     @classmethod
@@ -46,22 +44,16 @@ class TestWebsiteSaleStockProductWarehouse(
 
     def test_get_combination_info_free_qty_when_warehouse_is_set(self):
         self.website.warehouse_id = self.warehouse_2
-        test_env = self.test_env
-        with MockRequest(test_env, website=self.website.with_env(test_env)):
-            combination_info = self.product_A.with_env(test_env)._get_combination_info_variant()
-            self.assertEqual(combination_info['free_qty'], 15)
-        with MockRequest(test_env, website=self.website.with_env(test_env)):
-            combination_info = self.product_B.with_env(test_env)._get_combination_info_variant()
-            self.assertEqual(combination_info['free_qty'], 10)
+        combination_info = self.product_A.with_env(self.test_env)._get_combination_info_variant()
+        self.assertEqual(combination_info['free_qty'], 15)
+        combination_info = self.product_B.with_env(self.test_env)._get_combination_info_variant()
+        self.assertEqual(combination_info['free_qty'], 10)
 
     def test_get_combination_info_free_qty_when_no_warehouse_is_set(self):
         self.website.warehouse_id = False
-        test_env = self.test_env
-        with MockRequest(test_env, website=self.website.with_env(test_env)):
-            combination_info = self.product_A.with_env(test_env)._get_combination_info_variant()
+        combination_info = self.product_A.with_env(self.test_env)._get_combination_info_variant()
         self.assertEqual(combination_info['free_qty'], 25)
-        with MockRequest(test_env, website=self.website.with_env(test_env)):
-            combination_info = self.product_B.with_env(test_env)._get_combination_info_variant()
+        combination_info = self.product_B.with_env(self.test_env)._get_combination_info_variant()
         self.assertEqual(combination_info['free_qty'], 10)
 
     def test_02_update_cart_with_multi_warehouses(self):
@@ -70,25 +62,26 @@ class TestWebsiteSaleStockProductWarehouse(
         be returned and the quantity updated to its maximum. """
 
         so = self.env['sale.order'].create({
-            'website_id': self.website.id,
             'partner_id': self.env.user.partner_id.id,
             'order_line': [(0, 0, {
                 'name': self.product_A.name,
                 'product_id': self.product_A.id,
                 'product_uom_qty': 5,
+                'product_uom': self.product_A.uom_id.id,
                 'price_unit': self.product_A.list_price,
             })]
         })
 
-        with MockRequest(self.env, website=self.website, sale_order_id=so.id) as req:
-            website_so = req.cart
-            self.assertEqual(website_so, so)
+        with MockRequest(self.env, website=self.website, sale_order_id=so.id):
+            website_so = self.website.sale_get_order()
             self.assertEqual(
                 website_so.order_line.product_id.virtual_available,
                 25,
                 "This quantity should be based on all warehouses.",
             )
 
-            values = so._cart_update_line_quantity(line_id=so.order_line.id, quantity=30)
+            values = so._cart_update(
+                product_id=self.product_A.id, line_id=so.order_line.id, set_qty=30
+            )
             self.assertTrue(values.get('warning', False))
             self.assertEqual(values.get('quantity'), 25)

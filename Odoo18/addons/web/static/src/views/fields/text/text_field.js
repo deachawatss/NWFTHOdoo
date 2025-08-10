@@ -103,16 +103,10 @@ export const textField = {
             type: "boolean",
             default: true,
         },
-        {
-            label: _t("Dynamic Placeholder"),
-            name: "placeholder_field",
-            type: "field",
-            availableTypes: ["char"],
-        },
     ],
-    supportedTypes: ["html", "text", "char"],
-    extractProps: ({ attrs, options, placeholder }) => ({
-        placeholder,
+    supportedTypes: ["html", "text"],
+    extractProps: ({ attrs, options }) => ({
+        placeholder: attrs.placeholder,
         dynamicPlaceholder: options?.dynamic_placeholder || false,
         dynamicPlaceholderModelReferenceField:
             options?.dynamic_placeholder_model_reference_field || "",

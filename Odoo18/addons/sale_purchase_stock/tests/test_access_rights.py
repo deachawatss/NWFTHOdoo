@@ -20,7 +20,7 @@ class TestAccessRights(TestCommonSalePurchaseNoChart):
             'name': 'Le Grand Jojo User',
             'login': 'grand.jojo',
             'email': 'grand.jojo@chansonbelge.com',
-            'group_ids': [(6, 0, [group_sale_user.id])]
+            'groups_id': [(6, 0, [group_sale_user.id])]
         })
 
     def test_access_saleperson_decreases_qty(self):
@@ -36,14 +36,15 @@ class TestAccessRights(TestCommonSalePurchaseNoChart):
         mto_route.active = True
 
         vendor = self.env['res.partner'].create({'name': 'vendor'})
+        seller = self.env['product.supplierinfo'].create({
+            'partner_id': vendor.id,
+            'price': 8,
+        })
 
         product = self.env['product.product'].create({
             'name': 'SuperProduct',
             'is_storable': True,
-            'seller_ids': [Command.create({
-                'partner_id': vendor.id,
-                'price': 8,
-            })],
+            'seller_ids': [(6, 0, seller.ids)],
             'route_ids': [(6, 0, (mto_route + buy_route).ids)]
         })
 
@@ -55,8 +56,9 @@ class TestAccessRights(TestCommonSalePurchaseNoChart):
             'name': product.name,
             'product_id': product.id,
             'product_uom_qty': 1,
+            'product_uom': product.uom_id.id,
             'price_unit': product.list_price,
-            'tax_ids': False,
+            'tax_id': False,
             'order_id': so.id,
         }, {
             'name': 'Super Section',
@@ -82,13 +84,14 @@ class TestAccessRights(TestCommonSalePurchaseNoChart):
         then creates a sale order, so the PO will be generated. After creating a second SO,
         the PO should be updated since it has not been confirmed yet.
         """
+        seller = self.env['product.supplierinfo'].create({
+            'partner_id': self.partner_a.id,
+            'price': 8,
+        })
         product = self.env['product.product'].create({
             'name': 'SuperProduct',
             'is_storable': True,
-            'seller_ids': [Command.create({
-                'partner_id': self.partner_a.id,
-                'price': 8,
-            })],
+            'seller_ids': [(6, 0, seller.ids)],
         })
         self.env['stock.warehouse.orderpoint'].create({
             'name': 'orderpoint test',
@@ -105,6 +108,7 @@ class TestAccessRights(TestCommonSalePurchaseNoChart):
                 (0, 0, {
                     'product_id': product.id,
                     'product_uom_qty': 10,
+                    'product_uom': product.uom_id.id,
                     'price_unit': product.list_price,
                 })]
         })
@@ -132,7 +136,7 @@ class TestAccessRights(TestCommonSalePurchaseNoChart):
                 'name': 'test',
                 'product_id': self.product.id,
                 'product_qty': 1,
-                'product_uom_id': self.product.uom_id.id,
+                'product_uom': self.product.uom_id.id,
             })]
         })
         # This PO belongs to a different company, it should not be shown
@@ -143,7 +147,7 @@ class TestAccessRights(TestCommonSalePurchaseNoChart):
                 'name': 'test',
                 'product_id': self.product.id,
                 'product_qty': 2,
-                'product_uom_id': self.product.uom_id.id,
+                'product_uom': self.product.uom_id.id,
             })]
         })
         # (POs are not confirmed, to keep the lines in the 'draft' state)

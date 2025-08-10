@@ -1,3 +1,4 @@
+/** @odoo-module **/
 /* global process */
 
 /******************************************************************************
@@ -389,7 +390,7 @@ async function resourceToDataURL(resourceUrl, contentType, options) {
             msg = typeof error === "string" ? error : error.message;
         }
         if (msg) {
-            console.info(msg);
+            console.warn(msg);
         }
     }
     cache[cacheKey] = dataURL;

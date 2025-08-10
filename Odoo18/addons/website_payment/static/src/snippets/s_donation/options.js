@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { renderToElement } from "@web/core/utils/render";
 import options from '@web_editor/js/editor/snippets.options';
 import { _t } from "@web/core/l10n/translation";
@@ -201,7 +203,7 @@ options.registry.Donation = options.Class.extend({
         list.dataset.dependencies = "pre_filled_opt";
         list.dataset.addItemTitle = _t("Add new pre-filled option");
         list.dataset.renderListItems = '';
-        list.dataset.unsortable = '';
+        list.dataset.unsortable = 'true';
         list.dataset.inputType = 'number';
         list.dataset.defaultValue = 50;
         list.dataset.listChanged = '';
@@ -233,7 +235,7 @@ options.registry.Donation = options.Class.extend({
             const $descriptions = this.$target.find('#s_donation_description_inputs > input');
             const $tableEl = this.$el.find('we-list table');
             $tableEl.find("tr").toArray().forEach((trEl, i) => {
-                const $inputAmount = $(trEl).find('td').eq(1);
+                const $inputAmount = $(trEl).find('td').first();
                 $inputAmount.addClass('w-25');
                 const tdEl = document.createElement('td');
                 const inputEl = document.createElement('input');

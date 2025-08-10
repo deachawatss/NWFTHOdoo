@@ -1,22 +1,14 @@
 import { Component, onWillRender, useState } from "@odoo/owl";
-import { useDateTimePicker } from "@web/core/datetime/datetime_picker_hook";
+import { useDateTimePicker } from "@web/core/datetime/datetime_hook";
 import { areDatesEqual, deserializeDate, deserializeDateTime, today } from "@web/core/l10n/dates";
-import { localization } from "@web/core/l10n/localization";
-import { _t } from "@web/core/l10n/translation";
 import { evaluateBooleanExpr } from "@web/core/py_js/py";
+import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 import { ensureArray } from "@web/core/utils/arrays";
 import { exprToBoolean } from "@web/core/utils/strings";
-import { FIELD_WIDTHS } from "@web/views/list/column_width_hook";
 import { formatDate, formatDateTime } from "../formatters";
 import { standardFieldProps } from "../standard_field_props";
-
-function getFormattedPlaceholder(value, type, options) {
-    if (value instanceof luxon.DateTime) {
-        return type === "date" ? formatDate(value, options) : formatDateTime(value, options);
-    }
-    return value || "";
-}
+import { FIELD_WIDTHS } from "@web/views/list/column_width_hook";
 
 /**
  * @typedef {luxon.DateTime} DateTime
@@ -67,7 +59,7 @@ export class DateTimeField extends Component {
         condensed: { type: Boolean, optional: true },
     };
     static defaultProps = {
-        showSeconds: false,
+        showSeconds: true,
         showTime: true,
     };
 
@@ -118,7 +110,7 @@ export class DateTimeField extends Component {
             }
             if (!isNaN(this.props.rounding)) {
                 pickerProps.rounding = this.props.rounding;
-            } else if (this.props.showSeconds) {
+            } else if (!this.props.showSeconds) {
                 pickerProps.rounding = 0;
             }
             if (this.props.maxPrecision) {
@@ -166,8 +158,6 @@ export class DateTimeField extends Component {
         this.openPicker = dateTimePicker.open;
 
         onWillRender(() => this.triggerIsDirty());
-
-        this.futureWarningMsg = _t("This date is in the future");
     }
 
     //-------------------------------------------------------------------------
@@ -194,21 +184,13 @@ export class DateTimeField extends Component {
      * @param {number} valueIndex
      */
     getFormattedValue(valueIndex) {
-        const values = this.values;
-        const value = values[valueIndex];
-        if (!value) {
-            return "";
-        }
+        const value = this.values[valueIndex];
         const { condensed, showSeconds, showTime } = this.props;
-        if (this.field.type === "date") {
-            return formatDate(value, { condensed });
-        }
-        if (showTime && valueIndex === 1 && values[0] && values[0].hasSame(value, "day")) {
-            return formatDateTime(value, {
-                format: showSeconds ? localization.timeFormat : localization.shortTimeFormat,
-            });
-        }
-        return formatDateTime(value, { condensed, showSeconds, showTime });
+        return value
+            ? this.field.type === "date"
+                ? formatDate(value, { condensed })
+                : formatDateTime(value, { condensed, showSeconds, showTime })
+            : "";
     }
 
     /**
@@ -360,20 +342,14 @@ export const dateField = {
             type: "boolean",
             help: _t(`Set to true to display days, months (and hours) with unpadded numbers`),
         },
-        {
-            label: _t("Dynamic Placeholder"),
-            name: "placeholder_field",
-            type: "field",
-            availableTypes: ["date", "char"],
-        },
     ],
     supportedTypes: ["date"],
-    extractProps: ({ options, placeholder, type }, dynamicInfo) => ({
+    extractProps: ({ attrs, options }, dynamicInfo) => ({
         endDateField: options[END_DATE_FIELD_OPTION],
         maxDate: options.max_date,
         minDate: options.min_date,
         alwaysRange: exprToBoolean(options.always_range),
-        placeholder: getFormattedPlaceholder(placeholder, type, { condensed: options.condensed }),
+        placeholder: attrs.placeholder,
         required: dynamicInfo.required,
         rounding: options.rounding && parseInt(options.rounding, 10),
         startDateField: options[START_DATE_FIELD_OPTION],
@@ -412,7 +388,7 @@ export const dateTimeField = {
     ...dateField,
     displayName: _t("Date & Time"),
     supportedOptions: [
-        ...dateField.supportedOptions.filter((o) => o.name !== "placeholder_field"),
+        ...dateField.supportedOptions,
         {
             label: _t("Time interval"),
             name: "rounding",
@@ -426,7 +402,7 @@ export const dateTimeField = {
             label: _t("Show seconds"),
             name: "show_seconds",
             type: "boolean",
-            default: false,
+            default: true,
             help: _t(`Displays or hides the seconds in the datetime value.`),
         },
         {
@@ -436,29 +412,14 @@ export const dateTimeField = {
             default: true,
             help: _t(`Displays or hides the time in the datetime value.`),
         },
-        {
-            label: _t("Dynamic Placeholder"),
-            name: "placeholder_field",
-            type: "field",
-            availableTypes: ["datetime", "char"],
-        },
     ],
-    extractProps: ({ attrs, options, placeholder, type }, dynamicInfo) => {
-        const showSeconds = exprToBoolean(options.show_seconds ?? false);
-        const showTime = exprToBoolean(options.show_time ?? true);
-        return {
-            ...dateField.extractProps({ attrs, options, placeholder, type }, dynamicInfo),
-            placeholder: getFormattedPlaceholder(placeholder, type, {
-                condensed: options.condensed,
-                showSeconds,
-                showTime,
-            }),
-            showSeconds,
-            showTime,
-        };
-    },
+    extractProps: ({ attrs, options }, dynamicInfo) => ({
+        ...dateField.extractProps({ attrs, options }, dynamicInfo),
+        showSeconds: exprToBoolean(options.show_seconds ?? true),
+        showTime: exprToBoolean(options.show_time ?? true),
+    }),
     supportedTypes: ["datetime"],
-    listViewWidth: ({ options }) =>
+    listViewWidth: ({ options = {} }) =>
         exprToBoolean(options.show_time ?? true) ? FIELD_WIDTHS.datetime : FIELD_WIDTHS.date,
 };
 
@@ -466,7 +427,7 @@ export const dateRangeField = {
     ...dateTimeField,
     displayName: _t("Date Range"),
     supportedOptions: [
-        ...dateTimeField.supportedOptions.filter((o) => o.name !== "placeholder_field"),
+        ...dateTimeField.supportedOptions,
         {
             label: _t("Start date field"),
             name: START_DATE_FIELD_OPTION,
@@ -488,15 +449,9 @@ export const dateRangeField = {
                 `Set to true the full range input has to be display by default, even if empty.`
             ),
         },
-        {
-            label: _t("Dynamic Placeholder"),
-            name: "placeholder_field",
-            type: "field",
-            availableTypes: ["date", "datetime", "char"],
-        },
     ],
     supportedTypes: ["date", "datetime"],
-    listViewWidth: ({ type, options }) => {
+    listViewWidth: ({ type, options = {} }) => {
         let width;
         if (type === "datetime" && exprToBoolean(options.show_time ?? true)) {
             width = FIELD_WIDTHS.datetime;

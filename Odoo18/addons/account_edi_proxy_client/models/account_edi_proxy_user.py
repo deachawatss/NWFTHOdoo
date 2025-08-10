@@ -2,10 +2,12 @@ import base64
 import logging
 import uuid
 
+import psycopg2.errors
 import requests
 
 from odoo import _, fields, models
-from odoo.exceptions import LockError, UserError
+from odoo.exceptions import UserError
+from odoo.tools import index_exists
 from .account_edi_proxy_auth import OdooEdiProxyAuth
 
 _logger = logging.getLogger(__name__)
@@ -21,7 +23,7 @@ class AccountEdiProxyError(Exception):
         super().__init__(message or code)
 
 
-class Account_Edi_Proxy_ClientUser(models.Model):
+class AccountEdiProxyClientUser(models.Model):
     """Represents a user of the proxy for an electronic invoicing format.
     An edi_proxy_user has a unique identification on a specific format (for example, the vat for Peppol) which
     allows to identify him when receiving a document addressed to him. It is linked to a specific company on a specific
@@ -33,7 +35,7 @@ class Account_Edi_Proxy_ClientUser(models.Model):
 
     active = fields.Boolean(default=True)
     id_client = fields.Char(required=True)
-    company_id = fields.Many2one('res.company', string='Company', required=True, index=True,
+    company_id = fields.Many2one('res.company', string='Company', required=True,
         default=lambda self: self.env.company)
     edi_identification = fields.Char(required=True, help="The unique id that identifies this user, typically the vat")
     private_key_id = fields.Many2one(
@@ -54,15 +56,26 @@ class Account_Edi_Proxy_ClientUser(models.Model):
         string='EDI operating mode',
     )
 
-    _unique_id_client = models.Constraint('unique(id_client)', "This id_client is already used on another user.")
-    _unique_active_edi_identification = models.UniqueIndex(
-        '(edi_identification, proxy_type, edi_mode) WHERE (active IS TRUE)',
-        "This edi identification is already assigned to an active user",
-    )
-    _unique_active_company_proxy = models.UniqueIndex(
-        '(company_id, proxy_type, edi_mode) WHERE (active IS TRUE)',
-        "This company has an active user already created for this EDI type",
-    )
+    _sql_constraints = [
+        ('unique_id_client', 'unique(id_client)', 'This id_client is already used on another user.'),
+        ('unique_active_edi_identification', '', 'This edi identification is already assigned to an active user'),
+        ('unique_active_company_proxy', '', 'This company has an active user already created for this EDI type'),
+    ]
+
+    def _auto_init(self):
+        super()._auto_init()
+        if not index_exists(self.env.cr, 'account_edi_proxy_client_user_unique_active_edi_identification'):
+            self.env.cr.execute("""
+                CREATE UNIQUE INDEX account_edi_proxy_client_user_unique_active_edi_identification
+                                 ON account_edi_proxy_client_user(edi_identification, proxy_type, edi_mode)
+                              WHERE (active = True)
+            """)
+        if not index_exists(self.env.cr, 'account_edi_proxy_client_user_unique_active_company_proxy'):
+            self.env.cr.execute("""
+                CREATE UNIQUE INDEX account_edi_proxy_client_user_unique_active_company_proxy
+                                 ON account_edi_proxy_client_user(company_id, proxy_type, edi_mode)
+                              WHERE (active = True)
+            """)
 
     def _get_proxy_urls(self):
         # To extend
@@ -140,6 +153,17 @@ class Account_Edi_Proxy_ClientUser(models.Model):
 
         return response['result']
 
+    def _get_iap_params(self, company, proxy_type, private_key_sudo):
+        edi_identification = self._get_proxy_identification(company, proxy_type)
+
+        return {
+            'dbuuid': company.env['ir.config_parameter'].get_param('database.uuid'),
+            'company_id': company.id,
+            'edi_identification': edi_identification,
+            'public_key': private_key_sudo._get_public_key_bytes(encoding='pem').decode(),
+            'proxy_type': proxy_type,
+        }
+
     def _register_proxy_user(self, company, proxy_type, edi_mode):
         ''' Generate the public_key/private_key that will be used to encrypt the file, send a request to the proxy
         to register the user with the public key and create the user with the private key.
@@ -157,13 +181,10 @@ class Account_Edi_Proxy_ClientUser(models.Model):
         else:
             try:
                 # b64encode returns a bytestring, we need it as a string
-                response = self._make_request(self._get_server_url(proxy_type, edi_mode) + '/iap/account_edi/2/create_user', params={
-                    'dbuuid': company.env['ir.config_parameter'].get_param('database.uuid'),
-                    'company_id': company.id,
-                    'edi_identification': edi_identification,
-                    'public_key': private_key_sudo._get_public_key_bytes(encoding='pem').decode(),
-                    'proxy_type': proxy_type,
-                })
+                server_url = self._get_server_url(proxy_type, edi_mode)
+                response = self._make_request(
+                    f'{server_url}/iap/account_edi/2/create_user',
+                    params=self._get_iap_params(company, proxy_type, private_key_sudo))
             except AccountEdiProxyError as e:
                 raise UserError(e.message)
             if 'error' in response:
@@ -191,8 +212,9 @@ class Account_Edi_Proxy_ClientUser(models.Model):
         This method makes a request to get a new refresh token.
         '''
         try:
-            self.lock_for_update()
-        except LockError:
+            with self.env.cr.savepoint(flush=False):
+                self.env.cr.execute('SELECT * FROM account_edi_proxy_client_user WHERE id IN %s FOR UPDATE NOWAIT', [tuple(self.ids)])
+        except psycopg2.errors.LockNotAvailable:
             return
         response = self._make_request(self._get_server_url() + '/iap/account_edi/1/renew_token')
         if 'error' in response:

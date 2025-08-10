@@ -1,7 +1,8 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 from odoo import api, fields, models
-from odoo.fields import Domain
+from odoo.addons.base.models.res_partner import WARNING_MESSAGE, WARNING_HELP
+from odoo.osv import expression
 
 
 class ResPartner(models.Model):
@@ -13,6 +14,7 @@ class ResPartner(models.Model):
         compute='_compute_sale_order_count',
     )
     sale_order_ids = fields.One2many('sale.order', 'partner_id', 'Sales Order')
+    sale_warn = fields.Selection(WARNING_MESSAGE, 'Sales Warnings', default='no-message', help=WARNING_HELP)
     sale_warn_msg = fields.Text('Message for Sales Order')
 
     @api.model
@@ -21,7 +23,7 @@ class ResPartner(models.Model):
 
     def _compute_sale_order_count(self):
         self.sale_order_count = 0
-        if not self.env.user.has_group('sales_team.group_sale_salesman'):
+        if not self.env.user._has_group('sales_team.group_sale_salesman'):
             return
 
         # retrieve all children partners and prefetch 'parent_id' on them
@@ -30,7 +32,7 @@ class ResPartner(models.Model):
             ['parent_id'],
         )
         sale_order_groups = self.env['sale.order']._read_group(
-            domain=Domain.AND([self._get_sale_order_domain_count(), [('partner_id', 'in', all_partners.ids)]]),
+            domain=expression.AND([self._get_sale_order_domain_count(), [('partner_id', 'in', all_partners.ids)]]),
             groupby=['partner_id'], aggregates=['__count']
         )
         self_ids = set(self._ids)
@@ -41,20 +43,10 @@ class ResPartner(models.Model):
                     partner.sale_order_count += count
                 partner = partner.parent_id
 
-    def _compute_application_statistics_hook(self):
-        data_list = super()._compute_application_statistics_hook()
-        if not self.env.user.has_group('sales_team.group_sale_salesman'):
-            return data_list
-        for partner in self.filtered('sale_order_count'):
-            data_list[partner.id].append(
-                {'iconClass': 'fa-usd', 'value': partner.sale_order_count, 'label': self.env._('Sale Orders')}
-            )
-        return data_list
-
     def _has_order(self, partner_domain):
         self.ensure_one()
         sale_order = self.env['sale.order'].sudo().search(
-            Domain.AND([
+            expression.AND([
                 partner_domain,
                 [
                     ('state', 'in', ('sent', 'sale')),
@@ -64,11 +56,10 @@ class ResPartner(models.Model):
         )
         return bool(sale_order)
 
-    def _can_edit_country(self):
-        """ Can't edit `country_id` if there is (non draft) issued SO. """
-        return super()._can_edit_country() and not self._has_order(
+    def _can_edit_name(self):
+        """ Can't edit `name` if there is (non draft) issued SO. """
+        return super()._can_edit_name() and not self._has_order(
             [
-                '|',
                 ('partner_invoice_id', '=', self.id),
                 ('partner_id', '=', self.id),
             ]
@@ -79,6 +70,12 @@ class ResPartner(models.Model):
         return super().can_edit_vat() and not self._has_order(
             [('partner_id', 'child_of', self.commercial_partner_id.id)]
         )
+
+    def action_view_sale_order(self):
+        action = self.env['ir.actions.act_window']._for_xml_id('sale.act_res_partner_2_sale_order')
+        all_child = self.with_context(active_test=False).search([('id', 'child_of', self.ids)])
+        action["domain"] = [("partner_id", "in", all_child.ids)]
+        return action
 
     def _compute_credit_to_invoice(self):
         # EXTENDS 'account'
@@ -108,14 +105,3 @@ class ResPartner(models.Model):
                 fields.Date.context_today(self),
             )
             partner.commercial_partner_id.credit_to_invoice += credit_company_currency
-
-    def unlink(self):
-        # Unlink draft/cancelled SO so that the partner can be removed from database
-        self.env['sale.order'].sudo().search([
-            ('state', 'in', ['draft', 'cancel']),
-            '|', '|',
-            ('partner_id', 'in', self.ids),
-            ('partner_invoice_id', 'in', self.ids),
-            ('partner_shipping_id', 'in', self.ids),
-        ]).unlink()
-        return super().unlink()

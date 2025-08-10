@@ -12,6 +12,5 @@
             'website_event_booth_sale_exhibitor/static/tests/tours/website_event_booth_sale_exhibitor.js',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

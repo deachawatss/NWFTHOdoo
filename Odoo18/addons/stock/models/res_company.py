@@ -1,9 +1,11 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
+import threading
 
-from odoo import _, api, fields, models, modules
+from odoo import _, api, fields, models
 
 
-class ResCompany(models.Model):
+class Company(models.Model):
     _inherit = "res.company"
     _check_company_auto = True
 
@@ -191,7 +193,8 @@ class ResCompany(models.Model):
             company.sudo()._create_per_company_picking_types()
             company.sudo()._create_per_company_rules()
             company.sudo()._set_per_company_inter_company_locations(inter_company_location)
-        if modules.module.current_test:
+        test_mode = getattr(threading.current_thread(), 'testing', False)
+        if test_mode:
             self.env['stock.warehouse'].sudo().create([{'company_id': company.id} for company in companies])
         return companies
 

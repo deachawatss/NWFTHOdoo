@@ -23,11 +23,16 @@ class ResConfigSettings(models.TransientModel):
     account_peppol_phone_number = fields.Char(related='company_id.account_peppol_phone_number', readonly=False)
     account_peppol_proxy_state = fields.Selection(related='company_id.account_peppol_proxy_state', readonly=False)
     account_peppol_purchase_journal_id = fields.Many2one(related='company_id.peppol_purchase_journal_id', readonly=False)
-    peppol_external_provider = fields.Char(related='company_id.peppol_external_provider', readonly=False)
 
     # -------------------------------------------------------------------------
     # COMPUTE METHODS
     # -------------------------------------------------------------------------
+
+    @api.depends('is_account_peppol_eligible', 'account_peppol_edi_user')
+    def _compute_account_peppol_mode_constraint(self):
+        mode_constraint = self.env['ir.config_parameter'].sudo().get_param('account_peppol.mode_constraint')
+        trial_param = self.env['ir.config_parameter'].sudo().get_param('saas_trial.confirm_token')
+        self.account_peppol_mode_constraint = trial_param and 'demo' or mode_constraint or 'prod'
 
     @api.depends("company_id.account_edi_proxy_client_ids")
     def _compute_account_peppol_edi_user(self):
@@ -44,20 +49,39 @@ class ResConfigSettings(models.TransientModel):
         registration_action = registration_wizard._action_open_peppol_form(reopen=False)
         return registration_action
 
-    def button_open_peppol_config_wizard(self):
-        return {
-            'type': 'ir.actions.act_window',
-            'name': 'Advanced Peppol Configuration',
-            'res_model': 'peppol.config.wizard',
-            'view_mode': 'form',
-            'target': 'new',
+    @handle_demo
+    def button_update_peppol_user_data(self):
+        """
+        Action for the user to be able to update their contact details any time
+        Calls /update_user on the iap server
+        """
+        self.ensure_one()
+
+        if not self.account_peppol_contact_email or not self.account_peppol_phone_number:
+            raise ValidationError(_("Contact email and mobile number are required."))
+
+        params = {
+            'update_data': {
+                'peppol_phone_number': self.account_peppol_phone_number,
+                'peppol_contact_email': self.account_peppol_contact_email,
+            }
         }
 
-    def button_peppol_register_sender_as_receiver(self):
-        """Register the existing user as a receiver."""
+        self.account_peppol_edi_user._call_peppol_proxy(
+            endpoint='/api/peppol/1/update_user',
+            params=params,
+        )
+        return True
+
+    @handle_demo
+    def button_peppol_smp_registration(self):
+        """
+        The second (optional) step in Peppol registration.
+        The user can choose to become a Receiver and officially register on the Peppol
+        network, i.e. receive documents from other Peppol participants.
+        """
         self.ensure_one()
         self.account_peppol_edi_user._peppol_register_sender_as_receiver()
-        self.account_peppol_edi_user._peppol_get_participant_status()
         if self.account_peppol_proxy_state == 'smp_registration':
             return {
                 'type': 'ir.actions.client',
@@ -70,3 +94,37 @@ class ResConfigSettings(models.TransientModel):
                 }
             }
         return True
+
+    def button_migrate_peppol_registration(self):
+        """
+        Migrates AWAY from Odoo's SMP.
+        If the user is a receiver, they need to request a migration key, generated on the IAP server.
+        The migration key is then displayed in Peppol settings.
+        Currently, reopening after migrating away is not supported.
+        """
+        raise UserError(_("This feature is deprecated. Contact Odoo support if you need a migration key."))
+
+    @handle_demo
+    def button_deregister_peppol_participant(self):
+        """
+        Deregister the edi user from Peppol network
+        """
+        self.ensure_one()
+
+        if self.account_peppol_edi_user:
+            self.account_peppol_edi_user._peppol_deregister_participant()
+        return True
+
+    def button_account_peppol_configure_services(self):
+        wizard = self.env['account_peppol.service.wizard'].create({
+            'edi_user_id': self.account_peppol_edi_user.id,
+            'service_json': self.account_peppol_edi_user._peppol_get_services().get('services'),
+        })
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Configure your peppol services',
+            'res_model': 'account_peppol.service.wizard',
+            'res_id': wizard.id,
+            'view_mode': 'form',
+            'target': 'new',
+        }

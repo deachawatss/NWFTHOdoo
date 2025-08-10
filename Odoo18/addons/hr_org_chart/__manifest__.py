@@ -3,7 +3,7 @@
 
 {
     'name': 'HR Org Chart',
-    'category': 'Human Resources',
+    'category': 'Hidden',
     'version': '1.0',
     'description':
         """
@@ -17,8 +17,9 @@ This module extend the employee form with a organizational chart.
     'auto_install': ['hr'],
     'data': [
         'views/hr_department_views.xml',
-        'views/hr_employee_public_views.xml',
         'views/hr_views.xml',
+        'views/hr_employee_public_views.xml',
+        'views/hr_org_chart_menus.xml',
     ],
     'assets': {
         'web._assets_primary_variables': [
@@ -34,6 +35,5 @@ This module extend the employee form with a organizational chart.
             'hr_org_chart/static/tests/**/*',
         ],
     },
-    'author': 'Odoo S.A.',
     'license': 'LGPL-3',
 }

@@ -1,5 +1,6 @@
 import { onWebsocketEvent } from "@bus/../tests/mock_websocket";
 import {
+    assertSteps,
     click,
     contains,
     defineMailModels,
@@ -7,11 +8,12 @@ import {
     openDiscuss,
     start,
     startServer,
+    step,
+    triggerHotkey,
 } from "@mail/../tests/mail_test_helpers";
-import { describe, expect, test } from "@odoo/hoot";
-import { tick } from "@odoo/hoot-dom";
+import { describe, test } from "@odoo/hoot";
 import { mockDate } from "@odoo/hoot-mock";
-import { asyncStep, makeMockEnv, waitForSteps } from "@web/../tests/web_test_helpers";
+import { Command, serverState } from "@web/../tests/web_test_helpers";
 
 describe.current.tags("desktop");
 defineMailModels();
@@ -27,63 +29,62 @@ test("Member list and Pinned Messages Panel menu are exclusive", async () => {
     await contains(".o-discuss-ChannelMemberList", { count: 0 });
 });
 
-test("subscribe to presence channels according to store data", async () => {
-    const env = await makeMockEnv();
-    const store = env.services["mail.store"];
-    onWebsocketEvent("subscribe", (data) => expect.step(`subscribe - [${data.channels}]`));
-    expect(env.services.bus_service.isActive).toBe(false);
-    // Should not subscribe to presences as bus service is not started.
-    store["Persona"].insert({ id: 1, type: "partner", name: "Partner 1" });
-    store["Persona"].insert({ id: 2, type: "partner", name: "Partner 2" });
-    await tick();
-    expect.waitForSteps([]);
-    // Starting the bus should subscribe to known presence channels.
-    env.services.bus_service.start();
-    await expect.waitForSteps([
-        "subscribe - [odoo-presence-res.partner_1,odoo-presence-res.partner_2]",
-    ]);
-    // Discovering new presence channels should refresh the subscription.
-    store["Persona"].insert({ id: 1, type: "guest" });
-    await expect.waitForSteps([
-        "subscribe - [odoo-presence-mail.guest_1,odoo-presence-res.partner_1,odoo-presence-res.partner_2]",
-    ]);
-    // Updating "im_status_access_token" should refresh the subscription.
-    store["Persona"].insert({ id: 1, type: "guest", im_status_access_token: "token" });
-    await expect.waitForSteps([
-        "subscribe - [odoo-presence-mail.guest_1-token,odoo-presence-res.partner_1,odoo-presence-res.partner_2]",
-    ]);
+test("subscribe to known partner presences", async () => {
+    onWebsocketEvent("subscribe", (data) => step(`subscribe - [${data.channels}]`));
+    const pyEnv = await startServer();
+    const bobPartnerId = pyEnv["res.partner"].create({
+        name: "Bob",
+        user_ids: [Command.create({ name: "bob" })],
+    });
+    const later = luxon.DateTime.now().plus({ seconds: 2 });
+    mockDate(
+        `${later.year}-${later.month}-${later.day} ${later.hour}:${later.minute}:${later.second}`
+    );
+    await start();
+    await openDiscuss();
+    const expectedPresences = [
+        `odoo-presence-res.partner_${serverState.partnerId}`,
+        `odoo-presence-res.partner_${serverState.odoobotId}`,
+    ];
+    await assertSteps([`subscribe - [${expectedPresences.join(",")}]`]);
+    await click("[title='Start a conversation']");
+    await insertText(".o-discuss-ChannelSelector input", "bob");
+    await click(".o-discuss-ChannelSelector-suggestion");
+    await triggerHotkey("Enter");
+    expectedPresences.push(`odoo-presence-res.partner_${bobPartnerId}`);
+    await assertSteps([`subscribe - [${expectedPresences.join(",")}]`]);
 });
 
 test("bus subscription is refreshed when channel is joined", async () => {
     const pyEnv = await startServer();
     pyEnv["discuss.channel"].create([{ name: "General" }, { name: "Sales" }]);
-    onWebsocketEvent("subscribe", () => asyncStep("subscribe"));
+    onWebsocketEvent("subscribe", () => step("subscribe"));
     const later = luxon.DateTime.now().plus({ seconds: 2 });
     mockDate(
         `${later.year}-${later.month}-${later.day} ${later.hour}:${later.minute}:${later.second}`
     );
     await start();
-    await waitForSteps(["subscribe"]);
+    await assertSteps(["subscribe"]);
     await openDiscuss();
-    await waitForSteps([]);
-    await click("input[placeholder='Find or start a conversation']");
-    await insertText("input[placeholder='Search a conversation']", "new channel");
-    await waitForSteps(["subscribe"]);
+    await assertSteps([]);
+    await click(".o-mail-DiscussSidebar [title='Add or join a channel']");
+    await insertText(".o-discuss-ChannelSelector input", "new channel");
+    await click(".o-discuss-ChannelSelector-suggestion");
+    await assertSteps(["subscribe"]);
 });
 
 test("bus subscription is refreshed when channel is left", async () => {
     const pyEnv = await startServer();
     pyEnv["discuss.channel"].create({ name: "General" });
-    onWebsocketEvent("subscribe", () => asyncStep("subscribe"));
+    onWebsocketEvent("subscribe", () => step("subscribe"));
     const later = luxon.DateTime.now().plus({ seconds: 2 });
     mockDate(
         `${later.year}-${later.month}-${later.day} ${later.hour}:${later.minute}:${later.second}`
     );
     await start();
-    await waitForSteps(["subscribe"]);
+    await assertSteps(["subscribe"]);
     await openDiscuss();
-    await waitForSteps([]);
-    await click("[title='Channel Actions']");
-    await click(".o-dropdown-item:contains('Leave Channel')");
-    await waitForSteps(["subscribe"]);
+    await assertSteps([]);
+    await click("[title='Leave Channel']");
+    await assertSteps(["subscribe"]);
 });

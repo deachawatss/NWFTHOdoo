@@ -5,9 +5,9 @@ import { patchWithCleanup } from "@web/../tests/web_test_helpers";
 import { setupEditor, testEditor } from "../_helpers/editor";
 import { unformat } from "../_helpers/format";
 import { getContent } from "../_helpers/selection";
-import { BOLD_TAGS, em, notStrong, span, strong } from "../_helpers/tags";
-import { expectElementCount } from "../_helpers/ui_expectations";
+import { BOLD_TAGS, notStrong, span, strong, em } from "../_helpers/tags";
 import { bold, italic, simulateArrowKeyPress, tripleClick } from "../_helpers/user_actions";
+import { expectElementCount } from "../_helpers/ui_expectations";
 
 const styleH1Bold = `h1 { font-weight: bold; }`;
 
@@ -74,11 +74,10 @@ test("should make qweb tag bold and create a step even with partial selection in
     expect(lastStep.mutations[0].value).toBe("font-weight: bolder;");
 });
 
-test.tags("desktop");
 test("should make a whole heading bold after a triple click", async () => {
     await testEditor({
         styleContent: styleH1Bold,
-        contentBefore: `<h1>${notStrong(`ab`)}</h1><p>cd</p>`,
+        contentBefore: `<h1>${notStrong(`[ab`)}</h1><p>]cd</p>`,
         stepFunction: async (editor) => {
             await tripleClick(editor.editable.querySelector("h1"));
             bold(editor);
@@ -87,9 +86,8 @@ test("should make a whole heading bold after a triple click", async () => {
     });
 });
 
-test.tags("desktop");
 test("should make a whole heading not bold after a triple click (heading is considered bold)", async () => {
-    const { el, editor } = await setupEditor(`<h1>ab</h1><p>cd</p>`, {
+    const { el, editor } = await setupEditor(`<h1>[ab</h1><p>]cd</p>`, {
         styleContent: styleH1Bold,
     });
     await tripleClick(el.querySelector("h1"));
@@ -148,6 +146,15 @@ test("should remove a bold tag that was redondant while performing the command",
             contentAfter: `<p>a${tag("b")}[c]${tag("d")}e</p>`,
         });
     }
+});
+
+test("should remove bold format when having newline character nodes in selection", async () => {
+    await testEditor({
+        contentBefore:
+            "<p><strong>[abc</strong></p>\n<p><strong>def</strong></p>\n<p><strong>ghi]</strong></p>",
+        stepFunction: bold,
+        contentAfter: "<p>[abc</p>\n<p>def</p>\n<p>ghi]</p>",
+    });
 });
 
 test("should remove a bold tag that was redondant with different tags while performing the command", async () => {
@@ -228,55 +235,6 @@ test("should make a few characters bold inside table (bold)", async () => {
     });
 });
 
-test("should make two paragraphs (separated with whitespace) bold", async () => {
-    await testEditor({
-        contentBefore: `
-            <p>[abc</p>
-            <p>def]</p>
-        `,
-        stepFunction: bold,
-        contentAfter: `
-            <p><strong>[abc</strong></p>
-            <p><strong>def]</strong></p>
-        `,
-    });
-});
-
-test("should make two paragraphs (separated with whitespace) not bold", async () => {
-    await testEditor({
-        contentBefore: `
-            <p><strong>[abc</strong></p>
-            <p><strong>def]</strong></p>
-        `,
-        stepFunction: bold,
-        contentAfter: `
-            <p>[abc</p>
-            <p>def]</p>
-        `,
-    });
-});
-
-test("should make two paragraphs (separated with whitespace) bold, then not bold", async () => {
-    await testEditor({
-        contentBefore: `
-            <p>[abc</p>
-            <p>def]</p>
-        `,
-        stepFunction: async (editor) => {
-            bold(editor);
-            expect(getContent(editor.editable)).toBe(`
-            <p><strong>[abc</strong></p>
-            <p><strong>def]</strong></p>
-        `);
-            bold(editor);
-        },
-        contentAfter: `
-            <p>[abc</p>
-            <p>def]</p>
-        `,
-    });
-});
-
 test("should insert a span zws when toggling a formatting command twice", () =>
     testEditor({
         contentBefore: `<p>[]<br></p>`,
@@ -287,10 +245,7 @@ test("should insert a span zws when toggling a formatting command twice", () =>
         // todo: It would be better to remove the zws entirely so that
         // the P could have the "/" hint but that behavior might be
         // complex with the current implementation.
-        contentAfterEdit: `<p o-we-hint-text='Type "/" for commands' class="o-we-hint">${span(
-            `[]\u200B`,
-            "first"
-        )}</p>`,
+        contentAfterEdit: `<p>${span(`[]\u200B`, "first")}</p>`,
     }));
 
 // This test uses execCommand to reproduce as closely as possible the browser's
@@ -425,12 +380,7 @@ test("should not remove empty bold tag in an empty block when changing selection
 
     bold(editor);
     await tick();
-    expect(getContent(el)).toBe(
-        `<p>abcd</p><p o-we-hint-text='Type "/" for commands' class="o-we-hint">${strong(
-            "[]\u200B",
-            "first"
-        )}</p>`
-    );
+    expect(getContent(el)).toBe(`<p>abcd</p><p>${strong("[]\u200B", "first")}</p>`);
 
     await simulateArrowKeyPress(editor, "ArrowUp");
     await tick(); // await selectionchange

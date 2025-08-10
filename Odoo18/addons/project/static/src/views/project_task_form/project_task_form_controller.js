@@ -1,11 +1,12 @@
+/** @odoo-module */
+
 import { _t } from "@web/core/l10n/translation";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { HistoryDialog } from "@html_editor/components/history_dialog/history_dialog";
 import { useService } from '@web/core/utils/hooks';
-import { markup, useEffect } from "@odoo/owl";
+import { markup } from '@odoo/owl';
+import { escape } from '@web/core/utils/strings';
 import { FormControllerWithHTMLExpander } from '@resource/views/form_with_html_expander/form_controller_with_html_expander';
-
-import { ProjectTaskTemplateDropdown } from "../components/project_task_template_dropdown";
 
 export const subTaskDeleteConfirmationMessage = _t(
     `Deleting a task will also delete its associated sub-tasks. \
@@ -15,41 +16,9 @@ Are you sure you want to proceed?`
 );
 
 export class ProjectTaskFormController extends FormControllerWithHTMLExpander {
-    static template = "project.ProjectTaskFormView";
-    static components = {
-        ...FormControllerWithHTMLExpander.components,
-        ProjectTaskTemplateDropdown,
-    };
-
-    static props = {
-        ...FormControllerWithHTMLExpander.props,
-        focusTitle: {
-            type: Boolean,
-            optional: true,
-        },
-    };
-    static defaultProps = {
-        ...FormControllerWithHTMLExpander.defaultProps,
-        focusTitle: false,
-    };
-
     setup() {
         super.setup();
         this.notifications = useService("notification");
-
-        if (this.props.focusTitle) {
-            useEffect(
-                () => {
-                    if (this.rootRef) {
-                        const title = this.rootRef.el.querySelector("#name_0");
-                        if (title) {
-                            title.focus();
-                        }
-                    }
-                },
-                () => []
-            );
-        }
     }
 
     /**
@@ -59,7 +28,7 @@ export class ProjectTaskFormController extends FormControllerWithHTMLExpander {
         return {
             ...super.getStaticActionMenuItems(),
             openHistoryDialog: {
-                sequence: 15,
+                sequence: 50,
                 icon: "fa fa-history",
                 description: _t("Version History"),
                 callback: () => this.openHistoryDialog(),
@@ -84,9 +53,9 @@ export class ProjectTaskFormController extends FormControllerWithHTMLExpander {
         const historyMetadata = record.data["html_field_history_metadata"]?.[versionedFieldName];
         if (!historyMetadata) {
             this.notifications.add(
-                _t(
+                escape(_t(
                     "The task description lacks any past content that could be restored at the moment."
-                )
+                ))
             );
             return;
         }
@@ -95,10 +64,13 @@ export class ProjectTaskFormController extends FormControllerWithHTMLExpander {
             HistoryDialog,
             {
                 title: _t("Task Description History"),
-                noContentHelper: markup`
-                    <span class='text-muted fst-italic'>${_t(
-                        "The task description was empty at the time."
-                    )}</span>`,
+                noContentHelper: markup(
+                    `<span class='text-muted fst-italic'>${escape(
+                        _t(
+                            "The task description was empty at the time."
+                        )
+                    )}</span>`
+                ),
                 recordId: record.resId,
                 recordModel: this.props.resModel,
                 versionedFieldName,

@@ -1,11 +1,8 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 from datetime import datetime
-from dateutil.relativedelta import relativedelta
 from psycopg2.errors import UniqueViolation
 
-from odoo import fields
-from odoo.fields import Domain
-from odoo.tests import Form, users, new_test_user, HttpCase, tagged
+from odoo.tests import Form, users, HttpCase, tagged
 from odoo.addons.hr.tests.common import TestHrCommon
 from odoo.tools import mute_logger
 from odoo.exceptions import ValidationError
@@ -25,23 +22,6 @@ class TestHrEmployee(TestHrCommon):
             'user_id': self.user_without_image.id,
             'image_1920': False
         })
-
-    def test_employee_must_have_active_version(self):
-        employee = self.env['hr.employee'].create({
-            'name': 'Batman'
-        })
-        self.assertEqual(len(employee.version_ids), 1)
-        employee_version = employee.version_id
-        with self.assertRaises(ValidationError, msg="An employee should always have a version"):
-            employee.write({'version_ids': False})
-        with self.assertRaises(ValidationError, msg="An employee should always have a version"):
-            employee_version.unlink()
-        with self.assertRaises(ValidationError, msg="An employee should always have a version"):
-            employee_version.write({
-                'employee_id': self.employee_without_image.id
-            })
-        with self.assertRaises(ValidationError, msg="An employee should always have an active version"):
-            employee_version.write({'active': False})
 
     def test_employee_smart_button_multi_company(self):
         partner = self.env['res.partner'].create({'name': 'Partner Test'})
@@ -174,10 +154,16 @@ class TestHrEmployee(TestHrCommon):
         self.assertFalse(emp_parent.member_of_department)
         employees = emp + emp_sub + emp_sub_sub + emp_other + emp_parent
         self.assertEqual(
-            employees.filtered_domain(employees.version_id._search_part_of_department('in', [True])),
+            employees.filtered_domain(employees._search_part_of_department('=', True)),
             emp + emp_sub + emp_sub_sub)
         self.assertEqual(
-            employees.filtered_domain(['!'] + employees.version_id._search_part_of_department('in', [True])),
+            employees.filtered_domain(employees._search_part_of_department('!=', False)),
+            emp + emp_sub + emp_sub_sub)
+        self.assertEqual(
+            employees.filtered_domain(employees._search_part_of_department('=', False)),
+            emp_other + emp_parent)
+        self.assertEqual(
+            employees.filtered_domain(employees._search_part_of_department('!=', True)),
             emp_other + emp_parent)
 
     def test_employee_create_from_user(self):
@@ -288,7 +274,7 @@ class TestHrEmployee(TestHrCommon):
         employee_form = Form(self.env['hr.employee'].with_user(self.res_users_hr_officer).with_company(company=test_company.id))
         employee_form.name = "Second employee"
         employee_form.user_id = self.res_users_hr_officer
-        with mute_logger('odoo.sql_db'), self.assertRaises(UniqueViolation), self.assertRaises(ValidationError):
+        with mute_logger('odoo.sql_db'), self.assertRaises(UniqueViolation), self.assertRaises(ValidationError), self.cr.savepoint():
             employee_form.save()
 
         employee_2 = self.env['hr.employee'].create({
@@ -299,7 +285,7 @@ class TestHrEmployee(TestHrCommon):
         # Try to set the user with existing employee in the company, on another existing employee
         employee_2_form = Form(employee_2.with_user(self.res_users_hr_officer).with_company(company=test_company.id))
         employee_2_form.user_id = self.res_users_hr_officer
-        with mute_logger('odoo.sql_db'), self.assertRaises(UniqueViolation), self.assertRaises(ValidationError):
+        with mute_logger('odoo.sql_db'), self.assertRaises(UniqueViolation), self.assertRaises(ValidationError), self.cr.savepoint():
             employee_2_form.save()
 
 
@@ -408,7 +394,7 @@ class TestHrEmployee(TestHrCommon):
             'company_id': company_A.id,
         })
         # User cannot be assigned to more than one employee in the same company. work_contact_id should not be removed.
-        with mute_logger('odoo.sql_db'), self.assertRaises(UniqueViolation), self.assertRaises(ValidationError):
+        with mute_logger('odoo.sql_db'), self.assertRaises(UniqueViolation), self.assertRaises(ValidationError), self.cr.savepoint():
             self.env['hr.employee'].create({
                 'name': 'new_employee_B',
                 'user_id': user.id,
@@ -458,41 +444,6 @@ class TestHrEmployee(TestHrCommon):
 
         self.assertEqual(employee_form.barcode, 'Testbadge2')
 
-    def test_departure_wizard(self):
-        """ Test the archiving wizard in the case of multiple employees """
-        employee_A, employee_B, employee_C = self.env['hr.employee'].create([
-            {
-                'name': f'Employee {code}',
-                'user_id': False,
-                'work_email': f'employee_{code}@example.com',
-            } for code in ['A', 'B', 'C']
-        ])
-        archiving_employees = [employee.id for employee in (employee_A, employee_C)]
-
-        wizard = self.env['hr.departure.wizard'].with_context(
-            employee_termination=True,
-            active_ids=archiving_employees,
-        ).create({})
-        wizard.action_register_departure()
-
-        all_employees = employee_A | employee_B | employee_C
-        self.assertEqual(all_employees.filtered(lambda e: e.active), employee_B, "Employees should have been archived")
-
-    def test_search_hr_employee_no_access(self):
-        new_user = new_test_user(self.env, 'employee')
-        employee = self.env['hr.employee'].create({
-            'name': 'Test Employee',
-        })
-        domain = Domain([
-            ('name', '=', 'Test Employee'),
-            ('active', '=', True)
-        ]).optimize(self.env['hr.employee'])
-        with self.assertNoLogs('odoo.domains'):
-            self.assertEqual(
-                employee.ids,
-                self.env['hr.employee'].with_user(new_user).search(domain).ids,
-            )
-
     def test_is_flexible(self):
         employee = self.env['hr.employee'].create({
             'name': 'Employee',
@@ -508,53 +459,6 @@ class TestHrEmployee(TestHrCommon):
         employee.resource_calendar_id = False
         self.assertTrue(employee.is_flexible)
         self.assertTrue(employee.is_fully_flexible)
-
-    def test_resource_calendar_sync_with_employee_one(self):
-        calendar = self.env['resource.calendar'].create({
-            'name': 'test calendar',
-            'flexible_hours': True,
-        })
-        self.assertTrue(self.employee.resource_id)
-        self.assertTrue(self.employee.resource_calendar_id)
-        self.assertEqual(self.employee.resource_calendar_id, self.employee.resource_id.calendar_id)
-        self.assertNotEqual(self.employee.resource_calendar_id, calendar)
-        self.assertTrue(self.employee.resource_calendar_id, self.employee.resource_id.calendar_id)
-        old_calendar = self.employee.resource_calendar_id
-        old_version = self.employee.version_id
-        old_version.date_version = old_version.date_version - relativedelta(days=1)
-        self.employee.resource_calendar_id = calendar
-        self.assertEqual(self.employee.resource_id.calendar_id, calendar)
-        version = self.employee.create_version({'resource_calendar_id': old_calendar.id, 'date_version': fields.Date.today()})
-        self.assertEqual(self.employee.current_version_id, version)
-        self.assertNotEqual(self.employee.current_version_id, old_version)
-        self.assertEqual(self.employee.resource_calendar_id, old_calendar)
-        self.assertEqual(self.employee.resource_id.calendar_id, old_calendar)
-
-    def test_job_title(self):
-        first_job = self.env['hr.job'].create({'name': "first job"})
-        second_job = self.env['hr.job'].create({'name': "second job"})
-
-        with Form(self.employee_without_image) as employee_form:
-            # Assign first job to employee, job title should be job name
-            employee_form.job_id = first_job
-            self.assertEqual(employee_form.job_title, first_job.name)
-
-            # Change job title, job name should not change
-            employee_form.job_title = "custom job title"
-            self.assertEqual(first_job.name, "first job")
-
-            # Change the name of the first job, job title should not be updated
-            first_job.name = "first job modified"
-            self.assertEqual(employee_form.job_title, "custom job title")
-            employee_form.save()
-
-            # Assign second job to employee, job title should be second job name
-            employee_form.job_id = second_job
-            self.assertEqual(employee_form.job_title, second_job.name)
-
-            # Switch back to first job, job title should be first job name
-            employee_form.job_id = first_job
-            self.assertEqual(employee_form.job_title, first_job.name)
 
     def test_flexible_working_hours(self):
         """
@@ -574,13 +478,13 @@ class TestHrEmployee(TestHrCommon):
         })
 
         # Testing employeA on regular working schedule
-        days = employeeA._get_unusual_days(str(datetime(2025, 1, 1)), str(datetime(2025, 12, 31)))
+        days = employeeA._get_unusual_days(datetime(2025, 1, 1), datetime(2025, 12, 31))
         self.assertTrue(days)
         self.assertTrue(days['2025-01-04'])
 
         # Assigning flexible work hours to employeeA
         employeeA.resource_calendar_id = calendar_flex.id
-        days = employeeA._get_unusual_days(str(datetime(2025, 1, 1)), str(datetime(2025, 12, 31)))
+        days = employeeA._get_unusual_days(datetime(2025, 1, 1), datetime(2025, 12, 31))
         self.assertTrue(days)
         self.assertFalse(days['2025-01-04'])
 
@@ -589,9 +493,8 @@ class TestHrEmployee(TestHrCommon):
 class TestHrEmployeeWebJson(HttpCase):
 
     def test_webjson_employees(self):
-        # Check that json employees can be accessed
+        #check that json employees can be accessed
         url = "/json/1/employees"
-        self.env['ir.config_parameter'].set_param('web.json.enabled', True)
         self.authenticate('admin', 'admin')
         CSRF_USER_HEADERS = {
             "Sec-Fetch-Dest": "document",

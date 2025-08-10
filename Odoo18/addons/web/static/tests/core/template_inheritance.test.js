@@ -1,38 +1,20 @@
 import { test, expect } from "@odoo/hoot";
 import { applyInheritance } from "@web/core/template_inheritance";
-import { patchWithCleanup, serverState } from "@web/../tests/web_test_helpers";
+import { serverState } from "@web/../tests/web_test_helpers";
 
 const parser = new DOMParser();
 const serializer = new XMLSerializer();
 
-function _applyInheritance(arch, inherits, url = "test/url") {
+function _applyInheritance(arch, inherits) {
     const archXmlDoc = parser.parseFromString(arch, "text/xml");
     const inheritsDoc = parser.parseFromString(inherits, "text/xml");
     const modifiedTemplate = applyInheritance(
         archXmlDoc.documentElement,
         inheritsDoc.documentElement,
-        url
+        "test/url"
     );
     return serializer.serializeToString(modifiedTemplate);
 }
-
-test("warn when contains(@class, ...)", async () => {
-    serverState.debug = "1";
-    patchWithCleanup(console, {
-        warn(msg) {
-            expect.step(msg);
-        },
-    });
-    const arch = `<t t-name="web.A"><div class="my-class" /></t>`;
-    const operations = `
-    <t t-inherit="web.A"><xpath expr="*[contains(@class, 'my-class')]" position="inside"><span/></xpath></t>`;
-    expect(_applyInheritance(arch, operations, false)).toBe(
-        `<t t-name="web.A"><div class="my-class"><span/></div></t>`
-    );
-    expect.verifySteps([
-        `Error-prone use of @class in template "web.A" (or one of its inheritors). Use the hasclass(*classes) function to filter elements by their classes`,
-    ]);
-});
 
 test("no operation", async () => {
     const arch = `<t t-name="web.A"> <div><h2>Title</h2>text</div> </t>`;
@@ -157,7 +139,7 @@ test("single operation: replace (mode inner) (debug mode)", async () => {
         },
     ];
     for (const { arch, operations, result } of toTest) {
-        expect(_applyInheritance(arch, operations, "test/url")).toBe(result);
+        expect(_applyInheritance(arch, operations, "/test/url")).toBe(result);
     }
 });
 

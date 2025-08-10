@@ -38,10 +38,10 @@ class ProductTemplateAttributeExclusion(models.Model):
         templates._create_variant_ids()
         return res
 
-    def write(self, vals):
+    def write(self, values):
         templates = self.env['product.template']
-        if 'product_tmpl_id' in vals:
+        if 'product_tmpl_id' in values:
             templates = self.product_tmpl_id
-        res = super().write(vals)
+        res = super().write(values)
         (templates | self.product_tmpl_id)._create_variant_ids()
         return res

@@ -1,8 +1,7 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
-
 import json
-
-from odoo import _, api, fields, models
+from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 
 
@@ -122,7 +121,7 @@ class SaleOrder(models.Model):
 
         :param product.template product_template:
         :return: matrix to display
-        :rtype: dict
+        :rtype dict:
         """
         def has_ptavs(line, sorted_attr_ids):
             # TODO instead of sorting on ids, use odoo-defined order for matrix ?

@@ -1,13 +1,14 @@
+/** @odoo-module **/
+
 import publicWidget from "@web/legacy/js/public/public_widget";
 import { _t } from "@web/core/l10n/translation";
 import { rpc } from "@web/core/network/rpc";
 import { cookie } from "@web/core/browser/cookie";
 import { utils as uiUtils } from "@web/core/ui/ui_service";
-import { scrollTo } from "@web/core/utils/scrolling";
+import { scrollTo } from "@web_editor/js/common/scrolling";
 
 import SurveyPreloadImageMixin from "@survey/js/survey_preload_image_mixin";
 import { SurveyImageZoomer } from "@survey/js/survey_image_zoomer";
-import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import {
     deserializeDate,
     deserializeDateTime,
@@ -24,7 +25,6 @@ var isMac = navigator.platform.toUpperCase().includes('MAC');
 publicWidget.registry.SurveyFormWidget = publicWidget.Widget.extend(SurveyPreloadImageMixin, {
     selector: '.o_survey_form',
     events: {
-        'change .o_survey_lang_selector': '_onChangeLanguage',
         'change .o_survey_form_choice_item': '_onChangeChoiceItem',
         'click .o_survey_matrix_btn': '_onMatrixBtnClick',
         'click input[type="radio"]': '_onRadioChoiceClick',
@@ -48,7 +48,7 @@ publicWidget.registry.SurveyFormWidget = publicWidget.Widget.extend(SurveyPreloa
         var self = this;
         this.fadeInOutDelay = 400;
         return this._super.apply(this, arguments).then(function () {
-            self.options = self.$("form.o_survey-fill-form").data();
+            self.options = self.$('form').data();
             self.readonly = self.options.readonly;
             self.selectedAnswers = self.options.selectedAnswers;
             self.imgZoomer = false;
@@ -171,28 +171,6 @@ publicWidget.registry.SurveyFormWidget = publicWidget.Widget.extend(SurveyPreloa
         const $target = $(event.currentTarget);
         const $choiceItemGroup = $target.closest('.o_survey_form_choice');
 
-        // Update survey button to "continue" if the current page/question is the last (without accounting for
-        // its own conditional questions) but a selected answer is triggering a conditional question on a next page.
-        const surveyLastTriggeringAnswers = this.$('.o_survey_form_content_data').data('surveyLastTriggeringAnswers');
-        if (surveyLastTriggeringAnswers) {
-            const currentSelectedAnswers = Array.from(document.querySelectorAll(`
-                .o_survey_form_choice[data-question-type='simple_choice_radio'] input:checked,
-                .o_survey_form_choice[data-question-type='multiple_choice'] input:checked
-            `)).map((input) => parseInt(input.value));
-            const submitButton = document.querySelector("button[type=submit]");
-            if (currentSelectedAnswers.some((answerId) => surveyLastTriggeringAnswers.includes(answerId))) {
-                // change to continue
-                submitButton.value = "next";
-                submitButton.textContent = _t("Continue");
-                submitButton.classList.replace("btn-secondary", "btn-primary");
-            } else {
-                // change to submit
-                submitButton.value = "finish";
-                submitButton.textContent = _t("Submit");
-                submitButton.classList.replace("btn-primary", "btn-secondary");
-            }
-        }
-
         this._applyCommentAreaVisibility($choiceItemGroup);
         const isQuestionComplete = this._checkConditionalQuestionsConfiguration($target, $choiceItemGroup);
         if (isQuestionComplete && this.options.usersCanGoBack) {
@@ -275,29 +253,18 @@ publicWidget.registry.SurveyFormWidget = publicWidget.Widget.extend(SurveyPreloa
         }
     },
 
-    _onSubmit(event) {
+    _onSubmit: function (event) {
         event.preventDefault();
+        const options = {};
         const target = event.currentTarget;
         if (target.value === 'previous') {
-            this._submitForm({ previousPageId: parseInt(target.dataset['previousPageId']) });
+            options.previousPageId = parseInt(target.dataset['previousPageId']);
         } else if (target.value === 'next_skipped') {
-            this._submitForm({ nextSkipped: true });
-        } else if (target.value === 'finish' && !this.options.sessionInProgress) {
-            // Adding pop-up before the survey is submitted when not in live session
-            this.call("dialog", "add", ConfirmationDialog, {
-                title: _t("Submit confirmation"),
-                body: _t("Are you sure you want to submit the survey?"),
-                confirmLabel: _t("Submit"),
-                confirm: () => {
-                    this._submitForm({ isFinish: true });
-                },
-                cancel: () => {},
-            });
+            options.nextSkipped = true;
         } else if (target.value === 'finish') {
-            this._submitForm({ isFinish: true });
-        } else {
-            this._submitForm({});
+            options.isFinish = true;
         }
+        this._submitForm(options);
     },
 
     // Custom Events
@@ -369,15 +336,6 @@ publicWidget.registry.SurveyFormWidget = publicWidget.Widget.extend(SurveyPreloa
         this._goToNextPage({ isFinish: true });
     },
 
-    _onChangeLanguage() {
-        const lang_code = document.querySelector('.o_survey_lang_selector[name="lang_code"]').value;
-        const pathname = document.location.pathname;
-        const indexOfSurvey = pathname.indexOf("/survey/");
-        if (indexOfSurvey >= 0) {
-            document.location = `/${lang_code}${pathname.substring(indexOfSurvey)}`;
-        }
-    },
-
     /**
      * Go to the next page of the survey.
      *
@@ -387,7 +345,6 @@ publicWidget.registry.SurveyFormWidget = publicWidget.Widget.extend(SurveyPreloa
      */
     _goToNextPage: function ({ isFinish = false } = {}) {
         this.$(".o_survey_main_title:visible").fadeOut(400);
-        this.$(".o_lang_selector:visible").fadeOut(400);
         this.preventEnterSubmit = false;
         this.readonly = false;
         this._nextScreen(
@@ -428,17 +385,13 @@ publicWidget.registry.SurveyFormWidget = publicWidget.Widget.extend(SurveyPreloa
         var route = "/survey/submit";
 
         if (this.options.isStartScreen) {
-            params.lang_code = document.querySelector(
-                '.o_survey_lang_selector[name="lang_code"]'
-            ).value;
             route = "/survey/begin";
             // Hide survey title in 'page_per_question' layout: it takes too much space
             if (this.options.questionsLayout === 'page_per_question') {
                 this.$('.o_survey_main_title').fadeOut(400);
             }
-            this.$(".o_survey_lang_selector").fadeOut(400);
         } else {
-            var $form = this.$("form.o_survey-fill-form");
+            var $form = this.$('form');
             var formData = new FormData($form[0]);
 
             if (!options.skipValidation) {
@@ -532,8 +485,6 @@ publicWidget.registry.SurveyFormWidget = publicWidget.Widget.extend(SurveyPreloa
         if (result && !result.error) {
             this.$(".o_survey_form_content").empty();
             this.$(".o_survey_form_content").html(result.survey_content);
-            // TODO Remove upon conversion to Interaction.
-            self.trigger_up("widgets_start_request", { $target: this.$el.find(".o_wslides_share") });
 
             if (result.survey_progress && this.$surveyProgress.length !== 0) {
                 this.$surveyProgress.html(result.survey_progress);

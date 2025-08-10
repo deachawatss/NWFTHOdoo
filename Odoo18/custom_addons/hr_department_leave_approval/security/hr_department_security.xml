@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Record Rule for HR Employee - Department Manager Access -->
+        <record id="hr_employee_department_manager_rule" model="ir.rule">
+            <field name="name">HR Employee: Department Manager Access</field>
+            <field name="model_id" ref="hr.model_hr_employee"/>
+            <field name="domain_force">[
+                '|',
+                    ('id', '=', user.employee_id.id),
+                    ('department_id.manager_id.user_id', '=', user.id)
+            ]</field>
+            <field name="groups" eval="[(4, ref('hr.group_hr_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- Record Rule for HR Leave - Department Manager Access -->
+        <record id="hr_leave_department_manager_rule" model="ir.rule">
+            <field name="name">HR Leave: Department Manager Access</field>
+            <field name="model_id" ref="hr_holidays.model_hr_leave"/>
+            <field name="domain_force">[
+                '|',
+                    ('employee_id.id', '=', user.employee_id.id),
+                    ('employee_id.department_id.manager_id.user_id', '=', user.id)
+            ]</field>
+            <field name="groups" eval="[(4, ref('hr_holidays.group_hr_holidays_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- Record Rule for HR Leave Allocation - Department Manager Access (Read Only) -->
+        <record id="hr_leave_allocation_department_manager_rule" model="ir.rule">
+            <field name="name">HR Leave Allocation: Department Manager Read Access</field>
+            <field name="model_id" ref="hr_holidays.model_hr_leave_allocation"/>
+            <field name="domain_force">[
+                '|',
+                    ('employee_id.id', '=', user.employee_id.id),
+                    ('employee_id.department_id.manager_id.user_id', '=', user.id)
+            ]</field>
+            <field name="groups" eval="[(4, ref('hr_holidays.group_hr_holidays_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- Additional Rule for HR Department Access -->
+        <record id="hr_department_manager_rule" model="ir.rule">
+            <field name="name">HR Department: Manager Access</field>
+            <field name="model_id" ref="hr.model_hr_department"/>
+            <field name="domain_force">[
+                '|',
+                    ('manager_id.user_id', '=', user.id),
+                    ('parent_id.manager_id.user_id', '=', user.id)
+            ]</field>
+            <field name="groups" eval="[(4, ref('hr.group_hr_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- Security Group for Department Managers -->
+        <record id="group_department_manager" model="res.groups">
+            <field name="name">Department Manager</field>
+            <field name="category_id" ref="hr.module_hr"/>
+            <field name="comment">Department managers can manage their team's employees and leave requests</field>
+            <field name="implied_ids" eval="[(4, ref('hr.group_hr_user')), (4, ref('hr_holidays.group_hr_holidays_user'))]"/>
+        </record>
+
+        <!-- Override default rules to be more restrictive for non-managers -->
+        
+        <!-- HR Employee: Restrict to department members only for regular users -->
+        <record id="hr_employee_department_user_rule" model="ir.rule">
+            <field name="name">HR Employee: Department User Access</field>
+            <field name="model_id" ref="hr.model_hr_employee"/>
+            <field name="domain_force">[
+                '|',
+                    ('id', '=', user.employee_id.id),
+                    '&',
+                        ('department_id', '=', user.employee_id.department_id.id),
+                        ('department_id', '!=', False)
+            ]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- HR Leave: Own requests only for regular users -->
+        <record id="hr_leave_user_own_rule" model="ir.rule">
+            <field name="name">HR Leave: User Own Requests</field>
+            <field name="model_id" ref="hr_holidays.model_hr_leave"/>
+            <field name="domain_force">[('employee_id.id', '=', user.employee_id.id)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- HR Leave Allocation: Own allocations only for regular users -->
+        <record id="hr_leave_allocation_user_own_rule" model="ir.rule">
+            <field name="name">HR Leave Allocation: User Own Allocations</field>
+            <field name="model_id" ref="hr_holidays.model_hr_leave_allocation"/>
+            <field name="domain_force">[('employee_id.id', '=', user.employee_id.id)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+    </data>
+</odoo>

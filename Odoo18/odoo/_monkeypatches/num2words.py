@@ -6,7 +6,7 @@ from collections import OrderedDict
 from decimal import ROUND_HALF_UP, Decimal
 from math import floor
 
-from odoo.release import MIN_PY_VERSION
+from odoo import MIN_PY_VERSION
 
 # The following section of the code is used to monkey patch
 # the Arabic class of num2words package as there are some problems
@@ -145,7 +145,7 @@ class Num2Word_Base:
 
     def to_cardinal_float(self, value):
         try:
-            _ = float(value) == value
+            float(value) == value
         except (ValueError, TypeError, AssertionError, AttributeError):
             raise TypeError(self.errmsg_nonnum % value)
 
@@ -971,7 +971,7 @@ class NumberToWords_BG(Num2Word_Base):
         return ret_minus + ''.join(ret)
 
 
-def patch_module():
+def patch_num2words():
     try:
         import num2words  # noqa: PLC0415
     except ImportError:

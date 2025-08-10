@@ -35,10 +35,6 @@ class AccountChartTemplate(models.AbstractModel):
     @template('cn_common', 'account.journal')
     def _get_cn_account_journal(self):
         return {
-            'cash': {
-                'name': _("Cash"),
-                'type': 'cash',
-                'default_account_id': 'l10n_cn_common_account_1001',
-            },
+            'cash': {'default_account_id': 'l10n_cn_common_account_1001'},
             'bank': {'default_account_id': 'l10n_cn_common_account_1002'},
         }

@@ -1,3 +1,6 @@
+/** @odoo-module **/
+
+import FormEditorRegistry from "@website/js/form_editor_registry";
 import options from "@web_editor/js/editor/snippets.options";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import weUtils from "@web_editor/js/common/utils";
@@ -5,9 +8,9 @@ import "@website/js/editor/snippets.options";
 import { unique } from "@web/core/utils/arrays";
 import { redirect } from "@web/core/utils/urls";
 import { _t } from "@web/core/l10n/translation";
-import { registry } from '@web/core/registry';
 import { memoize } from "@web/core/utils/functions";
 import { renderToElement } from "@web/core/utils/render";
+import { escape } from "@web/core/utils/strings";
 import { formatDate, formatDateTime } from "@web/core/l10n/dates";
 import wUtils from '@website/js/utils';
 
@@ -129,13 +132,16 @@ const FormEditor = options.Class.extend({
      *
      * @private
      * @param {string} type the type of the field
-     * @param {string} name The name of the field used also as label
+     * @param {string} label The label of the field. Also used as the field's
+     *                       name if no `name` is provided.
+     * @param {string} [name] The name of the field. Falls back to `label` if
+     *                        not specified
      * @returns {Object}
      */
-    _getCustomField: function (type, name) {
+    _getCustomField: function (type, label, name = "") {
         return {
-            name: name,
-            string: name,
+            name: name || label,
+            string: label,
             custom: true,
             type: type,
             // Default values for x2many fields and selection
@@ -217,7 +223,7 @@ const FormEditor = options.Class.extend({
         if (!field.id) {
             field.id = weUtils.generateHTMLId();
         }
-        const params = { field: { ...field }, defaultName: _t("Field") };
+        const params = { field: { ...field }, defaultName: escape(_t("Field")) };
         if (["url", "email", "tel"].includes(field.type)) {
             params.field.inputType = field.type;
         }
@@ -279,6 +285,10 @@ const FieldEditor = FormEditor.extend({
         const labelText = this.$target.find('.s_website_form_label_content').text();
         if (this._isFieldCustom()) {
             field = this._getCustomField(this.$target[0].dataset.type, labelText);
+            const inputName = this.$target[0]
+                .querySelector(".s_website_form_input")
+                .getAttribute("name");
+            field = this._getCustomField(this.$target[0].dataset.type, labelText, inputName);
         } else {
             field = Object.assign({}, this.fields[this._getFieldName()]);
             field.string = labelText;
@@ -735,7 +745,7 @@ options.registry.WebsiteFormEditor = FormEditor.extend({
 
         // Add Action related options
         const formKey = this.activeForm.website_form_key;
-        const formInfo = registry.category("website.form_editor_actions").get(formKey, null);
+        const formInfo = FormEditorRegistry.get(formKey, null);
         if (!formInfo || !formInfo.fields) {
             return;
         }
@@ -869,18 +879,17 @@ options.registry.WebsiteFormEditor = FormEditor.extend({
      */
     _applyFormModel: async function (modelId) {
         let oldFormInfo;
-        const actionsRegistry = registry.category("website.form_editor_actions");
         if (modelId) {
             const oldFormKey = this.activeForm.website_form_key;
             if (oldFormKey) {
-                oldFormInfo = actionsRegistry.get(oldFormKey, null);
+                oldFormInfo = FormEditorRegistry.get(oldFormKey, null);
             }
             this.$target.find('.s_website_form_field').remove();
             this.activeForm = this.models.find(model => model.id === modelId);
             currentActionName = this.activeForm.website_form_label;
         }
         const formKey = this.activeForm.website_form_key;
-        const formInfo = actionsRegistry.get(formKey, null);
+        const formInfo = FormEditorRegistry.get(formKey, null);
         // Success page
         if (!this.$target[0].dataset.successMode) {
             this.$target[0].dataset.successMode = 'redirect';
@@ -899,9 +908,17 @@ options.registry.WebsiteFormEditor = FormEditor.extend({
         if (formInfo) {
             const formatInfo = this._getDefaultFormat();
             await formInfo.formFields.forEach(async field => {
-                field.formatInfo = formatInfo;
-                await this._fetchFieldRecords(field);
-                this.$target.find('.s_website_form_submit, .s_website_form_recaptcha').first().before(this._renderField(field));
+                // Create a shallow copy of field to prevent unintended
+                // mutations to the original field stored in FormEditorRegistry
+                const _field = { ...field };
+                _field.formatInfo = formatInfo;
+                await this._fetchFieldRecords(_field);
+                const targetEl = this.$target[0].querySelector(
+                    ".s_website_form_submit, .s_website_form_recaptcha"
+                );
+                if (targetEl) {
+                    targetEl.parentNode.insertBefore(this._renderField(_field), targetEl);
+                }
             });
         }
     },
@@ -989,6 +1006,15 @@ options.registry.WebsiteFieldEditor = FieldEditor.extend({
     /**
      * @override
      */
+    onBuilt: async function () {
+        await this._super(...arguments);
+        // Re-render the field to ensure unique field IDs across multiple form
+        // snippets
+        this._rerenderField();
+    },
+    /**
+     * @override
+     */
     updateUI: async function () {
         // See Form updateUI
         if (this.rerender) {
@@ -1012,10 +1038,7 @@ options.registry.WebsiteFieldEditor = FieldEditor.extend({
      * @override
      */
     onClone() {
-        const field = this._getActiveField();
-        delete field.id;
-        const fieldEl = this._renderField(field);
-        this._replaceFieldElement(fieldEl);
+        this._rerenderField();
     },
     /**
      * Removes the visibility conditions concerned by the deleted field
@@ -1289,7 +1312,13 @@ options.registry.WebsiteFieldEditor = FieldEditor.extend({
             case 'toggleRequired':
                 return this.$target[0].classList.contains(params.activeValue) ? params.activeValue : 'false';
             case 'renderListItems':
-                return JSON.stringify(this._getListItems(true));
+                // TODO In master use a parameter.
+                this.__getListItems_forWidgetState = true;
+                try {
+                    return JSON.stringify(this._getListItems());
+                } finally {
+                    delete this.__getListItems_forWidgetState;
+                }
             case 'setVisibilityDependency':
                 return this.$target[0].dataset.visibilityDependency || '';
         }
@@ -1665,16 +1694,15 @@ options.registry.WebsiteFieldEditor = FieldEditor.extend({
     },
     /**
      * @private
-     * @param {boolean} removeEmptyValue
      */
-    _getListItems(removeEmptyValue) {
+    _getListItems: function () {
         const select = this._getSelect();
         const multipleInputs = this._getMultipleInputs();
         let options = [];
         if (select) {
             options = [...select.querySelectorAll('option')];
             if (
-                removeEmptyValue &&
+                this.__getListItems_forWidgetState &&
                 options.length &&
                 options[0].value === "" &&
                 options[0].textContent === "" &&
@@ -1702,6 +1730,17 @@ options.registry.WebsiteFieldEditor = FieldEditor.extend({
      */
     _getSelect: function () {
         return this.$target[0].querySelector('select');
+    },
+    /**
+     * Re-renders the currently active form field in the DOM.
+     *
+     * @private
+     */
+    _rerenderField() {
+        const field = this._getActiveField();
+        delete field.id;
+        const fieldEl = this._renderField(field);
+        this._replaceFieldElement(fieldEl);
     },
 });
 

@@ -2,11 +2,12 @@
 
 from unittest.mock import patch
 
+from odoo.addons.payment import utils as payment_utils
+from odoo.exceptions import UserError
 from odoo.tests import tagged
 from odoo.tools import mute_logger
 
-from odoo.addons.payment import utils as payment_utils
-from odoo.addons.payment_authorize.tests.common import AuthorizeCommon
+from .common import AuthorizeCommon
 
 
 @tagged('post_install', '-at_install')
@@ -14,7 +15,7 @@ class AuthorizeTest(AuthorizeCommon):
 
     def test_compatible_providers(self):
         # Note: in the test common, 'USD' is specified as the currency linked to the user account.
-        unsupported_currency = self._enable_currency('CHF')
+        unsupported_currency = self._prepare_currency('CHF')
         providers = self.env['payment.provider']._get_compatible_providers(
             self.company.id, self.partner.id, self.amount, currency_id=unsupported_currency.id
         )
@@ -49,14 +50,10 @@ class AuthorizeTest(AuthorizeCommon):
     def test_voiding_confirmed_tx_cancels_it(self):
         """ Test that voiding a transaction cancels it even if it's already confirmed. """
         source_tx = self._create_transaction('direct', state='done')
-        with patch(
-            'odoo.addons.payment_authorize.models.authorize_request.AuthorizeAPI'
-            '.get_transaction_details', return_value={'transaction': {'authAmount': self.amount}},
-        ):
-            source_tx._handle_notification_data('authorize', {
-                'response': {
-                    'x_response_code': '1',
-                    'x_type': 'void',
-                },
-            })
+        source_tx._handle_notification_data('authorize', {
+            'response': {
+                'x_response_code': '1',
+                'x_type': 'void',
+            },
+        })
         self.assertEqual(source_tx.state, 'cancel')

@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { Component, onWillStart, useState, onWillDestroy } from "@odoo/owl";
 import { browser } from "@web/core/browser/browser";
 

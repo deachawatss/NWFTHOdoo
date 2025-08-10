@@ -1,6 +1,6 @@
+/** @odoo-module**/
 /* global ace */
 
-import { delay } from "@odoo/hoot-dom";
 import {clickOnSave, registerWebsitePreviewTour } from "@website/js/tours/tour_utils";
 
 const adminCssModif = '#wrap {display: none;}';
@@ -50,13 +50,13 @@ registerWebsitePreviewTour('html_editor_multiple_templates', {
     () => [
         {
             content: "drop a snippet group",
-            trigger: ".o-website-builder_sidebar .o_snippet[name=Intro].o_draggable .o_snippet_thumbnail",
+            trigger: "#oe_snippets .oe_snippet[name=Intro].o_we_draggable .oe_snippet_thumbnail",
             // id starting by 'oe_structure..' will actually create an inherited view
             run: "drag_and_drop :iframe #oe_structure_test_ui",
         },
         {
             content: "Click on the s_cover snippet",
-            trigger: ":iframe .o_snippet_preview_wrap .s_cover",
+            trigger: ':iframe .o_snippet_preview_wrap[data-snippet-id="s_cover"]',
             run: "click",
         },
         ...clickOnSave(),
@@ -214,14 +214,7 @@ registerWebsitePreviewTour('test_html_editor_scss', {
         },
         {
             content: "check that the scss modification got applied",
-            trigger: ":iframe body:has(#wrap:hidden)",
-        },
-        {
-            trigger: "nav img[src]:not([src=''])",
-            async run() {
-                //Avoid Error received after termination
-                await delay(5000);
-            },
+            trigger: ':iframe body:has(#wrap:hidden)',
         },
     ]
 );
@@ -235,7 +228,7 @@ registerWebsitePreviewTour('test_html_editor_scss_2', {
 
         // 4. Open Html Editor and select a scss file
         {
-            trigger: ":iframe [is-ready=true] #wrapwrap",
+            trigger: "[is-ready=true]:iframe #wrapwrap",
         },
         {
             content: "open site menu",
@@ -290,6 +283,13 @@ registerWebsitePreviewTour('test_html_editor_scss_2', {
             run: "click",
         },
         {
+            content: "Wait for the reload of the iframe",
+            trigger: "[is-ready=false]:iframe #wrapwrap",
+        },
+        {
+            trigger: "[is-ready=true]:iframe #wrapwrap",
+        },
+        {
             trigger: `body:not(:has(div.ace_line:contains("${adminCssModif}")))`,
         },
         {
@@ -322,7 +322,7 @@ registerWebsitePreviewTour(
         },
         {
             content: "Bypass warning",
-            trigger: ".o_resource_editor_wrapper div:nth-child(2) > button",
+            trigger: ".o_resource_editor_wrapper div:nth-child(2) button:nth-child(3)",
             run: "click",
         },
         // Test all 3 file type options

@@ -31,7 +31,6 @@ class AccountAnalyticPlan(models.Model):
         'account.analytic.plan',
         string="Parent",
         inverse='_inverse_parent_id',
-        index='btree_not_null',
         ondelete='cascade',
         domain="['!', ('id', 'child_of', id)]",
     )
@@ -153,9 +152,6 @@ class AccountAnalyticPlan(models.Model):
     @api.depends('account_ids', 'children_ids')
     def _compute_all_analytic_account_count(self):
         # Get all children_ids from each plan
-        if not self.ids:
-            self.all_account_count = 0
-            return
         self.env.cr.execute("""
             SELECT parent.id,
                    array_agg(child.id) as children_ids
@@ -395,7 +391,7 @@ class AccountAnalyticApplicability(models.Model):
     _check_company_auto = True
     _check_company_domain = models.check_company_domain_parent_of
 
-    analytic_plan_id = fields.Many2one('account.analytic.plan', index='btree_not_null')
+    analytic_plan_id = fields.Many2one('account.analytic.plan')
     business_domain = fields.Selection(
         selection=[
             ('general', 'Miscellaneous'),

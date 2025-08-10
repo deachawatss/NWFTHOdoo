@@ -115,10 +115,6 @@ function pathFromActionState(state) {
     return path.join("/");
 }
 
-export function startUrl() {
-    return isScopedApp() ? "scoped_app" : "odoo";
-}
-
 /**
  * @param {{ [key: string]: any }} state
  * @returns
@@ -154,7 +150,7 @@ export function stateToUrl(state) {
         pathKeysToOmit.splice(pathKeysToOmit.indexOf("resId"), 1);
     }
     const search = objectToUrlEncodedString(omit(state, ...pathKeysToOmit));
-    const start_url = startUrl();
+    const start_url = isScopedApp() ? "scoped_app" : "odoo";
     return `/${start_url}${path}${search ? `?${search}` : ""}`;
 }
 

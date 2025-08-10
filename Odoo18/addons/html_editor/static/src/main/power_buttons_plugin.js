@@ -11,9 +11,8 @@ import { omit, pick } from "@web/core/utils/objects";
  * @typedef {Object} PowerButton
  * @property {string} commandId
  * @property {Object} [commandParams]
- * @property {string} [description] Can be inferred from the user command
+ * @property {string} [title] Can be inferred from the user command
  * @property {string} [icon] Can be inferred from the user command
- * @property {string} [text] Mandatory if `icon` is not provided
  * @property {string} [isAvailable] Can be inferred from the user command
  */
 /**
@@ -26,7 +25,7 @@ import { omit, pick } from "@web/core/utils/objects";
  *          {
  *              id: myCommand,
  *              run: myCommandFunction,
- *              description: _t("Apply my command"),
+ *              title: _t("My Command"),
  *              icon: "fa-bug",
  *          },
  *      ],
@@ -34,7 +33,7 @@ import { omit, pick } from "@web/core/utils/objects";
  *          {
  *              commandId: "myCommand",
  *              commandParams: { myParam: "myValue" },
- *              description: _t("Do powerfull stuff"), // overrides the user command's `description`
+ *              title: _t("My Power Button"), // overrides the user command's `title`
  *              // `icon` is derived from the user command
  *          }
  *      ],
@@ -69,30 +68,15 @@ export class PowerButtonsPlugin extends Plugin {
         const composePowerButton = (/**@type {PowerButton} */ item) => {
             const command = this.dependencies.userCommand.getCommand(item.commandId);
             return {
-                ...pick(command, "description", "icon"),
+                ...pick(command, "title", "icon", "isAvailable"),
                 ...omit(item, "commandId", "commandParams"),
                 run: () => command.run(item.commandParams),
-                isAvailable: (selection) =>
-                    [command.isAvailable, item.isAvailable]
-                        .filter(Boolean)
-                        .every((predicate) => predicate(selection)),
             };
         };
-        const renderButton = ({ description, icon, text, run }) => {
+        const renderButton = ({ title, icon, run }) => {
             const btn = this.document.createElement("button");
-            let className = "power_button btn px-2 py-1 cursor-pointer";
-            if (icon) {
-                const iconLibrary = icon.includes("fa-") ? "fa" : "oi";
-                className += ` ${iconLibrary} ${icon}`;
-            } else {
-                const span = this.document.createElement("span");
-                span.textContent = text;
-                span.className = "d-flex align-items-center text-nowrap";
-                span.style.height = "1em";
-                btn.append(span);
-            }
-            btn.className = className;
-            btn.title = description;
+            btn.className = `power_button btn px-2 py-1 cursor-pointer fa ${icon}`;
+            btn.title = title;
             this.addDomListener(btn, "click", () => this.applyCommand(run));
             return btn;
         };
@@ -112,9 +96,9 @@ export class PowerButtonsPlugin extends Plugin {
 
     updatePowerButtons() {
         this.powerButtonsContainer.classList.add("d-none");
-        const { editableSelection, currentSelectionIsInEditable } =
+        const { editableSelection, documentSelectionIsInEditable } =
             this.dependencies.selection.getSelectionData();
-        if (!currentSelectionIsInEditable) {
+        if (!documentSelectionIsInEditable) {
             return;
         }
         const block = closestBlock(editableSelection.anchorNode);
@@ -123,11 +107,11 @@ export class PowerButtonsPlugin extends Plugin {
         const editableRect = this.editable.getBoundingClientRect();
         if (
             editableSelection.isCollapsed &&
-            block?.matches(baseContainerGlobalSelector) &&
+            element?.matches(baseContainerGlobalSelector) &&
             editableRect.bottom > blockRect.top &&
             isEmptyBlock(block) &&
             !this.services.ui.isSmall &&
-            !closestElement(editableSelection.anchorNode, "td, li") &&
+            !closestElement(editableSelection.anchorNode, "td") &&
             !block.style.textAlign &&
             this.getResource("power_buttons_visibility_predicates").every((predicate) =>
                 predicate(editableSelection)
@@ -138,7 +122,7 @@ export class PowerButtonsPlugin extends Plugin {
             this.powerButtonsContainer.setAttribute("dir", direction);
             // Hide/show buttons based on their availability.
             for (const [{ isAvailable }, buttonElement] of this.descriptionToElementMap.entries()) {
-                const shouldHide = Boolean(!isAvailable(editableSelection));
+                const shouldHide = Boolean(isAvailable && !isAvailable(editableSelection));
                 buttonElement.classList.toggle("d-none", shouldHide); // 2nd arg must be a boolean
             }
             this.setPowerButtonsPosition(block, blockRect, direction);
@@ -146,16 +130,15 @@ export class PowerButtonsPlugin extends Plugin {
     }
 
     getPlaceholderWidth(block) {
-        let width;
-        this.dependencies.history.ignoreDOMMutations(() => {
-            const clone = block.cloneNode(true);
-            clone.innerText = clone.getAttribute("o-we-hint-text");
-            clone.style.width = "fit-content";
-            clone.style.visibility = "hidden";
-            this.editable.appendChild(clone);
-            width = clone.getBoundingClientRect().width;
-            this.editable.removeChild(clone);
-        });
+        this.dependencies.history.disableObserver();
+        const clone = block.cloneNode(true);
+        clone.innerText = clone.getAttribute("placeholder");
+        clone.style.width = "fit-content";
+        clone.style.visibility = "hidden";
+        this.editable.appendChild(clone);
+        const { width } = clone.getBoundingClientRect();
+        this.editable.removeChild(clone);
+        this.dependencies.history.enableObserver();
         return width;
     }
 

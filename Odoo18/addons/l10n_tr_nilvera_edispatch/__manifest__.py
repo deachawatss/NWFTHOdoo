@@ -12,7 +12,6 @@
         'views/l10n_tr_nilvera_trailer_plate_views.xml',
         'views/res_partner_views.xml',
         'views/stock_picking_views.xml',
-        'templates/l10n_tr_nilvera_edispatch.xml',
+        'templates/l10n_tr_nilvera_edispatch.xml'
     ],
-    'author': 'Odoo S.A.',
 }

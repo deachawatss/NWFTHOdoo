@@ -3,10 +3,11 @@ from markupsafe import Markup
 from odoo import _, models, Command
 from odoo.addons.base.models.res_bank import sanitize_account_number
 from odoo.exceptions import UserError, ValidationError
-from odoo.tools import float_is_zero, float_repr
+from odoo.tools import float_is_zero, float_repr, format_list
 from odoo.tools.float_utils import float_round
 from odoo.tools.misc import clean_context, formatLang, html_escape
 from odoo.tools.xml_utils import find_xml_value
+from datetime import datetime
 
 # -------------------------------------------------------------------------
 # UNIT OF MEASURE
@@ -14,7 +15,6 @@ from odoo.tools.xml_utils import find_xml_value
 UOM_TO_UNECE_CODE = {
     'uom.product_uom_unit': 'C62',
     'uom.product_uom_dozen': 'DZN',
-    'uom.product_uom_pack_6': 'HD',
     'uom.product_uom_kgm': 'KGM',
     'uom.product_uom_gram': 'GRM',
     'uom.product_uom_day': 'DAY',
@@ -35,8 +35,8 @@ UOM_TO_UNECE_CODE = {
     'uom.product_uom_gal': 'GLL',
     'uom.product_uom_cubic_inch': 'INQ',
     'uom.product_uom_cubic_foot': 'FTQ',
-    'uom.product_uom_square_meter': 'MTK',
-    'uom.product_uom_square_foot': 'FTK',
+    'uom.uom_square_meter': 'MTK',
+    'uom.uom_square_foot': 'FTK',
     'uom.product_uom_yard': 'YRD',
     'uom.product_uom_millimeter': 'MMT',
 }
@@ -46,6 +46,7 @@ UOM_TO_UNECE_CODE = {
 # -------------------------------------------------------------------------
 EAS_MAPPING = {
     'AD': {'9922': 'vat'},
+    'AE': {'0235': 'vat'},
     'AL': {'9923': 'vat'},
     'AT': {'9915': 'vat'},
     'AU': {'0151': 'vat'},
@@ -60,7 +61,7 @@ EAS_MAPPING = {
     'EE': {'9931': 'vat'},
     'ES': {'9920': 'vat'},
     'FI': {'0216': None, '0213': 'vat'},
-    'FR': {'0009': 'company_registry', '9957': 'vat', '0002': None},
+    'FR': {'0009': 'siret', '9957': 'vat', '0002': None},
     'SG': {'0195': 'l10n_sg_unique_entity_number'},
     'GB': {'9932': 'vat'},
     'GR': {'9933': 'vat'},
@@ -73,7 +74,7 @@ EAS_MAPPING = {
     'LI': {'9936': 'vat'},
     'LT': {'9937': 'vat'},
     'LU': {'9938': 'vat'},
-    'LV': {'9939': 'vat'},
+    'LV': {'0218': 'company_registry', '9939': 'vat'},
     'MC': {'9940': 'vat'},
     'ME': {'9941': 'vat'},
     'MK': {'9942': 'vat'},
@@ -94,11 +95,24 @@ EAS_MAPPING = {
     'SM': {'9951': 'vat'},
     'TR': {'9952': 'vat'},
     'VA': {'9953': 'vat'},
+    # DOM-TOM
+    'BL': {'0009': 'siret', '9957': 'vat', '0002': None},  # Saint Barthélemy
+    'GF': {'0009': 'siret', '9957': 'vat', '0002': None},  # French Guiana
+    'GP': {'0009': 'siret', '9957': 'vat', '0002': None},  # Guadeloupe
+    'MF': {'0009': 'siret', '9957': 'vat', '0002': None},  # Saint Martin
+    'MQ': {'0009': 'siret', '9957': 'vat', '0002': None},  # Martinique
+    'NC': {'0009': 'siret', '9957': 'vat', '0002': None},  # New Caledonia
+    'PF': {'0009': 'siret', '9957': 'vat', '0002': None},  # French Polynesia
+    'PM': {'0009': 'siret', '9957': 'vat', '0002': None},  # Saint Pierre and Miquelon
+    'RE': {'0009': 'siret', '9957': 'vat', '0002': None},  # Réunion
+    'TF': {'0009': 'siret', '9957': 'vat', '0002': None},  # French Southern and Antarctic Lands
+    'WF': {'0009': 'siret', '9957': 'vat', '0002': None},  # Wallis and Futuna
+    'YT': {'0009': 'siret', '9957': 'vat', '0002': None},  # Mayotte
 }
 
 
 class AccountEdiCommon(models.AbstractModel):
-    _name = 'account.edi.common'
+    _name = "account.edi.common"
     _description = "Common functions for EDI documents: generate the data, the constraints, etc"
 
     # -------------------------------------------------------------------------
@@ -148,78 +162,101 @@ class AccountEdiCommon(models.AbstractModel):
                 error_msg = _("Tax '%(tax_name)s' is invalid: %(error_message)s", tax_name=tax.name, error_message=e.args[0])  # args[0] gives the error message
                 raise ValidationError(error_msg)
 
-    def _get_tax_category_code(self, customer, supplier, tax):
+    def _get_tax_unece_codes(self, customer, supplier, tax):
         """
-        Predict the tax category code of a tax applied on a given base line.
-        These are reasonable defaults, but may not always be correct. For a per-tax configuration of
-        tax category code, install the `account_edi_ubl_cii_tax_extension` module.
-
         Source: doc of Peppol (but the CEF norm is also used by factur-x, yet not detailed)
         https://docs.peppol.eu/poacc/billing/3.0/syntax/ubl-invoice/cac-TaxTotal/cac-TaxSubtotal/cac-TaxCategory/cbc-TaxExemptionReasonCode/
         https://docs.peppol.eu/poacc/billing/3.0/codelist/vatex/
         https://docs.peppol.eu/poacc/billing/3.0/codelist/UNCL5305/
+        :returns: {
+            tax_category_code: str,
+            tax_exemption_reason_code: str,
+            tax_exemption_reason: str,
+        }
         """
+
+        def create_dict(tax_category_code=None, tax_exemption_reason_code=None, tax_exemption_reason=None):
+            return {
+                'tax_category_code': tax_category_code,
+                'tax_exemption_reason_code': tax_exemption_reason_code,
+                'tax_exemption_reason': tax_exemption_reason,
+            }
+
         # add Norway, Iceland, Liechtenstein
         european_economic_area = self.env.ref('base.europe').country_ids.mapped('code') + ['NO', 'IS', 'LI']
-
-        if not tax:
-            return 'E'
 
         if customer.country_id.code == 'ES' and customer.zip:
             if customer.zip[:2] in ('35', '38'):  # Canary
                 # [BR-IG-10]-A VAT breakdown (BG-23) with VAT Category code (BT-118) "IGIC" shall not have a VAT
                 # exemption reason code (BT-121) or VAT exemption reason text (BT-120).
-                return 'L'
+                return create_dict(tax_category_code='L')
             if customer.zip[:2] in ('51', '52'):
-                return 'M'  # Ceuta & Mellila
+                return create_dict(tax_category_code='M')  # Ceuta & Mellila
 
         if supplier.country_id == customer.country_id:
             if not tax or tax.amount == 0:
                 # in theory, you should indicate the precise law article
-                return 'E'
+                return create_dict(tax_category_code='E', tax_exemption_reason=_('Articles 226 items 11 to 15 Directive 2006/112/EN'))
             else:
-                return 'S'  # standard VAT
+                return create_dict(tax_category_code='S')  # standard VAT
 
         if supplier.country_id.code in european_economic_area and supplier.vat:
             if tax.amount != 0:
                 # otherwise, the validator will complain because G and K code should be used with 0% tax
-                return 'S'
+                return create_dict(tax_category_code='S')
             if customer.country_id.code not in european_economic_area:
-                return 'G'
+                return create_dict(
+                    tax_category_code='G',
+                    tax_exemption_reason_code='VATEX-EU-G',
+                    tax_exemption_reason=_('Export outside the EU'),
+                )
             if customer.country_id.code in european_economic_area:
-                return 'K'
+                return create_dict(
+                    tax_category_code='K',
+                    tax_exemption_reason_code='VATEX-EU-IC',
+                    tax_exemption_reason=_('Intra-Community supply'),
+                )
 
         if tax.amount != 0:
-            return 'S'
+            return create_dict(tax_category_code='S')
         else:
+            return create_dict(tax_category_code='E', tax_exemption_reason=_('Articles 226 items 11 to 15 Directive 2006/112/EN'))
+
+    def _get_tax_category_code(self, customer, supplier, tax):
+        if not tax:
             return 'E'
+        return self._get_tax_unece_codes(customer, supplier, tax).get('tax_category_code')
 
     def _get_tax_exemption_reason(self, customer, supplier, tax):
-        """ These are the default tax exemption reasons given for each tax category code.
-            For a per-tax configuration of tax exemption reasons, see the
-            `account_edi_ubl_cii_tax_extension` module.
-
-            Note: In Peppol, taxes should be grouped by tax category code but *not* by
-            exemption reason, see https://docs.peppol.eu/poacc/billing/3.0/bis/#_calculation_of_vat
-        """
-        tax_category_code = self._get_tax_category_code(customer, supplier, tax)
-        tax_exemption_reason = tax_exemption_reason_code = None
-
         if not tax:
-            tax_exemption_reason = _("Exempt from tax")
-        elif tax_category_code == 'E':
-            tax_exemption_reason = _('Articles 226 items 11 to 15 Directive 2006/112/EN')
-        elif tax_category_code == 'G':
-            tax_exemption_reason = _('Export outside the EU')
-            tax_exemption_reason_code = 'VATEX-EU-G'
-        elif tax_category_code == 'K':
-            tax_exemption_reason = _('Intra-Community supply')
-            tax_exemption_reason_code = 'VATEX-EU-IC'
-
+            return {
+                'tax_exemption_reason': _("Exempt from tax"),
+                'tax_exemption_reason_code': None,
+            }
+        res = self._get_tax_unece_codes(customer, supplier, tax)
         return {
-            'tax_exemption_reason': tax_exemption_reason,
-            'tax_exemption_reason_code': tax_exemption_reason_code,
+            'tax_exemption_reason': res.get('tax_exemption_reason'),
+            'tax_exemption_reason_code': res.get('tax_exemption_reason_code'),
         }
+
+    def _get_tax_category_list(self, customer, supplier, taxes):
+        """ Full list: https://unece.org/fileadmin/DAM/trade/untdid/d16b/tred/tred5305.htm
+        Subset: https://docs.peppol.eu/poacc/billing/3.0/codelist/UNCL5305/
+
+        :param taxes:   account.tax records.
+        :return:        A list of values to fill the TaxCategory foreach template.
+        """
+        res = []
+        for tax in taxes:
+            tax_unece_codes = self._get_tax_unece_codes(customer, supplier, tax)
+            res.append({
+                'id': tax_unece_codes.get('tax_category_code'),
+                'percent': tax.amount if tax.amount_type == 'percent' else False,
+                'name': tax_unece_codes.get('tax_exemption_reason'),
+                'tax_scheme_vals': {'id': 'VAT'},
+                **tax_unece_codes,
+            })
+        return res
 
     # -------------------------------------------------------------------------
     # CONSTRAINTS
@@ -235,7 +272,7 @@ class AccountEdiCommon(models.AbstractModel):
         :return: an Error message or None
         """
         if not record:
-            return custom_warning_message or _("The element %(record)s is required on %(field_list)s.", record=record, field_list=field_names)
+            return custom_warning_message or _("The element %(record)s is required on %(field_list)s.", record=record, field_list=format_list(self.env, field_names))
 
         if not isinstance(field_names, (list, tuple)):
             field_names = (field_names,)
@@ -250,7 +287,7 @@ class AccountEdiCommon(models.AbstractModel):
             return custom_warning_message or _(
                 "The element %(record)s is required on %(field_list)s.",
                 record=record,
-                field_list=field_names,
+                field_list=format_list(self.env, field_names),
             )
 
         display_field_names = record.fields_get(field_names)
@@ -258,7 +295,7 @@ class AccountEdiCommon(models.AbstractModel):
             display_field = f"'{display_field_names[field_names[0]]['string']}'"
             return _("The field %(field)s is required on %(record)s.", field=display_field, record=record.display_name)
         else:
-            display_fields = [f"'{display_field_names[x]['string']}'" for x in display_field_names]
+            display_fields = format_list(self.env, [f"'{display_field_names[x]['string']}'" for x in display_field_names])
             return _("At least one of the following fields %(field_list)s is required on %(record)s.", field_list=display_fields, record=record.display_name)
 
     # -------------------------------------------------------------------------
@@ -277,9 +314,6 @@ class AccountEdiCommon(models.AbstractModel):
     # -------------------------------------------------------------------------
 
     def _import_invoice_ubl_cii(self, invoice, file_data, new=False):
-        if invoice.invoice_line_ids:
-            return invoice._reason_cannot_decode_has_invoice_lines()
-
         tree = file_data['xml_tree']
 
         # Not able to decode the move_type from the xml.
@@ -329,7 +363,9 @@ class AccountEdiCommon(models.AbstractModel):
 
         attachments = self._import_attachments(invoice, tree)
         if attachments:
-            invoice.message_post(attachment_ids=attachments.ids)
+            invoice.with_context(no_new_invoice=True).message_post(attachment_ids=attachments.ids)
+
+        return True
 
     def _import_attachments(self, invoice, tree):
         # Import the embedded PDF in the xml if some are found
@@ -364,7 +400,7 @@ class AccountEdiCommon(models.AbstractModel):
 
         return attachments
 
-    def _import_partner(self, company_id, name, phone, email, vat, *, peppol_eas=False, peppol_endpoint=False, postal_address={}, **kwargs):
+    def _import_partner(self, company_id, name, phone, email, vat, country_code=False, peppol_eas=False, peppol_endpoint=False, street=False, street2=False, city=False, zip_code=False):
         """ Retrieve the partner, if no matching partner is found, create it (only if he has a vat and a name) """
         logs = []
         if peppol_eas and peppol_endpoint:
@@ -374,33 +410,17 @@ class AccountEdiCommon(models.AbstractModel):
         partner = self.env['res.partner'] \
             .with_company(company_id) \
             ._retrieve_partner(name=name, phone=phone, email=email, vat=vat, domain=domain)
-        country_code = postal_address.get('country_code')
-        country = self.env['res.country'].search([('code', '=', country_code.upper())]) if country_code else self.env['res.country']
-        state_code = postal_address.get('state_code')
-        state = self.env['res.country.state'].search(
-            [('country_id', '=', country.id), ('code', '=', state_code)],
-            limit=1,
-        ) if state_code and country else self.env['res.country.state']
         if not partner and name and vat:
-            partner_vals = {'name': name, 'email': email, 'phone': phone}
+            partner_vals = {'name': name, 'email': email, 'phone': phone, 'street': street, 'street2': street2, 'zip': zip_code, 'city': city}
             if peppol_eas and peppol_endpoint:
                 partner_vals.update({'peppol_eas': peppol_eas, 'peppol_endpoint': peppol_endpoint})
+            country = self.env.ref(f'base.{country_code.lower()}', raise_if_not_found=False) if country_code else False
+            if country:
+                partner_vals['country_id'] = country.id
             partner = self.env['res.partner'].create(partner_vals)
-            if vat:
-                partner.vat, _country_code = self.env['res.partner']._run_vat_checks(country, vat, validation='setnull')
+            if vat and self.env['res.partner']._run_vat_test(vat, country, partner.is_company):
+                partner.vat = vat
             logs.append(_("Could not retrieve a partner corresponding to '%s'. A new partner was created.", name))
-        elif not partner and not logs:
-            logs.append(_("Could not retrieve partner with details: Name: %(name)s, Vat: %(vat)s, Phone: %(phone)s, Email: %(email)s",
-                  name=name, vat=vat, phone=phone, email=email))
-        if not partner.country_id and not partner.street and not partner.street2 and not partner.city and not partner.zip and not partner.state_id:
-            partner.write({
-                'country_id': country.id,
-                'street': postal_address.get('street'),
-                'street2': postal_address.get('additional_street'),
-                'city': postal_address.get('city'),
-                'zip': postal_address.get('zip'),
-                'state_id': state.id,
-            })
         return partner, logs
 
     def _import_partner_bank(self, invoice, bank_details):
@@ -505,37 +525,24 @@ class AccountEdiCommon(models.AbstractModel):
             logs.append(_("A payment of %s was detected.", formatted_amount))
         return logs
 
-    def _import_lines(self, record, tree, xpath, document_type=False, tax_type=False, qty_factor=1):
-        logs = []
-        lines_values = []
-        for line_tree in tree.iterfind(xpath):
-            line_values = self.with_company(record.company_id)._retrieve_invoice_line_vals(line_tree, document_type, qty_factor)
-            line_values['tax_ids'], tax_logs = self._retrieve_taxes(record, line_values, tax_type)
-            logs += tax_logs
-            if not line_values['product_uom_id']:
-                line_values.pop('product_uom_id')  # if no uom, pop it so it's inferred from the product_id
-            lines_values.append(line_values)
-            lines_values += self._retrieve_line_charges(record, line_values, line_values['tax_ids'])
-        return lines_values, logs
-
-    def _import_rounding_amount(self, invoice, tree, xpath, document_type=False, qty_factor=1):
+    def _import_rounding_amount(self, invoice, tree, xpath, qty_factor):
         """
         Add an invoice line representing the rounding amount given in the document.
         - The amount is assumed to be in document currency
         """
         logs = []
-        lines_values = []
+        line_vals = []
 
         currency = invoice.currency_id
         rounding_amount_currency = currency.round(qty_factor * float(tree.findtext(xpath) or 0))
 
         if invoice.currency_id.is_zero(rounding_amount_currency):
-            return lines_values, logs
+            return line_vals, logs
 
         inverse_rate = abs(invoice.amount_total_signed) / invoice.amount_total if invoice.amount_total else 0
         rounding_amount = invoice.company_id.currency_id.round(rounding_amount_currency * inverse_rate)
 
-        lines_values.append({
+        line_vals.append({
             'display_type': 'product',
             'name': _('Rounding'),
             'quantity': 1,
@@ -551,18 +558,34 @@ class AccountEdiCommon(models.AbstractModel):
         formatted_amount = formatLang(self.env, rounding_amount_currency, currency_obj=currency)
         logs.append(_("A rounding amount of %s was detected.", formatted_amount))
 
+        return line_vals, logs
+
+    def _import_invoice_lines(self, invoice, tree, xpath, qty_factor):
+        logs = []
+        lines_values = []
+        for line_tree in tree.iterfind(xpath):
+            line_values = self.with_company(invoice.company_id)._retrieve_invoice_line_vals(line_tree, invoice.move_type, qty_factor)
+            line_values['tax_ids'], tax_logs = self._retrieve_taxes(
+                invoice, line_values, invoice.journal_id.type,
+            )
+            logs += tax_logs
+            if not line_values['product_uom_id']:
+                line_values.pop('product_uom_id')  # if no uom, pop it so it's inferred from the product_id
+            lines_values.append(line_values)
+            lines_values += self._retrieve_line_charges(invoice, line_values, line_values['tax_ids'])
         return lines_values, logs
 
     def _retrieve_invoice_line_vals(self, tree, document_type=False, qty_factor=1):
         # Start and End date (enterprise fields)
+        xpath_dict = self._get_invoice_line_xpaths(document_type, qty_factor)
         deferred_values = {}
         start_date = end_date = None
         if self.env['account.move.line']._fields.get('deferred_start_date'):
-            start_date_node = tree.find('./{*}InvoicePeriod/{*}StartDate')
-            end_date_node = tree.find('./{*}InvoicePeriod/{*}EndDate')
+            start_date_node = tree.find(xpath_dict['deferred_start_date'])
+            end_date_node = tree.find(xpath_dict['deferred_end_date'])
             if start_date_node is not None and end_date_node is not None:  # there is a constraint forcing none or the two to be set
-                start_date = start_date_node.text
-                end_date = end_date_node.text
+                start_date = datetime.strptime(start_date_node.text.strip(), xpath_dict['date_format'])
+                end_date = datetime.strptime(end_date_node.text.strip(), xpath_dict['date_format'])
             deferred_values = {
                 'deferred_start_date': start_date,
                 'deferred_end_date': end_date,
@@ -654,7 +677,7 @@ class AccountEdiCommon(models.AbstractModel):
                 ]
                 if uom_infered_xmlid:
                     product_uom = self.env.ref(uom_infered_xmlid[0], raise_if_not_found=False) or self.env['uom.uom']
-        if product and product_uom and not product_uom._has_common_reference(product.product_tmpl_id.uom_id):
+        if product and product_uom and product_uom.category_id != product.product_tmpl_id.uom_id.category_id:
             # uom incompatibility
             product_uom = self.env['uom.uom']
 

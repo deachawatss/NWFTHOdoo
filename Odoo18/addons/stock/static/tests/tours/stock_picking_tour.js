@@ -1,4 +1,75 @@
+/** @odoo-module **/
 import { registry } from "@web/core/registry";
+
+registry.category("web_tour.tours").add('test_detailed_op_no_save_1', {  steps: () => [
+    {
+        trigger: '.o_field_x2many_list_row_add > a',
+        run: "click",
+    },
+    {
+        trigger: ".o_field_widget[name=product_id] input",
+        run: "edit Lot",
+    },
+    {
+        trigger: ".ui-menu-item > a:contains('Product Lot')",
+        run: "click",
+    },
+    {
+        trigger: ".btn-primary[name=action_confirm]",
+        run: "click",
+    },
+    {
+        trigger: ".fa-list",
+        run: "click",
+    },
+    {
+        trigger: "h4:contains('Stock move')",
+        run: "click",
+    },
+    {
+        trigger: ".modal .o_field_x2many_list_row_add > a",
+        run: "click",
+    },
+    {
+        trigger: ".modal .o_field_widget[name=lot_name] input",
+        run: "edit lot1",
+    },
+    {
+        trigger: ".modal .o_field_widget[name=quantity] input",
+        run: "edit 4",
+    },
+    {
+        trigger: ".modal button:contains(save)",
+        run: "click",
+    },
+    {
+        trigger: "body:not(:has(.modal))",
+    },
+    {
+        trigger: ".o_optional_columns_dropdown_toggle",
+        run: "click",
+    },
+    {
+        trigger: 'input[name="picked"]',
+        content: 'Check the picked field to display the column on the list view.',
+        run: "check",
+    },
+    {
+        trigger: ".o_data_cell[name=picked]",
+        run: "click",
+    },
+    {
+        trigger: ".o_field_widget[name=picked] input",
+        run: "check",
+    },
+    {
+        trigger: ".btn-primary[name=button_validate]",
+        run: "click",
+    },
+    {
+        trigger: ".o_control_panel_actions button:contains('Traceability')",
+    },
+]});
 
 registry.category("web_tour.tours").add('test_generate_serial_1', {  steps: () => [
     {
@@ -18,11 +89,11 @@ registry.category("web_tour.tours").add('test_generate_serial_1', {  steps: () =
         run: "click",
     },
     {
-        trigger: "button:contains('Details')",
+        trigger: ".fa-list",
         run: "click",
     },
     {
-        trigger: "h4:contains('Detailed Operations')",
+        trigger: "h4:contains('Stock move')",
         run: "click",
     },
     {
@@ -117,11 +188,11 @@ registry.category("web_tour.tours").add('test_generate_serial_2', {  steps: () =
         run: "click",
     },
     {
-        trigger: "button:contains('Details')",
+        trigger: ".fa-list",
         run: "click",
     },
     {
-        trigger: ".modal h4:contains('Detailed Operations')",
+        trigger: ".modal h4:contains('Stock move')",
         run: "click",
     },
     // We generate lots for a first batch of 50 products
@@ -292,10 +363,153 @@ registry.category('web_tour.tours').add('test_inventory_adjustment_apply_all', {
     ],
 });
 
+registry.category("web_tour.tours").add('test_add_new_line', {
+    steps: () => [
+        {
+            trigger: ".o_form_editable",
+        },
+        {
+            trigger: '.o_field_x2many_list_row_add > a',
+            run: "click",
+        },
+        {
+            trigger: ".o_field_widget[name=product_id] input",
+            run: 'edit two',
+        },
+        {
+            trigger: ".ui-menu-item > a:contains('Product two')",
+            run: "click",
+        },
+        {
+            trigger: ".fa-list:eq(1)",
+            run: "click",
+        },
+        {
+            trigger: "h4:contains('Stock move')",
+            run: "click",
+        },
+        {
+            trigger: ".modal .o_field_x2many_list_row_add > a",
+            run: "click",
+        },
+        {
+            trigger: ".modal .o_field_widget[name=lot_name] input",
+            run: 'edit two',
+        },
+        {
+            trigger: ".modal .o_form_view.modal-content .o_form_button_save",
+            run: "click",
+        },
+        {
+            trigger: "body:not(:has(.modal))",
+        },
+        {
+            trigger: ".o_form_view .o_form_button_save",
+            run: "click",
+        },
+        {
+            trigger: ".o_form_renderer.o_form_saved",
+        },
+    ]
+});
+
+registry.category("web_tour.tours").add("test_edit_existing_line", {
+    steps: () => [
+        {
+            trigger: ".o_data_cell[name=quantity]",
+            run: "click",
+        },
+        {
+            trigger: ".o_field_widget[name=quantity] input",
+            run: "edit 2",
+        },
+        {
+            trigger: ".fa-list",
+            run: "click",
+        },
+        {
+            trigger: ".modal h4:contains(Stock move)",
+            run: "click",
+        },
+        {
+            trigger: ".modal .o_data_cell[name=quantity]:eq(1)",
+            run: "click",
+        },
+        {
+            trigger: ".modal .o_field_widget[name=lot_name] input",
+            run: "edit two",
+        },
+        {
+            trigger: ".modal .o_form_view.modal-content .o_form_button_save:enabled",
+            run: "click",
+        },
+        {
+            content: "wait the modal is totally closed before click on save",
+            trigger: "body:not(:has(.modal))",
+        },
+        {
+            trigger: ".o_form_view .o_form_button_save",
+            run: "click",
+        },
+        {
+            trigger: ".o_form_renderer.o_form_saved",
+        },
+    ],
+});
+
+registry.category("web_tour.tours").add('test_edit_existing_lines_2', {
+    steps: () => [
+        { trigger: ".o_data_row:has(.o_data_cell[data-tooltip='Product a']) .fa-list", run: 'click'},
+        { trigger: ".o_data_cell[name=lot_name]", run: 'click' },
+        { trigger: ".o_data_cell[name=lot_name] input", run: 'edit SNa001'},
+        { trigger: ".o_form_view.modal-content .o_form_button_save", run: 'click'},
+        { trigger: "body:not(:has(div .modal-content))"},
+        { trigger: ".o_data_row:has(.o_data_cell[data-tooltip='Product b']) .fa-list", run: 'click' },
+        { trigger: ".o_data_cell[name=lot_name]", run: 'click' },
+        { trigger: ".o_data_cell[name=lot_name] input", run: 'edit SNb001'},
+        { trigger: ".o_form_view.modal-content .o_form_button_save", run: 'click'},
+        { trigger: "body:not(:has(div .modal-content))"},
+        { trigger: ".o_form_view:not(.modal-content) .o_form_button_save", run: 'click' },
+        { trigger: ".o_form_renderer.o_form_saved" },
+    ]
+});
+
+registry.category("web_tour.tours").add('test_onchange_twice_lot_ids', {
+    steps: () => [
+        {
+            trigger: ".o_optional_columns_dropdown_toggle",
+            run: "click",
+        },
+        {
+            trigger: ".dropdown-item:contains('Serial Numbers')",
+            run: "click",
+        },
+        {
+            trigger: ".o_data_cell.o_many2many_tags_cell",
+            run: "click",
+        },
+        {
+            trigger: ".oi-close:first",
+            run: "click",
+        },
+        {
+            trigger: ".oi-close:first",
+            run: "click",
+        },
+        {
+            trigger: ".o_form_button_save",
+            run: "click",
+        },
+        {
+            trigger: ".o_form_renderer.o_form_saved",
+        },
+    ],
+});
+
 registry.category("web_tour.tours").add("test_add_new_line_in_detailled_op", {
     steps: () => [
         {
-            trigger: ".o_list_view.o_field_x2many .o_data_row button[name='action_show_details']",
+            trigger: ".o_list_view.o_field_x2many .o_data_row button[name='Open Move']",
             run: "click",
         },
         {
@@ -313,16 +527,12 @@ registry.category("web_tour.tours").add("test_add_new_line_in_detailled_op", {
         {
             content: "check that the move contains three lines",
             trigger:
-                ".modal-content:has(.modal-header .modal-title:contains(Detailed Operations)) .o_data_row:nth-child(3)",
-        },
-        {
-            trigger: ".modal-header .modal-title:contains(Detailed Operations)",
-            run: "click",
+                ".modal-content:has(.modal-header .modal-title:contains(Open: Stock move)) .o_data_row:nth-child(3)",
         },
         {
             content: "Check that the first line is associated with LOT001 for a quantity of 0.00",
             trigger:
-                ".modal-content .o_data_row:nth-child(1):has(.o_data_cell[name=quant_id]:contains(WH/Stock - LOT001)):has(.o_data_cell[name=quantity]:contains(0.00))",
+                ".modal-content .o_data_row:has(.o_field_pick_from input:value(WH/Stock - LOT001)):has(.o_field_float[name=quantity] input:value(0.00))",
         },
         {
             trigger: ".modal-content .o_field_x2many_list_row_add > a",
@@ -354,31 +564,31 @@ registry.category("web_tour.tours").add("test_add_new_line_in_detailled_op", {
         {
             content: "Remove the newly created line",
             trigger:
-                ".modal-content .o_data_row:nth-child(1):has(.o_data_cell[name=quant_id]:contains(WH/Stock - LOT001)):has(.o_data_cell[name=quantity]:contains(0.00)) .o_list_record_remove",
+                ".modal-content .o_data_row:has(.o_field_pick_from input:value(WH/Stock - LOT001)):has(.o_field_float[name=quantity] input:value(0.00)) .o_list_record_remove",
             run: "click",
         },
         {
             content: "check that the move contains two lines",
             trigger:
-                ".modal-content:has(.modal-header .modal-title:contains(Detailed Operations)):not(:has(.o_data_row:nth-child(3)))",
+                ".modal-content:has(.modal-header .modal-title:contains(Open: Stock move)):not(:has(.o_data_row:nth-child(3)))",
         },
         {
             content: "Check that the first line is associated with LOT001",
             trigger:
-                ".modal-content .o_data_row:nth-child(1) .o_data_cell[name=quant_id]:contains(WH/Stock - LOT001)",
+                ".modal-content .o_data_row:nth-child(1):has(.o_field_pick_from:contains(WH/Stock - LOT001))",
         },
         {
             content: "Check that the second line is associated with LOT002",
             trigger:
-                ".modal-content .o_data_row:nth-child(2) .o_data_cell[name=quant_id]:contains(WH/Stock - LOT002)",
+                ".modal-content .o_data_row:nth-child(2):has(.o_field_pick_from:contains(WH/Stock - LOT002))",
         },
         {
             content: "Modify the quant associated to the second line to fully use LOT003",
-            trigger: ".modal-content .o_data_row:nth-child(2) .o_data_cell[name=quant_id]",
+            trigger: ".modal-content .o_data_row:nth-child(2) .o_field_pick_from",
             run: "click",
         },
         {
-            trigger: ".modal-content .o_data_row:nth-child(2) .o_field_widget[name=quant_id] input",
+            trigger: ".modal-content .o_data_row:nth-child(2) .o_field_pick_from input",
             run: "edit LOT003",
         },
         {
@@ -391,11 +601,12 @@ registry.category("web_tour.tours").add("test_add_new_line_in_detailled_op", {
             run: "click",
         },
         {
-            trigger: ".modal-content .o_data_row:nth-child(1) .o_data_cell[name=quantity] .o_input",
+            trigger: ".modal-content .o_data_row:nth-child(1) .o_field_widget[name=quantity] input",
             run: "edit 8",
         },
         {
-            trigger: ".modal-header .modal-title:contains(Detailed Operations)",
+            content: "Click on the header to update the total amount",
+            trigger: ".modal-header .modal-title:contains(Open: Stock move)",
             run: "click",
         },
         {
@@ -432,26 +643,22 @@ registry.category("web_tour.tours").add("test_add_new_line_in_detailled_op", {
             trigger: ".modal-content .o_list_number:contains(20.00)",
         },
         {
-            trigger: ".modal-header .modal-title:contains(Detailed Operations)",
-            run: "click",
-        },
-        {
             content: "Check that 2 units of LOT001 were added",
             trigger:
-                ".o_data_row:has(.o_data_cell[name=quant_id]:contains(WH/Stock - LOT001)) .o_data_cell[name=quantity]:contains(2.00)",
+                ".o_data_row:has(.o_field_pick_from input:value(WH/Stock - LOT001)) .o_field_widget[name=quantity] input:value(2.00)",
         },
         {
             content: "Check that the third line is associated with LOT003",
             trigger:
-                ".modal-content .o_data_row:nth-child(3) .o_data_cell[name=quant_id]:contains(WH/Stock - LOT003)",
+                ".modal-content .o_data_row:nth-child(3) .o_field_pick_from:contains(WH/Stock - LOT003)",
         },
         {
             content: "Modify the quant associated to the third line to use LOT002",
-            trigger: ".modal-content .o_data_row:nth-child(3) .o_data_cell[name=quant_id]",
+            trigger: ".modal-content .o_data_row:nth-child(3) .o_field_pick_from",
             run: "click",
         },
         {
-            trigger: ".modal-content .o_data_row:nth-child(3) .o_field_widget[name=quant_id] input",
+            trigger: ".modal-content .o_data_row:nth-child(3) .o_field_pick_from input",
             run: "edit LOT002",
         },
         {
@@ -459,12 +666,11 @@ registry.category("web_tour.tours").add("test_add_new_line_in_detailled_op", {
             run: "click",
         },
         {
-            trigger: ".modal-header .modal-title:contains(Detailed Operations)",
+            trigger: ".modal-header .modal-title:contains(Open: Stock move)",
             run: "click",
         },
         {
-            trigger:
-                ".modal-content .o_data_row:nth-child(3) .o_data_cell[name=quant_id]:contains(LOT002)",
+            trigger: ".modal-content .o_data_row:nth-child(3) .o_field_pick_from:contains(LOT002)",
         },
         {
             content: "Modify the quantity of the first line from 10 to 15 to change the demand",
@@ -472,12 +678,8 @@ registry.category("web_tour.tours").add("test_add_new_line_in_detailled_op", {
             run: "click",
         },
         {
-            trigger: ".modal-content .o_data_row:nth-child(3) .o_data_cell[name=quantity] .o_input",
+            trigger: ".modal-content .o_data_row:nth-child(3) .o_field_widget[name=quantity] input",
             run: "edit 15",
-        },
-        {
-            trigger: ".modal-header .modal-title:contains(Detailed Operations)",
-            run: "click",
         },
         {
             content: "Remove the LOT001 line with a quantity of 8.00",
@@ -519,21 +721,20 @@ registry.category("web_tour.tours").add("test_add_new_line_in_detailled_op", {
             trigger: ".modal-content .o_list_number:contains(20.00)",
         },
         {
-            trigger: ".modal-header .modal-title:contains(Detailed Operations)",
-            run: "click",
-        },
-        {
             content: "Check that 3 units of LOT001 were added",
             trigger:
-                ".o_data_row:has(.o_data_cell[name=quant_id]:contains(WH/Stock - LOT001)) .o_data_cell[name=quantity]:contains(3.00)",
+                ".modal-content .o_data_row:has(.o_field_pick_from input:value(WH/Stock - LOT001)):has(.o_field_float[name=quantity] input:value(3.00))",
         },
         {
             trigger: ".modal-content .o_form_button_save",
             run: "click",
         },
         {
-            trigger: ".o_list_view.o_field_x2many .o_data_row button[name='action_show_details']",
+            trigger: ".o_form_button_save",
             run: "click",
+        },
+        {
+            trigger: ".o_form_renderer.o_form_saved",
         },
     ],
 });

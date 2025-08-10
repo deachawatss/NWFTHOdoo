@@ -21,6 +21,7 @@ export class CharField extends Component {
         placeholder: { type: String, optional: true },
         dynamicPlaceholder: { type: Boolean, optional: true },
         dynamicPlaceholderModelReferenceField: { type: String, optional: true },
+        placeholderField: { type: String, optional: true },
     };
     static defaultProps = { dynamicPlaceholder: false };
 
@@ -59,6 +60,10 @@ export class CharField extends Component {
     }
     get hasDynamicPlaceholder() {
         return this.props.dynamicPlaceholder && !this.props.readonly;
+    }
+
+    get placeholder() {
+        return this.props.record.data[this.props.placeholderField] || this.props.placeholder;
     }
 
     parse(value) {
@@ -101,25 +106,26 @@ export class CharField extends Component {
 export const charField = {
     component: CharField,
     displayName: _t("Text"),
-    supportedTypes: ["char", "text"],
+    supportedTypes: ["char"],
     supportedOptions: [
         {
             label: _t("Dynamic Placeholder"),
             name: "placeholder_field",
             type: "field",
-            availableTypes: ["char", "text"],
+            availableTypes: ["char"],
             help: _t(
                 "Displays the value of the selected field as a textual hint. If the selected field is empty, the static placeholder attribute is displayed instead."
             ),
         },
     ],
-    extractProps: ({ attrs, options, placeholder }) => ({
+    extractProps: ({ attrs, options }) => ({
         isPassword: exprToBoolean(attrs.password),
         dynamicPlaceholder: options.dynamic_placeholder || false,
         dynamicPlaceholderModelReferenceField:
             options.dynamic_placeholder_model_reference_field || "",
         autocomplete: attrs.autocomplete,
-        placeholder,
+        placeholder: attrs.placeholder,
+        placeholderField: options.placeholder_field,
     }),
 };
 

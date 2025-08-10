@@ -4,13 +4,15 @@ import csv
 import io
 import json
 
+import xlsxwriter
+
 from odoo import _
 from odoo.http import Controller, request, route, content_disposition
 
 
 class ProductPricelistExportController(Controller):
 
-    @route('/product/export/pricelist/', type='http', auth='user', readonly=True)
+    @route('/product/export/pricelist/', type='http', auth='user')
     def export_pricelist(self, report_data, export_format):
         json_data = json.loads(report_data)
         report_data = request.env['report.product.report_pricelist']._get_report_data(json_data)
@@ -54,7 +56,6 @@ class ProductPricelistExportController(Controller):
 
     def _generate_xlsx(self, pricelist_name, quantities, products, headers):
         buffer = io.BytesIO()
-        import xlsxwriter  # noqa: PLC0415
         workbook = xlsxwriter.Workbook(buffer, {'in_memory': True})
         worksheet = workbook.add_worksheet()
         worksheet.write_row(0, 0, headers)

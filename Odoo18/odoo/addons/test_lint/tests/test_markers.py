@@ -1,7 +1,9 @@
+# -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import logging
 import os
+import odoo
 
 from . import lint_case
 
@@ -20,18 +22,15 @@ class TestConflictMarkers(lint_case.LintCase):
 
     def test_conflict_markers(self):
         """ Test that there are no conflict markers left in Odoo files """
-        import odoo.addons  # noqa: PLC0415
 
         counter = 0
 
-        paths = sorted(os.path.abspath(p) for p in [*odoo.addons.__path__, *odoo.__path__])
+        odoo_path = os.path.abspath(os.path.dirname(odoo.__file__))
+        paths = [*odoo.addons.__path__, odoo_path]
+        paths.remove(os.path.join(odoo_path, 'addons'))  # avoid checking odoo/addons twice
 
-        already_visited = set()
         for p in paths:
-            if p in already_visited:
-                continue
             for dp, _, file_names in os.walk(p):
-                already_visited.add(dp)
                 if 'node_modules' in dp:
                     continue
                 for fn in file_names:

@@ -1,3 +1,5 @@
+/** @odoo-module **/
+
 import { _t } from "@web/core/l10n/translation";
 import { CalendarController } from "@web/views/calendar/calendar_controller";
 import { user } from "@web/core/user";
@@ -87,21 +89,8 @@ export class AttendeeCalendarController extends CalendarController {
         ) {
             if (record.rawRecord.recurrency) {
                 this.openRecurringDeletionWizard(record);
-            } else if (user.partnerId === record.attendeeId &&
-                record.rawRecord.attendees_count == 1) {
-                super.deleteRecord(...arguments);
             } else {
-                this.orm.call("calendar.event", "action_unlink_event", [
-                    record.id,
-                    record.attendeeId,
-                ])
-                .then((action) => {
-                    if (action && action.context) {
-                        this.actionService.doAction(action);
-                    } else {
-                        location.reload();
-                    }
-                });
+                super.deleteRecord(...arguments);
             }
         } else {
             // Decline event
@@ -119,16 +108,12 @@ export class AttendeeCalendarController extends CalendarController {
                 views: [[false, "form"]],
                 view_mode: "form",
                 name: "Delete Recurring Event",
-                context: {
-                    default_calendar_event_id: record.id,
-                    default_attendee_id: record.attendeeId,
-                    form_view_ref: 'calendar.calendar_popover_delete_view',
-                },
+                context: { default_record: record.id },
                 target: "new",
             },
             {
                 onClose: () => {
-                    this.model.load();
+                    location.reload();
                 },
             }
         );

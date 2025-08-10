@@ -60,7 +60,7 @@ export class ListArchParser {
             fields: {},
         };
         let headerButtons = [];
-        const controls = [];
+        const creates = [];
         const groupListArchParser = new GroupListArchParser();
         let buttonGroup;
         let handleField = null;
@@ -157,6 +157,9 @@ export class ListArchParser {
                 };
                 return false;
             } else if (node.tagName === "header") {
+                // AAB: not sure we need to handle invisible="True" button as the usecase seems way
+                // less relevant than for fields (so for buttons, relying on the modifiers logic
+                // that applies later on could be enough, even if the value is always true)
                 headerButtons = [...node.children].map((node) => ({
                     ...this.processButton(node),
                     type: "button",
@@ -166,21 +169,15 @@ export class ListArchParser {
             } else if (node.tagName === "control") {
                 for (const childNode of node.children) {
                     if (childNode.tagName === "button") {
-                        controls.push({
+                        creates.push({
                             type: "button",
                             ...processButton(childNode),
                         });
                     } else if (childNode.tagName === "create") {
-                        controls.push({
+                        creates.push({
                             type: "create",
                             context: childNode.getAttribute("context"),
                             string: childNode.getAttribute("string"),
-                            invisible: childNode.getAttribute("invisible"),
-                        });
-                    } else if (childNode.tagName === "delete") {
-                        controls.push({
-                            type: "delete",
-                            invisible: childNode.getAttribute("invisible"),
                         });
                     }
                 }
@@ -189,9 +186,6 @@ export class ListArchParser {
                 const activeActions = {
                     ...getActiveActions(xmlDoc),
                     exportXlsx: exprToBoolean(xmlDoc.getAttribute("export_xlsx"), true),
-                    createGroup: exprToBoolean(xmlDoc.getAttribute("group_create"), true),
-                    editGroup: exprToBoolean(xmlDoc.getAttribute("group_edit"), true),
-                    deleteGroup: exprToBoolean(xmlDoc.getAttribute("group_delete"), true),
                 };
                 treeAttr.activeActions = activeActions;
 
@@ -204,9 +198,6 @@ export class ListArchParser {
                 treeAttr.openFormView = treeAttr.editable
                     ? exprToBoolean(xmlDoc.getAttribute("open_form_view") || "")
                     : false;
-                treeAttr.defaultGroupBy = xmlDoc.hasAttribute("default_group_by")
-                    ? xmlDoc.getAttribute("default_group_by").split(",")
-                    : null;
 
                 const limitAttr = node.getAttribute("limit");
                 treeAttr.limit = limitAttr && parseInt(limitAttr, 10);
@@ -221,6 +212,7 @@ export class ListArchParser {
                 treeAttr.rawExpand = xmlDoc.getAttribute("expand");
                 treeAttr.decorations = getDecoration(xmlDoc);
 
+                treeAttr.defaultGroupBy = xmlDoc.getAttribute("default_group_by");
                 treeAttr.defaultOrder = stringToOrderBy(
                     xmlDoc.getAttribute("default_order") || null
                 );
@@ -238,7 +230,7 @@ export class ListArchParser {
         }
 
         return {
-            controls,
+            creates,
             headerButtons,
             fieldNodes,
             widgetNodes,

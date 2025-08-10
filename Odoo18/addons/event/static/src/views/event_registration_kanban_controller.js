@@ -12,10 +12,10 @@ export class EventRegistrationKanbanController extends KanbanController {
         this.orm = useService("orm");
     }
 
-    async openRecord(record) {
+    async openRecord(record, mode) {
         if (this.props.context.is_registration_desk_view) {
             const barcode = record.data.barcode;
-            const eventId = record.data.event_id.id;
+            const eventId = record.data.event_id[0];
 
             const result = await this.orm.call("event.registration", "register_attendee", [], {
                 barcode: barcode,
@@ -30,7 +30,7 @@ export class EventRegistrationKanbanController extends KanbanController {
                 }
             );
         } else {
-            return super.openRecord(record);
+            return super.openRecord(record, mode);
         }
     }
 }
