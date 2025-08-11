@@ -220,4 +220,31 @@ list_db = True              # Database selection enabled
 - Node.js needed for frontend asset compilation
 - System dependencies documented in `DEV_SETUP.md`
 
+## Git Commit Guidelines
+
+### Commit Message Style
+- Use **professional, natural commit messages** that appear human-written
+- **NEVER** include AI-generated signatures, bot mentions, or references to Claude Code
+- Follow conventional commit format when appropriate
+- Focus on the business value and technical changes made
+- Examples of preferred style:
+  ```
+  Add helpdesk management module for customer support
+  
+  Integrate OCA helpdesk_mgmt v18.0.1.7.0 with complete ticket management,
+  team organization, and portal support for enhanced customer service.
+  ```
+
+### What to Avoid
+- ❌ "🤖 Generated with [Claude Code]"
+- ❌ "Co-Authored-By: Claude"
+- ❌ Any reference to AI assistance
+- ❌ Robot emojis or automation indicators
+
+### Preferred Approach
+- ✅ Professional, descriptive commit messages
+- ✅ Focus on business impact and technical details
+- ✅ Use active voice and clear language
+- ✅ Include version numbers and source attribution when relevant
+
 This Odoo 18 environment is optimized for development with proper agent routing, comprehensive custom modules, and modern development practices.
