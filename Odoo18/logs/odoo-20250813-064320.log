@@ -1,0 +1,12 @@
+2025-08-12 23:43:25,043 1505 INFO ? odoo: Odoo version 18.0 
+2025-08-12 23:43:25,044 1505 INFO ? odoo: Using configuration file at /home/deachawat/dev/projects/Odoo/Odoo18/odoo-dev.conf 
+2025-08-12 23:43:25,044 1505 INFO ? odoo: addons paths: ['/home/deachawat/dev/projects/Odoo/Odoo18/odoo/addons', '/home/deachawat/dev/projects/Odoo/Odoo18/.local/share/Odoo/addons/18.0', '/home/deachawat/dev/projects/Odoo/Odoo18/addons', '/home/deachawat/dev/projects/Odoo/Odoo18/custom_addons'] 
+2025-08-12 23:43:25,044 1505 INFO ? odoo: database: admin@localhost:5432 
+2025-08-12 23:43:26,045 1505 INFO ? odoo.addons.base.models.ir_actions_report: You need Wkhtmltopdf to print a pdf version of the reports. 
+2025-08-12 23:43:26,226 1505 INFO ? odoo.addons.base.models.ir_actions_report: You need Wkhtmltoimage to generate images from html. 
+2025-08-12 23:43:28,079 1505 INFO ? odoo.service.server: Watching addons folder /home/deachawat/dev/projects/Odoo/Odoo18/odoo/addons 
+2025-08-12 23:43:28,079 1505 INFO ? odoo.service.server: Watching addons folder /home/deachawat/dev/projects/Odoo/Odoo18/.local/share/Odoo/addons/18.0 
+2025-08-12 23:43:28,080 1505 INFO ? odoo.service.server: Watching addons folder /home/deachawat/dev/projects/Odoo/Odoo18/addons 
+2025-08-12 23:43:28,080 1505 INFO ? odoo.service.server: Watching addons folder /home/deachawat/dev/projects/Odoo/Odoo18/custom_addons 
+2025-08-12 23:43:31,265 1505 INFO ? odoo.service.server: AutoReload watcher running with watchdog 
+2025-08-12 23:43:31,283 1505 INFO ? odoo.service.server: HTTP service (werkzeug) running on TH-BP-APPTEST.NWFTH.COM:8069 

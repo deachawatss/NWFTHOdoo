@@ -36,9 +36,9 @@ warning() {
 # Function to check if PostgreSQL is running
 check_postgresql() {
     log "Checking PostgreSQL service status..."
-    if ! systemctl is-active --quiet postgresql; then
+    if ! pgrep -x postgres >/dev/null 2>&1; then
         error "PostgreSQL is not running. Please start it first:"
-        echo "  sudo systemctl start postgresql"
+        echo "  sudo service postgresql start"
         exit 1
     fi
     success "PostgreSQL is running"
